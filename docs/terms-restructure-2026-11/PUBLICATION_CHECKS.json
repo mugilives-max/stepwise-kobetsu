@@ -1,0 +1,40 @@
+{
+  "edition": "2026-11-20261012",
+  "effective_date": "2026-11-01",
+  "source_path": "docs/terms-restructure-2026-11/TERMS.md",
+  "source_git_blob": "56172a3c3754d03ceab921d85f088dd710b45547",
+  "source_commit": "7807e23688376e5f94a457a0fd8d891847c69563",
+  "html_sha256": "33d011b1993fdc3fd97914038b420ec4be45a0235958ac20836f908ba8299d0c",
+  "pdf_sha256": "0ca7e03d8fb6d006dd7a69d30767edf6a72b3659092d2c9e67e900b017d636b6",
+  "old_blobs_preserved": {
+    "terms/2026-11/index.html": "84325add6c395ff9cbe8588abcc3c0221e40b03f",
+    "terms/2026-11/stepwise-terms-2026-11.pdf": "94bcb70dc1eb25afdd78393c306d0d5ec518e6e9"
+  },
+  "chapters": 7,
+  "articles": 32,
+  "numbered_paragraphs": 129,
+  "tables": 3,
+  "markdown_to_html_full_text_equal": true,
+  "internal_links_valid": true,
+  "mobile_overflow": false,
+  "pdf_pages": 12,
+  "pdf_text_blocks_verified": 273,
+  "pdf_missing_text_blocks": 0,
+  "pdf_fonts": [
+    "DejaVuSans",
+    "NotoSansCJKjp-Bold",
+    "NotoSansCJKjp-Regular"
+  ],
+  "pdf_fonts_embedded": true,
+  "embedded_font_programs": 260,
+  "japanese_font_match": "Noto Sans CJK JP",
+  "visual_review_images": 14,
+  "visual_review": {
+    "date": "2026-10-12",
+    "reviewed_commit": "dd873359b1f65105cd828d38d20aa8c97ec751ea",
+    "pdf_pages_reviewed": 12,
+    "mobile_views_reviewed": 2,
+    "result": "文字欠落・重なり・表のはみ出しなし。負担率の説明と表、章見出しと本文が離れない改ページを確認。",
+    "preview_workflow_run": "https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38165807151"
+  }
+}
