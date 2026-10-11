@@ -14,7 +14,7 @@ export function specialDocHtml({ sp, student, family, terms, proposer, now }) {
     ['対象生徒', `${esc(name)}${student.grade ? `（${esc(student.grade)}）` : ''}`],
     ['特殊指導の名称', `<strong>${esc(sp.title)}</strong><br><span class="sub">授業計画承認書では、授業の種類「${esc(sp.title)}」として示します。</span>`],
     ['指導の内容と範囲', br(sp.content)],
-    ['通常指導との違い（特殊指導とする理由）', br(sp.reason) + '<br><span class="sub">規約第5条：(i) その生徒のために個別に長時間の授業準備が必要、(ii) その準備を他の生徒の指導に活用することが難しい、の両方に当たるか、いずれかの程度が大きい指導。</span>'],
+    ['通常指導との違い（特殊指導とする理由）', br(sp.reason) + '<br><span class="sub">規約第5条：(i) その生徒のために個別に長時間の授業準備が必要、(ii) その準備を他の生徒の指導に活用することが難しい、の両方に当たるか、(i)の程度が大きい指導。</span>'],
     ['必要な準備', sp.prep ? br(sp.prep) : 'なし'],
     ['1回の時間と税込料金', `1回 ${sp.minutes}分　<strong>${yen(sp.fee)}</strong>（税込）<br><span class="sub">この料金は、個別指導条件書の基本単価とは別に、この承認によって定めます。授業時間が異なる場合は時間に比例して計算します。</span>`],
     ['対象期間', `${esc(ymd(sp.fromDate))} 〜 ${esc(ymd(sp.toDate))}<br><span class="sub">期間の中で、月ごとの回数は授業計画承認書で合意します。期間を延ばす・内容を変えるときは、新しい承認書をお送りします。</span>`],
