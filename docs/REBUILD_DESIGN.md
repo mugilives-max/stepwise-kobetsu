@@ -462,6 +462,16 @@
 - **テスト**：`test/v2-terms-effects.test.cjs`、`test/v2-service.test.cjs`。
 - **公開の記録（2026-10-08）**：本番の DB2 に `0016_terms.sql` を当てた（1 回目は Cloudflare API の 7403 で失敗し、2 回目で成功）→ Worker `86721e98-a689-4723-9c1a-54dbca18cebc`（release `2026-10-08-v2-terms-effects`）→ 画面（PR #14 のマージ）。
 
+### 13段目：特殊指導の承認（2026-10-12）
+
+本人「特殊指導がどうやって決められるかという実際の経路がない」「大変な指導を、こういう条件と範囲を基準にやりますよ、それで承認しますか、みたいなものが欲しい」。規約 第5条の特殊指導に、提案 → 承認の経路と書面（特殊指導承認書）を作った。
+
+- **表**（`0019_specials.sql`）：`specials`。生徒ごとの版に、名称（授業の種類の名前になる）、内容と範囲、通常指導との違い、準備、1回の時間と税込料金、対象期間、特記、状態（proposed／agreed／replaced／ended）、承認の日時・方法。
+- **API**（`cf/v2/specials.mjs`）：`admin/specials/get`・`propose`（同じ名称の `lessonKinds` も作る。保護者にメール。書面＝案）・`record`・`end`、`family/specials`・`family/specials/agree`（書面＝確定）。書面は `cf/v2/special-doc.mjs`（files の category=contract、refType=special）。
+- **計画との結びつき**（`billing/plans/save` の `needSpecial`）：基本単価（30分あたり）を超える料金の行は、同じ名称の種類で、期間内に承認済みの特殊指導があり、承認した料金（時間比例）までのときだけ作れる。基本単価が 0 の生徒には掛けない。計画の承認そのものは止めない（特殊指導は任意）。
+- **画面**：スタッフは 家族の画面 → 生徒 の下から出る画面の「特殊指導」（提案・承諾を記録・置き換える・終える・承認書を開く）。保護者は「お支払い」の「確かめていただきたいこと」に承認のカード、承認済みは下に 1 行、ホームのやることにも出る。
+- **テスト**：`test/v2-specials.test.cjs`。
+
 ### 12段目：請求書・領収書の書面（2026-10-12）
 
 本人「請求書と領収書も同じ仕組みで出せるように」。`cf/v2/billing-doc.mjs`。請求を確定したとき（`confirmInvoice`）に請求書、入金を記録したとき（`billing/paid`）に領収書の HTML を R2 に置く（`files` の category=invoice／receipt、refType=invoice）。見た目は Kura/塾/書類のひな形 と同じ A4。免税事業者なので登録番号と税額は書かない。振込先と備考は settings（`invoiceBank`・`invoiceNote`。「請求」の画面の下の「請求書の設定」）。保護者は「お支払い」の請求の画面、教室管理者は「請求」の家族の画面から開く。「書面を作り直す」で振込先の変更などを反映。

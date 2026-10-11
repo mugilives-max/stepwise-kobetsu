@@ -7,6 +7,8 @@ const STUDENT_STATUS = { enrolled: ['', '在籍'], paused: ['warn', '休会'], l
 const MODE = { '': '未設定', in_person: '対面', online: 'オンライン' };
 const COND_MODE = { in_person: '教室', online: 'オンライン', both: '教室とオンライン' };
 const nextMonth = () => { const d = new Date(Date.now() + 9 * 3600e3); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 7); };
+const SP_STATUS = { proposed: ['warn', '承認待ち'], agreed: ['ok', '承認済み'] };
+const today = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const condStatus = cd => !cd || !cd.latest ? '<span class="tag gray">条件なし</span>' : cd.needs ? `<span class="tag warn">条件 第${cd.latest.no}版 同意待ち</span>` : `<span class="tag ok">条件 第${cd.latest.no}版 同意済み</span>`;
 let list = null, detail = null, query = '', shown = null, famSheet = null;
 
@@ -84,6 +86,24 @@ function familySheet(ctx, f) {
       <label>特記事項（共通の条件と違う合意。任意）<textarea name="note" maxlength="1000" rows="2">${esc(v.note)}</textarea></label>
       <div class="row"><button class="primary"${ctx.dis()}>保護者にお知らせする</button><button type="button" data-action="fam-sheet" data-mode="student" data-id="${esc(s.id)}">戻る</button></div></form>`, 'fam-close', { wide: true });
   }
+  const sps = s.specials || { items: [], past: [] };
+  if (m === 'special') { // 特殊指導を提案する（replaceId があれば置き換え）
+    const base = famSheet.replaceId ? sps.items.find(x => x.id === famSheet.replaceId) : null;
+    const v = base || { title: '', content: '', reason: '', prep: '', minutes: cd.latest ? cd.latest.minutes : 90, fee: '', fromDate: today(), toDate: '', note: '' };
+    return sheet(esc, `${s.name} の特殊指導を提案${base ? `（「${esc(base.title)}」を置き換え）` : ''}`, `<p class="small muted" style="margin-top:0">規約 第5条の特殊指導です。「大変な指導を、この条件と範囲でやります。承認しますか」を保護者に送ります。承認されると、その名称の授業の種類で、基本単価を超える料金の計画を作れます。</p>
+      <form class="stack" data-form="special-propose" data-id="${esc(s.id)}" data-replace="${esc(famSheet.replaceId || '')}">
+      <label>名称（授業の種類の名前になります。例: 英検準1級対策）<input name="title" maxlength="20" required value="${esc(v.title)}"></label>
+      <label>指導の内容と範囲<textarea name="content" maxlength="1000" rows="3" required placeholder="例: 過去問の長文とライティングの添削。毎回、前回の答案を講師が採点して返す">${esc(v.content)}</textarea></label>
+      <label>通常指導との違い（なぜ特殊指導か）<textarea name="reason" maxlength="1000" rows="3" required placeholder="例: 毎回の答案の添削と準備に1回2時間かかり、ほかの生徒には使えない">${esc(v.reason)}</textarea></label>
+      <label>必要な準備（任意）<input name="prep" maxlength="1000" value="${esc(v.prep)}"></label>
+      <div class="row"><label style="flex:1">1回の時間（分）<input type="number" name="minutes" min="15" max="300" step="5" required value="${v.minutes}"></label><label style="flex:1">1回の税込料金（円）<input type="number" name="fee" min="0" max="100000" step="10" required value="${v.fee}"></label></div>
+      <div class="row"><label style="flex:1">期間（から）<input type="date" name="fromDate" required value="${esc(v.fromDate)}"></label><label style="flex:1">期間（まで）<input type="date" name="toDate" required value="${esc(v.toDate)}"></label></div>
+      <label>特記事項（任意）<input name="note" maxlength="1000" value="${esc(v.note)}"></label>
+      <div class="row"><button class="primary"${ctx.dis()}>保護者に提案する</button><button type="button" data-action="fam-sheet" data-mode="student" data-id="${esc(s.id)}">戻る</button></div></form>`, 'fam-close', { wide: true });
+  }
+  if (m === 'special-record') { const sp = sps.items.find(x => x.id === famSheet.specialId); if (!sp) return ''; return sheet(esc, `「${sp.title}」の承諾を記録`, `<p class="small muted" style="margin-top:0">書面・LINE などで承諾をもらったときに記録します。${sp.minutes}分 ${yen(sp.fee)}・${esc(sp.fromDate)}〜${esc(sp.toDate)}。</p>
+    <form class="stack" data-form="special-record" data-id="${esc(sp.id)}"><div class="row"><label style="flex:1">承諾をもらった日<input type="date" name="date" required value="${today()}"></label><label style="flex:1">方法<input name="via" maxlength="40" required placeholder="LINE・書面 など"></label></div>
+    <label>メモ（任意）<input name="note" maxlength="300"></label><button class="primary"${ctx.dis()}>記録する</button></form>`, 'fam-close'); }
   if (m === 'cond-record' && cd.latest && cd.needs) return sheet(esc, s.name + ' の条件の承諾を記録', `<p class="small muted" style="margin-top:0">書面・LINE などで承諾をもらったときに記録します。第${cd.latest.no}版（1回${cd.latest.minutes}分 ${yen(cd.latest.fee)}・${esc(cd.latest.deliveryLabel)}・${esc(cd.latest.fromMonth)}から）。</p>
     <form class="stack" data-form="cond-record" data-id="${esc(cd.latest.id)}"><div class="row"><label style="flex:1">承諾をもらった日<input type="date" name="date" required value="${new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)}"></label><label style="flex:1">方法<input name="via" maxlength="40" required placeholder="LINE・書面 など"></label></div>
     <label>メモ（任意）<input name="note" maxlength="300" placeholder="例: 母から LINE で「同意します」"></label><button class="primary"${ctx.dis()}>記録する</button></form>`, 'fam-close');
@@ -93,6 +113,9 @@ function familySheet(ctx, f) {
     <div class="sec-title" style="margin:4px 0 6px">個別指導条件 ${condStatus(cd)}</div>
     ${cd.latest ? `<p class="small" style="margin:0 0 8px">第${cd.latest.no}版：1回${cd.latest.minutes}分 ${yen(cd.latest.fee)}・${esc(cd.latest.deliveryLabel)}・${cd.latest.studentContact ? '本人の連絡あり' : '本人の連絡なし'}・${esc(cd.latest.fromMonth)}から${cd.needs ? '（保護者の同意待ち）' : `（${esc(cd.latest.agreedVia)}・${esc(String(cd.latest.agreedAt).slice(0, 10))} 同意）`}${cd.needs && cd.agreed ? `<br><span class="muted">今は第${cd.agreed.no}版（1回${cd.agreed.minutes}分 ${yen(cd.agreed.fee)}）で合意中</span>` : ''}</p>` : '<p class="small muted" style="margin:0 0 8px">まだ条件を決めていません。規約の同意と一緒に、保護者に条件を見せて同意をもらいます。</p>'}
     <div class="row" style="margin-bottom:12px">${cd.latest && cd.latest.docFileId ? `<button data-action="gr-open" data-id="${esc(cd.latest.docFileId)}">条件書を開く${cd.needs ? '（案）' : ''}</button>` : ''}${cd.needs && cd.agreed && cd.agreed.docFileId ? `<button data-action="gr-open" data-id="${esc(cd.agreed.docFileId)}">合意中の条件書（第${cd.agreed.no}版）</button>` : ''}<button data-action="fam-sheet" data-mode="cond" data-id="${esc(s.id)}"${ctx.dis()}>${cd.latest ? '新しい版を決めてお知らせ' : '条件を決めてお知らせ'}</button>${cd.needs ? `<button data-action="fam-sheet" data-mode="cond-record" data-id="${esc(s.id)}"${ctx.dis()}>承諾を記録</button>` : ''}</div>
+    <div class="sec-title" style="margin:4px 0 6px">特殊指導${sps.items.length ? ` <span class="count gray">${sps.items.length}</span>` : ''}</div>
+    ${sps.items.length ? sps.items.map(x => `<p class="small" style="margin:0 0 6px">「${esc(x.title)}」 <span class="tag ${SP_STATUS[x.status][0]}">${SP_STATUS[x.status][1]}</span> ${x.minutes}分 ${yen(x.fee)}・${esc(x.fromDate)}〜${esc(x.toDate)}${x.status === 'agreed' ? `（${esc(x.agreedVia)}・${esc(String(x.agreedAt).slice(0, 10))}）` : ''}<br><span class="row" style="margin-top:4px">${x.docFileId ? `<button class="small-btn" data-action="gr-open" data-id="${esc(x.docFileId)}">承認書を開く</button>` : ''}${x.status === 'proposed' ? `<button class="small-btn" data-action="fam-special" data-mode="special-record" data-id="${esc(s.id)}" data-special="${esc(x.id)}"${ctx.dis()}>承諾を記録</button>` : ''}<button class="small-btn" data-action="fam-special" data-mode="special" data-id="${esc(s.id)}" data-special="${esc(x.id)}"${ctx.dis()}>置き換える</button><button class="small-btn" data-action="special-end" data-id="${esc(x.id)}"${ctx.dis()}>終える</button></span></p>`).join('') : '<p class="small muted" style="margin:0 0 8px">通常指導と別に料金を決める指導（英検準1級以上の対策など）があれば、ここから提案します。</p>'}
+    <div class="row" style="margin-bottom:12px"><button data-action="fam-special" data-mode="special" data-id="${esc(s.id)}"${ctx.dis()}>特殊指導を提案</button></div>
     <div class="stack"><a class="btn" href="#student=${encodeURIComponent(s.id)}">生徒の画面を開く</a>
     <button data-action="fam-sheet" data-mode="edit" data-id="${esc(s.id)}"${ctx.dis()}>登録内容を直す</button>
     <button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る（プレビュー）</button>
@@ -132,6 +155,12 @@ export async function familiesSubmit(ctx, kind, el) {
   } else if (kind === 'cond-propose') {
     r = await ctx.call('admin/conditions/propose', { studentId: el.dataset.id, minutes: Number(v.minutes), fee: Number(v.fee), deliveryMode: v.deliveryMode, groupSize: v.groupSize, studentContact: v.studentContact === 'on', subjects: v.subjects, note: v.note, fromMonth: v.fromMonth });
     if (r.ok) { famSheet = null; detail = null; list = null; ctx.say(`個別指導条件（第${r.condition.no}版）を保護者にお知らせしました`, 'ok'); return true; }
+  } else if (kind === 'special-propose') {
+    r = await ctx.call('admin/specials/propose', { studentId: el.dataset.id, replaceId: el.dataset.replace || undefined, title: v.title, content: v.content, reason: v.reason, prep: v.prep, minutes: Number(v.minutes), fee: Number(v.fee), fromDate: v.fromDate, toDate: v.toDate, note: v.note });
+    if (r.ok) { famSheet = null; detail = null; list = null; ctx.say(`特殊指導「${r.special.title}」を保護者に提案しました`, 'ok'); return true; }
+  } else if (kind === 'special-record') {
+    r = await ctx.call('admin/specials/record', { id: el.dataset.id, date: v.date, via: v.via, note: v.note });
+    if (r.ok) { famSheet = null; detail = null; list = null; ctx.say('特殊指導の承諾を記録しました', 'ok'); return true; }
   } else if (kind === 'cond-record') {
     r = await ctx.call('admin/conditions/record', { id: el.dataset.id, date: v.date, via: v.via, note: v.note });
     if (r.ok) { famSheet = null; detail = null; list = null; ctx.say('条件の承諾を記録しました', 'ok'); return true; }
@@ -154,6 +183,13 @@ export async function familiesClick(ctx, a, b) {
   let r;
   if (a === 'fam-sheet') { famSheet = { mode: b.dataset.mode, id: b.dataset.id || '' }; ctx.say(''); return true; }
   if (a === 'fam-close') { famSheet = null; return true; }
+  if (a === 'fam-special') { famSheet = { mode: b.dataset.mode, id: b.dataset.id || '', specialId: b.dataset.special || '', replaceId: b.dataset.mode === 'special' ? (b.dataset.special || '') : '' }; ctx.say(''); return true; }
+  if (a === 'special-end') {
+    if (!confirm('この特殊指導を終えますか？ 以後、この名称の種類で基本単価を超える計画は作れなくなります。')) return true;
+    r = await ctx.call('admin/specials/end', { id: b.dataset.id });
+    if (r.ok) { famSheet = null; detail = null; ctx.say('特殊指導を終えました', 'ok'); return true; }
+    if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); return true;
+  }
   if (a === 'fam-invite') {
     r = await ctx.call('admin/families/invite', { id: detail.id });
     if (r.ok) { shown = { text: r.mailHeld ? '招待のリンクを作りました。まだ切り替え前のため、メールは実際には送っていません。試すときはこのリンクを使ってください（7日有効・1回だけ）。' : '招待のメールを送りました。届かないときは、このリンクを LINE などで渡してください（7日有効・1回だけ）。', url: r.inviteUrl }; ctx.say(''); return true; }

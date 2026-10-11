@@ -11,6 +11,7 @@ import { isLive } from './accounts.mjs';
 import { familyTerms, currentTerms } from './terms.mjs';
 import { familyConditions, familyNeedsConditions } from './conditions.mjs';
 import { storeInvoiceDoc, storeReceiptDoc, billingDocIds } from './billing-doc.mjs';
+import { agreedSpecialFor, familySpecials } from './specials.mjs';
 import { todayJst, addDays, familyNotice, staffNotice } from './schedule.mjs';
 import { validMonth, monthEnd, shiftMonth, lineCap, lessonAmount, lineMatches, studentBilling, estimateFor, assignLines, parseParts, PART_LABEL } from './plan-calc.mjs';
 
@@ -200,6 +201,12 @@ export const billingRoutes = {
     const s = await getStudent(c, old ? old.studentId : b.studentId);
     const n = lineFields(b, old || {});
     await checkLine(c, s.id, n, old ? old.id : '');
+    // 基本単価（30分あたり）を超える料金は、承認済みの特殊指導（同じ名称の種類・期間内・承認した料金まで）がなければ設定できない（規約 第4条6項・第5条）
+    const base = Number(s.baseRate30 || 0);
+    if (base > 0 && n.fee > Math.floor(base * n.minutes / 30)) {
+      const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
+      if (!sp || n.fee > Math.floor(Number(sp.fee) * n.minutes / Number(sp.minutes))) fail('needSpecial', `基本単価（30分 ${yen(base)}）を超える料金は、特殊指導承認書で保護者の承認を得てから設定します。授業の種類は承認書の名称（例: 英検準1級対策）にし、料金は承認した金額までにしてください`);
+    }
     const now = iso(c.now);
     if (old) {
       await c.db.prepare(`update planLines set parentId = ?, subject = ?, kind = ?, startDate = ?, endDate = ?, count = ?, minutes = ?, fee = ?, comment = ?, status = 'draft', approvedCount = null, proposedAt = '', approvedAt = '', approvedBy = '', approvedVia = '', consentDate = '', approvalNote = '', familyAck = '', familyAckAt = '', familyAckNote = '', updatedAt = ?, version = version + 1 where id = ? and version = ?`)
@@ -440,8 +447,8 @@ export const billingRoutes = {
     const me = await requireFamily(c, b);
     const students = (await c.db.prepare('select * from students where familyId = ? order by createdAt').bind(me.id).all()).results, ids = students.map(s => s.id);
     const names = Object.fromEntries(students.map(s => [s.id, fullName(s)]));
-    const terms = await familyTerms(c.db, me), conditions = await familyConditions(c.db, students.filter(s => s.status !== 'left'));
-    if (!ids.length) return { plans: [], fees: [], invoices: [], terms, conditions };
+    const terms = await familyTerms(c.db, me), conditions = await familyConditions(c.db, students.filter(s => s.status !== 'left')), specials = await familySpecials(c.db, students.filter(s => s.status !== 'left'));
+    if (!ids.length) return { plans: [], fees: [], invoices: [], terms, conditions, specials };
     const q = `(${ids.map(() => '?').join(', ')})`, since = addDays(todayJst(c.now), -92);
     // 承認待ちは期間が過ぎても出し続ける（承認できるように）。ほかは終わってから3か月まで
     const lines = (await c.db.prepare(`select * from planLines where studentId in ${q} and (status = 'proposed' or (status <> 'draft' and endDate >= ?)) order by startDate, subject`).bind(...ids, since).all()).results;
@@ -451,7 +458,7 @@ export const billingRoutes = {
     const invs = (await c.db.prepare("select * from invoices where familyId = ? and status <> 'void' order by month desc limit 24").bind(me.id).all()).results;
     const invoices = [];
     for (const v of invs) invoices.push({ ...invoiceView(v), ...(await billingDocIds(c.db, v.id)), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
-    return { plans, fees, invoices, terms, conditions };
+    return { plans, fees, invoices, terms, conditions, specials };
   },
   // 承認（回数を減らして承認・0回で見送り）
   'family/plans/decide': async (c, b) => {
