@@ -28,5 +28,13 @@
   "pdf_fonts_embedded": true,
   "embedded_font_programs": 260,
   "japanese_font_match": "Noto Sans CJK JP",
-  "visual_review_images": 14
+  "visual_review_images": 14,
+  "visual_review": {
+    "date": "2026-10-12",
+    "reviewed_commit": "dd873359b1f65105cd828d38d20aa8c97ec751ea",
+    "pdf_pages_reviewed": 12,
+    "mobile_views_reviewed": 2,
+    "result": "文字欠落・重なり・表のはみ出しなし。負担率の説明と表、章見出しと本文が離れない改ページを確認。",
+    "preview_workflow_run": "https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38165807151"
+  }
 }
