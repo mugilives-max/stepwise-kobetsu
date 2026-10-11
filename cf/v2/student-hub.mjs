@@ -58,7 +58,7 @@ export const studentHubRoutes = {
       today, manager,
       student: { id: s.id, name: fullName(s), kana: [s.familyKana, s.givenKana].filter(Boolean).join(' '), grade: s.grade, school: s.school, status: s.status, deliveryMode: s.deliveryMode, testOnly: !!s.testOnly },
       upcoming, past, records: recs, pendingRecords, homework, handover, requests, events,
-      grades: { exams: grades.exams, nextTest: grades.nextTest, pendingTests: grades.pendingTests, subjects: grades.subjects },
+      grades: { exams: grades.exams, nextTest: grades.nextTest, pendingTests: grades.pendingTests, subjects: grades.subjects, files: grades.files },
     };
     if (manager) {
       // 計画: 今月と来月にかかる行と、入り具合
