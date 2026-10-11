@@ -692,3 +692,7 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 .gsheet-btn.as-label { border-style: dashed; color: var(--muted); }
 .gupload { margin-top: 10px; }
 .gupload summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 8px 2px; }
+/* 授業計画の下書きのチェック（選んだものだけお知らせ。2026-10-11） */
+.pl-row { display: flex; align-items: center; gap: 10px; }
+.pl-row > .todo { flex: 1; min-width: 0; }
+.pl-row > .pl-pick { flex: none; width: 20px; height: 20px; margin: 0 0 0 2px; accent-color: var(--primary); }

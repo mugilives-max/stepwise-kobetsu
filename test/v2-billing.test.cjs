@@ -236,3 +236,17 @@ test('a plan still waiting for approval stays on the family page after its perio
   const v = h.rows('select * from planLines where id = ?', old.id)[0];
   await h.ok('family/plans/decide', { auth: parent, id: old.id, version: v.version, approvedCount: 4 });
 });
+
+test('only the checked drafts are sent when ids are given; the rest stay drafts for later', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
+  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
+  const a = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '英語', kind: '演習', startDate: '2026-10-01', endDate: '2026-10-31', count: 6, minutes: 90, fee: 2500 })).line;
+  const b = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '演習', startDate: '2026-10-01', endDate: '2026-10-31', count: 6, minutes: 90, fee: 2500 })).line;
+  const c = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '英語', kind: '通常', startDate: '2026-10-01', endDate: '2026-10-31', count: 8, minutes: 90, fee: 4500 })).line;
+  assert.equal((await h.ok('billing/plans/send', { auth, familyId: fam.id, ids: [a.id, b.id] })).sent, 2);
+  assert.deepEqual(h.rows('select id, status from planLines where studentId = ? order by subject, kind', kid.id).map(r => r.status), ['proposed', 'proposed', 'draft']);
+  assert.equal((await h.call('billing/plans/send', { auth, familyId: fam.id, ids: ['pl_nothing'] })).error.code, 'nothing');
+  assert.equal((await h.ok('billing/plans/send', { auth, familyId: fam.id })).sent, 1, 'ids が無ければ残りの下書き全部');
+  void c;
+});

@@ -4,6 +4,8 @@ import { sheet, rowButton } from '/staff/ui.js?v=20261008-launch1';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 // 下から出る画面: lineOpen（計画の行）・editing（直す）・consentFor（承諾を記録）・addFor（足す）・openFamily（請求の内訳）・feeOpen（キャンセル料）
 let plans = null, planMonth = '', editing = '', consentFor = '', addFor = '', kindOpen = null, lineOpen = '', feeOpen = '';
+const unpicked = new Set(); // お知らせから外した下書き（チェックを外したもの）
+export function billingPick(id, on) { if (on) unpicked.delete(id); else unpicked.add(id); }
 let bill = null, billMonth = '', openFamily = '', detail = null, fees = null;
 export function leaveBilling() { kindOpen = null; lineOpen = editing = consentFor = addFor = openFamily = feeOpen = ''; }
 export function resetBilling() { kindOpen = null; lineOpen = feeOpen = ''; plans = null; bill = null; detail = null; fees = null; editing = ''; consentFor = ''; addFor = ''; openFamily = ''; }
@@ -36,9 +38,9 @@ export function plansPage(ctx) {
   const byFamily = {};
   for (const s of plans.students) (byFamily[s.familyId] = byFamily[s.familyId] || []).push(s);
   for (const group of Object.values(byFamily)) {
-    const drafts = group.reduce((n, s) => n + s.lines.filter(l => l.status === 'draft').length, 0);
+    const draftLines = group.flatMap(s => s.lines.filter(l => l.status === 'draft')), picked = draftLines.filter(l => !unpicked.has(l.id));
     const asks = group.flatMap(s => s.lines.filter(l => l.status === 'proposed')), last = asks.map(l => l.remindedAt).filter(Boolean).sort().at(-1) || '';
-    h += `<div class="fam-head"><span>${esc(group[0].familyLabel)}</span><span class="row">${drafts ? `<button class="small-btn primary" data-action="pl-send" data-family="${esc(group[0].familyId)}"${ctx.dis()}>下書き ${drafts}件をお知らせ</button>` : ''}${asks.length ? remindButton(ctx, group[0].familyId, asks.length, last) : ''}</span></div>`;
+    h += `<div class="fam-head"><span>${esc(group[0].familyLabel)}</span><span class="row">${draftLines.length ? `<button class="small-btn primary" data-action="pl-send" data-family="${esc(group[0].familyId)}" data-ids="${esc(picked.map(l => l.id).join(','))}"${picked.length ? ctx.dis() : ' disabled'}>${picked.length === draftLines.length ? `下書き ${draftLines.length}件をお知らせ` : `選んだ ${picked.length}件をお知らせ`}</button>` : ''}${asks.length ? remindButton(ctx, group[0].familyId, asks.length, last) : ''}</span></div>`;
     for (const s of group) h += studentPlans(ctx, s);
   }
   if (!plans.students.length) h += '<p class="muted">在籍の生徒がいません。</p>';
@@ -58,8 +60,10 @@ const lineCount = l => l.status === 'approved' && l.approvedCount !== l.count ? 
 const lineWhole = l => l.startDate === plans.month + '-01' && l.endDate === monthEnd(plans.month);
 function lineRow(ctx, s, l) {
   const { esc } = ctx, [label, cls] = LINE_STATUS[l.status];
-  return rowButton(esc, 'pl-line', { id: l.id }, `${esc(l.subject)}${l.kind !== '通常' ? ` <span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''} <span class="tag ${cls}">${label}</span>`,
-    `${lineWhole(l) ? '' : md(l.startDate) + '〜' + md(l.endDate) + '・'}${lineCount(l)}・1回 ${l.minutes}分 ${yen(l.fee)}・決定・実施 ${l.assigned}回${l.tentative ? `・仮予定 ${l.tentative}回` : ''}${l.familyAck === 'inquiry' ? '・<strong style="color:var(--danger)">保護者から問い合わせ</strong>' : ''}`);
+  // 下書きにはチェック。外した行は「お知らせ」に入れない（あとで送る）
+  const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="お知らせに入れる">` : '';
+  return (pick ? '<div class="pl-row">' + pick : '') + rowButton(esc, 'pl-line', { id: l.id }, `${esc(l.subject)}${l.kind !== '通常' ? ` <span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''} <span class="tag ${cls}">${label}</span>`,
+    `${lineWhole(l) ? '' : md(l.startDate) + '〜' + md(l.endDate) + '・'}${lineCount(l)}・1回 ${l.minutes}分 ${yen(l.fee)}・決定・実施 ${l.assigned}回${l.tentative ? `・仮予定 ${l.tentative}回` : ''}${l.familyAck === 'inquiry' ? '・<strong style="color:var(--danger)">保護者から問い合わせ</strong>' : ''}`) + (pick ? '</div>' : '');
 }
 // 計画の行を押したとき・直す・承諾を記録・足す（下から出る画面）
 function planSheet(ctx) {
@@ -268,8 +272,10 @@ export async function billingClick(ctx, a, b) {
     if (!confirm(`${monthLabel(planMonth)}の計画の下書きを、先月と同じ内容で作りますか？ もう計画がある科目は作りません。`)) return true;
     r = await ctx.call('billing/plans/copyMonth', { month: planMonth }); msg = r.ok ? `下書きを ${r.created}件 作りました` : ''; if (r.ok) plans = null;
   } else if (a === 'pl-send') {
-    if (!confirm('この家族に、下書きの計画をまとめてお知らせしますか？ 保護者ページに出て、承認をお願いするメールが届きます。')) return true;
-    r = await ctx.call('billing/plans/send', { familyId: b.dataset.family }); msg = r.ok ? `${r.sent}件をお知らせしました` : ''; if (r.ok) plans = null;
+    const ids = String(b.dataset.ids || '').split(',').filter(Boolean);
+    if (!ids.length) { ctx.say('お知らせする計画にチェックを付けてください', 'error'); return true; }
+    if (!confirm(`この家族に、チェックした ${ids.length}件の計画をお知らせしますか？ 保護者ページに出て、承認をお願いするメールが 1 通届きます。`)) return true;
+    r = await ctx.call('billing/plans/send', { familyId: b.dataset.family, ids }); msg = r.ok ? `${r.sent}件をお知らせしました` : ''; if (r.ok) { plans = null; ids.forEach(x => unpicked.delete(x)); }
   } else if (a === 'pl-remind') {
     if (!confirm('この家族に、承認待ちの計画の「承認のお願い」をメールで送りますか？')) return true;
     r = await ctx.call('billing/plans/remind', { familyId: b.dataset.family }); msg = r.ok ? `承認のお願いを送りました（${r.reminded}件）` : ''; if (r.ok) { plans = null; bill = null; }
