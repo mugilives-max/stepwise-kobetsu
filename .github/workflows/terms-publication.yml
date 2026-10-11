@@ -27,7 +27,7 @@ jobs:
       - name: Install renderer and Japanese fonts
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y fonts-noto-cjk
+          sudo apt-get install -y fonts-noto-cjk poppler-utils
           python3 -m venv "$RUNNER_TEMP/terms-venv"
           "$RUNNER_TEMP/terms-venv/bin/pip" install markdown-it-py==4.0.0 beautifulsoup4==4.13.5 playwright==1.55.0 PyMuPDF==1.26.4
           "$RUNNER_TEMP/terms-venv/bin/playwright" install --with-deps chromium

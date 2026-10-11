@@ -205,7 +205,12 @@ missing = [v for v in checks if v not in pdf_plain]
 if missing:
     (REVIEW / "missing-text.json").write_text(json.dumps(missing,ensure_ascii=False,indent=2),encoding="utf-8")
 assert not missing, f"PDF text missing in {len(missing)} blocks: {missing[:2]}"
-assert any("NotoSansCJK" in name for name in font_names), "Japanese font not embedded"
+font_report = subprocess.check_output(["pdffonts", str(OUT / PDF_NAME)], text=True)
+font_rows = font_report.strip().splitlines()[2:]
+assert font_rows, "PDF has no fonts"
+assert all(re.search(r"\s+yes\s+(?:yes|no)\s+(?:yes|no)\s+\d+\s+\d+\s*$", row) for row in font_rows), "PDF contains a nonembedded font: " + font_report
+font_match = subprocess.check_output(["fc-match", "Noto Sans CJK JP", "-f", "%{family}"], text=True)
+assert "Noto Sans CJK JP" in font_match, "Japanese font unavailable"
 
 report = {
     "edition":EDITION, "effective_date":"2026-11-01",
@@ -220,6 +225,7 @@ report = {
     "internal_links_valid":True,"mobile_overflow":False,
     "pdf_pages":len(pdf),"pdf_text_blocks_verified":len(checks),
     "pdf_missing_text_blocks":0,"pdf_fonts":sorted(font_names),
+    "pdf_fonts_embedded":True,"pdffonts_report":font_rows,"japanese_font_match":font_match,
     "visual_review_images":len(pdf)+2,
 }
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
