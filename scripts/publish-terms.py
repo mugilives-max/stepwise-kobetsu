@@ -130,6 +130,8 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  th,td { padding:5pt 6pt; }
  a { color:inherit; text-decoration:none; }
  #footer + p { font-size:8pt; }
+ .chapter + p, #article-14-item-3 { break-after:avoid; }
+ #appendix-online { break-before:page; }
 }
 """
 html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月12日確定）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="../">規約の版一覧・旧版</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
@@ -224,8 +226,9 @@ report = {
     "markdown_to_html_full_text_equal":True,
     "internal_links_valid":True,"mobile_overflow":False,
     "pdf_pages":len(pdf),"pdf_text_blocks_verified":len(checks),
-    "pdf_missing_text_blocks":0,"pdf_fonts":sorted(font_names),
-    "pdf_fonts_embedded":True,"pdffonts_report":font_rows,"japanese_font_match":font_match,
+    "pdf_missing_text_blocks":0,
+    "pdf_fonts":sorted({row.split()[0].split("+",1)[-1] for row in font_rows}),
+    "pdf_fonts_embedded":True,"embedded_font_programs":len(font_rows),"japanese_font_match":font_match,
     "visual_review_images":len(pdf)+2,
 }
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
