@@ -223,7 +223,9 @@ export const billingRoutes = {
     await requireStaff(c, b, 'manager');
     const ids = b.familyId ? await familyStudentIds(c, String(b.familyId)) : [(await getStudent(c, b.studentId)).id];
     if (!ids.length) fail('notFound', '生徒が見つかりません', 404);
-    const drafts = (await c.db.prepare(`select * from planLines where status = 'draft' and studentId in (${ids.map(() => '?').join(', ')}) order by startDate`).bind(...ids).all()).results;
+    // 選んだ行だけ送れる（ids。2026-10-11 本人「チェックボックスを付けて選択したものだけ一括送信」）。無ければ家族の下書き全部
+    const pick = Array.isArray(b.ids) ? new Set(b.ids.map(String)) : null;
+    const drafts = (await c.db.prepare(`select * from planLines where status = 'draft' and studentId in (${ids.map(() => '?').join(', ')}) order by startDate`).bind(...ids).all()).results.filter(l => !pick || pick.has(l.id));
     if (!drafts.length) fail('nothing', 'お知らせする下書きがありません');
     const now = iso(c.now);
     await c.db.batch(drafts.map(l => c.db.prepare("update planLines set status = 'proposed', proposedAt = ?, updatedAt = ?, version = version + 1 where id = ? and status = 'draft'").bind(now, now, l.id)));
