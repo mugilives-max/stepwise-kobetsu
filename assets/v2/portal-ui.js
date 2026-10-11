@@ -199,6 +199,17 @@ export function conditionCard(x, { busy = false, checked = false } = {}) {
     <button class="primary wide" data-action="cond-agree" data-id="${esc(c.id)}"${busy ? ' disabled' : ''}>同意する</button></div>`;
 }
 export const conditionLine = items => (items || []).filter(x => x.agreed && !x.needs).map(x => `<p class="small muted">${esc(given(x.studentName))}さんの個別指導条件 第${x.agreed.no}版に同意済み（${esc(String(x.agreed.agreedAt).slice(0, 10))}）・1回 ${x.agreed.minutes}分 ${yen(x.agreed.fee)}・${esc(x.agreed.deliveryLabel)}${x.agreed.docFileId ? `　<button type="button" class="linkish" data-action="gr-open" data-id="${esc(x.agreed.docFileId)}">条件書を開く</button>` : ''}</p>`).join('');
+// 特殊指導の承認（規約 第5条）: 承認をお願いするカードと、承認済みの 1 行
+const ymdJa = v => v ? `${Number(v.slice(0, 4))}年${Number(v.slice(5, 7))}月${Number(v.slice(8))}日` : '';
+export function specialCard(x, { busy = false, checked = false } = {}) {
+  return `<div class="pcard ask" data-special="${esc(x.id)}"><div class="pc-head"><strong>${esc(given(x.studentName))}さんの特殊指導「${esc(x.title)}」</strong><span class="tag warn">承認をお願いします</span></div>
+    <dl class="cond-dl">${condRow('内容と範囲', esc(x.content).replace(/\n/g, '<br>'))}${condRow('通常指導との違い', esc(x.reason).replace(/\n/g, '<br>'))}${condRow('必要な準備', esc(x.prep))}${condRow('1回の時間と料金', `${x.minutes}分 <strong>${yen(x.fee)}</strong>（税込）`)}${condRow('対象期間', `${ymdJa(x.fromDate)} 〜 ${ymdJa(x.toDate)}`)}${condRow('特記事項', esc(x.note))}</dl>
+    <p class="small muted">承認すると、この期間の授業計画に種類「${esc(x.title)}」としてこの料金で載ります。月ごとの回数は授業計画で別に承認していただきます。</p>
+    ${x.docFileId ? `<button type="button" class="btn wide" data-action="gr-open" data-id="${esc(x.docFileId)}">${picon('file')} 特殊指導承認書（書面）を開く</button>` : ''}
+    <label class="agree"><input type="checkbox" data-special-agree="${esc(x.id)}"${checked ? ' checked' : ''}> 内容を確かめ、この特殊指導と料金を承認します</label>
+    <button class="primary wide" data-action="special-agree" data-id="${esc(x.id)}"${busy ? ' disabled' : ''}>承認する</button></div>`;
+}
+export const specialLine = items => (items || []).filter(x => x.status === 'agreed').map(x => `<p class="small muted">${esc(given(x.studentName))}さんの特殊指導「${esc(x.title)}」承認済み（${esc(String(x.agreedAt).slice(0, 10))}）・${x.minutes}分 ${yen(x.fee)}・${ymdJa(x.fromDate)}〜${ymdJa(x.toDate)}${x.docFileId ? `　<button type="button" class="linkish" data-action="gr-open" data-id="${esc(x.docFileId)}">承認書を開く</button>` : ''}</p>`).join('');
 export const termsLine = terms => terms && terms.agreed.version ? `<p class="small muted">受講規約 ${esc(terms.agreed.version)} に同意済み（${esc(String(terms.agreed.at).slice(0, 10))}）${terms.current.url ? `・<a href="${esc(terms.current.url)}" target="_blank" rel="noopener">全文</a>` : ''}</p>` : '';
 
 // ---- 請求 ----

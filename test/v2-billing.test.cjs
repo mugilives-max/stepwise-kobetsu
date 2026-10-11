@@ -8,8 +8,8 @@ const at = s => Date.parse(s + '+09:00');
 async function world() {
   const h = await createV2(); const auth = await h.owner();
   const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
-  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
-  const sis = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '花子', baseRate30: 1500 })).student;
+  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1750 })).student;
+  const sis = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '花子', baseRate30: 1750 })).student;
   const parent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' })).auth;
   // 9月の授業を作って決定する（9/1 の時点で）
   const lesson = async (studentId, date, start = '17:00', subject = '数学', minutes = 60) => {
@@ -71,7 +71,7 @@ test('the month bill: approved lessons at the plan fee, unapproved ones wait, op
   const kidRow = p.students.find(s => s.studentId === kid.id);
   assert.deepEqual(kidRow.items.map(i => i.amount), [3200, 4800], '計画の1回の授業料。長さが違えば時間で割り戻す');
   assert.equal(kidRow.pending.length, 1, '計画の回数を超えた授業は承認待ち');
-  assert.equal(p.students.find(s => s.studentId === sis.id).pending[0].estimate, 3000, '計画のない授業の見込みは基本単価');
+  assert.equal(p.students.find(s => s.studentId === sis.id).pending[0].estimate, 3500, '計画のない授業の見込みは基本単価');
   assert.deepEqual([p.total, p.canConfirm, p.auto], [8000, true, false], '承認のない授業があると自動では確定しない');
   assert.equal((await h.call('billing/confirm', { auth, familyId: kid.familyId, month: '2026-09', expectedTotal: 7999 })).error.code, 'changed');
   const inv = (await h.ok('billing/confirm', { auth, familyId: kid.familyId, month: '2026-09', expectedTotal: 8000 })).invoice;
@@ -142,7 +142,7 @@ test('cancellation fees: late notice is 1,000 yen, a no-show costs the lesson, d
 test('auto close runs only after the switch-over, from the 3rd, and holds families with something to check', async () => {
   const { h, auth, kid, sis, plan, line, lesson, done } = await world();
   const fam2 = (await h.ok('admin/families/create', { auth, name: '見本家', email: 'other@example.invalid' })).family;
-  const other = (await h.ok('admin/students/create', { auth, familyId: fam2.id, familyName: '見本', givenName: '太郎', baseRate30: 1500 })).student;
+  const other = (await h.ok('admin/students/create', { auth, familyId: fam2.id, familyName: '見本', givenName: '太郎', baseRate30: 1750 })).student;
   for (const s of [kid, other]) { const a = await plan(s.id); await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consentDate: '2026-09-01', via: '電話' }); }
   const l1 = await lesson(kid.id, '2026-09-08'), l2 = await lesson(other.id, '2026-09-08', '19:00'), l3 = await lesson(sis.id, '2026-09-09');
   h.clock = at('2026-10-02T12:00:00'); for (const l of [l1, l2, l3]) await done(l);
