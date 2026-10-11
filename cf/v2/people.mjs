@@ -1,6 +1,7 @@
 // 家族・生徒の管理（教室管理者）と、保護者・生徒から見た自分の情報。家族が根っこ（生徒は必ず家族に属する）。
 import { fail, newId, normEmail, validEmail, iso, audit } from './util.mjs';
 import { isPreviewToken, previewSubject } from './preview.mjs';
+import { studentConditions } from './conditions.mjs';
 import { currentTerms } from './terms.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
@@ -67,7 +68,8 @@ export const peopleRoutes = {
     await requireStaff(c, b, 'manager');
     const f = await getFamily(c, b.id);
     const studs = (await c.db.prepare('select * from students where familyId = ? order by createdAt').bind(f.id).all()).results;
-    return { terms: await currentTerms(c.db), family: { ...familyAdminView(f), students: studs.map(studentAdminView) } };
+    const students = []; for (const s of studs) students.push({ ...studentAdminView(s), condition: await studentConditions(c.db, s.id) }); // 個別指導条件の状態も
+    return { terms: await currentTerms(c.db), family: { ...familyAdminView(f), students } };
   },
   'admin/families/create': async (c, b) => {
     await requireStaff(c, b, 'manager');
