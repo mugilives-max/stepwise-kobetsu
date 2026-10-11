@@ -63,3 +63,25 @@ test('conditions: a teacher cannot propose, another family cannot agree, and the
   const hub = await h.ok('students/hub', { auth, studentId: kid.id });
   assert.equal(hub.basic.condition.latest.fee, 4500);
 });
+
+test('conditions: a written document (HTML, like the invoice template) is stored as a draft and again when agreed, and the family can open it', async () => {
+  const { h, auth, kid, parent } = await world();
+  const c1 = (await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', studentContact: true, subjects: '数学', note: '兄弟割引なし', fromMonth: '2026-11' })).condition;
+  assert.ok(c1.docFileId, '案の書面がある');
+  const draft = h.rows('select category, name, mime, refType, refId, familyId from files where id = ?', c1.docFileId)[0];
+  assert.deepEqual([draft.category, draft.refType, draft.refId, draft.mime], ['contract', 'condition', c1.id, 'text/html; charset=utf-8']);
+  assert.match(draft.name, /個別指導条件書_第1版_案/);
+  const link = await h.ok('files/link', { auth: parent, id: c1.docFileId });
+  const res = await h.raw('GET', link.url.replace(/^.*\/v2\//, ''));
+  const html = await res.text();
+  assert.equal(res.status, 200); assert.match(res.headers.get('content-type'), /text\/html/);
+  assert.match(html, /個別指導条件書/); assert.match(html, /4,500円/); assert.match(html, /兄弟割引なし/); assert.match(html, /まだ同意いただいていません/);
+  assert.doesNotMatch(html, /<script/);
+  await h.ok('family/conditions/agree', { auth: parent, id: c1.id, agree: true });
+  const after = (await h.ok('family/conditions', { auth: parent })).conditions.items[0].agreed;
+  assert.notEqual(after.docFileId, c1.docFileId, '同意したら確定の書面がもう 1 つできる');
+  const fin = h.rows('select name, note from files where id = ?', after.docFileId)[0];
+  assert.match(fin.name, /個別指導条件書_第1版_/); assert.doesNotMatch(fin.name, /_案/); assert.equal(fin.note, '同意済み');
+  const html2 = await (await h.raw('GET', (await h.ok('files/link', { auth: parent, id: after.docFileId })).url.replace(/^.*\/v2\//, ''))).text();
+  assert.match(html2, /保護者の同意/); assert.match(html2, /保護者ページ/);
+});
