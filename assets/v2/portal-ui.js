@@ -213,6 +213,7 @@ export function invoiceSheet(v, { multi, busy = false }) {
   for (const i of v.items) (by[i.studentName] = by[i.studentName] || []).push(i);
   let body = `<div class="inv-total"><span class="tag ${cls}">${label}</span><strong>${yen(v.total)}</strong></div>`;
   body += Object.entries(by).map(([name, items]) => `${multi ? `<h3>${esc(name)}</h3>` : ''}<table class="itbl">${items.map(i => `<tr><td>${i.date ? md(i.date) : ''}</td><td>${esc(i.subject)}${i.label ? `<small class="muted"> ${esc(i.label)}</small>` : ''}</td><td class="r">${i.kind === 'lesson' && i.minutes ? i.minutes + '分' : ''}</td><td class="r">${yen(i.amount)}</td></tr>`).join('')}</table>`).join('');
+  if (v.invoiceDocId || v.receiptDocId) body += `<div class="row" style="margin:8px 0">${v.invoiceDocId ? `<button type="button" class="btn" data-action="gr-open" data-id="${esc(v.invoiceDocId)}">${picon('file')} 請求書を開く</button>` : ''}${v.receiptDocId ? `<button type="button" class="btn" data-action="gr-open" data-id="${esc(v.receiptDocId)}">${picon('file')} 領収書を開く</button>` : ''}</div>`;
   if (v.status === 'confirmed') body += `<p class="small muted">お振込のあと、下のボタンで知らせてください。先生が入金を確かめます。</p><button class="primary wide" data-action="inv-report" data-id="${esc(v.id)}" data-version="${v.version}"${busy ? ' disabled' : ''}>振り込みました</button>`;
   else if (v.status === 'reported') body += '<p class="small muted">振込のご連絡ありがとうございます。先生が入金を確かめます。</p>';
   else if (v.status === 'paid') body += `<p class="small muted">入金を確認しました（${esc(v.paidOn)}）。ありがとうございました。</p>`;

@@ -462,6 +462,10 @@
 - **テスト**：`test/v2-terms-effects.test.cjs`、`test/v2-service.test.cjs`。
 - **公開の記録（2026-10-08）**：本番の DB2 に `0016_terms.sql` を当てた（1 回目は Cloudflare API の 7403 で失敗し、2 回目で成功）→ Worker `86721e98-a689-4723-9c1a-54dbca18cebc`（release `2026-10-08-v2-terms-effects`）→ 画面（PR #14 のマージ）。
 
+### 12段目：請求書・領収書の書面（2026-10-12）
+
+本人「請求書と領収書も同じ仕組みで出せるように」。`cf/v2/billing-doc.mjs`。請求を確定したとき（`confirmInvoice`）に請求書、入金を記録したとき（`billing/paid`）に領収書の HTML を R2 に置く（`files` の category=invoice／receipt、refType=invoice）。見た目は Kura/塾/書類のひな形 と同じ A4。免税事業者なので登録番号と税額は書かない。振込先と備考は settings（`invoiceBank`・`invoiceNote`。「請求」の画面の下の「請求書の設定」）。保護者は「お支払い」の請求の画面、教室管理者は「請求」の家族の画面から開く。「書面を作り直す」で振込先の変更などを反映。
+
 ### 11段目：個別指導条件（2026-10-12）
 
 規約（2026年11月版）の第2条がいう「個別指導条件書」。本人の決定（2026-10-12「2 で進めて」）で、紙ではなく v2 に作った。

@@ -10,6 +10,7 @@ import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
 import { familyTerms, currentTerms } from './terms.mjs';
 import { familyConditions, familyNeedsConditions } from './conditions.mjs';
+import { storeInvoiceDoc, storeReceiptDoc, billingDocIds } from './billing-doc.mjs';
 import { todayJst, addDays, familyNotice, staffNotice } from './schedule.mjs';
 import { validMonth, monthEnd, shiftMonth, lineCap, lessonAmount, lineMatches, studentBilling, estimateFor, assignLines, parseParts, PART_LABEL } from './plan-calc.mjs';
 
@@ -139,6 +140,7 @@ export async function confirmInvoice(c, familyId, month, by, expectedTotal) {
     else stmts.push(db.prepare("update cancellationFees set invoiceId = ?, updatedAt = ?, version = version + 1 where id = ? and invoiceId = ''").bind(id, now, i.feeId));
   }
   await db.batch(stmts);
+  await storeInvoiceDoc(c, id); // 請求書の書面（保護者ページから開ける）
   const [y, m] = month.split('-');
   const first = p.students[0];
   if (first) await familyNotice(c, first.studentId, `${Number(m)}月分の授業料のお知らせ`, `${y}年${Number(m)}月分の授業料が確定しました。\n合計 ${yen(p.total)}`);
@@ -385,7 +387,7 @@ export const billingRoutes = {
     const names = Object.fromEntries((await c.db.prepare('select * from students where familyId = ?').bind(f.id).all()).results.map(s => [s.id, fullName(s)]));
     if (inv) {
       const items = (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(inv.id).all()).results;
-      return { family: { id: f.id, name: f.name }, invoice: invoiceView(inv), items: items.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) };
+      return { family: { id: f.id, name: f.name }, invoice: { ...invoiceView(inv), ...(await billingDocIds(c.db, inv.id)) }, items: items.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) };
     }
     return { family: { id: f.id, name: f.name }, preview: await monthPreview(c, f.id, b.month) };
   },
@@ -427,6 +429,7 @@ export const billingRoutes = {
     const paidOn = String(b.paidOn || todayJst(c.now)), method = String(b.method || '振込').trim().slice(0, 20) || '振込';
     if (!validDate(paidOn) || paidOn > todayJst(c.now)) fail('badDate', '入金日を確かめてください');
     await c.db.prepare("update invoices set status = 'paid', paidOn = ?, paidMethod = ?, updatedAt = ?, version = version + 1 where id = ?").bind(paidOn, method, now, v.id).run();
+    await storeReceiptDoc(c, v.id); // 領収書の書面
     await audit(c, 'invoicePaid', v.id, { paidOn, method });
     return {};
   },
@@ -447,7 +450,7 @@ export const billingRoutes = {
     const fees = (await staffFees(c, `f.studentId in ${q} and f.decision <> 'pending' and (f.invoiceId = '' or l.date >= ?)`, ...ids, since)).map(f => ({ ...feeView(f), studentName: names[f.studentId] }));
     const invs = (await c.db.prepare("select * from invoices where familyId = ? and status <> 'void' order by month desc limit 24").bind(me.id).all()).results;
     const invoices = [];
-    for (const v of invs) invoices.push({ ...invoiceView(v), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
+    for (const v of invs) invoices.push({ ...invoiceView(v), ...(await billingDocIds(c.db, v.id)), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
     return { plans, fees, invoices, terms, conditions };
   },
   // 承認（回数を減らして承認・0回で見送り）
