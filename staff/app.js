@@ -11,7 +11,7 @@ import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261008-launch1';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261008-launch1';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
-import { termsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261008-launch1';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261008-launch1';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { billingPick } from '/staff/billing.js?v=20261008-launch1';
@@ -24,7 +24,7 @@ let lastPage = '';
 let me = null, busy = false, notice = null, staffList = null, shownLink = null, bootstrap = null, staffOpen = '';
 
 // 上の帯に出す画面の名前（本文には大見出しを置かない）
-const PAGE_TITLE = { monthly: '月の仕事', settings: '設定', plans: '授業計画', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', migrate: '移行と切り替え', records: '記録', terms: '受講規約', effects: '送信の記録と控え' };
+const PAGE_TITLE = { monthly: '月の仕事', settings: '設定', plans: '授業計画', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', migrate: '移行と切り替え', records: '記録', terms: '受講規約', docs: '書類のひな形', effects: '送信の記録と控え' };
 const legacyToken = () => { try { return localStorage.getItem('sw_admt') || ''; } catch { return ''; } };
 function route() {
   const h = location.hash;
@@ -215,6 +215,7 @@ function render() {
   else if (r.page === 'kinds' && me.roles.includes('manager')) h = kindsPage(ctx);
   else if (r.page === 'rates' && me.roles.includes('manager')) h = ratesPage(ctx);
   else if (r.page === 'terms' && me.roles.includes('manager')) h = termsPage(ctx);
+  else if (r.page === 'docs' && me.roles.includes('manager')) h = docsPage(ctx);
   else if (r.page === 'effects' && me.roles.includes('manager')) h = effectsPage(ctx);
   else if (r.page === 'migrate' && me.roles.includes('sysadmin')) h = migratePage(ctx);
   else if (r.page === 'monthly' && me.roles.includes('manager')) h = monthlyPage(ctx);
@@ -279,6 +280,7 @@ document.addEventListener('click', ev => {
   if (a === 'copy-link' && shownLink) { navigator.clipboard.writeText(shownLink.url).then(() => { say('リンクをコピーしました', 'ok'); render(); }); return; }
   if (a === 'copy') { navigator.clipboard.writeText(b.dataset.text || '').then(() => { say('コピーしました', 'ok'); render(); }); return; }
   // 成績票は、待たずに新しいタブを開いてから読む（あとから開くと止められる）
+  if (a === 'doc-sample') { const win = window.open('', '_blank'); run(async () => { const r = await ctx.call('admin/docs/sample', { type: b.dataset.type }); if (!r.ok) { if (win) win.close(); return say(r.error.message, 'error'); } if (win && !win.closed) { win.document.open(); win.document.write(r.html); win.document.close(); } }); return; }
   if (a === 'gr-open') { const win = window.open('', '_blank'); run(async () => { const r = await openGradeFile(ctx, b, win); if (!r.ok) say(r.error.message, 'error'); }); return; }
   if (gradesClickShared(a, b)) return render(); // 成績のグラフの帯・試験の ‹ ›
   // 保護者ページ・生徒ページのプレビュー: 新しいタブを先に開いてから、プレビューの鍵をもらって移す
