@@ -1,0 +1,55 @@
+name: Build adopted terms and PDF
+on:
+  push:
+    branches: ["codex/terms-publication-*"]
+    paths:
+      - "scripts/publish-terms.py"
+      - "docs/terms-restructure-2026-11/TERMS.md"
+      - ".github/workflows/terms-publication.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: terms-publication-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: startsWith(github.ref, 'refs/heads/codex/terms-publication-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 1
+      - name: Install renderer and Japanese fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-noto-cjk
+          python3 -m venv "$RUNNER_TEMP/terms-venv"
+          "$RUNNER_TEMP/terms-venv/bin/pip" install markdown-it-py==4.0.0 beautifulsoup4==4.13.5 playwright==1.55.0 PyMuPDF==1.26.4
+          "$RUNNER_TEMP/terms-venv/bin/playwright" install --with-deps chromium
+      - name: Build and verify HTML and PDF
+        run: '"$RUNNER_TEMP/terms-venv/bin/python" scripts/publish-terms.py'
+      - name: Save review artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: terms-publication-review
+          path: |
+            terms/2026-11-20261012/
+            docs/terms-restructure-2026-11/PUBLICATION_CHECKS.json
+            docs/terms-restructure-2026-11/publication-preview/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Commit generated files to the work branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- terms/2026-11-20261012 terms/index.html docs/terms-restructure-2026-11/PUBLICATION_CHECKS.json docs/terms-restructure-2026-11/publication-preview
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: generate adopted terms HTML and PDF on GitHub"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          fi
