@@ -175,7 +175,7 @@ function dayPanel(ctx, me, manager, nameOf, staffOf) {
 function oneDay(ctx, me, manager, nameOf, staffOf, d, first) {
   const { esc } = ctx;
   const ls = data.lessons.filter(l => l.date === d).sort((a, b) => a.start.localeCompare(b.start)), offs = data.unavailability.filter(o => o.date === d), evs = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo)), mts = data.meetings.filter(m => m.date === d);
-  let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span class="muted small">授業 ${ls.filter(l => l.status in RANK).length}件</span><span style="flex:1"></span>${manager ? '<button class="small-btn" data-action="sch-sheet" data-k="create">＋ この日に仮予定</button>' : ''}</div>`
+  let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span class="muted small">授業 ${ls.filter(l => l.status in RANK).length}件</span><span style="flex:1"></span>${manager ? `<button class="small-btn" data-action="sch-sheet" data-k="create">${d < data.today ? '＋ 実施した授業を登録' : '＋ この日に仮予定'}</button>` : ''}</div>`
     : `<button class="day-band" data-action="sch-day" data-date="${d}">${mdw(d)}</button>`;
   if (!ls.length && !offs.length && !evs.length && !mts.length) return h + `<p class="muted small"${first ? '' : ' style="margin:4px 2px 8px"'}>予定はありません。</p>`;
   h += '<div class="rows">';
@@ -233,19 +233,19 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held) {
   return `<div class="overlay" data-action="sch-close"></div><section class="bsheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div><div class="bsheet-head"><strong>${esc(title)}</strong><button class="icon" data-action="sch-close" aria-label="閉じる">×</button></div>${tabs}<div class="bsheet-body">${body}</div></section>`;
 }
 
-const minutesOptions = v => [30, 45, 60, 90, 120, 150, 180].map(m => `<option value="${m}"${m === Number(v) ? ' selected' : ''}>${m}分</option>`).join('');
+const minutesOptions = v => [30, 45, 60, 90, 120, 150, 180, 210, 240, 270, 300, 360, 390, 420, 480].map(m => `<option value="${m}"${m === Number(v) ? ' selected' : ''}>${m >= 120 ? `${m}分（${Math.floor(m / 60)}時間${m % 60 ? m % 60 + '分' : ''}）` : m + '分'}</option>`).join('');
 const staffOptions = (ctx, v) => '<option value="">未定</option>' + data.staff.filter(s => s.teacher).map(s => `<option value="${ctx.esc(s.id)}"${s.id === v ? ' selected' : ''}>${ctx.esc(s.name)}</option>`).join('');
 const kindOptions = (ctx, v) => data.kinds.map(k => `<option${k === v ? ' selected' : ''}>${ctx.esc(k)}</option>`).join('');
 function createForm(ctx, me) {
-  const { esc } = ctx;
+  const { esc } = ctx, past = !!sel && sel < data.today;
   return `<form class="stack" data-form="sch-create" style="margin:0">
     <label>生徒<select name="studentId" required>${data.students.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></label>
     <div class="row"><label style="flex:1">日付<input type="date" name="date" value="${sel || ''}" required></label><label style="flex:1">開始<input type="time" name="start" value="17:00" step="300" required></label><label style="flex:1">長さ<select name="minutes">${minutesOptions(90)}</select></label></div>
     <div class="row"><label style="flex:1">科目<input name="subject" maxlength="30" required placeholder="数学"></label><label style="flex:1">種類<select name="kind">${kindOptions(ctx, '通常')}</select></label>
       <label style="flex:1">形式<select name="deliveryMode"><option value="in_person">対面</option><option value="online">オンライン</option></select></label></div>
     <div class="row"><label style="flex:1">担当<select name="staffId">${staffOptions(ctx, me.id)}</select></label><label style="flex:1">くり返し<select name="repeat">${[1, 2, 3, 4, 5, 8, 12].map(n => `<option value="${n}">${n === 1 ? 'この日だけ' : '毎週×' + n + '回'}</option>`).join('')}</select></label></div>
-    <label>送り方<select name="send"><option value="now">今すぐ送る（締め切りまでに連絡がなければ決定）</option><option value="hold">予定表にまとめて、あとで送る</option></select></label>
-    <p class="small muted">締め切りは、送った日の3日後（翌月分だけなら今月25日）。授業の2日前を超えません。明日までの授業は締め切りを置かないので「決定する」で決めてください。</p>
+    <label>送り方<select name="send">${past ? '' : '<option value="now">今すぐ送る（締め切りまでに連絡がなければ決定）</option><option value="hold">予定表にまとめて、あとで送る</option>'}<option value="done"${past ? ' selected' : ''}>実施済みとして登録（もう行った授業）</option></select></label>
+    <p class="small muted">${past ? 'もう行った授業を、はじめから実施済みで登録します。お知らせは送りません。授業料は、その月の承認済みの計画（同じ科目・種類）に入ります。記録はあとから「記録」で書けます。' : '締め切りは、送った日の3日後（翌月分だけなら今月25日）。授業の2日前を超えません。明日までの授業は締め切りを置かないので「決定する」で決めてください。'}</p>
     <div class="row"><button class="primary"${ctx.dis()}>作る</button></div></form>`;
 }
 function editForm(ctx, l) {
@@ -304,10 +304,10 @@ async function after(ctx, r, okMessage) {
 export async function scheduleSubmit(ctx, kind, el) {
   const v = values(el);
   if (kind === 'sch-create') {
-    const body = { studentId: v.studentId, date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, repeat: Number(v.repeat), hold: v.send === 'hold' };
+    const body = { studentId: v.studentId, date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, repeat: v.send === 'done' ? 1 : Number(v.repeat), hold: v.send === 'hold', done: v.send === 'done' };
     let r = await ctx.call('schedule/lessons/create', body);
     if ((await after(ctx, r, '')) === 'force') r = await ctx.call('schedule/lessons/create', { ...body, force: true });
-    if (r.ok) { sheet = null; cache = {}; sel = v.date; ctx.say(r.held ? `${r.created}件を予定表に入れました（まだ送っていません）` : `${r.created}件の仮予定を送りました${r.confirmBy ? '（締め切り ' + Number(r.confirmBy.slice(5, 7)) + '/' + Number(r.confirmBy.slice(8)) + '）' : ''}`, 'ok'); data = null; loadedFor = ''; }
+    if (r.ok) { sheet = null; cache = {}; sel = v.date; ctx.say(r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を予定表に入れました（まだ送っていません）` : `${r.created}件の仮予定を送りました${r.confirmBy ? '（締め切り ' + Number(r.confirmBy.slice(5, 7)) + '/' + Number(r.confirmBy.slice(8)) + '）' : ''}`, 'ok'); data = null; loadedFor = ''; }
     return true;
   }
   if (kind === 'sch-update') {

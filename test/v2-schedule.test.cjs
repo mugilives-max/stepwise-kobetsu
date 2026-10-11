@@ -186,3 +186,19 @@ test('cancelling a decided lesson tells the family (held before the switch-over)
   assert.match(m[0].body, /架空 一郎さんの10\/9\(金\) 17:00〜 数学の授業をキャンセルしました/);
   assert.equal(m[0].status, 'dismissed', '切り替え前は送らない');
 });
+
+test('lessons that already took place can be registered as done by a manager (no notice, no deadline, up to 8 hours)', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
+  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
+  const mails = h.mails().length;
+  const r = await h.ok('schedule/lessons/create', { auth, studentId: kid.id, date: '2026-09-26', start: '13:00', minutes: 390, subject: '英語', kind: '演習', deliveryMode: 'in_person', done: true });
+  assert.deepEqual([r.created, r.done], [1, true]);
+  const l = h.rows('select status, confirmBy, minutes from lessons where studentId = ?', kid.id)[0];
+  assert.deepEqual([l.status, l.confirmBy, l.minutes], ['done', '', 390]);
+  assert.equal(h.mails().length, mails, 'お知らせは送らない');
+  assert.equal((await h.call('schedule/lessons/create', { auth, studentId: kid.id, date: '2026-09-27', start: '13:00', minutes: 90, subject: '英語', deliveryMode: 'in_person' })).error.code, 'past', '仮予定は過去に作れないまま');
+  assert.equal((await h.call('schedule/lessons/create', { auth, studentId: kid.id, date: '2027-01-01', start: '13:00', minutes: 90, subject: '英語', deliveryMode: 'in_person', done: true })).error.code, 'future');
+  const teacher = await h.staffWith(auth, ['teacher'], 'teacher@example.invalid');
+  assert.equal((await h.call('schedule/lessons/create', { auth: teacher, studentId: kid.id, date: '2026-09-25', start: '13:00', minutes: 90, subject: '英語', deliveryMode: 'in_person', done: true })).error.code, 'forbidden');
+});
