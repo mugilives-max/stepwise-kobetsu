@@ -1,6 +1,6 @@
 // スタッフの画面: 成績（6段目）。#grades（一覧・届いた成績票・結果の入力待ち）と #grades=<生徒>（試験の記録・入力）。
 // 講師は担当の生徒の担当科目だけ入力でき、ほかの科目は合計だけ見える。成績票は教室管理者だけ。
-import { examCard, gradeCharts, summaryTable, examPager, gradeSel, seriesPick, seriesOf, SERIES_FIRST, fileList, uploadForm, uploadFile, openFile, jst } from '/assets/v2/grades-view.js?v=20261008-launch1';
+import { examCard, trendBox, examPager, gradeSel, seriesPick, seriesOf, SERIES_FIRST, fileList, uploadForm, uploadFile, openFile, jst } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { sheet, rowButton, rowLink } from '/staff/ui.js?v=20261008-launch1';
 
 let overview = null, student = null, studentFor = '', editing = '', prefill = null, pick = null; // pick: 下から出る画面 { kind: 'file'|'test'|'resolve', id }
@@ -52,24 +52,28 @@ export function gradesStudentPage(ctx, studentId) {
   const st = student;
   h += `${st.subjects ? `<p class="small muted" style="margin-top:12px">あなたの担当: ${st.subjects.map(esc).join('・')}（ほかの科目は合計だけ）</p>` : ''}${ctx.notice()}`;
   if (st.nextTest) h += `<p class="small">次のテスト: ${esc(st.nextTest.title || '')}（${esc(md(st.nextTest.date))}、あと${st.nextTest.days}日）</p>`;
-  if (st.pendingTests.length) h += `<h2>結果の入力待ち</h2>${pendingList(ctx, st.pendingTests, false)}`;
-  h += `<p><button class="primary" data-action="gr-new"${ctx.dis()}>＋ 試験の結果を入れる</button></p>`;
-  // 階層: 何の試験か（定期テスト・北辰テスト …）の帯 → その一覧 → グラフ → 試験を 1 つずつ（‹ ›）。ひもづいた成績票（PDF・写真）はカードの中から開く
+  if (st.pendingTests.length) h += `<div class="sec-title">結果の入力待ち <span class="count">${st.pendingTests.length}</span></div>${pendingList(ctx, st.pendingTests, false)}`;
+  // 階層: 何の試験か（定期テスト・北辰テスト …）のタブ → 推移（一覧とグラフ）→ 試験ごと（‹ › で 1 つずつ。実際の成績票はカードから開く）
+  const addBtn = `<button class="small-btn primary" data-action="gr-new"${ctx.dis()}>＋ 結果を入れる</button>`;
   const pk = seriesPick(st.exams, studentId);
-  h += pk.bar + summaryTable(pk.list) + gradeCharts(pk.list, studentId);
-  h += examPager(pk.list, studentId, e => examCard(e, { sheets: st.manager ? st.files.filter(f => f.examId === e.id && f.status !== 'dismissed') : [], actions: `<div class="row"><button data-action="gr-edit" data-id="${esc(e.id)}"${ctx.dis()}>直す</button>${st.manager ? `<button class="danger" data-action="gr-delete" data-id="${esc(e.id)}" data-version="${e.version}"${ctx.dis()}>消す</button>` : ''}</div>` }));
-  if (!st.exams.length) h += '<p class="muted">まだ記録がありません。成績票（PDF・写真）があれば、下の「この成績票の結果を入れる」から点数と偏差値を入れます。</p>';
+  h += pk.bar;
+  if (!st.exams.length) h += `<p><button class="primary" data-action="gr-new"${ctx.dis()}>＋ 試験の結果を入れる</button></p><p class="muted">まだ記録がありません。成績票（PDF・写真）があれば、下の「この成績票の結果を入れる」から点数と偏差値を入れます。</p>`;
+  const trend = trendBox(pk.list, studentId, addBtn);
+  h += trend || (st.exams.length ? `<p style="margin:10px 0 0">${addBtn}</p>` : '');
+  const attachForm = e => st.manager ? `<form class="gattach" data-form="gr-attach" data-exam="${esc(e.id)}"><label class="gsheet-btn as-label"><span class="ic">＋</span><span class="nm">成績票（PDF・写真）をつける</span><input type="file" name="file" accept="image/*,application/pdf" hidden></label></form>` : '';
+  h += examPager(pk.list, studentId, e => examCard(e, { sheets: st.manager ? st.files.filter(f => f.examId === e.id && f.status !== 'dismissed') : [], attach: attachForm(e), actions: `<div class="row"><button data-action="gr-edit" data-id="${esc(e.id)}"${ctx.dis()}>直す</button>${st.manager ? `<button class="danger" data-action="gr-delete" data-id="${esc(e.id)}" data-version="${e.version}"${ctx.dis()}>消す</button>` : ''}</div>` }));
   if (st.manager) {
     // 試験にひもづいていない成績票: ここから結果を入れる（入れると自動でひもづく）か、できている試験にひもづける
     const loose = st.files.filter(f => !f.examId && f.status !== 'dismissed'), dismissed = st.files.filter(f => f.status === 'dismissed');
-    if (loose.length) h += `<div class="sec-title">試験にひもづいていない成績票 <span class="count">${loose.length}</span></div><div class="group">` + loose.map(f => rowButton(esc, 'gr-pick', { kind: 'resolve', id: f.id }, esc(f.name), `${esc(jst(f.createdAt).slice(5, 10))}${f.note ? '・' + esc(f.note) : ''}${f.status === 'new' ? '・<span class="tag warn">確かめ待ち</span>' : ''}`)).join('') + '</div>';
+    h += '<div class="sec-title" style="margin-top:22px">成績票</div>';
+    if (loose.length) h += `<p class="small muted" style="margin:0 2px 6px">試験にひもづいていないもの。押して結果を入れるか、できている試験にひもづけます。</p><div class="group">` + loose.map(f => rowButton(esc, 'gr-pick', { kind: 'resolve', id: f.id }, esc(f.name), `${esc(jst(f.createdAt).slice(5, 10))}${f.note ? '・' + esc(f.note) : ''}${f.status === 'new' ? '・<span class="tag warn">確かめ待ち</span>' : ''}`)).join('') + '</div>';
     const f = pick && pick.kind === 'resolve' && loose.find(x => x.id === pick.id);
     if (f) h += sheet(esc, f.name, `<div class="stack"><button data-action="gr-open" data-id="${esc(f.id)}">成績票を開く</button>
       <button class="primary" data-action="gr-from-file" data-id="${esc(f.id)}" data-name="${esc(f.name)}"${ctx.dis()}>この成績票の結果を入れる</button>
       ${st.exams.length ? `<label>できている試験にひもづける<select data-resolve-exam="${esc(f.id)}"><option value="">（選ぶ）</option>${st.exams.slice().reverse().map(e => `<option value="${esc(e.id)}">${esc(e.name)}（${esc(md(e.date))}）</option>`).join('')}</select></label>
       <div class="row"><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="imported"${ctx.dis()}>ひもづける</button><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="dismissed"${ctx.dis()}>取り込まない</button></div>` : `<div class="row"><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="dismissed"${ctx.dis()}>取り込まない</button></div>`}</div>`, 'gr-unpick');
     if (dismissed.length) h += `<details class="small muted" style="margin:8px 0"><summary>取り込まない成績票 ${dismissed.length}件</summary>${fileList(dismissed, 'gr-open')}</details>`;
-    h += `<h3>成績票を残す</h3>${uploadForm(ctx.dis())}`;
+    h += `<details class="gupload"><summary>成績票を残す（試験をあとでひもづける）</summary>${uploadForm(ctx.dis())}</details>`;
   }
   h += testSheet(ctx, st.pendingTests);
   if (editing) { const e = editing === 'new' ? null : st.exams.find(x => x.id === editing); if (e || editing === 'new') h += sheet(esc, e ? e.name + ' を直す' : '試験の結果を入れる', examForm(ctx, e), 'gr-close', { wide: true }); }
@@ -109,6 +113,13 @@ function examForm(ctx, e) {
 
 // ---------- 操作 ----------
 export async function gradesSubmit(ctx, kind, el) {
+  if (kind === 'gr-attach') {
+    const file = el.querySelector('input[type=file]').files[0], examId = el.dataset.exam; if (!file) return true;
+    let r = await uploadFile(file, '', meta => ctx.call('grades/files/upload', { ...meta, studentId: studentFor }));
+    if (r.ok) r = await ctx.call('grades/files/resolve', { id: r.fileId, status: 'imported', examId });
+    if (r.ok) { student = null; studentFor = ''; ctx.say('成績票をつけました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   if (kind === 'gr-upload') {
     const file = el.querySelector('input[type=file]').files[0], note = new FormData(el).get('note') || ''; if (!file) return true;
     const r = await uploadFile(file, note, meta => ctx.call('grades/files/upload', { ...meta, studentId: studentFor }));

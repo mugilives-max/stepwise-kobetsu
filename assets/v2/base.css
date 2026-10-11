@@ -665,17 +665,30 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 /* 成績のグラフ: 科目の帯で 1 本を大きく。試験は ‹ › で 1 つずつ（2026-10-11） */
 .gchart { margin: 12px 0; }
 .gchips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
-.gchips.series { margin: 12px 0 2px; }
-.gchips.series .gchip { font-size: 14px; padding: 7px 14px; }
-.gchips.series .gchip.on { background: var(--ink); border-color: var(--ink); }
 .gchip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--white); color: var(--ink); font-size: 13px; white-space: nowrap; }
 .gchip.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
 .gchart-head { display: flex; align-items: baseline; gap: 8px; margin: 6px 2px 2px; }
 .gchart-head .up { color: var(--ok); } .gchart-head .down { color: var(--danger); }
 .gchart svg { width: 100%; height: auto; display: block; background: var(--white); border: 1px solid var(--line); border-radius: 12px; }
-.gpager { display: flex; align-items: center; gap: 6px; margin: 14px 0 0; }
-.gpager .gpager-t { flex: 1; text-align: center; display: flex; flex-direction: column; line-height: 1.25; }
-.gpager .gpager-t small { color: var(--muted); }
-.gpager button.icon { width: 36px; height: 36px; border-radius: 50%; font-size: 24px; padding: 0; display: grid; place-items: center; }
-.gpager .icon-ph { width: 36px; height: 36px; }
-.gpager + .gcard { margin-top: 8px; }
+/* 成績の収まり（2026-10-11）: 推移は 1 つの箱、試験ごとは ‹ › の帯とカードを 1 つの箱に。成績票は大きなボタンで開く */
+.gtrend { padding: 10px 12px 6px; margin: 8px 0 0; }
+.gtrend .gsum { margin: 0 0 6px; }
+.gtrend .gchart { margin: 10px 0 4px; }
+.gtrend .gchart svg { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.gbook { border: 1px solid var(--line); border-radius: 12px; background: var(--white); overflow: hidden; margin: 8px 0 0; }
+.gbook .gpager { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: var(--soft); border-bottom: 1px solid var(--line); }
+.gbook .gpager .gpager-t { flex: 1; text-align: center; display: flex; flex-direction: column; line-height: 1.25; }
+.gbook .gpager .gpager-t strong { font-size: 16px; }
+.gbook .gpager .gpager-t small { color: var(--muted); }
+.gbook .gpager button.icon { width: 36px; height: 36px; border-radius: 50%; font-size: 24px; padding: 0; display: grid; place-items: center; background: var(--white); }
+.gbook .gpager .icon-ph { width: 36px; height: 36px; }
+.gbook .gcard { border: 0; border-radius: 0; margin: 0; }
+.gbook .gcard .ghead { display: none; } /* 題名は上の帯にある */
+.gsheets { display: flex; flex-direction: column; gap: 6px; }
+.gsheet-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.gsheet-btn .ic { flex: none; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 6px; background: var(--soft); color: var(--muted); }
+.gsheet-btn .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gsheet-btn .go { flex: none; color: var(--primary); font-weight: 700; }
+.gsheet-btn.as-label { border-style: dashed; color: var(--muted); }
+.gupload { margin-top: 10px; }
+.gupload summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 8px 2px; }

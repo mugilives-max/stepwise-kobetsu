@@ -34,7 +34,7 @@ export function seriesPick(exams, studentId) {
   const all = seriesOf(exams), sel = gradeSel(studentId);
   if (!all.includes(sel.series)) sel.series = all[0] || '';
   const list = exams.filter(e => e.series === sel.series);
-  const bar = all.length ? `<div class="gchips series">${all.map(x => chip('gv-series', studentId, `data-s="${esc(x)}"`, x, x === sel.series)).join('')}</div>` : '';
+  const bar = all.length ? `<div class="tabs2" role="tablist" aria-label="何の試験か">${all.map(x => `<a href="javascript:void 0" role="tab" data-action="gv-series" data-sid="${esc(studentId)}" data-s="${esc(x)}" class="${x === sel.series ? 'on' : ''}"${x === sel.series ? ' aria-selected="true"' : ''}>${esc(x)}</a>`).join('')}</div>` : '';
   return { bar, list, series: sel.series };
 }
 export function gradesClickShared(a, b) {
@@ -87,8 +87,8 @@ export function examPager(exams, studentId, card) {
   let i = list.findIndex(e => e.id === sel.exam); if (i < 0) i = 0;
   const e = list[i], newer = list[i - 1], older = list[i + 1];
   const btn = (t, label, arrow) => t ? `<button type="button" class="icon" data-action="gv-exam" data-sid="${esc(studentId)}" data-id="${esc(t.id)}" aria-label="${label}">${arrow}</button>` : '<span class="icon-ph"></span>';
-  const bar = list.length > 1 ? `<div class="gpager">${btn(older, '前の試験', '‹')}<div class="gpager-t"><strong>${esc(e.series ? e.series + ' ' : '')}${esc(e.name)}</strong><small>${esc(md(e.date))}・${list.length - i} / ${list.length}</small></div>${btn(newer, '次の試験', '›')}</div>` : '';
-  return bar + card(e);
+  const bar = `<div class="gpager">${btn(older, '前の試験', '‹')}<div class="gpager-t"><strong>${esc(e.name)}</strong><small>${esc(e.series || '')}・${esc(md(e.date))}${list.length > 1 ? `・${list.length - i} / ${list.length}` : ''}</small></div>${btn(newer, '次の試験', '›')}</div>`;
+  return `<div class="sec-title">試験ごと</div><div class="gbook">${bar}${card(e)}</div>`;
 }
 
 const KIND = { regular: '定期テスト', mock: '模試' };
@@ -110,6 +110,12 @@ function oneSummary(list, useDev, caption) {
   const head = e => `<th><span class="nm">${esc(e.name)}</span><small>${esc(md(e.date))}</small></th>`;
   return `<figure class="gsum"><figcaption class="small muted">${caption}</figcaption><div class="gwrap"><table class="gtable"><thead><tr><th></th>${list.map(head).join('')}</tr></thead><tbody>${subjects.map(s => `<tr><th>${esc(s)}</th>${list.map(e => `<td>${val(e, s)}</td>`).join('')}</tr>`).join('')}${list.some(e => tot(e)) ? `<tr class="tot"><th>合計</th>${list.map(e => `<td>${tot(e)}</td>`).join('')}</tr>` : ''}</tbody></table></div></figure>`;
 }
+// 推移の箱: 一覧とグラフ。試験が 2 つ以上あるときだけ。right は見出しの右に置くもの（スタッフの「＋ 結果を入れる」）
+export function trendBox(exams, studentId, right = '') {
+  const inner = summaryTable(exams) + gradeCharts(exams, studentId);
+  if (!inner) return '';
+  return `<div class="sec-title">推移${right ? `<span style="margin-left:auto">${right}</span>` : ''}</div><div class="sheet gtrend">${inner}</div>`;
+}
 export function summaryTable(exams) {
   const list = exams.filter(e => e.scores.length).slice().sort((a, b) => a.date.localeCompare(b.date));
   if (list.length < 2) return '';
@@ -117,12 +123,14 @@ export function summaryTable(exams) {
   return oneSummary(list, useDev, `${esc(list[0].series)}の${useDev ? '偏差値' : '点数'}`);
 }
 // 試験のカード。opts.lessons は保護者向けの「その期間の授業」
-export function examCard(e, { lessons = null, actions = '', sheets = [] } = {}) {
+export function examCard(e, { lessons = null, actions = '', sheets = [], attach = '' } = {}) {
   const t = e.total, tparts = [t.score !== null && t.score !== undefined ? `合計 <strong>${n1(t.score)}</strong>${t.max ? ' / ' + n1(t.max) : ''}` : '', t.rank ? `${t.rank}位${t.rankOf ? ' / ' + t.rankOf + '人' : ''}` : '', t.deviation !== null && t.deviation !== undefined ? `偏差値 <strong>${n1(t.deviation)}</strong>` : ''].filter(Boolean);
   let h = `<div class="sheet stack gcard"><div class="ghead"><div><strong>${esc(e.name)}</strong> <span class="tag gray">${esc(e.series || KIND[e.kind] || '')}</span></div><span class="small muted">${esc(md(e.date))}${e.grade ? '・' + esc(e.grade) : ''}</span></div>`;
   if (tparts.length) h += `<div>${tparts.join('　')}</div>`;
   if (e.scores.length) h += scoreTable(e.scores);
-  if (sheets.length) h += `<div class="small">成績票: ${sheets.map(f => `<button type="button" class="linkish" data-action="gr-open" data-id="${esc(f.id)}">${esc(f.name)}</button>`).join('　')}</div>`;
+  // 実際の成績票（PDF・写真）をここから開く。無ければ「つける」（スタッフ）。本人 2026-10-11「必要に応じて実際の資料を見たくなる」
+  if (sheets.length) h += `<div class="gsheets">${sheets.map(f => `<button type="button" class="gsheet-btn" data-action="gr-open" data-id="${esc(f.id)}"><span class="ic">${f.mime === 'application/pdf' ? 'PDF' : '写真'}</span><span class="nm">${esc(f.name)}</span><span class="go">開く ›</span></button>`).join('')}</div>`;
+  else if (attach) h += attach;
   if (e.otherSubjects && e.otherSubjects.length) h += `<div class="small muted">ほかの科目（${e.otherSubjects.map(esc).join('・')}）は合計に入っています</div>`;
   const r = e.review;
   if (r && (r.good || r.issues || r.nextSteps)) h += `<div class="small">${r.good ? `<div><strong>良かった点</strong> ${esc(r.good)}</div>` : ''}${r.issues ? `<div><strong>課題</strong> ${esc(r.issues)}</div>` : ''}${r.nextSteps ? `<div><strong>次の対策</strong> ${esc(r.nextSteps)}</div>` : ''}</div>`;
@@ -143,7 +151,7 @@ export function gradesView(st, { who, dis = '' }) {
   if (st.nextTest) h += `<p class="notice">${esc(st.nextTest.title || 'テスト')}まで あと <strong>${st.nextTest.days}日</strong>（${esc(md(st.nextTest.date))}）</p>`;
   if (!st.exams.length) h += '<p class="muted">まだ成績の記録はありません。成績票が返ってきたら、写真を送ってください。</p>';
   const pk = seriesPick(st.exams, st.id);
-  h += pk.bar + summaryTable(pk.list) + gradeCharts(pk.list, st.id) + examPager(pk.list, st.id, e => examCard(e, { lessons: who === 'family' && st.lessons ? st.lessons.find(x => x.examId === e.id) : null }));
+  h += pk.bar + trendBox(pk.list, st.id) + examPager(pk.list, st.id, e => examCard(e, { lessons: who === 'family' && st.lessons ? st.lessons.find(x => x.examId === e.id) : null, sheets: st.files.filter(f => f.examId === e.id && f.status !== 'dismissed') }));
   h += `<h2>成績票を送る</h2>${uploadForm(dis, who === 'family' ? `<input type="hidden" name="studentId" value="${esc(st.id)}">` : '')}`;
   if (st.files.length) h += `<h3>送った成績票</h3>${fileList(st.files, 'gr-open')}`;
   return h;
