@@ -181,7 +181,7 @@ function oneDay(ctx, me, manager, nameOf, staffOf, d, first) {
   h += '<div class="rows">';
   evs.forEach(g => { h += `<div class="ev ${g.kind}"><span class="t">${g.start ? g.start + '〜' : '終日'}</span><span class="b">${EVENT_KIND[g.kind]}：${esc(g.items.map(e => e.studentName).filter(Boolean).join('・'))} ${esc(g.title)}</span>${manager ? `<button class="x" data-action="sch-ev-del" data-ids="${esc(g.items.map(e => e.id).join(','))}" data-n="${g.items.length}" aria-label="消す"${ctx.dis()}>×</button>` : ''}</div>`; });
   offs.forEach(o => { h += `<div class="ev off"><span class="t">${o.start ? o.start + '〜' + o.end : '終日'}</span><span class="b">休み：${esc(o.staffId ? staffOf[o.staffId] || '' : '教室全体')} ${esc(o.note)}</span>${manager || o.staffId === me.id ? `<button class="x" data-action="sch-off-del" data-id="${esc(o.id)}" aria-label="消す"${ctx.dis()}>×</button>` : ''}</div>`; });
-  mts.forEach(m => { h += `<div class="ev meeting"><span class="t">${m.start}〜${endOf(m.start, m.minutes)}</span><span class="b">面談：${esc(m.title)}${m.deliveryMode === 'online' ? '（オンライン）' : ''}</span><button class="x" data-action="sch-mt-cancel" data-id="${esc(m.id)}" aria-label="取りやめる"${ctx.dis()}>×</button></div>`; });
+  mts.forEach(m => { h += `<div class="ev meeting"><span class="t">${m.start}〜${endOf(m.start, m.minutes)}</span><span class="b">面談：${m.withName ? esc(m.withName) + ' ' : ''}${esc(m.title)}${m.deliveryMode === 'online' ? '（オンライン）' : ''}</span><button class="x" data-action="sch-mt-cancel" data-id="${esc(m.id)}" aria-label="取りやめる"${ctx.dis()}>×</button></div>`; });
   ls.forEach(l => {
     h += `<button class="lesson s-${l.status}" data-action="sch-open" data-id="${esc(l.id)}"><span class="t">${l.start}<small>〜${endOf(l.start, l.minutes)}</small></span>`
       + `<span class="b"><span><strong>${esc(nameOf[l.studentId] || '')}</strong> ${esc(l.subject)}${l.kind !== '通常' ? '<small>（' + esc(l.kind) + '）</small>' : ''}${l.deliveryMode === 'online' ? ' <small class="muted">オンライン</small>' : ''}</span>`
@@ -285,7 +285,8 @@ function offForm(ctx, me, manager) {
 }
 function meetingForm(ctx) {
   if (!families) { ctx.call('admin/families/list').then(r => { families = r.ok ? r.families : []; ctx.render(); }); return '<p class="muted">読み込んでいます…</p>'; }
-  return `<form class="stack" data-form="sch-meeting" style="margin:0"><label>家族<select name="familyId">${families.map(f => `<option value="${ctx.esc(f.id)}">${ctx.esc(f.name)}</option>`).join('')}</select></label>
+  return `<form class="stack" data-form="sch-meeting" style="margin:0"><label>相手<select name="familyId">${families.map(f => `<option value="${ctx.esc(f.id)}">${ctx.esc(f.name)}</option>`).join('')}<option value="">登録していない人（問い合わせ・体験前）</option></select></label>
+    <label class="mt-with">名前<input name="withName" maxlength="60" placeholder="例: 高橋さん（体験前の面談）"></label>
     <div class="row"><label style="flex:1">日付<input type="date" name="date" value="${sel || ''}" required></label><label style="flex:1">開始<input type="time" name="start" value="19:00" step="300" required></label><label style="flex:1">長さ<select name="minutes">${[15, 20, 30, 45, 60].map(m => `<option value="${m}"${m === 30 ? ' selected' : ''}>${m}分</option>`).join('')}</select></label></div>
     <div class="row"><label style="flex:1">形式<select name="deliveryMode"><option value="in_person">対面</option><option value="online">オンライン（Meet）</option></select></label><label style="flex:2">題名<input name="title" value="面談" maxlength="60"></label></div>
     <div class="row"><button class="primary"${ctx.dis()}>登録する</button></div></form>`;

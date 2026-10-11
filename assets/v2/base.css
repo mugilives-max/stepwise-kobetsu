@@ -696,3 +696,6 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 .pl-row { display: flex; align-items: center; gap: 10px; }
 .pl-row > .todo { flex: 1; min-width: 0; }
 .pl-row > .pl-pick { flex: none; width: 20px; height: 20px; margin: 0 0 0 2px; accent-color: var(--primary); }
+/* 面談の相手: 「登録していない人」を選んだときだけ名前の欄（2026-10-11） */
+form[data-form=sch-meeting] .mt-with { display: none; }
+form[data-form=sch-meeting]:has(select[name=familyId] option[value=""]:checked) .mt-with { display: block; }

@@ -305,7 +305,7 @@ export const scheduleRoutes = {
       openRequests: openRequests.map(r => ({ ...requestView(r), studentName: nameOf[r.studentId] || '', date: r.date, start: r.start, subject: r.subject, lessonStatus: r.lessonStatus })),
       events: events.map(e => ({ ...eventView(e), studentName: nameOf[e.studentId] || '' })),
       unavailability: offs.map(o => ({ id: o.id, staffId: o.staffId, date: o.date, start: o.start, end: o.end, note: o.note })),
-      meetings: meetings.map(m => ({ id: m.id, familyId: m.familyId, studentId: m.studentId, staffId: m.staffId, date: m.date, start: m.start, minutes: m.minutes, deliveryMode: m.deliveryMode, title: m.title, meetUrl: m.meetUrl, status: m.status, version: m.version })),
+      meetings: meetings.map(m => ({ id: m.id, familyId: m.familyId, withName: m.withName || '', studentId: m.studentId, staffId: m.staffId, date: m.date, start: m.start, minutes: m.minutes, deliveryMode: m.deliveryMode, title: m.title, meetUrl: m.meetUrl, status: m.status, version: m.version })),
       students: students.filter(s => s.status !== 'left').map(s => ({ id: s.id, name: fullName(s), familyId: s.familyId, deliveryMode: s.deliveryMode })),
       staff: staff.map(s => ({ id: s.id, name: s.name, teacher: rolesOf(s).includes('teacher') })),
       kinds: kinds.length ? kinds : ['通常'], live: await isLive(c), cancelRuleFrom: await cancelRuleFrom(c.db),
@@ -503,17 +503,20 @@ export const scheduleRoutes = {
   },
   'schedule/events/add': async (c, b) => { await requireStaff(c, b, 'manager'); await studentRow(c, b.studentId); return addEvent(c, String(b.studentId), { kind: 'staff', id: c.actor.id }, b); },
   'schedule/events/delete': async (c, b) => { await requireStaff(c, b, 'manager'); return deleteEvent(c, null, null, b); },
+  // 面談。登録した家族（familyId）か、登録していない人（withName に名前。問い合わせ・体験前。2026-10-11）
   'schedule/meetings/create': async (c, b) => {
     await requireStaff(c, b, 'manager');
-    const fam = await c.db.prepare('select * from families where id = ?').bind(String(b.familyId || '')).first();
-    if (!fam) fail('notFound', '家族が見つかりません', 404);
+    const familyId = String(b.familyId || ''), withName = String(b.withName || '').trim().slice(0, 60);
+    const fam = familyId ? await c.db.prepare('select * from families where id = ?').bind(familyId).first() : null;
+    if (familyId && !fam) fail('notFound', '家族が見つかりません', 404);
+    if (!fam && !withName) fail('needWho', '相手を選ぶか、登録していない人の名前を入れてください');
     const date = String(b.date || ''), start = String(b.start || ''), minutes = Number(b.minutes || 30);
     if (!validDate(date) || !validTime(start) || !Number.isInteger(minutes) || minutes < 10 || minutes > 180) fail('badTime', '日時と長さを確かめてください');
     const id = newId('mt'), mode = b.deliveryMode === 'online' ? 'online' : 'in_person';
-    await c.db.prepare('insert into meetings (id, familyId, studentId, staffId, date, start, minutes, deliveryMode, title, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, fam.id, String(b.studentId || ''), String(b.staffId || c.actor.id), date, start, minutes, mode, String(b.title || '面談').slice(0, 60), iso(c.now), iso(c.now)).run();
+    await c.db.prepare('insert into meetings (id, familyId, withName, studentId, staffId, date, start, minutes, deliveryMode, title, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, fam ? fam.id : '', fam ? '' : withName, fam ? String(b.studentId || '') : '', String(b.staffId || c.actor.id), date, start, minutes, mode, String(b.title || '面談').slice(0, 60), iso(c.now), iso(c.now)).run();
     const m = await c.db.prepare('select * from meetings where id = ?').bind(id).first();
-    const marker = await calendarEffect(c, 'create', { ...m, id, subject: m.title, calendarEventId: '' }, fam.name.replace(/さん$/, ''));
+    const marker = await calendarEffect(c, 'create', { ...m, id, subject: m.title, calendarEventId: '' }, fam ? fam.name.replace(/さん$/, '') : withName);
     await c.db.prepare('update meetings set calendarEventId = ? where id = ?').bind(marker, id).run();
     await audit(c, 'meetingCreate', id);
     return { id };
