@@ -1,4 +1,4 @@
-// 特殊指導承認書（規約 第5条）の書面。個別指導条件書と同じ A4 の見た目。提案したとき（案）と承認されたとき（確定）に R2 に置く。
+// 特殊指導条件書（規約 第5条）の書面。個別指導条件書と同じ A4 の見た目。提案したとき（案）と承認されたとき（確定）に R2 に置く。
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const jst = t => { if (!t) return ''; const d = new Date(Date.parse(t) + 9 * 3600e3); return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日`; };
 const jstMin = t => { if (!t) return ''; const d = new Date(Date.parse(t) + 9 * 3600e3); return `${jst(t)} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
@@ -27,7 +27,7 @@ export function specialDocHtml({ sp, student, family, terms, proposer, now }) {
     : `<div class="sign"><strong>保護者の承認</strong>　まだ承認いただいていません。保護者ページで内容を確かめて承認してください。承認がない場合、この料金は適用しません。</div>`;
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>特殊指導承認書 ${esc(sp.title)} 第${sp.no}版${final ? '' : '（案）'} ${esc(name)}</title>
+<title>特殊指導条件書 ${esc(sp.title)} 第${sp.no}版${final ? '' : '（案）'} ${esc(name)}</title>
 <style>
   @page { size: A4; margin: 15mm; }
   * { box-sizing: border-box; }
@@ -54,14 +54,14 @@ export function specialDocHtml({ sp, student, family, terms, proposer, now }) {
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; } }
 </style></head>
 <body>
-<div class="bar"><span>特殊指導承認書（${esc(sp.title)}・第${sp.no}版${final ? '' : '・案'}）。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
+<div class="bar"><span>特殊指導条件書（${esc(sp.title)}・第${sp.no}版${final ? '' : '・案'}）。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
 <div class="sheet">
-  <div class="head"><h1>特殊指導承認書</h1><div class="meta">第${sp.no}版${final ? '' : '　<span class="draft">案</span>'}<br>作成日 ${esc(jst(final ? sp.agreedAt : sp.proposedAt) || jst(now))}</div></div>
+  <div class="head"><h1>特殊指導条件書</h1><div class="meta">第${sp.no}版${final ? '' : '　<span class="draft">案</span>'}<br>作成日 ${esc(jst(final ? sp.agreedAt : sp.proposedAt) || jst(now))}</div></div>
   <div class="to">${esc(family.name)}　様${family.guardianName ? `（保護者：${esc(family.guardianName)}）` : ''}</div>
   <p class="lead">ステップワイズ個別指導 受講規約（第5条）に基づき、${esc(name)}さんについて、通常指導とは別に次の特殊指導を行い、その料金を適用することを提案します。内容と範囲、料金、期間をご確認のうえ、承認をお願いいたします。承認は、この承認書の範囲で特殊指導料金を適用することへの同意であり、月ごとの回数は別に授業計画承認書で合意します。</p>
   <table><tbody>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</tbody></table>
   ${agreeBlock}
-  <div class="juku"><strong>塾の記録</strong>　提案日 ${esc(jstMin(sp.proposedAt))}　担当 ${esc(proposer || '')}　（承認書 ID ${esc(sp.id)}）</div>
+  <div class="juku"><strong>塾の記録</strong>　提案日 ${esc(jstMin(sp.proposedAt))}　担当 ${esc(proposer || '')}　（条件書 ID ${esc(sp.id)}）</div>
   <div class="issuer"><div class="name">ステップワイズ個別指導</div>代表　麦倉 優輔<br>埼玉県越谷市袋山1319-9<br>080-6259-3025　／　mugilives@gmail.com</div>
   <p class="foot">期間の途中でやめる場合は、実施した分だけを精算します。承認のない特殊指導料金は請求しません。</p>
 </div>
