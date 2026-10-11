@@ -280,7 +280,7 @@ document.addEventListener('click', ev => {
   if (a === 'copy-link' && shownLink) { navigator.clipboard.writeText(shownLink.url).then(() => { say('リンクをコピーしました', 'ok'); render(); }); return; }
   if (a === 'copy') { navigator.clipboard.writeText(b.dataset.text || '').then(() => { say('コピーしました', 'ok'); render(); }); return; }
   // 成績票は、待たずに新しいタブを開いてから読む（あとから開くと止められる）
-  if (a === 'doc-sample') { const win = window.open('', '_blank'); run(async () => { const r = await ctx.call('admin/docs/sample', { type: b.dataset.type }); if (!r.ok) { if (win) win.close(); return say(r.error.message, 'error'); } if (win && !win.closed) { win.document.open(); win.document.write(r.html); win.document.close(); } }); return; }
+  if (a === 'doc-sample') { const win = window.open('', '_blank'); run(async () => { const r = await ctx.call('admin/docs/sample', { type: b.dataset.type }); if (!r.ok) { if (win) win.close(); return say(r.error.message, 'error'); } const url = URL.createObjectURL(new Blob([r.html], { type: 'text/html' })); if (win && !win.closed) win.location.href = url; else location.href = url; }); return; }
   if (a === 'gr-open') { const win = window.open('', '_blank'); run(async () => { const r = await openGradeFile(ctx, b, win); if (!r.ok) say(r.error.message, 'error'); }); return; }
   if (gradesClickShared(a, b)) return render(); // 成績のグラフの帯・試験の ‹ ›
   // 保護者ページ・生徒ページのプレビュー: 新しいタブを先に開いてから、プレビューの鍵をもらって移す
