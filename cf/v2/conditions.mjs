@@ -9,6 +9,8 @@ import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { familyNotice } from './schedule.mjs';
 import { currentTerms } from './terms.mjs';
+import { putGenerated } from './files.mjs';
+import { conditionDocHtml } from './condition-doc.mjs';
 
 const MODES = { in_person: '教室', online: 'オンライン', both: '教室とオンライン' };
 export const MODE_LABEL = MODES;
@@ -21,10 +23,28 @@ export const conditionView = r => r ? ({ id: r.id, studentId: r.studentId, no: r
   proposedAt: r.proposedAt, agreedAt: r.agreedAt, agreedVia: r.agreedVia, agreedNote: r.agreedNote }) : null;
 
 // 生徒の今の条件: 最新の版（latest。proposed か agreed）と、有効な合意（agreed。最新が proposed なら前の agreed）
+// 書面（条件書の HTML。files 表の refType=condition）の最新の id
+async function docIdOf(db, condId) {
+  const f = await db.prepare("select id from files where refType = 'condition' and refId = ? and status = 'ready' order by createdAt desc limit 1").bind(condId).first();
+  return f ? f.id : '';
+}
+async function withDoc(db, v) { return v ? { ...v, docFileId: await docIdOf(db, v.id) } : null; }
 export async function studentConditions(db, studentId) {
   const rows = (await db.prepare("select * from conditions where studentId = ? order by no desc").bind(studentId).all()).results;
   const latest = rows.find(r => r.status !== 'replaced') || null, agreed = rows.find(r => r.status === 'agreed') || null;
-  return { latest: conditionView(latest), agreed: conditionView(agreed), needs: !!latest && latest.status === 'proposed', history: rows.map(conditionView) };
+  return { latest: await withDoc(db, conditionView(latest)), agreed: await withDoc(db, conditionView(agreed)), needs: !!latest && latest.status === 'proposed', history: rows.map(conditionView) };
+}
+// 条件書の書面を作って置く（案 → 同意したら確定の版）。請求書と同じ A4 の HTML。保護者はいつでも保護者ページから開ける
+async function storeDoc(c, condId) {
+  const cond = await c.db.prepare('select * from conditions where id = ?').bind(condId).first();
+  const student = await c.db.prepare('select * from students where id = ?').bind(cond.studentId).first();
+  const family = await c.db.prepare('select * from families where id = ?').bind(student.familyId).first();
+  const staffId = String(cond.proposedBy || '').replace(/^staff:/, '');
+  const proposer = staffId ? await c.db.prepare('select name from staff where id = ?').bind(staffId).first() : null;
+  const html = conditionDocHtml({ cond, student, family, terms: await currentTerms(c.db), proposer: proposer ? proposer.name : '', now: iso(c.now) });
+  const final = cond.status === 'agreed';
+  return putGenerated(c, { category: 'contract', familyId: family.id, studentId: student.id, refType: 'condition', refId: cond.id,
+    name: `個別指導条件書_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
 }
 // 家族: 子どもごとの条件。同意していない条件があれば needs
 export async function familyConditions(db, students) {
@@ -78,9 +98,10 @@ export const conditionRoutes = {
       c.db.prepare('update students set baseRate30 = ?, deliveryMode = ?, permissions = ?, updatedAt = ?, version = version + 1 where id = ?')
         .bind(Math.round(f.fee * 30 / f.minutes), f.deliveryMode === 'both' ? s.deliveryMode : f.deliveryMode, JSON.stringify(perms), now, s.id),
     ]);
-    await familyNotice(c, s.id, '個別指導条件のお知らせ', `${fullName(s)}さんの個別指導条件（第${no}版）をお送りしました。保護者ページの「お支払い」で内容を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月`);
+    await storeDoc(c, id);
+    await familyNotice(c, s.id, '個別指導条件のお知らせ', `${fullName(s)}さんの個別指導条件（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（個別指導条件書）を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月`);
     await audit(c, 'conditionPropose', id, { studentId: s.id, no, minutes: f.minutes, fee: f.fee, fromMonth: f.fromMonth });
-    return { condition: conditionView(await c.db.prepare('select * from conditions where id = ?').bind(id).first()) };
+    return { condition: await withDoc(c.db, conditionView(await c.db.prepare('select * from conditions where id = ?').bind(id).first())) };
   },
   // 書面・LINE でもらった承諾を記録する
   'admin/conditions/record': async (c, b) => {
@@ -93,6 +114,7 @@ export const conditionRoutes = {
     if (!via || via.length > 40) fail('needVia', '承諾の方法（書面・LINE など）を入れてください');
     if (note.length > 300) fail('tooLong', 'メモは300文字以内にしてください');
     await markAgreed(c, row, { at: date, via, by: 'staff:' + me.id, note });
+    await storeDoc(c, row.id);
     await audit(c, 'conditionRecorded', row.id, { via, date });
     return await studentConditions(c.db, row.studentId);
   },
@@ -109,6 +131,7 @@ export const conditionRoutes = {
     if (row.status !== 'proposed') fail('closed', 'この条件はもう同意済みか、新しい版に置き換わっています。画面を更新してください', 409);
     if (b.agree !== true) fail('needAgree', '内容を確かめて「同意します」に印を付けてください');
     await markAgreed(c, row, { at: iso(c.now), via: '保護者ページ', by: 'family:' + me.id, note: '' });
+    await storeDoc(c, row.id);
     await audit(c, 'conditionAgreed', row.id, { familyId: me.id });
     const students = (await c.db.prepare("select * from students where familyId = ? and status <> 'left' order by createdAt").bind(me.id).all()).results;
     return { conditions: await familyConditions(c.db, students) };

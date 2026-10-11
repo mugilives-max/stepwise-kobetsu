@@ -469,7 +469,8 @@
 - **表**（`0018_conditions.sql`）：`conditions`。生徒ごとの版（`no`）に、基本の授業時間と1回の税込基本単価、形式（教室・オンライン・両方）、人数の説明、生徒本人の連絡の可否、科目、特記、適用開始月、お知らせしたときの規約の版、状態（proposed／agreed／replaced）、同意の日時・方法・だれが。
 - **API**（`cf/v2/conditions.mjs`）：`admin/conditions/get`・`propose`（新しい版をお知らせ。前の proposed は replaced。保護者にメール。生徒の登録の基本単価（1回の単価 × 30 ÷ 分）・形式・本人の連絡の許可にも写す）・`record`（書面・LINE の承諾を記録）、`family/conditions`・`family/conditions/agree`。`family/money` に `conditions` を足し、同意していない条件がある家族は `family/plans/decide` を `needConditions` で断る（規約の `needTerms` と同じ）。
 - **画面**：スタッフは 家族の画面 → 生徒 の下から出る画面に「個別指導条件」（状態、条件を決めてお知らせ、承諾を記録）。生徒の画面の基本情報にも 1 行。保護者は「お支払い」の「確かめていただきたいこと」に条件のカード（内容の表、同意します、同意する）、同意済みは下に 1 行。ホームのやることにも出る。
-- **テスト**：`test/v2-conditions.test.cjs`。
+- **書面**（`cf/v2/condition-doc.mjs`。2026-10-12 本人「請求書とかは発行できるように準備していた。そんな感じで」）：条件をお知らせしたとき（案）と同意したとき（確定）に、請求書のひな形と同じ A4 の HTML を R2 に置く（`files` の category=contract、refType=condition。`putGenerated`）。印刷（Ctrl+P）で PDF になる。保護者は条件のカードと同意済みの 1 行から、スタッフは生徒の下から出る画面から開く（`files/link`）。
+- **テスト**：`test/v2-conditions.test.cjs`.
 
 ### 8段目：移行の道具とリハーサル（2026-10-02）
 
