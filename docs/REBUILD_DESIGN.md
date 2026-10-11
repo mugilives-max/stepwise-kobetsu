@@ -429,6 +429,7 @@
 - 手で取る：`npx wrangler d1 export stepwise-v2 --remote --output …` と `npx wrangler r2 object get stepwise-files/f/<id> --remote --file …`（2026-10-10 に最初の 1 回を `Kura/塾/バックアップ/2026-10-10` に置いた）。
 - **テスト**：`test/v2-backup.test.cjs`。
 - 同じ画面に「テスト送信」（`admin/effects/test`。代表あてに 1 通）を足した。送る先の Apps Script を差し替えるときの確かめ。
+- **止まった送信の拾い直し（2026-10-11）**：応答のあとの送信（`waitUntil`）は、deploy や Apps Script の遅さで切れることがある（10/11 に授業計画のお知らせが pending のまま残った）。3 分より前の pending は、次の誰かの操作のついでに `sweepStaleEffects` が error 欄に「送っている途中」の印を付けてから送る（同時に 2 回送らない）。夜の送り直しは failed だけでなく、10 分より前の pending も拾う。
 
 ### 7段目：講師の給与（2026-10-02。2026-10-07 雇用に合わせて直した）
 

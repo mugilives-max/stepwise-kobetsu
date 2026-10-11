@@ -59,11 +59,26 @@ export const effectsAdminRoutes = {
 
 // 定期実行: 48 時間以内に失敗したものを、3 回まで送り直す
 export async function retryFailedEffects(env, db, now) {
-  const since = new Date(now - 48 * 3600e3).toISOString();
-  const rows = (await db.prepare("select * from effects where status = 'failed' and attempts < 3 and createdAt >= ? order by id limit 50").bind(since).all()).results;
+  const since = new Date(now - 48 * 3600e3).toISOString(), stale = new Date(now - STALE_MS).toISOString();
+  // 失敗したものと、送る途中で止まったもの（応答のあとの送信が切れた・Apps Script が遅かった）。2026-10-11 に 10 分より前の pending を足した
+  const rows = (await db.prepare("select * from effects where attempts < 3 and createdAt >= ? and (status = 'failed' or (status = 'pending' and createdAt < ?)) order by id limit 50").bind(since, stale).all()).results;
   if (!rows.length) return { retried: 0, sent: 0 };
   const r = await deliverEffects(env, db, rows.map(x => ({ id: x.id, item: parse(x.payload) })));
   return { retried: rows.length, sent: r.sent };
+}
+// 止まったままの送信を、次の誰かの操作のついでに送る（応答のあとの送信は、deploy や Apps Script の遅さで切れることがある。2026-10-11）
+// 3 分より前の pending に「送っている途中」の印（error 欄）を付けてから送る（同時に 2 回送らないため。status の CHECK に新しい値を足さずに済む）。
+// 印のまま 10 分たったものは夜の送り直しが拾う
+export const SWEEP_AFTER_MS = 3 * 60e3, SWEEPING = '送っている途中';
+export async function sweepStaleEffects(env, db, now) {
+  if (!env.GAS_URL || !env.SYNC_KEY) return { swept: 0 };
+  const before = new Date(now - SWEEP_AFTER_MS).toISOString();
+  const rows = (await db.prepare("select * from effects where status = 'pending' and error = '' and attempts < 3 and createdAt < ? order by id limit 5").bind(before).all()).results;
+  const mine = [];
+  for (const x of rows) { const r = await db.prepare("update effects set error = ? where id = ? and status = 'pending' and error = ''").bind(SWEEPING, x.id).run(); if (r.meta && r.meta.changes) mine.push({ id: x.id, item: parse(x.payload) }); }
+  if (!mine.length) return { swept: 0 };
+  const r = await deliverEffects(env, db, mine);
+  return { swept: mine.length, sent: r.sent, error: r.error || '' };
 }
 // 送れなかったものの数（「今日」の対応することに出す）
 export async function failedEffectsCount(db, now) {
