@@ -9,7 +9,7 @@
 - 現行の全119項（第22・25条の無番号本文は便宜上各1項として数える）と負担率表、章冒頭、版表示、別表・末尾表示を対象にする。
 - 1行が現行の1項。分割した項は、文ごとに移動先を示す。第2条3項の文末の(i)(ii)は「条件列挙」とする。
 - 初回の構成整理では原文の文を原則維持し、見出し・項番号・順序・改行・参照番号を変更した。重複内容の集約は下の2か所のみ。その他の重複した説明は、条件の取り落としを避けるため今回削除していない。
-- 本人の追加依頼による呼称変更・表現の修正は、末尾の追記に変更前後と理由を記録した。原文引用は維持している。
+- 本人の追加依頼による呼称変更・表現の修正・支払方法の方針変更は、末尾の追記に変更前後と理由を記録した。原文引用は維持している。
 - 「移動」は内容変更を意味しない。判断待ちの3点は本文に残し、[DECISIONS.md](DECISIONS.md)に整理。
 
 ## 全項の移動先
@@ -85,7 +85,7 @@
 | [現行第13条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L154) | 塾の都合による休講と、生徒側の都合による取消は、記録と明細を分けます。 | [第18条第3項](DRAFT.md#article-18-item-3) | 移動・参照更新（該当箇所） |
 | [現行第14条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L158) | 当月に実施した授業の料金、キャンセル料金、および事前合意した教材等の費用を集… | [第20条第1項](DRAFT.md#article-20-item-1) | 移動・参照更新（該当箇所） |
 | [現行第14条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L159) | 原則として翌月3日に請求を確定し、保護者ページでお知らせします。1日と2日は… | [第20条第2項](DRAFT.md#article-20-item-2) | 移動・参照更新（該当箇所） |
-| [現行第14条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L160) | 支払いは銀行振込に一本化し、現金での授受は行いません。授業料等の振込手数料は… | [第20条第3項](DRAFT.md#article-20-item-3) | 移動・参照更新（該当箇所） |
+| [現行第14条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L160) | 支払いは銀行振込に一本化し、現金での授受は行いません。授業料等の振込手数料は… | [第20条第3項](DRAFT.md#article-20-item-3) | 移動後、本人指定の方針変更（[変更前後](#payment-and-information-review)） |
 | [現行第14条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L161) | 支払期限までの支払いが難しい場合は、事前にご相談ください。連絡なく未払いが続… | [第20条第4項](DRAFT.md#article-20-item-4) | 移動・参照更新（該当箇所） |
 | [現行第14条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L162) | 免除申請の審査中、または第7項の申出について塾が確認・回答するまでの間は、対… | [第21条第2項](DRAFT.md#article-21-item-2) | 移動・参照更新（該当箇所） |
 | [現行第14条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L163) | 確定後の訂正は、元の請求と訂正理由を残して通知します。支払済みの減額は、返金… | [第22条第1項](DRAFT.md#article-22-item-1) | 判断3は原文維持 |
@@ -115,11 +115,11 @@
 | [現行第19条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L206) | 日程、料金、受講終了など重要な内容は、双方が確認できる方法で記録します。電話… | [第23条第2項](DRAFT.md#article-23-item-2) | 移動・参照更新（該当箇所） |
 | [現行第19条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L207) | 連絡先が変わった場合はお知らせください。ページを利用できないときは、指定のL… | [第23条第3項](DRAFT.md#article-23-item-3) | 移動・参照更新（該当箇所） |
 | [現行第19条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L208) | 生徒本人からの欠席・遅刻等の連絡は、保護者が認めた範囲（前日23時までの無料… | [第23条第4項](DRAFT.md#article-23-item-4) | 移動・参照更新（該当箇所） |
-| [現行第20条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L212) | 氏名、学年、学校、連絡先、成績、授業・宿題の記録、契約・請求・入金の記録およ… | [第26条第2項](DRAFT.md#article-26-item-2) | 移動・参照更新（該当箇所） |
+| [現行第20条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L212) | 氏名、学年、学校、連絡先、成績、授業・宿題の記録、契約・請求・入金の記録およ… | [第26条第2項](DRAFT.md#article-26-item-2) | 移動後、利用目的の具体化（[変更前後](#payment-and-information-review)） |
 | [現行第20条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L213) | 管理にはCloudflare（台帳・ファイルの保管）およびGoogle（メー… | [第26条第3項](DRAFT.md#article-26-item-3) | 移動・参照更新（該当箇所） |
-| [現行第20条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L214) | 講師には指導に必要な担当生徒の情報を共有し、料金・請求や免除申請の受診資料を… | [第26条第4項](DRAFT.md#article-26-item-4) | 移動・参照更新（該当箇所） |
+| [現行第20条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L214) | 講師には指導に必要な担当生徒の情報を共有し、料金・請求や免除申請の受診資料を… | [第26条第4項](DRAFT.md#article-26-item-4) | 移動後、内部運用の記述を削除（[変更前後](#payment-and-information-review)） |
 | [現行第20条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L215) | 法令に基づく場合や適法な業務委託等を除き、同意なく個人情報を第三者に提供しま… | [第26条第5項](DRAFT.md#article-26-item-5) | 移動・参照更新（該当箇所） |
-| [現行第20条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L216) | 記録に誤りがある場合は訂正を申し出ることができます。契約終了後の契約・請求記… | [第26条第6項](DRAFT.md#article-26-item-6) | 移動・参照更新（該当箇所） |
+| [現行第20条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L216) | 記録に誤りがある場合は訂正を申し出ることができます。契約終了後の契約・請求記… | [第26条第6項](DRAFT.md#article-26-item-6) | 移動後、保存理由の明確化（[変更前後](#payment-and-information-review)） |
 | [現行第21条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L220) | 保護者はパスワードと生徒の専用リンクを適切に管理し、契約・受講に関係のない第… | [第24条第1項](DRAFT.md#article-24-item-1) | 移動・参照更新（該当箇所） |
 | [現行第21条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L221) | 家族内で共有する場合は、契約者と承認権限を持つ方を確認します。承認操作の際は… | [第24条第2項](DRAFT.md#article-24-item-2) | 移動・参照更新（該当箇所） |
 | [現行第21条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L222) | 設定・再設定の方法はページ等で案内します。利用できない場合の連絡手段は第19… | [第24条第3項](DRAFT.md#article-24-item-3) | 移動・参照更新（該当箇所） |
@@ -130,7 +130,7 @@
 | [現行第23条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L231) | 暴力など安全や信頼関係に重大な支障を与える場合は、直ちに受講を停止し、契約を… | [第29条第2項](DRAFT.md#article-29-item-2) | 移動・参照更新（該当箇所） |
 | [現行第23条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L232) | 終了時の料金は第15条に従い精算します。 | [第29条第3項](DRAFT.md#article-29-item-3) | 移動・参照更新（該当箇所） |
 | [現行第24条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L236) | 適用する規約は、保護者が同意した版の全文です。掲載ページを更新したことだけで… | [第31条第1項](DRAFT.md#article-31-item-1) | 移動・参照更新（該当箇所） |
-| [現行第24条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L237) | 塾は同意した版、対象となる計画、同意者、日時、方法を保護者ページに記録し、保… | [第31条第2項](DRAFT.md#article-31-item-2) | 移動・参照更新（該当箇所） |
+| [現行第24条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L237) | 塾は同意した版、対象となる計画、同意者、日時、方法を保護者ページに記録し、保… | [第31条第2項](DRAFT.md#article-31-item-2) | 移動後、関連箇所の表現統一（[変更前後](#payment-and-information-review)） |
 | [現行第24条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L238) | 条件を変更する場合は、変更点と適用時期を翌月の計画等とともに示し、同意を得た… | [第31条第3項](DRAFT.md#article-31-item-3) | 移動・参照更新（該当箇所） |
 | [現行第24条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L239) | 同意しない場合、変更後の条件による契約は成立しません。受講継続の可否や終了日… | [第31条第4項](DRAFT.md#article-31-item-4) | 移動・参照更新（該当箇所） |
 | [現行第24条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L240) | この版は2026年11月1日から適用します。適用日より前に成立した契約と精算… | [第31条第5項](DRAFT.md#article-31-item-5) | 移動・参照更新（該当箇所） |
@@ -318,4 +318,71 @@
 >    例えば、授業の1時間前には到着が遅れると分かっており、連絡できる状況だったにもかかわらず、開始直前まで連絡しなかった場合は、(2)を満たしません。救急搬送等で連絡自体ができない場合は、第2項の扱いによります。実施分の授業料は免除対象に含みません。
 
 **理由・範囲：** 原則発生・申請による個別免除を先に示し、事情・早期連絡・確認可能性の3条件を列挙。連絡可能なのに遅らせた例を追加。例の「1時間前」は固定の連絡期限ではない。救急搬送等で連絡できない場合の既存第2項を維持して参照。
+
+
+<a id="payment-and-information-review"></a>
+
+## 2026-10-12追記：支払い・情報利用・保存の見直し
+
+本人の追加指示を反映した。銀行振込の例外承認は、旧「一本化・現金授受なし」からの**方針変更**であり、初回の内容を維持した並べ替えとは区別する。「変更前」は直前の改稿案。判断待ち3点を決定・変更するものではない。
+
+### 改稿案 第20条第3項（現行第14条第3項）
+
+**変更前：**
+
+> 支払いは銀行振込に一本化し、現金での授受は行いません。授業料等の振込手数料は振込を行う保護者が負担します。支払期限は請求が確定した月の15日です。15日が土日祝日の場合は翌営業日です。
+
+**変更後：** [本文](DRAFT.md#article-20-item-3)
+
+> 授業料等は、原則として銀行振込でお支払いください。特別な事情により銀行振込が難しい場合は、事前にご相談ください。塾が個別に承認した場合は、別途合意した方法でお支払いいただけます。銀行振込の手数料は、振込を行う保護者が負担します。支払期限は請求が確定した月の15日です。15日が土日祝日の場合は翌営業日です。
+
+**理由・範囲：** 銀行振込の例外を認めない旧方針を、原則銀行振込とし、特別な事情がある場合に事前相談・塾の個別承認・別途合意した方法による支払いを認める方針へ変更。特定の代替手段を一律に許可するものではない。手数料負担、15日・翌営業日の期限は維持。
+
+### 改稿案 第26条第2項（現行第20条第1項）
+
+**変更前：**
+
+> 氏名、学年、学校、連絡先、成績、授業・宿題の記録、契約・請求・入金の記録および事前に説明して取得する面談等の録音を、指導、学習支援、連絡、契約と請求の管理に利用します。
+
+**変更後：** [本文](DRAFT.md#article-26-item-2)
+
+> 氏名、学年、学校、連絡先、成績、授業・宿題の記録、契約・請求・入金の記録を、指導、学習支援、指導計画の提案・見直し、次回面談の準備、連絡、契約と請求の管理に利用します。面談等の録音を行う場合も、事前に説明して同意を得たうえで、これらの目的に利用します。録音は、聞き違いや記録漏れを防ぎ、ご家庭の希望や学習上の課題、面談で決めたことを指導計画や次回の相談に正確に引き継ぐために役立てます。
+
+**理由・範囲：** 本人が希望した指導計画の提案・見直し、次回面談の準備を明記。録音の目的は、希望・課題・合意事項の聞き違いや記録漏れを防ぐことと具体化した。第1項の当面録音しない方針を維持し、実施時には事前説明と同意が必要であることを第2項にも明示。授業録画や別目的の利用、録音の自動開始を認める変更ではない。
+
+### 改稿案 第26条第4項（現行第20条第3項）
+
+**変更前：**
+
+> 講師には指導に必要な担当生徒の情報を共有し、料金・請求や免除申請の受診資料を、指導に不要な講師へ見せない運用とします。成績の共有範囲は実際の権限設定とそろえます。
+
+**変更後：** [本文](DRAFT.md#article-26-item-4)
+
+> 講師には指導に必要な担当生徒の情報を共有し、料金・請求や免除申請の受診資料を、指導に不要な講師へ見せない運用とします。
+
+**理由・範囲：** 「成績の共有範囲は実際の権限設定とそろえます」を削除。担当講師に指導上必要な情報を共有する範囲と、料金・請求・受診資料を不要な講師へ見せない方針は維持。権限を広げる変更ではない。
+
+### 改稿案 第26条第6項（現行第20条第5項）
+
+**変更前：**
+
+> 記録に誤りがある場合は訂正を申し出ることができます。契約終了後の契約・請求記録等は、精算と税務に必要な期間（最長7年）保存します。免除の確認に使った資料は、確認が済み次第速やかに削除します。
+
+**変更後：** [本文](DRAFT.md#article-26-item-6)
+
+> 記録に誤りがある場合は訂正を申し出ることができます。契約終了後の契約・請求記録等は、精算への対応および税務関係法令に基づく保存のため、記録の種類に応じて必要な期間（最長7年）保管します。免除の確認に使った資料は、確認が済み次第速やかに削除します。
+
+**理由・範囲：** 「法令に基づく」を税務関係の保存へ対応付け、精算への対応と区別。記録の種類ごとの必要期間とし、全記録が一律に法定7年保存と受け取られないようにした。既存の最長7年、誤りの訂正申出、免除確認資料の速やかな削除は維持。
+
+### 改稿案 第31条第2項（現行第24条第2項）
+
+**変更前：**
+
+> 塾は同意した版、対象となる計画、同意者、日時、方法を保護者ページに記録し、保護者はいつでも同じ内容を保護者ページで確認できます（控え）。記録は精算と税務に必要な期間（最長7年）保存します。
+
+**変更後：** [本文](DRAFT.md#article-31-item-2)
+
+> 塾は同意した版、対象となる計画、同意者、日時、方法を保護者ページに記録し、保護者はいつでも同じ内容を保護者ページで確認できます（控え）。記録は、精算への対応および税務関係法令に基づく保存のため、記録の種類に応じて必要な期間（最長7年）保管します。
+
+**理由・範囲：** 第26条第6項と同じ保存理由・期間の説明にそろえた。同意の記録事項・保護者の控え・最長7年は維持。
 
