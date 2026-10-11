@@ -699,3 +699,7 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 /* 面談の相手: 「登録していない人」を選んだときだけ名前の欄（2026-10-11） */
 form[data-form=sch-meeting] .mt-with { display: none; }
 form[data-form=sch-meeting]:has(select[name=familyId] option[value=""]:checked) .mt-with { display: block; }
+/* 個別指導条件のカード（保護者ページ。2026-10-12） */
+.cond-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 10px 0; font-size: 14px; }
+.cond-dl dt { color: var(--muted); white-space: nowrap; }
+.cond-dl dd { margin: 0; }

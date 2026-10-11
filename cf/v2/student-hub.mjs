@@ -1,6 +1,7 @@
 // スタッフの「生徒」（docs/UX_STRUCTURE.md 3）。1人の生徒のことを1か所で見るための読み取りをまとめる。
 // - students/list: 家族ごとの生徒の一覧（次の授業・連絡・記録待ちの印つき）。講師は担当の生徒だけ（家族の連絡先は出さない）
 // - students/hub: 1人の生徒の概要・予定・記録と宿題・成績・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出さない
+import { studentConditions } from './conditions.mjs';
 import { fail } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { todayJst, addDays } from './schedule.mjs';
@@ -66,7 +67,7 @@ export const studentHubRoutes = {
       const nextMonthEnd = addDays(addDays(month + '-01', 62).slice(0, 7) + '-01', -1);
       out.plans = sb.lines.filter(l => l.endDate >= month + '-01' && l.startDate <= nextMonthEnd).map(l => ({ id: l.id, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, count: l.count, cap: lineCap(l), minutes: l.minutes, fee: l.fee, status: l.status, used: sb.used[l.id] || 0, parentId: l.parentId }));
       out.invoices = (await c.db.prepare("select * from invoices where familyId = ? and status <> 'void' order by month desc limit 6").bind(s.familyId).all()).results.map(v => ({ id: v.id, month: v.month, total: v.total, status: v.status }));
-      out.basic = { familyId: s.familyId, familyName: s.familyLabel, guardianName: s.guardianName, email: s.familyEmail, phone: s.familyPhone, familyStatus: s.familyStatus, school: s.school, baseRate30: s.baseRate30, note: s.note, enrolledOn: s.enrolledOn, subjects: s.subjects };
+      out.basic = { familyId: s.familyId, familyName: s.familyLabel, guardianName: s.guardianName, email: s.familyEmail, phone: s.familyPhone, familyStatus: s.familyStatus, school: s.school, baseRate30: s.baseRate30, note: s.note, enrolledOn: s.enrolledOn, subjects: s.subjects, condition: await studentConditions(c.db, s.id) };
     }
     return out;
   },

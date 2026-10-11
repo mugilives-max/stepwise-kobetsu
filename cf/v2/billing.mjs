@@ -9,6 +9,7 @@ import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
 import { familyTerms, currentTerms } from './terms.mjs';
+import { familyConditions, familyNeedsConditions } from './conditions.mjs';
 import { todayJst, addDays, familyNotice, staffNotice } from './schedule.mjs';
 import { validMonth, monthEnd, shiftMonth, lineCap, lessonAmount, lineMatches, studentBilling, estimateFor, assignLines, parseParts, PART_LABEL } from './plan-calc.mjs';
 
@@ -436,8 +437,8 @@ export const billingRoutes = {
     const me = await requireFamily(c, b);
     const students = (await c.db.prepare('select * from students where familyId = ? order by createdAt').bind(me.id).all()).results, ids = students.map(s => s.id);
     const names = Object.fromEntries(students.map(s => [s.id, fullName(s)]));
-    const terms = await familyTerms(c.db, me);
-    if (!ids.length) return { plans: [], fees: [], invoices: [], terms };
+    const terms = await familyTerms(c.db, me), conditions = await familyConditions(c.db, students.filter(s => s.status !== 'left'));
+    if (!ids.length) return { plans: [], fees: [], invoices: [], terms, conditions };
     const q = `(${ids.map(() => '?').join(', ')})`, since = addDays(todayJst(c.now), -92);
     // 承認待ちは期間が過ぎても出し続ける（承認できるように）。ほかは終わってから3か月まで
     const lines = (await c.db.prepare(`select * from planLines where studentId in ${q} and (status = 'proposed' or (status <> 'draft' and endDate >= ?)) order by startDate, subject`).bind(...ids, since).all()).results;
@@ -447,7 +448,7 @@ export const billingRoutes = {
     const invs = (await c.db.prepare("select * from invoices where familyId = ? and status <> 'void' order by month desc limit 24").bind(me.id).all()).results;
     const invoices = [];
     for (const v of invs) invoices.push({ ...invoiceView(v), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
-    return { plans, fees, invoices, terms };
+    return { plans, fees, invoices, terms, conditions };
   },
   // 承認（回数を減らして承認・0回で見送り）
   'family/plans/decide': async (c, b) => {
@@ -462,6 +463,7 @@ export const billingRoutes = {
     // 受講規約の今の版に同意していなければ、承認できない（統合3 D07。見送りは同意がなくてもよい）
     const terms = await familyTerms(c.db, me);
     if (count > 0 && terms.needs) fail('needTerms', '受講規約への同意が必要です。「お支払い」の画面で規約を確かめて、同意してから承認してください', 409);
+    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '個別指導条件への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
     const now = iso(c.now);
     await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
       .bind(count > 0 ? 'approved' : 'declined', count, now, todayJst(c.now), terms.agreed.version, now, l.id, l.version).run();
