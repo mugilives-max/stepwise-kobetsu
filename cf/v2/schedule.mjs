@@ -113,7 +113,7 @@ function lessonFields(b, base = {}) {
   for (const k of ['date', 'start', 'minutes', 'subject', 'kind', 'deliveryMode', 'staffId']) if (b[k] !== undefined) out[k] = b[k];
   out.minutes = Number(out.minutes);
   if (!validDate(out.date) || !validTime(out.start)) fail('badTime', '日付と開始時刻を確かめてください');
-  if (!Number.isInteger(out.minutes) || out.minutes < 15 || out.minutes > 300) fail('badMinutes', '授業の長さは15〜300分にしてください');
+  if (!Number.isInteger(out.minutes) || out.minutes < 15 || out.minutes > 480) fail('badMinutes', '授業の長さは15〜480分にしてください');
   if (toMin(out.start) + out.minutes > 24 * 60) fail('badTime', '日をまたぐ授業は登録できません');
   out.subject = String(out.subject || '').trim(); if (!out.subject || out.subject.length > 30) fail('badSubject', '科目を入れてください');
   out.kind = String(out.kind || '通常').trim().slice(0, 20) || '通常';
@@ -322,12 +322,18 @@ export const scheduleRoutes = {
     const today = todayJst(c.now);
     const candidates = [];
     for (let w = 0; w < repeat; w++) for (const x of rows) candidates.push({ ...x, studentId: s.id, date: addDays(b.date, w * 7) });
-    if (candidates.some(x => x.date < today)) fail('past', '過去の日付には仮予定を作れません');
+    // 実施した授業をあとから登録する（done）: 今日までの日付で、はじめから実施済み。仮予定のお知らせも締め切りも無い。
+    // 請求は、その月の承認済みの計画に（科目・種類が合う行へ）入る（2026-10-11 本人「授業を実施済みなのですが、授業計画も送ってないし、過去の記録だし」）
+    const done = b.done === true;
+    if (done && candidates.some(x => x.date > today)) fail('future', '実施済みで登録できるのは今日までの授業です');
+    if (!done && candidates.some(x => x.date < today)) fail('past', '過去の日付には仮予定を作れません。実施した授業なら「実施済みとして登録」にしてください');
     await checkConflicts(c, candidates, { force: !!b.force });
-    const hold = b.hold === true, bys = hold ? candidates.map(() => '') : confirmByFor(candidates.map(x => x.date), today, b.confirmBy || '');
+    const hold = b.hold === true && !done, bys = hold || done ? candidates.map(() => '') : confirmByFor(candidates.map(x => x.date), today, b.confirmBy || '');
+    const status = done ? 'done' : hold ? 'held' : 'proposed';
     const stmts = candidates.map((x, i) => c.db.prepare('insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, confirmBy, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(x.id = newId('ls'), s.id, x.staffId, x.date, x.start, x.minutes, x.subject, x.kind, x.deliveryMode, hold ? 'held' : 'proposed', bys[i], iso(c.now), iso(c.now)));
+      .bind(x.id = newId('ls'), s.id, x.staffId, x.date, x.start, x.minutes, x.subject, x.kind, x.deliveryMode, status, bys[i], iso(c.now), iso(c.now)));
     await c.db.batch(stmts);
+    if (done) { await audit(c, 'lessonsDone', s.id, { count: candidates.length, dates: candidates.map(x => x.date) }); return { created: candidates.length, done: true }; }
     if (!hold) await familyNotice(c, s.id, '授業の仮予定が届いています', `${fullName(s)}さんの授業の仮予定が届いています。${bys[0] ? Number(bys[0].slice(5, 7)) + '/' + Number(bys[0].slice(8)) + 'までに連絡がなければ、この日時で決定します。' : ''}`);
     await audit(c, hold ? 'lessonsHold' : 'lessonsPropose', s.id, { count: candidates.length });
     return { created: candidates.length, held: hold, confirmBy: bys[0] || '' };
