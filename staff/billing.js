@@ -6,7 +6,7 @@ import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 let plans = null, planMonth = '', editing = '', consentFor = '', addFor = '', kindOpen = null, lineOpen = '', feeOpen = '';
 const unpicked = new Set(); // お知らせから外した下書き（チェックを外したもの）
 export function billingPick(id, on) { if (on) unpicked.delete(id); else unpicked.add(id); }
-let bill = null, billMonth = '', openFamily = '', detail = null, fees = null;
+let bill = null, billMonth = '', openFamily = '', detail = null, fees = null, billSettings = null;
 export function leaveBilling() { kindOpen = null; lineOpen = editing = consentFor = addFor = openFamily = feeOpen = ''; }
 export function resetBilling() { kindOpen = null; lineOpen = feeOpen = ''; plans = null; bill = null; detail = null; fees = null; editing = ''; consentFor = ''; addFor = ''; openFamily = ''; }
 
@@ -162,6 +162,7 @@ export function billingPage(ctx) {
     h += sheet(esc, `${f.name}（${monthLabel(billMonth)}）`, body + detailPart(ctx), 'bl-close', { wide: true });
   }
   if (bill.voided.length) h += `<h3>取り消した請求</h3><ul class="small">${bill.voided.map(v => `<li>${esc(v.name)} ${yen(v.total)}（${esc(v.voidReason)}）</li>`).join('')}</ul>`;
+  h += billingSettingsHtml(ctx);
   return h;
 }
 const invStatus = f => f.invoice ? INV_STATUS[f.invoice.status] : f.preview.issues.length ? ['確かめることあり', 'danger'] : f.preview.pendingCount ? ['承認待ちの授業あり', 'warn'] : ['確定前', 'gray'];
@@ -180,6 +181,7 @@ function detailPart(ctx) {
     let h = `<div class="stack"><div>確定 ${esc(v.confirmedAt.slice(0, 10))}（${v.confirmedBy === 'auto' ? '自動' : v.confirmedBy === 'legacy' ? '今の仕組みから写し' : '手で確定'}）${v.reportedAt ? '・振込の連絡 ' + esc(v.reportedAt.slice(0, 10)) : ''}${v.paidOn ? '・入金 ' + esc(v.paidOn) + '（' + esc(v.paidMethod) + '）' : ''}</div>`;
     for (const [name, items] of Object.entries(byStudent)) h += `<div><strong>${esc(name)}</strong><table class="small" style="width:100%">${items.map(row).join('')}</table></div>`;
     h += `<div><strong>合計 ${yen(v.total)}</strong></div>`;
+    h += `<div class="row">${v.invoiceDocId ? `<button data-action="gr-open" data-id="${esc(v.invoiceDocId)}">請求書を開く</button>` : ''}${v.receiptDocId ? `<button data-action="gr-open" data-id="${esc(v.receiptDocId)}">領収書を開く</button>` : ''}<button data-action="bl-docs" data-id="${esc(v.id)}"${ctx.dis()}>書面を作り直す</button></div>`;
     if (v.status === 'paid') h += `<form class="row" data-form="bl-unpaid" data-id="${esc(v.id)}" data-version="${v.version}"><input name="reason" maxlength="300" placeholder="入金の記録を戻す理由" style="flex:1" required><button${ctx.dis()}>入金の記録を戻す</button></form>`;
     else h += `<form class="row" data-form="bl-paid" data-id="${esc(v.id)}" data-version="${v.version}"><label>入金日<input type="date" name="paidOn" required></label><label>方法<input name="method" maxlength="20" value="振込" style="width:6em"></label><button class="primary"${ctx.dis()}>入金を記録</button></form>
       <form class="row" data-form="bl-void" data-id="${esc(v.id)}" data-version="${v.version}"><input name="reason" maxlength="300" placeholder="取り消す理由（例: 金額の誤り）" style="flex:1" required><button class="danger"${ctx.dis()}>請求を取り消す</button></form>`;
@@ -242,6 +244,8 @@ export async function billingSubmit(ctx, kind, el) {
   } else if (kind === 'fee-relief') {
     r = await ctx.call('billing/fees/relief', { id, version, result: v.result, amount: num(v.amount), response: v.response });
     msg = '申請に回答しました'; if (r.ok) { fees = null; bill = null; feeOpen = ''; }
+  } else if (kind === 'bl-settings') {
+    r = await ctx.call('admin/billing/settings/set', { bank: v.bank, note: v.note }); msg = '請求書の設定を保存しました'; if (r.ok) billSettings = null;
   } else if (kind === 'bl-paid') {
     r = await ctx.call('billing/paid', { id, version, paidOn: v.paidOn, method: v.method }); msg = '入金を記録しました'; if (r.ok) { bill = null; detail = null; }
   } else if (kind === 'bl-unpaid') {
@@ -253,7 +257,23 @@ export async function billingSubmit(ctx, kind, el) {
   if (r.ok) ctx.say(msg, 'ok'); else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;
 }
+// 請求書の設定（振込先・備考）。請求の画面の下に出す
+export function billingSettingsHtml(ctx) {
+  const { esc } = ctx;
+  if (!billSettings) { billSettings = { loading: true }; ctx.call('admin/billing/settings').then(r => { billSettings = r.ok ? r.settings : { bank: '', note: '', error: r.error.message }; ctx.render(); }); }
+  if (billSettings.loading) return '';
+  return `<details class="gupload" style="margin-top:20px"><summary>請求書の設定（振込先・備考）${billSettings.bank ? '' : ' <span class="tag warn">振込先が未設定</span>'}</summary>
+    <form class="stack" data-form="bl-settings" style="margin-top:8px"><label>お振込先（請求書にそのまま載ります。銀行名・支店名・種別・口座番号・口座名義）<textarea name="bank" maxlength="300" rows="2">${esc(billSettings.bank || '')}</textarea></label>
+    <label>備考（空なら「キャンセル料は、受講規約に基づき…」）<textarea name="note" maxlength="500" rows="2">${esc(billSettings.note || '')}</textarea></label>
+    <p class="small muted">請求を確定したときに請求書、入金を記録したときに領収書の書面ができ、保護者は「お支払い」から開けます。振込先を直したあとは、その請求の「書面を作り直す」で反映します。</p>
+    <button class="primary"${ctx.dis()}>保存</button></form></details>`;
+}
 export async function billingClick(ctx, a, b) {
+  if (a === 'bl-docs') {
+    const r = await ctx.call('admin/billing/docs/rebuild', { id: b.dataset.id });
+    if (r.ok) { detail = null; ctx.say('書面を作り直しました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   let r, msg;
   if (a === 'kind-open') { kindOpen = b.dataset.name; return true; }
   if (a === 'kind-close') { kindOpen = null; return true; }

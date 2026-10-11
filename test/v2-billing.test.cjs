@@ -250,3 +250,32 @@ test('only the checked drafts are sent when ids are given; the rest stay drafts 
   assert.equal((await h.ok('billing/plans/send', { auth, familyId: fam.id })).sent, 1, 'ids が無ければ残りの下書き全部');
   void c;
 });
+
+test('an invoice document is stored when the month is confirmed and a receipt when paid; the family can open both', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
+  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
+  const parent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' })).auth;
+  await h.ok('admin/billing/settings/set', { auth, bank: '架空銀行 架空支店 普通 0000000 ステップワイズ', note: '' });
+  const line = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-09-01', endDate: '2026-09-30', count: 2, minutes: 90, fee: 4500 })).line;
+  await h.ok('billing/plans/send', { auth, familyId: fam.id });
+  await h.ok('family/plans/decide', { auth: parent, id: line.id, version: line.version + 1, approvedCount: 2 });
+  await h.ok('schedule/lessons/create', { auth, studentId: kid.id, date: '2026-09-10', start: '17:00', minutes: 90, subject: '数学', deliveryMode: 'in_person', done: true });
+  const inv = (await h.ok('billing/confirm', { auth, familyId: fam.id, month: '2026-09' })).invoice;
+  const fam1 = await h.ok('billing/family', { auth, familyId: fam.id, month: '2026-09' });
+  assert.ok(fam1.invoice.invoiceDocId, '請求書の書面'); assert.equal(fam1.invoice.receiptDocId, '');
+  const money = await h.ok('family/money', { auth: parent });
+  assert.equal(money.invoices[0].invoiceDocId, fam1.invoice.invoiceDocId);
+  const html = await (await h.raw('GET', (await h.ok('files/link', { auth: parent, id: fam1.invoice.invoiceDocId })).url)).text();
+  assert.match(html, /請求書/); assert.match(html, /架空銀行/); assert.match(html, /4,500/); assert.match(html, /2026年9月分/); assert.doesNotMatch(html, /<script/);
+  const v = h.rows('select version from invoices where id = ?', inv.id)[0].version;
+  await h.ok('billing/paid', { auth, id: inv.id, version: v, paidOn: '2026-10-02', method: '振込' });
+  const fam2 = await h.ok('billing/family', { auth, familyId: fam.id, month: '2026-09' });
+  assert.ok(fam2.invoice.receiptDocId, '領収書の書面');
+  const html2 = await (await h.raw('GET', (await h.ok('files/link', { auth: parent, id: fam2.invoice.receiptDocId })).url)).text();
+  assert.match(html2, /領収書/); assert.match(html2, /2026年10月2日/); assert.match(html2, /振込にて受領/);
+  const cats = h.rows("select category from files where refType = 'invoice' and refId = ? order by createdAt", inv.id).map(r => r.category);
+  assert.deepEqual(cats, ['invoice', 'receipt']);
+  const re = await h.ok('admin/billing/docs/rebuild', { auth, id: inv.id });
+  assert.notEqual(re.docs.invoiceDocId, fam1.invoice.invoiceDocId, '作り直すと新しい書面');
+});
