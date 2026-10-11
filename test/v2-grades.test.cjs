@@ -131,3 +131,18 @@ test('exams carry what test they belong to (series); the round is the name, and 
   assert.equal(moved.series, '北辰テスト'); assert.equal(moved.name, '2年2回');
   void a; void b;
 });
+
+test('a test shared as two nearby days (friday and monday) waits for results as one item, and recording once clears both', async () => {
+  const { h, auth, kid, k } = await world();
+  // 時計は 10/2 12:00。9/25（金）と 9/28（月）に分けて共有した中間テスト
+  const a = (await h.ok('student/events/add', { k, kind: 'test', date: '2026-09-25', title: '中間テスト' })).event;
+  const b = (await h.ok('student/events/add', { k, kind: 'test', date: '2026-09-28', title: '中間テスト' })).event;
+  await h.ok('student/events/add', { k, kind: 'test', date: '2026-09-01', title: '実力テスト' });
+  const pend = (await h.ok('grades/student', { auth, studentId: kid.id })).pendingTests;
+  assert.deepEqual(pend.map(p => [p.title, p.date, p.dateTo, p.eventIds.length]), [['実力テスト', '2026-09-01', '2026-09-01', 1], ['中間テスト', '2026-09-25', '2026-09-28', 2]]);
+  assert.equal(pend[1].eventId, a.id);
+  await h.ok('grades/exams/save', { auth, studentId: kid.id, series: '定期テスト', name: '中間テスト', date: '2026-09-28', eventId: a.id });
+  const after = (await h.ok('grades/student', { auth, studentId: kid.id })).pendingTests;
+  assert.deepEqual(after.map(p => p.title), ['実力テスト'], '1 つ記録すれば両方の日が待ちから外れる');
+  void b;
+});

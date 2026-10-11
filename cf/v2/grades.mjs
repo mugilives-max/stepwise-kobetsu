@@ -89,8 +89,17 @@ async function pendingTests(c, studentIds) {
   if (!studentIds.length) return [];
   const today = todayJst(c.now), q = `(${studentIds.map(() => '?').join(', ')})`;
   const events = (await c.db.prepare(`select e.*, s.familyName, s.givenName from sharedEvents e join students s on s.id = e.studentId where e.kind = 'test' and e.studentId in ${q} and e.dateTo < ? and e.dateTo >= ? order by e.dateTo`).bind(...studentIds, today, addDays(today, -60)).all()).results;
-  const done = new Set((await c.db.prepare(`select eventId from exams where eventId <> '' and studentId in ${q}`).bind(...studentIds).all()).results.map(r => r.eventId));
-  return events.filter(e => !done.has(e.id)).map(e => ({ eventId: e.id, studentId: e.studentId, studentName: fullName(e), title: e.title, date: e.date, dateTo: e.dateTo }));
+  // 同じ生徒の同じ題名のテストが 7 日以内に続くもの（中間テストを金曜と月曜で分けて共有した、など）は 1 つの待ちにまとめる。
+  // どれか 1 つに試験（記録・結果なし）ができれば、まとまりごと待ちから外れる。題名が同じで 7 日以内の試験があっても外れる（2026-10-11）
+  const exams = (await c.db.prepare(`select eventId, name, date from exams where studentId in ${q}`).bind(...studentIds).all()).results;
+  const WEEK = 7 * 86400e3, groups = [];
+  for (const e of events) {
+    const g = groups.find(x => x.studentId === e.studentId && x.title === e.title && Date.parse(e.date) - Date.parse(x.dateTo) <= WEEK);
+    if (g) { g.eventIds.push(e.id); if (e.dateTo > g.dateTo) g.dateTo = e.dateTo; }
+    else groups.push({ eventIds: [e.id], studentId: e.studentId, studentName: fullName(e), title: e.title, date: e.date, dateTo: e.dateTo });
+  }
+  return groups.filter(g => !exams.some(x => g.eventIds.includes(x.eventId) || (x.name === g.title && Math.abs(Date.parse(x.date) - Date.parse(g.dateTo)) <= WEEK)))
+    .map(g => ({ eventId: g.eventIds[0], eventIds: g.eventIds, studentId: g.studentId, studentName: g.studentName, title: g.title, date: g.date, dateTo: g.dateTo }));
 }
 
 // ---- 成績票 ----
