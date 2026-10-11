@@ -23,7 +23,7 @@ import { homeRoutes } from './home.mjs';
 import { studentHubRoutes } from './student-hub.mjs';
 import { monthlyRoutes } from './monthly.mjs';
 import { recordEffects, deliverEffects } from './effects.mjs';
-import { effectsAdminRoutes, retryFailedEffects } from './effects-admin.mjs';
+import { effectsAdminRoutes, retryFailedEffects, sweepStaleEffects } from './effects-admin.mjs';
 import { termsRoutes } from './terms.mjs';
 import { serviceActor, SERVICE_READS } from './service.mjs';
 import { backupRoutes, backupToR2 } from './backup.mjs';
@@ -83,6 +83,9 @@ export async function handleV2(request, env, ctx, head = {}) {
       const queued = await recordEffects(c.db, c.effects, c.now);
       const finish = deliverEffects(env, c.db, queued).catch(() => {});
       if (ctx && ctx.waitUntil) ctx.waitUntil(finish); else await finish;
+    } else if (ctx && ctx.waitUntil && c.actor) {
+      // 止まったままの送信があれば、この操作のついでに送る（応答は待たせない）
+      ctx.waitUntil(sweepStaleEffects(env, c.db, c.now).catch(() => {}));
     }
     return reply(200, { ok: true, ...(result || {}) });
   } catch (e) {

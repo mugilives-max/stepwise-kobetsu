@@ -107,3 +107,22 @@ test('effects: the manager can send one test mail to the owner to check the rela
   delete h.env.GAS_URL; delete h.env.SYNC_KEY;
   assert.equal((await h.call('admin/effects/test', { auth })).error.code, 'unavailable');
 });
+
+test('effects: a delivery that was cut off after the response is picked up by the next request, and by the nightly retry', async () => {
+  const { h, auth } = await world();
+  h.env.GAS_URL = 'https://gas.example.invalid/exec'; h.env.SYNC_KEY = 's'.repeat(30);
+  const { sweepStaleEffects, retryFailedEffects } = await import('../cf/v2/effects-admin.mjs');
+  const old = new Date(h.clock - 5 * 60e3).toISOString(), fresh = new Date(h.clock - 60e3).toISOString();
+  h.db2._sqlite.prepare("insert into effects (createdAt, kind, payload, status, error) values (?, 'mail', ?, 'pending', '')").run(old, JSON.stringify({ kind: 'mail', to: 'TEACHER', subject: '古い', body: 'x' }));
+  h.db2._sqlite.prepare("insert into effects (createdAt, kind, payload, status, error) values (?, 'mail', ?, 'pending', '')").run(fresh, JSON.stringify({ kind: 'mail', to: 'TEACHER', subject: '新しい', body: 'x' }));
+  const asked = await withFetch({ fail: false }, async () => { const r = await sweepStaleEffects(h.env, h.env.DB2, h.clock); assert.deepEqual([r.swept, r.sent], [1, 1]); });
+  assert.deepEqual(asked[0].items.map(i => i.subject), ['古い'], '3 分より前のものだけ');
+  const mine = () => h.mails().filter(m => m.subject === '古い' || m.subject === '新しい');
+  assert.deepEqual(mine().map(m => [m.subject, m.status]), [['古い', 'sent'], ['新しい', 'pending']]);
+  // 送る途中で切れて「送っている途中」の印のまま 10 分たったものは、夜の送り直しが拾う
+  h.db2._sqlite.prepare("update effects set error = '送っている途中' where status = 'pending'").run();
+  await withFetch({ fail: false }, async () => { const r = await retryFailedEffects(h.env, h.env.DB2, h.clock + 15 * 60e3); assert.equal(r.retried, 1); });
+  assert.deepEqual(mine().map(m => m.status), ['sent', 'sent']);
+  delete h.env.GAS_URL; delete h.env.SYNC_KEY;
+  void auth;
+});
