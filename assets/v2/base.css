@@ -120,7 +120,7 @@ button.small-btn.warn { background: var(--warn-soft); border-color: #f1d9ad; col
 .day-title { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .day-title strong { font-size: 16px; }
 .rows { display: grid; }
-.rows .ev { display: grid; grid-template-columns: 4.2em minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.rows .ev { display: grid; grid-template-columns: minmax(4.2em, max-content) minmax(0, 1fr) auto; /* 時刻の列は中身に合わせる（14:30〜15:30 が本文に重なっていた。2026-10-11） */ gap: 8px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 .rows .lesson { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 4.2em minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
 .rows .lesson:hover { background: #f4f7fb; }
 .rows .lesson:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
