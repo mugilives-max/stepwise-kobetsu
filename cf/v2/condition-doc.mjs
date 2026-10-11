@@ -23,7 +23,7 @@ export function conditionDocHtml({ cond, student, family, terms, proposer, now }
     ['基本の授業時間と税込基本単価', `1回 ${cond.minutes}分　<strong>${yen(cond.fee)}</strong>（税込）<br><span class="sub">通常指導の計画単価は、この基本単価を上限とします（規約第4条・第5条）。授業時間が異なる場合は時間に比例して計算します。</span>`],
     ['特殊指導', '<span class="sub">内容・通常指導との違い・準備・時間・税込料金を別途提示し、保護者の承認を得た場合に特殊指導料金を適用します（規約第5条）。</span>'],
     ['教材費等', '<span class="sub">塾が必要と判断して用意する教材は授業料に含みます。家庭の希望する指定教材は、事前の承諾により別途ご負担いただきます（規約第15条）。</span>'],
-    ['支払方法', '<span class="sub">銀行振込のみ。振込手数料は振込を行う側の負担です。請求は翌月3日に確定し、支払期限はその月の15日です（規約第13条）。</span>'],
+    ['支払方法', '<span class="sub">銀行振込のみ。振込手数料は振込を行う側の負担です。請求は翌月3日に確定し、支払期限はその月の15日です（規約第14条）。</span>'],
     ['生徒本人からの連絡', cond.studentContact ? '認める<br><span class="sub">前日23時までの無料のお休みは、生徒本人からも連絡できます。キャンセル料金が生じる連絡は保護者にもお知らせします（規約第7条・第18条）。</span>' : '認めない<br><span class="sub">お休み等の連絡は保護者からお願いします（規約第7条・第18条）。</span>'],
     ['特記事項', cond.note ? esc(cond.note).replace(/\n/g, '<br>') : 'なし'],
     ['同意する受講規約の版', termsV ? `${esc(termsV)}${terms && terms.url ? `　<span class="sub">全文：${esc(terms.url)}</span>` : ''}` : '<span class="sub">版が決まり次第、保護者ページでお知らせします</span>'],
