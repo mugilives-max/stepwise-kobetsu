@@ -205,7 +205,7 @@ export const billingRoutes = {
     const base = Number(s.baseRate30 || 0);
     if (base > 0 && n.fee > Math.floor(base * n.minutes / 30)) {
       const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
-      if (!sp || n.fee > Math.floor(Number(sp.fee) * n.minutes / Number(sp.minutes))) fail('needSpecial', `基本単価（30分 ${yen(base)}）を超える料金は、特殊指導承認書で保護者の承認を得てから設定します。授業の種類は承認書の名称（例: 英検準1級対策）にし、料金は承認した金額までにしてください`);
+      if (!sp || n.fee > Math.floor(Number(sp.fee) * n.minutes / Number(sp.minutes))) fail('needSpecial', `基本単価（30分 ${yen(base)}）を超える料金は、特殊指導条件書で保護者の承認を得てから設定します。授業の種類は特殊指導条件書の名称（例: 英検準1級対策）にし、料金は承認した金額までにしてください`);
     }
     const now = iso(c.now);
     if (old) {

@@ -1,6 +1,6 @@
 // 特殊指導の承認（規約 第5条。migrations-v2/0019_specials.sql）
 // - 教室管理者が「特殊指導を提案」する（admin/specials/propose）：名称、内容と範囲、通常指導との違い、準備、1回の時間と税込料金、対象期間。
-//   提案すると、その名称で「授業の種類」（lessonKinds）ができ、保護者にメールが届く。書面（特殊指導承認書・案）も残す
+//   提案すると、その名称で「授業の種類」（lessonKinds）ができ、保護者にメールが届く。書面（特殊指導条件書・案）も残す
 // - 保護者は保護者ページで内容を見て承認する（family/specials/agree）。承認された名称の種類でだけ、基本単価を超える料金の計画を作れる
 //   （billing/plans/save の needSpecial）。計画の承認そのものは止めない（特殊指導は任意）
 // - 書面・LINE でもらった承諾は教室管理者が記録する（admin/specials/record）。終わったら「終える」（admin/specials/end）
@@ -64,7 +64,7 @@ async function storeDoc(c, id) {
   const html = specialDocHtml({ sp, student, family, terms: await currentTerms(c.db), proposer: proposer ? proposer.name : '', now: iso(c.now) });
   const final = sp.status === 'agreed';
   return putGenerated(c, { category: 'contract', familyId: family.id, studentId: student.id, refType: 'special', refId: sp.id,
-    name: `特殊指導承認書_${sp.title}_第${sp.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '承認済み' : '案' });
+    name: `特殊指導条件書_${sp.title}_第${sp.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '承認済み' : '案' });
 }
 async function markAgreed(c, row, { at, via, by, note }) {
   await c.db.prepare("update specials set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, updatedAt = ? where id = ? and status = 'proposed'").bind(at, via, by, note, iso(c.now), row.id).run();
@@ -93,7 +93,7 @@ export const specialRoutes = {
       .bind(f.title, f.minutes, f.fee, now, now));
     await c.db.batch(stmts);
     await storeDoc(c, id);
-    await familyNotice(c, s.id, '特殊指導のご提案', `${fullName(s)}さんの特殊指導「${f.title}」をご提案します。保護者ページの「お支払い」で内容（特殊指導承認書）を確かめて、承認をお願いします。\n・1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・期間：${f.fromDate}〜${f.toDate}`);
+    await familyNotice(c, s.id, '特殊指導のご提案', `${fullName(s)}さんの特殊指導「${f.title}」をご提案します。保護者ページの「お支払い」で内容（特殊指導条件書）を確かめて、承認をお願いします。\n・1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・期間：${f.fromDate}〜${f.toDate}`);
     await audit(c, 'specialPropose', id, { studentId: s.id, no, title: f.title, fee: f.fee, minutes: f.minutes });
     return { special: await withDoc(c.db, specialView(await c.db.prepare('select * from specials where id = ?').bind(id).first())) };
   },
