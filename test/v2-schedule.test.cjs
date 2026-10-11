@@ -202,3 +202,13 @@ test('lessons that already took place can be registered as done by a manager (no
   const teacher = await h.staffWith(auth, ['teacher'], 'teacher@example.invalid');
   assert.equal((await h.call('schedule/lessons/create', { auth: teacher, studentId: kid.id, date: '2026-09-25', start: '13:00', minutes: 90, subject: '英語', deliveryMode: 'in_person', done: true })).error.code, 'forbidden');
 });
+
+test('meetings can be with someone who is not registered yet (name only), and they show on the staff schedule', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  const r = await h.ok('schedule/meetings/create', { auth, withName: '高橋さん（体験前）', date: '2026-10-11', start: '16:00', minutes: 60, title: '体験前の面談' });
+  assert.ok(r.id);
+  const day = await h.ok('schedule/staff/range', { auth, from: '2026-10-11', to: '2026-10-11' });
+  assert.deepEqual(day.meetings.map(m => [m.withName, m.familyId, m.title]), [['高橋さん（体験前）', '', '体験前の面談']]);
+  assert.equal((await h.call('schedule/meetings/create', { auth, date: '2026-10-11', start: '17:00', minutes: 30 })).error.code, 'needWho');
+  assert.equal((await h.call('schedule/meetings/create', { auth, familyId: 'fa_nothing', date: '2026-10-11', start: '17:00', minutes: 30 })).error.code, 'notFound');
+});
