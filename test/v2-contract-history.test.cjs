@@ -17,7 +17,7 @@ async function world() {
 test('contract versions: old consent opens its own immutable text, and unknown legacy links remain unknown', async () => {
   const {h,auth,parent,fam} = await world();
   await h.ok('admin/terms/set',{auth,version:'old',title:'旧規約',url:'https://example.invalid/old',from:'2026-10-01',note:'旧説明'});
-  await h.ok('family/terms/accept',{auth:parent,version:'old',agree:true,consenterName:'架空 保護者'});
+  await h.ok('family/terms/accept',{ consenterName:'架空 保護者',auth:parent,version:'old',agree:true,consenterName:'架空 保護者'});
   await h.ok('admin/terms/set',{auth,version:'new',title:'新規約',url:'https://example.invalid/new',from:'2026-11-01'});
   const t = (await h.ok('family/contracts',{auth:parent})).terms;
   assert.equal(t.agreed.url,'https://example.invalid/old');
@@ -29,8 +29,6 @@ test('contract versions: old consent opens its own immutable text, and unknown l
   h.db2._sqlite.prepare("update families set termsVersion='unknown',termsAcceptedAt='2026-08-01' where id=?").run(fam.id);
   const legacy=(await h.ok('family/terms',{auth:parent})).terms;
   assert.equal(legacy.agreed.version,'unknown'); assert.equal(legacy.agreed.url,'');
-  const {termsLine} = await import('../assets/v2/portal-ui.js');
-  assert.match(termsLine(t),/example\.invalid\/old/); assert.doesNotMatch(termsLine(t),/example\.invalid\/new/);
 });
 
 test('consent: actual approval and entry are separate, including a same-day early lesson', async () => {
@@ -41,7 +39,7 @@ test('consent: actual approval and entry are separate, including a same-day earl
   const ls=h.rows('select * from lessons where studentId=?',kid.id)[0];
   await h.ok('schedule/lessons/decide',{auth,id:ls.id,version:ls.version});
   assert.equal((await approve(p,'2026-10-02T09:00:00+09:00')).error.code,'afterLessonConsent');
-  assert.equal((await h.call('family/plans/decide',{auth:parent,id:p.id,version:row(p.id).version,approvedCount:4,consenterName:'架空 保護者'})).error.code,'afterLessonConsent');
+  assert.equal((await h.call('family/plans/decide',{ consenterName:'架空 保護者',auth:parent,id:p.id,version:row(p.id).version,approvedCount:4,consenterName:'架空 保護者'})).error.code,'afterLessonConsent');
   assert.equal((await h.call('billing/plans/consent',{auth,id:p.id,version:row(p.id).version,consentDate:'2026-10-02',via:'LINE'})).error.code,'needConsenter');
   const result=await approve(p,'2026-10-02T07:00:00+09:00'); assert.equal(result.ok,true,JSON.stringify(result));
   assert.equal(row(p.id).consentedAt,'2026-10-01T22:00:00.000Z'); assert.equal(row(p.id).recordedAt,'2026-10-02T03:00:00.000Z');
@@ -73,7 +71,7 @@ test('new documents preserve old files, show the purpose and explicit evidence, 
   const body={auth,studentId:kid.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'};
   const c=(await h.ok('admin/conditions/propose',body)).condition;
   const filesBefore=new Map([...h.env.FILES._m].map(([k,v])=>[k,Buffer.from(v.b)]));
-  await h.ok('family/conditions/agree',{auth:parent,id:c.id,agree:true,consenterName:'架空 保護者'});
+  await h.ok('family/conditions/agree',{ consenterName:'架空 保護者',auth:parent,id:c.id,agree:true,consenterName:'架空 保護者'});
   await h.ok('admin/conditions/propose',{...body,fromMonth:'2026-12'});
   for (const [key,bytes] of filesBefore) assert.deepEqual(Buffer.from(h.env.FILES._m.get(key).b),bytes);
   const history=(await h.ok('family/contracts',{auth:parent})).conditions.items[0].history;
@@ -84,7 +82,7 @@ test('new documents preserve old files, show the purpose and explicit evidence, 
   const file=(await h.ok('files/link',{auth:parent,id:sp.docFileId})).url;
   const html=await (await h.raw('GET',file)).text();
   assert.match(html,/指導の目的/); assert.match(html,/&lt;script&gt;/); assert.doesNotMatch(html,/<script>/);
-  await h.ok('family/specials/agree',{auth:parent,id:sp.id,agree:true,consenterName:'架空 保護者'});
+  await h.ok('family/specials/agree',{ consenterName:'架空 保護者',auth:parent,id:sp.id,agree:true,consenterName:'架空 保護者'});
   await h.ok('admin/specials/end',{auth,id:sp.id});
   assert.equal((await h.ok('family/contracts',{auth:parent})).specials.past[0].id,sp.id);
 });
@@ -93,9 +91,9 @@ test('migration is additive: original columns, consent records, files and histor
   const {h,auth,kid,parent,plan,approve}=await world();
   const p=await plan(); assert.equal((await approve(p)).ok,true);
   const c=(await h.ok('admin/conditions/propose',{auth,studentId:kid.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'})).condition;
-  await h.ok('family/conditions/agree',{auth:parent,id:c.id,agree:true});
+  await h.ok('family/conditions/agree',{ consenterName:'架空 保護者',auth:parent,id:c.id,agree:true});
   await h.ok('admin/terms/set',{auth,version:'fixture-old',title:'旧版',url:'https://example.invalid/old'});
-  await h.ok('family/terms/accept',{auth:parent,version:'fixture-old',agree:true});
+  await h.ok('family/terms/accept',{ consenterName:'架空 保護者',auth:parent,version:'fixture-old',agree:true});
   const db=createD1({migrate:false}), ms=migrationFiles('migrations-v2'), migration=ms.find(m=>m.name==='0020_contract_history.sql');
   for(const m of ms.filter(m=>m.name<'0020_contract_history.sql')) db._sqlite.exec(m.sql);
   const saved={}; db._sqlite.exec('pragma foreign_keys=off');

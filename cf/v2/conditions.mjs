@@ -45,7 +45,7 @@ async function storeDoc(c, condId) {
   const html = conditionDocHtml({ cond, student, family, terms: await termsForVersion(c.db, cond.termsVersion), proposer: proposer ? proposer.name : '', now: iso(c.now) });
   const final = cond.status === 'agreed';
   return putGenerated(c, { category: 'contract', familyId: family.id, studentId: student.id, refType: 'condition', refId: cond.id,
-    name: `基本指導条件書_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
+    name: `${cond.templateVersion === '20261012-r3' ? '基本' : '個別'}指導条件書_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
 }
 // 家族: 子どもごとの条件。同意していない条件があれば needs
 export async function familyConditions(db, students) {

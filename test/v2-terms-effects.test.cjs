@@ -25,7 +25,7 @@ test('terms: no version means nothing is asked; setting a version makes every fa
   const empty = (await h.ok('family/terms', { auth: parent })).terms;
   assert.equal(empty.current.version, ''); assert.equal(empty.agreed.version, ''); assert.equal(empty.needs, false); assert.deepEqual(empty.history, []);
   const l1 = await plan();
-  assert.equal((await h.ok('family/plans/decide', { auth: parent, id: l1.id, version: l1.version, approvedCount: 4 })).line.status, 'approved', '版がなければ同意なしで承認できる');
+  assert.equal((await h.ok('family/plans/decide', { consenterName:'架空 保護者', auth: parent, id: l1.id, version: l1.version, approvedCount: 4 })).line.status, 'approved', '版がなければ同意なしで承認できる');
   assert.equal((await h.call('admin/terms/set', { auth, version: '2026-11', title: '' })).error.code, 'needTitle');
   assert.equal((await h.call('admin/terms/set', { auth, version: '2026-11', title: '受講規約', url: 'http://insecure' })).error.code, 'badUrl');
   const set = await h.ok('admin/terms/set', { auth, version: '2026-11', title: '受講規約（2026年11月版）', url: 'https://example.invalid/terms.pdf', from: '2026-11-01', note: '取消料の決まりが新しくなります' });
@@ -35,18 +35,18 @@ test('terms: no version means nothing is asked; setting a version makes every fa
   const l2 = (await h.ok('billing/plans/save', { auth, studentId: l1.studentId, subject: '英語', kind: '通常', startDate: '2026-11-01', endDate: '2026-11-30', count: 4, minutes: 90, fee: 4500 })).line;
   await h.ok('billing/plans/send', { auth, familyId: (await h.ok('family/me', { auth: parent })).me.id });
   const cur = () => h.rows('select * from planLines where id = ?', l2.id)[0];
-  assert.equal((await h.call('family/plans/decide', { auth: parent, id: l2.id, version: cur().version, approvedCount: 4 })).error.code, 'needTerms', '同意していないと承認できない');
-  assert.equal((await h.ok('family/plans/decide', { auth: parent, id: l2.id, version: cur().version, approvedCount: 0 })).line.status, 'declined', '見送りは同意がなくてもよい');
-  assert.equal((await h.call('family/terms/accept', { auth: parent, version: '2026-11' })).error.code, 'needAgree');
-  assert.equal((await h.call('family/terms/accept', { auth: parent, version: '2026-10', agree: true })).error.code, 'staleVersion');
-  const acc = await h.ok('family/terms/accept', { auth: parent, version: '2026-11', agree: true });
+  assert.equal((await h.call('family/plans/decide', { consenterName:'架空 保護者', auth: parent, id: l2.id, version: cur().version, approvedCount: 4 })).error.code, 'needTerms', '同意していないと承認できない');
+  assert.equal((await h.ok('family/plans/decide', { consenterName:'架空 保護者', auth: parent, id: l2.id, version: cur().version, approvedCount: 0 })).line.status, 'declined', '見送りは同意がなくてもよい');
+  assert.equal((await h.call('family/terms/accept', { consenterName:'架空 保護者', auth: parent, version: '2026-11' })).error.code, 'needAgree');
+  assert.equal((await h.call('family/terms/accept', { consenterName:'架空 保護者', auth: parent, version: '2026-10', agree: true })).error.code, 'staleVersion');
+  const acc = await h.ok('family/terms/accept', { consenterName:'架空 保護者', auth: parent, version: '2026-11', agree: true });
   assert.deepEqual([acc.terms.needs, acc.terms.agreed.version], [false, '2026-11']);
   assert.deepEqual(h.rows('select version, via, actorKind from termsConsents').map(r => [r.version, r.via, r.actorKind]), [['2026-11', '保護者ページ', 'family']]);
   // 同意したあとの承認は、行に版が残る
   const l3 = (await h.ok('billing/plans/save', { auth, studentId: l1.studentId, subject: '国語', kind: '通常', startDate: '2026-11-01', endDate: '2026-11-30', count: 2, minutes: 90, fee: 4500 })).line;
   await h.ok('billing/plans/send', { auth, familyId: (await h.ok('family/me', { auth: parent })).me.id });
   const c3 = h.rows('select * from planLines where id = ?', l3.id)[0];
-  const ok = await h.ok('family/plans/decide', { auth: parent, id: l3.id, version: c3.version, approvedCount: 2 });
+  const ok = await h.ok('family/plans/decide', { consenterName:'架空 保護者', auth: parent, id: l3.id, version: c3.version, approvedCount: 2 });
   assert.deepEqual([ok.line.status, ok.line.termsVersion], ['approved', '2026-11']);
   // 版を変えると、また同意が要る。教室管理者が書面の同意を記録できる
   await h.ok('admin/terms/set', { auth, version: '2026-12', title: '受講規約（12月版）', url: '' });

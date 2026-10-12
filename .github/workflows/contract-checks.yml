@@ -3,7 +3,7 @@ on:
   push:
     branches: [codex/contracts-system-20261012]
   pull_request:
-    paths: ['cf/v2/**', 'cf/migrations-v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'test/v2-*', '.github/workflows/contract-checks.yml']
+    paths: ['scripts/check-contract-ui.cjs', 'cf/v2/**', 'cf/migrations-v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'test/v2-*', '.github/workflows/contract-checks.yml']
 permissions:
   contents: read
 jobs:
@@ -22,3 +22,14 @@ jobs:
           for f in staff/*.js family/*.js assets/v2/*.js; do node --check --input-type=module < "$f"; done
       - name: V2 regression tests
         run: node --test test/v2-*.test.cjs
+      - name: Browser checks with synthetic data
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/check-contract-ui.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contract-ui-checks
+          path: contract-ui-output/
+          retention-days: 14

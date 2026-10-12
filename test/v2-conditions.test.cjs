@@ -30,12 +30,12 @@ test('conditions: the manager proposes, the family must agree before approving a
   assert.equal(money.conditions.needs, true, 'お支払いの画面に出る');
 
   const line = await plan();
-  assert.equal((await h.call('family/plans/decide', { auth: parent, id: line.id, version: line.version + 1, approvedCount: 4 })).error.code, 'needConditions', '同意するまで承認できない');
-  assert.equal((await h.call('family/conditions/agree', { auth: parent, id: c1.id })).error.code, 'needAgree');
-  const after = (await h.ok('family/conditions/agree', { auth: parent, id: c1.id, agree: true })).conditions;
+  assert.equal((await h.call('family/plans/decide', { consenterName:'架空 保護者', auth: parent, id: line.id, version: line.version + 1, approvedCount: 4 })).error.code, 'needConditions', '同意するまで承認できない');
+  assert.equal((await h.call('family/conditions/agree', { consenterName:'架空 保護者', auth: parent, id: c1.id })).error.code, 'needAgree');
+  const after = (await h.ok('family/conditions/agree', { consenterName:'架空 保護者', auth: parent, id: c1.id, agree: true })).conditions;
   assert.deepEqual([after.needs, after.items[0].agreed.no, after.items[0].agreed.agreedVia], [false, 1, '保護者ページ']);
   const v = h.rows('select version from planLines where id = ?', line.id)[0].version;
-  assert.equal((await h.ok('family/plans/decide', { auth: parent, id: line.id, version: v, approvedCount: 4 })).line.status, 'approved');
+  assert.equal((await h.ok('family/plans/decide', { consenterName:'架空 保護者', auth: parent, id: line.id, version: v, approvedCount: 4 })).line.status, 'approved');
 
   // 新しい版をお知らせすると、前の合意は残ったまま「同意が要る」に戻る。教室管理者が LINE の承諾を記録できる
   const c2 = (await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 2500, deliveryMode: 'online', studentContact: false, subjects: '英語', note: '演習が中心のため', fromMonth: '2026-12' })).condition;
@@ -57,7 +57,7 @@ test('conditions: a teacher cannot propose, another family cannot agree, and the
   const c1 = (await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', fromMonth: '2026-11' })).condition;
   const other = (await h.ok('admin/families/create', { auth, name: '別家', email: 'other@example.invalid' })).family;
   const otherParent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: other.id }), h.mails().at(-1))), password: 'family password 2' })).auth;
-  assert.equal((await h.call('family/conditions/agree', { auth: otherParent, id: c1.id, agree: true })).error.code, 'notFound');
+  assert.equal((await h.call('family/conditions/agree', { consenterName:'架空 保護者', auth: otherParent, id: c1.id, agree: true })).error.code, 'notFound');
   const got = (await h.ok('admin/families/get', { auth, id: fam.id })).family.students[0].condition;
   assert.deepEqual([got.latest.no, got.needs], [1, true]);
   const hub = await h.ok('students/hub', { auth, studentId: kid.id });
@@ -77,7 +77,7 @@ test('conditions: a written document (HTML, like the invoice template) is stored
   assert.equal(res.status, 200); assert.match(res.headers.get('content-type'), /text\/html/);
   assert.match(html, /基本指導条件書/); assert.match(html, /4,500円/); assert.match(html, /兄弟割引なし/); assert.match(html, /まだ同意いただいていません/);
   assert.doesNotMatch(html, /<script/);
-  await h.ok('family/conditions/agree', { auth: parent, id: c1.id, agree: true });
+  await h.ok('family/conditions/agree', { consenterName:'架空 保護者', auth: parent, id: c1.id, agree: true });
   const after = (await h.ok('family/conditions', { auth: parent })).conditions.items[0].agreed;
   assert.notEqual(after.docFileId, c1.docFileId, '同意したら確定の書面がもう 1 つできる');
   const fin = h.rows('select name, note from files where id = ?', after.docFileId)[0];
