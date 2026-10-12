@@ -1,0 +1,66 @@
+name: Contract system release
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Validate only, or back up and publish the reviewed Worker
+        required: true
+        default: validate
+        type: choice
+        options: [validate, publish]
+  pull_request:
+    paths: ['.github/workflows/contract-release.yml', 'scripts/release-contract-system.mjs', 'test/release-contract-system.test.mjs']
+permissions:
+  contents: read
+concurrency:
+  group: stepwise-contract-production-release
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check scripts/release-contract-system.mjs
+      - run: node --test test/release-contract-system.test.mjs
+      - uses: actions/checkout@v4
+        with:
+          ref: b9334315c455b3a1357cd2701a260bcbe17deb7d
+          path: release-source
+          persist-credentials: false
+      - run: npm ci
+        working-directory: release-source
+      - name: Build the already tested release without production access
+        run: npx wrangler deploy --config cf/wrangler.jsonc --dry-run --outdir /tmp/contract-worker-build
+        working-directory: release-source
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'publish' && github.ref == 'refs/heads/main' && github.repository == 'mugilives-max/stepwise-kobetsu'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/checkout@v4
+        with:
+          ref: b9334315c455b3a1357cd2701a260bcbe17deb7d
+          path: release-source
+          persist-credentials: false
+      - run: npm ci
+        working-directory: release-source
+      - name: Back up, verify preservation, migrate, and publish
+        run: node scripts/release-contract-system.mjs
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GH_READ_TOKEN: ${{ github.token }}
+          WRANGLER_SEND_METRICS: 'false'
