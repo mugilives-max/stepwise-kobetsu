@@ -30,5 +30,15 @@
   "pdf_fonts_embedded": true,
   "embedded_font_programs": 259,
   "japanese_font_match": "Noto Sans CJK JP",
-  "visual_review_images": 14
+  "visual_review_images": 14,
+  "anchors": 177,
+  "source_snapshot_commit": "23c72763c3f7f72f780bc398168ed78dc460faed",
+  "visual_review": {
+    "date": "2026-10-12",
+    "reviewed_commit": "28704e149713d502ecae1a581333ea7b473ce320",
+    "pdf_pages_reviewed": 12,
+    "mobile_views_reviewed": 2,
+    "result": "全12ページで文字欠落・重なり・表のはみ出しなし。章見出しと本文、負担率の説明と表、別表の改ページを確認。390pxの画面で本文と料金表の表示を確認。",
+    "preview_workflow_run": "https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38208571073"
+  }
 }
