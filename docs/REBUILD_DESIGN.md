@@ -545,4 +545,21 @@
 
 **公開の順序**：本番D1の復元点と非公開バックアップを確保し、既存契約表・ファイルの件数を記録 → `0020` のみが未適用であることを確認してD1へ適用 → 同じコミットのWorkerを反映 → PRをmergeしてPages配信 → テスト用家庭で控えの読取りを確認。既存列・同意版・ファイルの不変を照合する。問題時はWorkerとPagesを直前版へ戻し、追加列・履歴は残す。D1全体の巻戻しは、その間の実操作を失うため自動実行しない。
 
-**公開の未完了理由**：今回、GitHub ActionsのSecrets設定画面へのアクセスが自動承認レビューに拒否された。認証情報に関わる設定の閲覧には明示承認が必要との理由。本番公開用の接続は未確認で、D1適用・Worker公開・Pages公開は未実施。APIより先に新画面を公開しないため、PR #54は未mergeで保持する。
+**公開の未完了理由（閲覧承認後に更新）**：本人の「ok」を受け、GitHub ActionsのSecrets登録状況を閲覧した。Environment・Repositoryとも未登録。Cloudflareの`stepwise-api`もGitリポジトリ未接続で、公開中はWranglerによる手動版（先頭`86728c46`）だった。閲覧の承認待ちは解消したが、GitHubから本番へ接続する認証情報の登録が必要。PR #54は未merge、本番D1・Worker・アプリ画面は未変更。
+
+#### GitHub上だけで公開するための準備
+
+公開手順だけを先にmainへ保存した（PR #55、`db33fc993f01c9ba6064e98a7deadad28eae1e7b`）。[PR #55](https://github.com/mugilives-max/stepwise-kobetsu/pull/55)の`Contract system release`は手動実行で、既定の`validate`は本番へ接続しない。`publish`はmainからだけ実行でき、対象を検証済みの`b9334315c455b3a1357cd2701a260bcbe17deb7d`に固定する。ソース・稼働版・未適用移行の変化があれば停止して再確認する。17件の公開順序・停止条件のテストとWorkerの公開なしビルドは[Actions 38222071043](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38222071043)で成功。本番の接続・権限・バックアップ実行まで検証したという意味ではない。
+
+初回は本人がGitHubの[Actions Secrets](https://github.com/mugilives-max/stepwise-kobetsu/settings/secrets/actions)へ次の2件を登録する。値はチャット・公開コード・Kuraへ貼らない。
+
+| Secret名 | 設定する値 |
+|---|---|
+| `CLOUDFLARE_ACCOUNT_ID` | Stepwiseを運用するCloudflareアカウントのID |
+| `CLOUDFLARE_API_TOKEN` | 下記の対象と権限に限定した公開用APIトークン |
+
+必要な対象は既存Worker `stepwise-api`の公開、D1 `stepwise-v2`の読取・バックアップ・移行、R2 `stepwise-files`の非公開バックアップ保存・読戻しと公開設定の読取。Cloudflareの現行権限モデルでは各対象のEditorを使い、可能な限り個別リソースに限定する。旧権限名の画面ではWorkers Scripts Edit・D1 Edit・Workers R2 Storage Editに相当するが、画面の対象範囲を確認し、別アカウントやDNS等の不要な権限を追加しない。[公式のGitHub Actions設定](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)と[権限の説明](https://developers.cloudflare.com/workers/authorization/)を参照。
+
+登録後は、mainの`Contract system release`を`publish`で実行する。D1全体SQL・旧Worker・移行前の契約列の写しを、非公開を確認した同じR2の`release-backups/contracts-20261012/<run-id>-<attempt>/`へ保存する。公開GitHubのログや成果物には出さず、保存後の読戻し一致を確認する。日次バックアップとは別のキーで、既存の書面やバックアップを置き換えない。移行前後の既存契約列・家族の同意版・ファイル記録の不変を照合してからWorkerを公開し、公開APIの正常応答を確認する。生徒・保護者への通知は送らない。
+
+完了後もPR #54は自動mergeしない。テスト用家庭で読み取りを確認してからmergeし、Pagesの配信と画面反映を確認する。途中失敗後は再実行で済ませず、保存された非公開manifestとD1・Workerの状態を確認する。0020適用済みや稼働版の変化は自動停止の対象。必要ならWorker・Pagesだけ直前版へ戻し、追加列・履歴を保持する。
