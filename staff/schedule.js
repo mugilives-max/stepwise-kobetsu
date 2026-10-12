@@ -15,6 +15,11 @@ const addMonths = (ym, n) => { const [y, m] = ym.split('-').map(Number), t = new
 const gridStart = ym => { const first = new Date(ym + '-01T00:00:00Z'); return new Date(first - first.getUTCDay() * 86400e3).toISOString().slice(0, 10); };
 const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400e3).toISOString().slice(0, 10);
 export function resetSchedule() { data = null; loadedFor = ''; sheet = null; cache = {}; }
+// 予定表を送るときに外した未送信の授業（チェックを外したもの）。既定は全部入れる
+const unpicked = new Set();
+export function schedulePick(id, on) { if (on) unpicked.delete(id); else unpicked.add(id); }
+// 未送信の仮予定（今日以降は全部。古い応答なら表示中の月の分）
+const heldLessons = () => data.heldAll || data.lessons.filter(l => l.status === 'held');
 // 月ごとに読んだ予定をとっておく（スワイプで月を変えたとき、すぐ出せるように。前後の月は先に読んでおく）。予定を変えたら捨てる
 let cache = {}, swipeAt = 0, slideIn = '';
 // 月の表では、生徒ごとに授業をまとめ、まだ決まっていないものがあればその色で出す
@@ -47,7 +52,7 @@ export function schedulePage(ctx, me) {
   if ((!data || loadedFor !== month) && cache[month]) { data = cache[month]; loadedFor = month; prefetchNear(ctx); } // 先に読んであった月はすぐ出す
   if (!data || loadedFor !== month) { if (loadedFor !== month) load(ctx); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
   const nameOf = Object.fromEntries(data.students.map(s => [s.id, s.name])), staffOf = Object.fromEntries(data.staff.map(s => [s.id, s.name])), short = shortNames();
-  const held = {}; data.lessons.filter(l => l.status === 'held').forEach(l => { held[l.studentId] = (held[l.studentId] || 0) + 1; });
+  const held = {}; heldLessons().forEach(l => { held[l.studentId] = (held[l.studentId] || 0) + 1; });
   const todo = manager ? data.openRequests.length + Object.keys(held).length : 0;
   // 上の帯: 月の切り替え・今日・対応すること・作る
   let h = `<div class="sch-bar"><button class="icon" data-action="sch-month" data-n="-1" aria-label="前の月">‹</button><strong class="sch-month">${Number(month.slice(0, 4))}年${Number(month.slice(5))}月</strong><button class="icon" data-action="sch-month" data-n="1" aria-label="次の月">›</button>
@@ -227,10 +232,20 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held) {
       <div class="small">${esc(r.note || '')}<span class="muted">（${r.fromKind === 'family' ? '保護者' : r.fromKind === 'student' ? '生徒' : 'スタッフ'}・${esc(r.receivedAt.slice(5, 16).replace('T', ' '))}）</span></div>
       <div class="small muted">${r.kind === 'move' ? '授業を開いて「日時・内容を直す」で日時を変えると、済みになります。' : r.kind === 'late' ? (rateRule(r) ? '応じるときは「日時・内容を直す」で開始時刻を変え、「生徒の申し出で開始を遅らせる」に印を付けてください（遅らせた分の取消料）。応じないときは「済みにする」。' : '応じるときは「日時・内容を直す」で開始時刻を変えてください（料金は変わりません）。') : r.kind === 'cancel' ? (rateRule(r) ? 'キャンセル料は連絡の時刻で自動に計算しました（「請求」で確かめられます）。' : 'キャンセル料は「請求」で決めます。') : ''}</div></div>
       <div class="row"><button data-action="sch-goto" data-date="${r.date}" data-id="${esc(r.lessonId || '')}">授業を開く</button><button data-action="sch-resolve" data-id="${esc(r.id)}"${ctx.dis()}>済みにする</button></div></div>`).join('') + '</div>' : '')
-      + (Object.keys(held).length ? `<h2>未送信の仮予定</h2><div class="list">` + Object.entries(held).map(([sid, n]) => `<div><div><strong>${esc(nameOf[sid] || '')}</strong> ${n}件</div><div><button class="primary" data-action="sch-send" data-sid="${esc(sid)}"${ctx.dis()}>予定表を送る</button></div></div>`).join('') + '</div>' : '');
+      + (Object.keys(held).length ? `<h2>未送信の仮予定</h2><p class="small muted" style="margin-top:-4px">送る授業に印を付けてください。印を外した授業は未送信のまま残ります。</p>` + Object.keys(held).map(sid => heldGroup(ctx, sid, nameOf)).join('') : '');
   }
   const tabs = (manager && ['create', 'off', 'meeting'].includes(sheet.kind)) ? `<div class="seg">${[['create', '仮予定'], ['off', '休み'], ['meeting', '面談']].map(([k, lb]) => `<button class="${sheet.kind === k ? 'on' : ''}" data-action="sch-sheet" data-k="${k}">${lb}</button>`).join('')}</div>` : '';
   return `<div class="overlay" data-action="sch-close"></div><section class="bsheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div><div class="bsheet-head"><strong>${esc(title)}</strong><button class="icon" data-action="sch-close" aria-label="閉じる">×</button></div>${tabs}<div class="bsheet-body">${body}</div></section>`;
+}
+
+// 未送信の仮予定（生徒ごと）。授業ごとに印を付けて、印のある授業だけを送る
+function heldGroup(ctx, sid, nameOf) {
+  const { esc } = ctx, mine = heldLessons().filter(l => l.studentId === sid), picked = mine.filter(l => !unpicked.has(l.id));
+  const trial = !!(data.students.find(x => x.id === sid) || {}).trial;
+  const rows = mine.map(l => `<label class="small" style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" data-hpick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} style="width:auto">
+    <span>${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)} ${esc(l.subject)}${l.kind && l.kind !== '通常' ? ` <span class="tag gray">${esc(l.kind)}</span>` : ''}${/^MCP で保存/.test(l.note || '') ? ' <span class="tag">AI が保存</span>' : ''}</span></label>`).join('');
+  return `<div class="held-group" style="margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px"><div style="display:flex;align-items:center;gap:8px"><strong>${esc(nameOf[sid] || '')}</strong>${trial ? ' <span class="tag gray">体験</span>' : ''}<span class="small muted">未送信 ${mine.length}件</span></div>${rows}
+    <div class="row" style="margin-top:6px"><button class="primary" data-action="sch-send" data-sid="${esc(sid)}"${picked.length ? ctx.dis() : ' disabled'}>${trial ? `選んだ ${picked.length}件を決定にする` : `選んだ ${picked.length}件を予定表として送る`}</button></div></div>`;
 }
 
 const minutesOptions = v => [30, 45, 60, 90, 120, 150, 180, 210, 240, 270, 300, 360, 390, 420, 480].map(m => `<option value="${m}"${m === Number(v) ? ' selected' : ''}>${m >= 120 ? `${m}分（${Math.floor(m / 60)}時間${m % 60 ? m % 60 + '分' : ''}）` : m + '分'}</option>`).join('');
@@ -363,7 +378,16 @@ export async function scheduleClick(ctx, a, b) {
     await after(ctx, await ctx.call(simple[a][0], { id: l.id, version: l.version }), simple[a][1]); return true;
   }
   if (a === 'sch-resolve') { await after(ctx, await ctx.call('schedule/requests/resolve', { id }), '済みにしました'); return true; }
-  if (a === 'sch-send') { if (!confirm('未送信の仮予定を予定表として送りますか？ 保護者に1回お知らせします。')) return true; const r = await ctx.call('schedule/lessons/sendHeld', { studentId: b.dataset.sid }); await after(ctx, r, r.ok ? r.sent + '件の予定表を送りました' : ''); return true; }
+  if (a === 'sch-send') {
+    const sid = b.dataset.sid, mine = heldLessons().filter(l => l.studentId === sid), ids = mine.filter(l => !unpicked.has(l.id)).map(l => l.id), rest = mine.length - ids.length;
+    const st = data.students.find(x => x.id === sid) || {}, trial = !!st.trial;
+    if (!ids.length) return true;
+    const ask = trial ? `${st.name || ''}さんの体験の授業 ${ids.length}件を決定にして、Google カレンダーに入れますか？（メールは送りません）` : `${st.name || ''}さんの仮予定 ${ids.length}件を予定表として送りますか？ 保護者に1回お知らせします。`;
+    if (!confirm(ask + (rest ? `\n印を外した ${rest}件は未送信のまま残ります。` : ''))) return true;
+    const r = await ctx.call('schedule/lessons/sendHeld', { studentId: sid, lessonIds: ids });
+    if (r.ok) ids.forEach(x => unpicked.delete(x));
+    await after(ctx, r, r.ok ? (r.trial ? `${r.sent}件を決定にしました` : `${r.sent}件の予定表を送りました`) + (r.left ? `（未送信 ${r.left}件は残っています）` : '') : ''); return true;
+  }
   if (a === 'sch-off-del') { await after(ctx, await ctx.call('schedule/unavailability/delete', { id }), '休みを消しました'); return true; }
   if (a === 'sch-ev-del') {
     const ids = String(b.dataset.ids || id || '').split(',').filter(Boolean), n = Number(b.dataset.n || ids.length);
