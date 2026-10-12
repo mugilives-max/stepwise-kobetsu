@@ -303,8 +303,9 @@ export const billingRoutes = {
     const knownBy = r => Date.parse(r.acceptedAt.length === 10 ? r.acceptedAt + 'T23:59:59+09:00' : r.acceptedAt) <= Date.parse(evidence.consentedAt);
     const prior = consents.filter(knownBy).sort((a,b) => Date.parse(b.acceptedAt) - Date.parse(a.acceptedAt))[0];
     const termsVersion = prior?.version || (family.termsAcceptedAt && knownBy({acceptedAt:family.termsAcceptedAt}) ? family.termsVersion : '') || '';
-    await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
+    const saved = await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
       .bind(count, now, 'staff:' + me.id, via, todayJst(Date.parse(evidence.consentedAt)), note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, now, l.id, l.version).run();
+    if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
     await audit(c, 'planConsent', l.id, { via, consentDate, count });
     return { line: lineView(await getLine(c, l.id)) };
   },
@@ -467,7 +468,7 @@ export const billingRoutes = {
     const me = await requireFamily(c, b);
     const students = (await c.db.prepare('select * from students where familyId = ? order by createdAt').bind(me.id).all()).results, ids = students.map(s => s.id);
     const names = Object.fromEntries(students.map(s => [s.id, fullName(s)]));
-    const terms = await familyTerms(c.db, me), conditions = await familyConditions(c.db, students), specials = await familySpecials(c.db, students.filter(s => s.status !== 'left'));
+    const terms = await familyTerms(c.db, me), conditions = await familyConditions(c.db, students.filter(s => s.status !== 'left')), specials = await familySpecials(c.db, students.filter(s => s.status !== 'left'));
     if (!ids.length) return { plans: [], fees: [], invoices: [], terms, conditions, specials };
     const q = `(${ids.map(() => '?').join(', ')})`, since = addDays(todayJst(c.now), -92);
     // 保存された過去の計画を期間で隠さない。過去に初めて承認する操作は別に拒否する
@@ -496,8 +497,9 @@ export const billingRoutes = {
     if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '基本指導条件への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
     const now = iso(c.now), evidence = consentEvidence(c, b, me, me);
     if (count > 0) await assertPriorConsent(c, l, evidence.consentedAt);
-    await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
+    const saved = await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
       .bind(count > 0 ? 'approved' : 'declined', count, now, todayJst(c.now), terms.agreed.version, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, l.id, l.version).run();
+    if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
     const s = await getStudent(c, l.studentId);
     await staffNotice(c, `【計画の${count > 0 ? '承認' : '見送り'}】${fullName(s)}さん`, `${fullName(s)}さん ${l.subject}（${md(l.startDate)}〜${md(l.endDate)}）\n${count > 0 ? `${count}回で承認されました（お知らせは${l.count}回）` : '見送りになりました'}`);
     await audit(c, 'planDecide', l.id, { count });

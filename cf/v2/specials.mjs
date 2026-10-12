@@ -70,7 +70,8 @@ async function storeDoc(c, id) {
     name: `特殊指導条件書_${sp.title}_第${sp.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '承認済み' : '案' });
 }
 async function markAgreed(c, row, { at, via, by, note, evidence }) {
-  await c.db.prepare("update specials set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'").bind(at, via, by, note, evidence.consenterName, evidence.recordedAt, evidence.recordedByName, iso(c.now), row.id).run();
+  const saved = await c.db.prepare("update specials set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'").bind(at, via, by, note, evidence.consenterName, evidence.recordedAt, evidence.recordedByName, iso(c.now), row.id).run();
+  if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
 }
 
 export const specialRoutes = {
@@ -127,7 +128,7 @@ export const specialRoutes = {
   // ---- 保護者 ----
   'family/specials': async (c, b) => {
     const me = await requireFamily(c, b);
-    const students = (await c.db.prepare("select * from students where familyId = ? order by createdAt").bind(me.id).all()).results;
+    const students = (await c.db.prepare("select * from students where familyId = ? and status <> 'left' order by createdAt").bind(me.id).all()).results;
     return { specials: await familySpecials(c.db, students) };
   },
   'family/specials/agree': async (c, b) => {
@@ -139,7 +140,7 @@ export const specialRoutes = {
     await markAgreed(c, row, { at: iso(c.now), via: '保護者ページ', by: 'family:' + me.id, note: '', evidence: consentEvidence(c, b, me, me) });
     await storeDoc(c, row.id);
     await audit(c, 'specialAgreed', row.id, { familyId: me.id });
-    const students = (await c.db.prepare("select * from students where familyId = ? order by createdAt").bind(me.id).all()).results;
+    const students = (await c.db.prepare("select * from students where familyId = ? and status <> 'left' order by createdAt").bind(me.id).all()).results;
     return { specials: await familySpecials(c.db, students) };
   },
 };

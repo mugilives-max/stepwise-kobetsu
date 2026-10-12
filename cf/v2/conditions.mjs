@@ -72,7 +72,8 @@ function studentRow(c, id) { return c.db.prepare('select * from students where i
 
 async function markAgreed(c, row, { at, via, by, note, evidence }) {
   const now = iso(c.now);
-  await c.db.prepare("update conditions set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'").bind(at, via, by, note, evidence.consenterName, evidence.recordedAt, evidence.recordedByName, now, row.id).run();
+  const saved = await c.db.prepare("update conditions set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'").bind(at, via, by, note, evidence.consenterName, evidence.recordedAt, evidence.recordedByName, now, row.id).run();
+  if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
 }
 
 export const conditionRoutes = {
@@ -123,7 +124,7 @@ export const conditionRoutes = {
   // ---- 保護者 ----
   'family/conditions': async (c, b) => {
     const me = await requireFamily(c, b);
-    const students = (await c.db.prepare("select * from students where familyId = ? order by createdAt").bind(me.id).all()).results;
+    const students = (await c.db.prepare("select * from students where familyId = ? and status <> 'left' order by createdAt").bind(me.id).all()).results;
     return { conditions: await familyConditions(c.db, students) };
   },
   'family/conditions/agree': async (c, b) => {
@@ -135,7 +136,7 @@ export const conditionRoutes = {
     await markAgreed(c, row, { at: iso(c.now), via: '保護者ページ', by: 'family:' + me.id, note: '', evidence: consentEvidence(c, b, me, me) });
     await storeDoc(c, row.id);
     await audit(c, 'conditionAgreed', row.id, { familyId: me.id });
-    const students = (await c.db.prepare("select * from students where familyId = ? order by createdAt").bind(me.id).all()).results;
+    const students = (await c.db.prepare("select * from students where familyId = ? and status <> 'left' order by createdAt").bind(me.id).all()).results;
     return { conditions: await familyConditions(c.db, students) };
   },
 };

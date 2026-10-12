@@ -122,3 +122,24 @@ test('copied plans keep their proposer without copying the previous consent', as
  const copy=h.rows("select * from planLines where startDate='2026-12-01'")[0];
  assert.ok(copy.proposedByName);assert.equal(copy.instructionType,'regular');assert.equal(copy.consenterName,'');
 });
+
+test('a former student stays in the archive without blocking current family approvals', async()=>{
+ const {h,auth,kid,parent}=await world();
+ await h.ok('admin/conditions/propose',{auth,studentId:kid.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'});
+ h.db2._sqlite.prepare("update students set status='left' where id=?").run(kid.id);
+ const money=await h.ok('family/money',{auth:parent});
+ assert.equal(money.conditions.needs,false);
+ assert.equal((await h.ok('family/contracts',{auth:parent})).conditions.items[0].history.length,1);
+});
+test('a concurrently replaced condition cannot produce a false agreement or another file', async()=>{
+ const {h,auth,kid,parent}=await world();
+ const c=(await h.ok('admin/conditions/propose',{auth,studentId:kid.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'})).condition;
+ const prepare=h.db2.prepare, files=h.env.FILES._m.size;
+ h.db2.prepare=sql=>{
+  if(sql.startsWith("update conditions set status = 'agreed'")) return {bind:()=>({run:async()=>({meta:{changes:0}})})};
+  return prepare(sql);
+ };
+ const r=await h.call('family/conditions/agree',{auth:parent,id:c.id,agree:true,consenterName:'架空 保護者'});
+ assert.equal(r.error.code,'conflict');assert.equal(h.env.FILES._m.size,files);
+ assert.equal(h.rows('select status from conditions where id=?',c.id)[0].status,'proposed');
+});
