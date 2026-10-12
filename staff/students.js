@@ -27,6 +27,12 @@ export function studentsPage(ctx) {
   let h = ctx.notice();
   if (list.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
   h += `<label class="search"><svg viewBox="0 0 24 24" aria-hidden="true">${SEARCH}</svg><input type="search" data-input="stu-query" value="${esc(query)}" placeholder="名前・ふりがなで探す" aria-label="生徒を探す"></label>`;
+  // 体験生（まだ入塾していない人）を臨時で登録する。登録すると予定表で授業を入れられる（種類「体験」・無料）
+  if (list.manager) h += `<details class="trial-new"><summary>＋ 体験生を登録（まだ入塾していない人）</summary><form class="stack" data-form="trial-create">
+    <div class="row"><label style="flex:1">名字<input name="familyName" maxlength="40" required placeholder="高橋"></label><label style="flex:1">名前<input name="givenName" maxlength="40" placeholder="香帆"></label><label style="flex:1">学年<input name="grade" maxlength="20" placeholder="中3"></label></div>
+    <label>メモ（紹介・志望など）<input name="note" maxlength="1000"></label>
+    <p class="small muted">家族は「◯◯さん」で作ります。メールは入れないので、お知らせは届きません。授業は予定表から入れ、種類「体験」（無料）でそのまま決定になります。入塾が決まったら、その生徒の基本情報で「入塾にする」。</p>
+    <div class="row"><button class="primary"${ctx.dis()}>登録する</button></div></form></details>`;
   const q = query.trim();
   const match = s => !q || s.name.includes(q) || s.kana.includes(q);
   let any = false;
@@ -34,7 +40,7 @@ export function studentsPage(ctx) {
     const ss = f.students.filter(match); if (!ss.length) continue; any = true;
     h += `<div class="fam-head"><span>${esc(f.name || '')}</span>${list.manager && f.id ? `<a class="mini-btn" href="#family=${encodeURIComponent(f.id)}" aria-label="${esc(f.name || '家族')}の連絡先・招待"><svg viewBox="0 0 24 24" aria-hidden="true">${PERSON}</svg></a>` : ''}</div>`;
     h += '<div class="group">' + ss.map(s => {
-      const sub = [esc(s.grade || ''), s.status === 'paused' ? '休会' : s.status === 'left' ? '退会' : '', s.testOnly ? 'テスト' : '', s.next ? '次 ' + md(s.next.slice(0, 10)) + ' ' + esc(s.next.slice(11)) : ''].filter(Boolean).join('・');
+      const sub = [s.trial ? '<span class="tag warn">体験</span>' : '', esc(s.grade || ''), s.status === 'paused' ? '休会' : s.status === 'left' ? '退会' : '', s.testOnly ? 'テスト' : '', s.next ? '次 ' + md(s.next.slice(0, 10)) + ' ' + esc(s.next.slice(11)) : ''].filter(Boolean).join('・');
       const badges = (s.requests ? `<span class="pill red" title="連絡">${svg('mail')}${s.requests}</span>` : '') + (s.pendingRecords ? `<span class="pill warn" title="記録待ち">${svg('pencil')}${s.pendingRecords}</span>` : '');
       return `<a class="srow${s.status === 'left' ? ' left' : ''}" href="#student=${encodeURIComponent(s.id)}"><span class="av" style="background:${avColor(s.name)}" aria-hidden="true">${esc(initial(s.name))}</span>
         <span class="b"><strong>${esc(s.name)}</strong><small class="muted">${sub}</small></span><span class="badges">${badges}</span><span class="go">›</span></a>`;
@@ -131,9 +137,26 @@ function money(ctx, x) {
 function basic(ctx, x) {
   const { esc } = ctx, b = x.basic, s = x.student;
   const row = (k, v) => v ? `<div class="ev"><span class="t" style="font-weight:400">${k}</span><span class="b" style="color:var(--ink)">${esc(v)}</span><span></span></div>` : '';
-  return `<h2>生徒</h2><div class="rows">${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('基本単価', b.baseRate30 ? yen(b.baseRate30) + '／30分' : '')}${row('個別指導条件', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}</div>
+  const trialBox = s.trial ? `<div class="notice" style="margin-top:12px"><strong>体験生です</strong>（まだ入塾していません。授業は種類「体験」で無料）。<div class="row" style="margin-top:8px"><button class="primary" data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">入塾にすると、同じ生徒のまま記録・成績・体験の授業が引き継がれます。そのあと家族の画面でメールを入れて招待し、条件と計画をお知らせします。</p></div>` : '';
+  return trialBox + `<h2>生徒</h2><div class="rows">${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('基本単価', b.baseRate30 ? yen(b.baseRate30) + '／30分' : '')}${row('個別指導条件', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}</div>
     <h2>家族</h2><div class="rows">${row('家族', b.familyName)}${row('保護者', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</div>
     <h2>その人の目で見る</h2><p class="small muted">表示だけです。押しても何も変わりません（1時間で切れます）。</p>
     <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る（プレビュー）</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る（プレビュー）</button></div>
     <p style="margin-top:12px"><a class="small-btn" href="#family=${encodeURIComponent(b.familyId)}">直す・招待・専用リンク（家族の画面）</a></p>`;
+}
+
+// ---------- 体験生 ----------
+export async function studentsSubmit(ctx, kind, el) {
+  if (kind !== 'trial-create') return false;
+  const v = Object.fromEntries(new FormData(el).entries());
+  const r = await ctx.call('admin/trials/create', { familyName: v.familyName, givenName: v.givenName, grade: v.grade, note: v.note });
+  if (r.ok) { list = null; ctx.say(`${v.familyName}${v.givenName ? ' ' + v.givenName : ''}さんを体験生で登録しました。予定表から授業を入れられます`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+  return true;
+}
+export async function studentsClick(ctx, a, b) {
+  if (a !== 'trial-enroll') return false;
+  if (!confirm('この生徒を入塾にしますか？（入塾日は今日。体験の授業はそのまま無料で残ります）')) return true;
+  const r = await ctx.call('admin/trials/enroll', { studentId: b.dataset.id });
+  if (r.ok) { list = null; hub = null; hubFor = ''; ctx.say('入塾にしました。家族の画面でメールを入れて招待してください', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+  return true;
 }

@@ -703,3 +703,9 @@ form[data-form=sch-meeting]:has(select[name=familyId] option[value=""]:checked) 
 .cond-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 10px 0; font-size: 14px; }
 .cond-dl dt { color: var(--muted); white-space: nowrap; }
 .cond-dl dd { margin: 0; }
+/* 体験生（2026-10-12） */
+.trial-new { margin: 10px 0 4px; }
+.trial-new summary { cursor: pointer; color: var(--primary); font-weight: 700; font-size: 14px; padding: 6px 2px; }
+.trial-new form { margin-top: 6px; background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+form[data-form=sch-create] .trial-hint { display: none; margin: -4px 0 0; }
+form[data-form=sch-create]:has(select[name=studentId] option[data-trial]:checked) .trial-hint { display: block; }

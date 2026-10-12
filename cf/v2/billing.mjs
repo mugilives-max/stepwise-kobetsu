@@ -182,7 +182,7 @@ export const billingRoutes = {
     const rows = [];
     for (const s of students) {
       const sb = await studentBilling(c.db, s.id);
-      const tentative = (await c.db.prepare("select * from lessons where studentId = ? and status in ('held', 'proposed') and date between ? and ?").bind(s.id, from, to).all()).results;
+      const tentative = (await c.db.prepare("select * from lessons where studentId = ? and status in ('held', 'proposed') and kind <> '体験' and date between ? and ?").bind(s.id, from, to).all()).results;
       const usage = usageOf(sb, tentative);
       const lines = sb.lines.filter(l => l.startDate <= to && from <= l.endDate);
       const lessonsInMonth = sb.lessons.filter(l => l.date >= from && l.date <= to);
