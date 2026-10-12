@@ -40,7 +40,7 @@ ChatGPT / Codex ─► stepwise-mcp ─serviceWriteKey─► stepwise-api /v2/mc
 | `get_write_request` | `mcp/requests/get` | requestId の結果と、送ったメールの今の状態（sent / pending / failed） | 0 |
 
 - **鍵**：`stepwise-api` の Secret `V2_SERVICE_WRITE_KEY` と、`stepwise-mcp` の Secret `STEPWISE_V2_WRITE_KEY` に同じ値。**読み取りの鍵（V2_SERVICE_KEY）とは別の値**にする（同じ値は Worker が断る）。読み取りの鍵では mcp/ の道は通らず、書き込みの鍵では mcp/ 以外（一般の管理 API）は通らない。どちらの Secret も無ければ、書き込みのツールは出ない・誰も書けない。
-- **範囲**：`stepwise-api` の `V2_SERVICE_WRITE_SCOPE` が `all` でなければ、テスト用の生徒（testOnly か名字が【テスト】）だけ。本物の生徒に使うのは、テストで流れを確かめてから `all` にする（本人の承認）。
+- **範囲**：`stepwise-api` の `V2_SERVICE_WRITE_SCOPE` が `all` でなければ、テスト用の生徒（testOnly か名字が【テスト】）だけ。本物の生徒に使うのは、テストで流れを確かめてから `all` にする（本人の承認）。**2026-10-13 に `all`**（`cf/wrangler.jsonc` の vars。【テスト】の生徒で本番の一回りを確かめ、本人が承認）。テスト用だけに戻すときは、その行を消して deploy。
 - **履歴**：送ったお知らせは `lessonNotices`（授業ごと・宛先は伏せ字・メールの effects の ID）。訂正しても消さない。依頼は `mcpRequests` / `mcpRequestItems`。メールは送信の控え（effects）に入り、届いたかは effects の状態。送れなかったメールを自動で再送はしない（送信の記録で送り直す）。
 - **しないこと**：請求・金額・契約・同意の代行・支払い・削除・汎用の管理 API の直通。保存や訂正のついでのお知らせ。通常の授業を、メールを減らすために決定にすること。
 - **確かめ方（本番に触れない）**：`stepwise-kobetsu` で `node --test test/v2-mcp-writes.test.cjs`（受入条件。誤選択→訂正→プレビュー→送信、冪等、選んだ ID だけ、古いプレビュー、日程変更、体験生のリンク）。MCP までつなぐなら、仮の鍵 2 つで `scripts/dev-v2-preview.mjs --live`（`V2_SERVICE_KEY`・`V2_SERVICE_WRITE_KEY`）を起動し、`stepwise-mcp` で `node test/v2-write-client.mjs`（`STEPWISE_API_URL`・`STEPWISE_V2_KEY`・`STEPWISE_V2_WRITE_KEY`）。

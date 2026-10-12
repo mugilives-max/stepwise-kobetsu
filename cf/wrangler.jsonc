@@ -23,7 +23,9 @@
     // 書き込みの正本。"worker" にすると Worker が台帳を書く。空なら今までどおり Apps Script
     "WRITE_MODE": "worker",
     "BILLING_AUTO_CLOSE": "1",
-    "SCHEDULE_AUTO_CONFIRM": "1"
+    "SCHEDULE_AUTO_CONFIRM": "1",
+    // MCP からの書き込み（/v2/mcp/…）の範囲。"all" で全生徒、それ以外はテスト用の生徒だけ。2026-10-13 本人の承認で all（【テスト】の生徒で本番の一回りを確かめたあと）
+    "V2_SERVICE_WRITE_SCOPE": "all"
   },
   "d1_databases": [
     {
