@@ -6,7 +6,7 @@ import { migratePage, migrateClick, migrateSubmit, resetMigrate } from '/staff/m
 import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule } from '/staff/schedule.js?v=20261008-launch1';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261008-launch1';
 import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261008-launch1';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents } from '/staff/students.js?v=20261008-launch1';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261008-launch1';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261008-launch1';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261008-launch1';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261008-launch1';
@@ -254,7 +254,7 @@ app.addEventListener('submit', ev => {
   const submitter = ev.submitter;
   captureRecordInputs(); // 記録の画面の書きかけを、描き直す前に覚えておく
   run(async () => {
-    if (await extrasSubmit(ctx, kind, el) || await familiesSubmit(ctx, kind, el) || await scheduleSubmit(ctx, kind, el) || await recordsSubmit(ctx, kind, el, { submitter }) || await billingSubmit(ctx, kind, el) || await gradesSubmit(ctx, kind, el) || await payrollSubmit(ctx, kind, el) || await migrateSubmit(ctx, kind, el)) return;
+    if (await studentsSubmit(ctx, kind, el) || await extrasSubmit(ctx, kind, el) || await familiesSubmit(ctx, kind, el) || await scheduleSubmit(ctx, kind, el) || await recordsSubmit(ctx, kind, el, { submitter }) || await billingSubmit(ctx, kind, el) || await gradesSubmit(ctx, kind, el) || await payrollSubmit(ctx, kind, el) || await migrateSubmit(ctx, kind, el)) return;
     let r;
     if (kind === 'login') { r = await call('staff/login', v); if (r.ok) return signedIn(r); }
     else if (kind === 'forgot') { r = await call('staff/reset/request', v); if (r.ok) return say(r.message, 'ok'); }
@@ -291,7 +291,7 @@ document.addEventListener('click', ev => {
   if (a === 'gr-resolve') { const sel = document.querySelector(`[data-resolve-exam="${b.dataset.id}"]`); b.dataset.exam = sel ? sel.value : ''; }
   captureRecordInputs();
   run(async () => {
-    if (await todayClick(ctx, a, b) || await extrasClick(ctx, a, b) || await familiesClick(ctx, a, b) || await migrateClick(ctx, a) || await scheduleClick(ctx, a, b) || await recordsClick(ctx, a, b) || await billingClick(ctx, a, b) || await gradesClick(ctx, a, b) || await payrollClick(ctx, a, b)) return;
+    if (await studentsClick(ctx, a, b) || await todayClick(ctx, a, b) || await extrasClick(ctx, a, b) || await familiesClick(ctx, a, b) || await migrateClick(ctx, a) || await scheduleClick(ctx, a, b) || await recordsClick(ctx, a, b) || await billingClick(ctx, a, b) || await gradesClick(ctx, a, b) || await payrollClick(ctx, a, b)) return;
     let r;
     if (a === 'bootstrap') {
       r = await call('staff/bootstrap', { legacyToken: legacyToken() });

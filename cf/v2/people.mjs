@@ -22,7 +22,7 @@ export function familyAdminView(f) {
 export function studentAdminView(s) {
   return { id: s.id, familyId: s.familyId, name: fullName(s), familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana,
     grade: s.grade, school: s.school, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, status: s.status, enrolledOn: s.enrolledOn, subjects: s.subjects, note: s.note,
-    testOnly: !!s.testOnly, link: studentLink(s.linkCode), legacyId: s.legacyId, version: s.version };
+    testOnly: !!s.testOnly, trial: !!s.trial, link: studentLink(s.linkCode), legacyId: s.legacyId, version: s.version };
 }
 // 保護者・生徒に見せる形（料金・先生用の備考・専用リンクは出さない）
 const studentPublicView = s => ({ id: s.id, name: fullName(s), familyName: s.familyName, givenName: s.givenName, grade: s.grade, school: s.school, status: s.status });

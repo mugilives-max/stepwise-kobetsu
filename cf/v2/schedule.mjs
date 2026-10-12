@@ -306,7 +306,7 @@ export const scheduleRoutes = {
       events: events.map(e => ({ ...eventView(e), studentName: nameOf[e.studentId] || '' })),
       unavailability: offs.map(o => ({ id: o.id, staffId: o.staffId, date: o.date, start: o.start, end: o.end, note: o.note })),
       meetings: meetings.map(m => ({ id: m.id, familyId: m.familyId, withName: m.withName || '', studentId: m.studentId, staffId: m.staffId, date: m.date, start: m.start, minutes: m.minutes, deliveryMode: m.deliveryMode, title: m.title, meetUrl: m.meetUrl, status: m.status, version: m.version })),
-      students: students.filter(s => s.status !== 'left').map(s => ({ id: s.id, name: fullName(s), familyId: s.familyId, deliveryMode: s.deliveryMode })),
+      students: students.filter(s => s.status !== 'left').map(s => ({ id: s.id, name: fullName(s), familyId: s.familyId, deliveryMode: s.deliveryMode, trial: !!s.trial })),
       staff: staff.map(s => ({ id: s.id, name: s.name, teacher: rolesOf(s).includes('teacher') })),
       kinds: kinds.length ? kinds : ['通常'], live: await isLive(c), cancelRuleFrom: await cancelRuleFrom(c.db),
     };
@@ -318,22 +318,31 @@ export const scheduleRoutes = {
     if (s.status === 'left') fail('left', '退会した生徒には授業を登録できません');
     const repeat = Number(b.repeat || 1);
     if (!Number.isInteger(repeat) || repeat < 1 || repeat > 12) fail('badRepeat', 'くり返しは1〜12回にしてください');
-    const rows = [b, ...(Array.isArray(b.extra) ? b.extra.slice(0, 11) : [])].map(x => lessonFields({ ...x, date: b.date }));
+    // 体験生（trial）の授業は、種類を選んでいても必ず「体験」にする（無料。請求・取消料に入らない）
+    const rows = [b, ...(Array.isArray(b.extra) ? b.extra.slice(0, 11) : [])].map(x => lessonFields({ ...x, date: b.date, ...(s.trial ? { kind: '体験' } : {}) }));
     const today = todayJst(c.now);
     const candidates = [];
     for (let w = 0; w < repeat; w++) for (const x of rows) candidates.push({ ...x, studentId: s.id, date: addDays(b.date, w * 7) });
     // 実施した授業をあとから登録する（done）: 今日までの日付で、はじめから実施済み。仮予定のお知らせも締め切りも無い。
     // 請求は、その月の承認済みの計画に（科目・種類が合う行へ）入る（2026-10-11 本人「授業を実施済みなのですが、授業計画も送ってないし、過去の記録だし」）
-    const done = b.done === true;
+    const done = b.done === true, trial = !!s.trial && !done && b.hold !== true; // 体験生はお知らせ先がないので、そのまま決定
     if (done && candidates.some(x => x.date > today)) fail('future', '実施済みで登録できるのは今日までの授業です');
     if (!done && candidates.some(x => x.date < today)) fail('past', '過去の日付には仮予定を作れません。実施した授業なら「実施済みとして登録」にしてください');
     await checkConflicts(c, candidates, { force: !!b.force });
-    const hold = b.hold === true && !done, bys = hold || done ? candidates.map(() => '') : confirmByFor(candidates.map(x => x.date), today, b.confirmBy || '');
-    const status = done ? 'done' : hold ? 'held' : 'proposed';
+    const hold = b.hold === true && !done, bys = hold || done || trial ? candidates.map(() => '') : confirmByFor(candidates.map(x => x.date), today, b.confirmBy || '');
+    const status = done ? 'done' : hold ? 'held' : trial ? 'decided' : 'proposed';
     const stmts = candidates.map((x, i) => c.db.prepare('insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, confirmBy, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .bind(x.id = newId('ls'), s.id, x.staffId, x.date, x.start, x.minutes, x.subject, x.kind, x.deliveryMode, status, bys[i], iso(c.now), iso(c.now)));
     await c.db.batch(stmts);
     if (done) { await audit(c, 'lessonsDone', s.id, { count: candidates.length, dates: candidates.map(x => x.date) }); return { created: candidates.length, done: true }; }
+    if (trial) {
+      for (const x of candidates) {
+        const l = await getLesson(c, x.id);
+        await c.db.prepare("update lessons set decidedAt = ?, decidedBy = ?, calendarEventId = ? where id = ?").bind(iso(c.now), 'staff:' + c.actor.id, await calendarEffect(c, 'create', l, fullName(s)), l.id).run();
+      }
+      await audit(c, 'lessonsTrial', s.id, { count: candidates.length });
+      return { created: candidates.length, decided: true, trial: true };
+    }
     if (!hold) await familyNotice(c, s.id, '授業の仮予定が届いています', `${fullName(s)}さんの授業の仮予定が届いています。${bys[0] ? Number(bys[0].slice(5, 7)) + '/' + Number(bys[0].slice(8)) + 'までに連絡がなければ、この日時で決定します。' : ''}`);
     await audit(c, hold ? 'lessonsHold' : 'lessonsPropose', s.id, { count: candidates.length });
     return { created: candidates.length, held: hold, confirmBy: bys[0] || '' };

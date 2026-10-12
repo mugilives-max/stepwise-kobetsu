@@ -239,7 +239,8 @@ const kindOptions = (ctx, v) => data.kinds.map(k => `<option${k === v ? ' select
 function createForm(ctx, me) {
   const { esc } = ctx, past = !!sel && sel < data.today;
   return `<form class="stack" data-form="sch-create" style="margin:0">
-    <label>生徒<select name="studentId" required>${data.students.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></label>
+    <label>生徒<select name="studentId" required>${data.students.map(s => `<option value="${esc(s.id)}"${s.trial ? ' data-trial="1"' : ''}>${esc(s.name)}${s.trial ? '（体験）' : ''}</option>`).join('')}</select></label>
+    <p class="small muted trial-hint">体験生の授業は種類「体験」（無料）で、そのまま決定になります（お知らせは送りません）。</p>
     <div class="row"><label style="flex:1">日付<input type="date" name="date" value="${sel || ''}" required></label><label style="flex:1">開始<input type="time" name="start" value="17:00" step="300" required></label><label style="flex:1">長さ<select name="minutes">${minutesOptions(90)}</select></label></div>
     <div class="row"><label style="flex:1">科目<input name="subject" maxlength="30" required placeholder="数学"></label><label style="flex:1">種類<select name="kind">${kindOptions(ctx, '通常')}</select></label>
       <label style="flex:1">形式<select name="deliveryMode"><option value="in_person">対面</option><option value="online">オンライン</option></select></label></div>
@@ -308,7 +309,7 @@ export async function scheduleSubmit(ctx, kind, el) {
     const body = { studentId: v.studentId, date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, repeat: v.send === 'done' ? 1 : Number(v.repeat), hold: v.send === 'hold', done: v.send === 'done' };
     let r = await ctx.call('schedule/lessons/create', body);
     if ((await after(ctx, r, '')) === 'force') r = await ctx.call('schedule/lessons/create', { ...body, force: true });
-    if (r.ok) { sheet = null; cache = {}; sel = v.date; ctx.say(r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を予定表に入れました（まだ送っていません）` : `${r.created}件の仮予定を送りました${r.confirmBy ? '（締め切り ' + Number(r.confirmBy.slice(5, 7)) + '/' + Number(r.confirmBy.slice(8)) + '）' : ''}`, 'ok'); data = null; loadedFor = ''; }
+    if (r.ok) { sheet = null; cache = {}; sel = v.date; ctx.say(r.trial ? `体験の授業を${r.created}件、決定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を予定表に入れました（まだ送っていません）` : `${r.created}件の仮予定を送りました${r.confirmBy ? '（締め切り ' + Number(r.confirmBy.slice(5, 7)) + '/' + Number(r.confirmBy.slice(8)) + '）' : ''}`, 'ok'); data = null; loadedFor = ''; }
     return true;
   }
   if (kind === 'sch-update') {

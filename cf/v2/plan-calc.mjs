@@ -42,7 +42,8 @@ export function assignLines(lines, lessons, invoicedLine = {}) {
 // 生徒ごとの計画・授業・請求済みの行をまとめて読む
 export async function studentBilling(db, studentId, { ignoreInvoiceId = '' } = {}) {
   const lines = (await db.prepare('select * from planLines where studentId = ? order by startDate, id').bind(studentId).all()).results;
-  const lessons = (await db.prepare("select * from lessons where studentId = ? and status in ('decided', 'done') order by date, start").bind(studentId).all()).results;
+  // 体験の授業（種類「体験」）は無料なので請求に入れない（2026-10-12、cf/v2/trial.mjs）
+  const lessons = (await db.prepare("select * from lessons where studentId = ? and status in ('decided', 'done') and kind <> '体験' order by date, start").bind(studentId).all()).results;
   const items = (await db.prepare("select i.lessonId, i.planLineId, i.invoiceId from invoiceItems i join invoices v on v.id = i.invoiceId where i.studentId = ? and i.kind = 'lesson' and v.status <> 'void'").bind(studentId).all()).results;
   const invoicedLine = {};
   for (const it of items) if (it.invoiceId !== ignoreInvoiceId && it.lessonId) invoicedLine[it.lessonId] = it.planLineId;
@@ -80,6 +81,7 @@ export function makePart(lesson, baseFee, reason, minutes, receivedAt) {
 // 取消料の行を書く（同じ reason の内訳は置き換える。minutes が 0 なら消す）。自動で decision = 'charge'。
 // 請求に入ったもの・減額や免除を答えたものは変えられない
 export async function setRateFee(c, lesson, reason, minutes, receivedAt) {
+  if (String(lesson.kind || '') === '体験') return null; // 体験の授業に取消料は無い
   const cur = await c.db.prepare('select * from cancellationFees where lessonId = ?').bind(lesson.id).first();
   if (cur && cur.invoiceId) fail('invoiced', '請求に入った取消料は変えられません。先に請求を取り消してください', 409);
   if (cur && ['reduced', 'waived'].includes(cur.reliefStatus)) fail('reliefDone', '減額・免除に回答した取消料は変えられません', 409);
@@ -98,6 +100,7 @@ export async function setRateFee(c, lesson, reason, minutes, receivedAt) {
 }
 // キャンセルにしたときに、判断待ちのキャンセル料を作る（前のものがあれば置き換える。請求済みは触らない）
 export async function createCancelFee(c, lesson, type, receivedAt) {
+  if (String(lesson.kind || '') === '体験') return; // 体験の授業に取消料は無い
   const amount = await standardCancelFee(c.db, lesson, type), now = iso(c.now);
   await c.db.batch([
     c.db.prepare("delete from cancellationFees where lessonId = ? and invoiceId = ''").bind(lesson.id),
