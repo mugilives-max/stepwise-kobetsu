@@ -232,7 +232,13 @@ function render() {
   if (now && wasLabel === now.getAttribute('aria-label')) { now.classList.add('still'); (now.querySelector('.panel-body') || now).scrollTop = wasTop; }
   if (now && notice && notice.kind === 'error') now.querySelector('.bsheet-body, .panel-body').insertAdjacentHTML('afterbegin', noticeHtml()); // 下から出る画面の中でも見えるように
   if (r.page === 'record') soonAutosave();
+  // キーボード: 下から出る画面が開いたら閉じるボタンへ、閉じたら開いたボタンへ戻す（2026-10-13、計画全体のプレビューから）
+  if (now && !was) { sheetOpener = lastClicked; const x = now.querySelector('.bsheet-head button.icon, .panel-head button.icon'); if (x) x.focus({ preventScroll: true }); }
+  else if (!now && was && sheetOpener) { const back = app.querySelector(sheetOpener); sheetOpener = ''; if (back) back.focus({ preventScroll: true }); }
 }
+// 最後に押したボタン（下から出る画面を閉じたときに、フォーカスを戻す先）
+let lastClicked = '', sheetOpener = '';
+app.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('button[data-action]'); if (b && !b.closest('.bsheet, .panel.open')) lastClicked = `[data-action="${CSS.escape(b.dataset.action)}"]` + ['id', 'key', 'sid', 'family'].filter(k => b.dataset[k]).map(k => `[data-${k}="${CSS.escape(b.dataset[k])}"]`).join(''); }, true);
 // 記録の書きかけを、この端末に少し待ってから残す（書くたび・押すたび）
 let autosaveTimer = 0;
 const soonAutosave = () => { clearTimeout(autosaveTimer); autosaveTimer = setTimeout(() => { if (route().page === 'record') autosaveRecord(); }, 400); };
