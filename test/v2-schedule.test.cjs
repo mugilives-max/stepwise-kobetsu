@@ -26,13 +26,57 @@ test('a manager sends 仮予定 with a deadline; held ones stay hidden until the
   assert.deepEqual(lessonsOf(h).map(l => [l.date, l.status, l.confirmBy]), [['2026-10-03', 'proposed', ''], ['2026-10-09', 'proposed', '2026-10-05'], ['2026-11-03', 'proposed', '2026-10-25'], ['2026-11-10', 'proposed', '2026-10-25']]);
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-12-01', hold: true });
   assert.equal((await h.ok('family/schedule', { auth: parent, to: '2026-12-31' })).lessons.length, 4, '未送信は保護者に見せない');
-  assert.equal((await h.ok('schedule/lessons/sendHeld', { auth, studentId: lesson.studentId })).sent, 1);
+  assert.equal((await h.ok('schedule/lessons/sendHeld', { auth, studentId: lesson.studentId, lessonIds: [lessonsOf(h).at(-1).id] })).sent, 1);
   assert.equal(lessonsOf(h).at(-1).status, 'proposed');
   assert.ok(h.mails().filter(m => m.audience === 'family').every(m => m.status === 'dismissed' && m.error === 'まだ切り替え前のため送らない'), '切り替え前は保護者へ送らない');
   assert.equal((await h.call('schedule/lessons/create', { ...lesson, date: '2026-10-09', start: '17:30' })).error.code, 'overlap');
   await h.ok('schedule/unavailability/add', { auth, date: '2026-10-16' });
   assert.equal((await h.call('schedule/lessons/create', { ...lesson, date: '2026-10-16' })).error.code, 'needForce');
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-16', force: true });
+});
+
+test('予定表を送る: 選んだ未送信の授業だけを送り、ほかは未送信のまま。送れないものが入っていれば何も送らない。体験生は決定にする', async () => {
+  const { h, auth, kid, parent, lesson } = await world();
+  for (const d of ['2026-11-04', '2026-11-11', '2026-12-02']) await h.ok('schedule/lessons/create', { ...lesson, date: d, hold: true });
+  const held = () => h.rows("select id, date, status from lessons where studentId = ? order by date", kid.id);
+  const [a, b2, c2] = held();
+  // 表示中の月に限らず、未送信は全部「対応すること」に出る
+  const range = await h.ok('schedule/staff/range', { auth, from: '2026-10-01', to: '2026-10-31' });
+  assert.deepEqual(range.heldAll.map(l => l.id), [a.id, b2.id, c2.id]);
+  // 選ばないと送らない
+  assert.equal((await h.call('schedule/lessons/sendHeld', { auth, studentId: kid.id })).error.code, 'needIds');
+  // ほかの生徒の授業が入っていれば何も送らない
+  const fam2 = (await h.ok('admin/families/create', { auth, name: '別家', email: 'other@example.invalid' })).family;
+  const other = (await h.ok('admin/students/create', { auth, familyId: fam2.id, familyName: '別', givenName: '花', baseRate30: 1500, deliveryMode: 'online' })).student;
+  await h.ok('schedule/lessons/create', { ...lesson, studentId: other.id, date: '2026-11-05', hold: true });
+  const otherId = h.rows('select id from lessons where studentId = ?', other.id)[0].id;
+  const mails0 = h.mails().length;
+  const bad = await h.call('schedule/lessons/sendHeld', { auth, studentId: kid.id, lessonIds: [a.id, otherId] });
+  assert.equal(bad.error.code, 'badTargets');
+  assert.deepEqual(held().map(l => l.status), ['held', 'held', 'held']);
+  assert.equal(h.mails().length, mails0, '何も送らない');
+  // 2 件だけ選ぶ
+  const r = await h.ok('schedule/lessons/sendHeld', { auth, studentId: kid.id, lessonIds: [a.id, b2.id] });
+  assert.deepEqual([r.sent, r.left], [2, 1]);
+  assert.deepEqual(held().map(l => l.status), ['proposed', 'proposed', 'held']);
+  const fm = h.mails().slice(mails0).filter(m => m.audience === 'family');
+  assert.equal(fm.length, 1, '保護者に 1 回');
+  assert.match(fm[0].subject, /11月の授業予定表/);
+  assert.doesNotMatch(fm[0].subject, /12月/, '選ばなかった月は書かない');
+  // 送ったあとの授業をもう一度選ぶと断る
+  assert.equal((await h.call('schedule/lessons/sendHeld', { auth, studentId: kid.id, lessonIds: [a.id] })).error.code, 'badTargets');
+  const fl = await h.ok('family/schedule', { auth: parent, to: '2026-12-31' });
+  assert.deepEqual(fl.lessons.map(l => l.date), ['2026-11-04', '2026-11-11'], '保護者には送った授業だけ');
+  // 体験生: 未送信（MCP で保存した形）を選ぶと決定にしてカレンダーへ（メールなし）
+  const t = await h.ok('admin/trials/create', { auth, familyName: '体験', givenName: '彩', grade: '中2' });
+  await h.env.DB2.prepare("insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, confirmBy, note, createdAt, updatedAt) values ('ls_trial_held', ?, '', '2026-10-20', '18:00', 90, '英語', '体験', 'in_person', 'held', '', 'MCP で保存（x）', '2026-10-08T03:00:00Z', '2026-10-08T03:00:00Z')").bind(t.studentId).run();
+  const mails1 = h.mails().length;
+  const tr = await h.ok('schedule/lessons/sendHeld', { auth, studentId: t.studentId, lessonIds: ['ls_trial_held'] });
+  assert.deepEqual([tr.sent, tr.trial, tr.left], [1, true, 0]);
+  const tl = h.rows("select status, kind, confirmBy, calendarEventId from lessons where id = 'ls_trial_held'")[0];
+  assert.deepEqual([tl.status, tl.kind, tl.confirmBy], ['decided', '体験', '']);
+  assert.ok(tl.calendarEventId, 'カレンダーの予定を作る');
+  assert.equal(h.mails().length, mails1, '体験はメールなし');
 });
 
 test('direct decision creates the calendar event (held before the switch-over) and records who decided', async () => {
