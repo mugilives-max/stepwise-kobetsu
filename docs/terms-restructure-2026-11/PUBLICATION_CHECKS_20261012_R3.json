@@ -1,0 +1,54 @@
+{
+  "edition": "2026-11-20261012-r3",
+  "effective_date": "2026-11-01",
+  "source_path": "docs/terms-restructure-2026-11/TERMS.md",
+  "source_git_blob": "c7c69a5bfdfb9aacf92d78188d279b40cc3347d0",
+  "source_commit": "426df97a66726be6709869c432627e67b1be0813",
+  "html_sha256": "087372c1eede546af4721b03c55fafaec07a171cfd4094ed32fb1b84fdbcda13",
+  "pdf_sha256": "b5472eb019ab4ea632d0373d0411513bb86a10c24643419bce4476b016682971",
+  "old_blobs_preserved": {
+    "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
+    "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
+    "terms/2026-11-20261012/index.html": "8ad7081a13be099e8b3f8e76c04d986886bb971c",
+    "terms/2026-11-20261012/stepwise-terms-2026-11-20261012.pdf": "a391290531d024ff6d3bb1298fe2394b59345b92",
+    "terms/2026-11/index.html": "84325add6c395ff9cbe8588abcc3c0221e40b03f",
+    "terms/2026-11/stepwise-terms-2026-11.pdf": "94bcb70dc1eb25afdd78393c306d0d5ec518e6e9"
+  },
+  "chapters": 7,
+  "articles": 32,
+  "numbered_paragraphs": 133,
+  "tables": 3,
+  "markdown_to_html_full_text_equal": true,
+  "internal_links_valid": true,
+  "mobile_overflow": false,
+  "pdf_pages": 12,
+  "pdf_text_blocks_verified": 283,
+  "pdf_missing_text_blocks": 0,
+  "pdf_fonts": [
+    "DejaVuSans",
+    "NotoSansCJKjp-Bold",
+    "NotoSansCJKjp-Regular"
+  ],
+  "pdf_fonts_embedded": true,
+  "embedded_font_programs": 259,
+  "japanese_font_match": "Noto Sans CJK JP",
+  "visual_review_images": 14,
+  "changed_numbered_paragraphs": [
+    "article-17-item-2",
+    "article-22-item-1",
+    "article-28-item-6"
+  ],
+  "unchanged_numbered_paragraphs_verified": 130,
+  "waiver_guide": {
+    "source_path": "docs/terms-restructure-2026-11/WAIVER_GUIDE.md",
+    "source_git_blob": "f3154d2f930bfcc30f29f86ca9ff954e8e2c5925",
+    "html_sha256": "d3634307b69aae4d66f3396d0b1221d75ad767e61da482c57e52c4504e65e1a6",
+    "pdf_sha256": "3798c6a3c27fe768dd8f4873146850be398e8e8f18c2d34cdcf689516e999c3b",
+    "pdf_pages": 2,
+    "pdf_text_blocks_verified": 46,
+    "markdown_to_html_full_text_equal": true,
+    "pdf_missing_text_blocks": 0,
+    "pdf_fonts_embedded": true,
+    "mobile_overflow": false
+  }
+}

@@ -10,14 +10,16 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261012-r2"
+EDITION = "2026-11-20261012-r3"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261012-r2"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261012_R2.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261012-r3"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261012_R3.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "a684fd713ed2db846920d57ad2f02c2dff615656"
+EXPECTED_SOURCE_BLOB = "c7c69a5bfdfb9aacf92d78188d279b40cc3347d0"
 OLD = {
+    "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
+    "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
     "terms/2026-11-20261012/index.html": "8ad7081a13be099e8b3f8e76c04d986886bb971c",
     "terms/2026-11-20261012/stepwise-terms-2026-11-20261012.pdf": "a391290531d024ff6d3bb1298fe2394b59345b92",
     "terms/2026-11/index.html": "84325add6c395ff9cbe8588abcc3c0221e40b03f",
@@ -37,6 +39,9 @@ for name, expected in OLD.items():
 source = source_bytes.decode("utf-8")
 OUT.mkdir(parents=True, exist_ok=True)
 REVIEW.mkdir(parents=True, exist_ok=True)
+# Clear only this unpublished edition\'s generated page previews before rerendering.
+for prior_png in REVIEW.glob("page-*.png"):
+    prior_png.unlink()
 
 md = MarkdownIt("commonmark", {"html": True}).enable("table")
 body = BeautifulSoup(md.render(source), "html.parser")
@@ -133,10 +138,20 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  a { color:inherit; text-decoration:none; }
  #footer + p { font-size:8pt; }
  .chapter + p, #article-14-item-3 { break-after:avoid; }
- #appendix-online { break-before:page; }
+ #appendix-online { break-before:auto; }
 }
 """
-html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月12日改訂）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="../">規約の版一覧・旧版</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
+# Only the three approved numbered paragraphs may differ from the previous edition.
+prior_body = BeautifulSoup((ROOT / "terms/2026-11-20261012-r2/index.html").read_text(encoding="utf-8"), "html.parser")
+changed_clauses = []
+for clause in body.select("ol.clause"):
+    prior = prior_body.find(id=clause["id"])
+    assert prior is not None
+    if compact(prior.get_text()) != compact(clause.get_text()):
+        changed_clauses.append(clause["id"])
+assert set(changed_clauses) == {"article-17-item-2", "article-22-item-1", "article-28-item-6"}, changed_clauses
+
+html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月12日改訂）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">規約の版一覧・旧版</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
 (OUT / "index.html").write_text(html, encoding="utf-8")
 
 index_html = """<!doctype html>
@@ -144,9 +159,14 @@ index_html = """<!doctype html>
 <style>body{font-family:"Yu Gothic","Noto Sans CJK JP",Meiryo,sans-serif;color:#172526;line-height:1.9;margin:36px auto;padding:0 22px;max-width:760px}h1{font-size:1.6rem}h2{font-size:1.2rem;border-bottom:1px solid #b9cdcb;padding-bottom:7px;margin-top:28px}a{color:#126964}li{margin:9px 0}.note{color:#405452}</style></head><body>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>受講規約の版一覧</h1>
 <p>受講規約の本文とPDFをご確認いただけます。適用されるのは、ご家庭が同意した版です。掲載の更新だけで過去に同意した内容を置き換えることはありません。</p>
-<h2>正式版：2026年11月版（2026年10月12日改訂）</h2>
-<p>適用開始日：2026年11月1日。全7章・32条。単価・指導区分、承認手続、精算・返金、資料の取り扱い等の修正を反映しています。</p>
-<ul><li><a href="2026-11-20261012-r2/">Web版を読む</a></li><li><a href="2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf">PDFで開く</a></li></ul>
+<h2>正式版：2026年11月版（2026年10月12日改訂・途中終了と返金の明確化）</h2>
+<p>適用開始日：2026年11月1日。全7章・32条。特殊指導の途中終了、翌月請求に充当できない差額の返金、免除申請の共通案内を反映しています。</p>
+<ul><li><a href="2026-11-20261012-r3/">Web版を読む</a></li><li><a href="2026-11-20261012-r3/stepwise-terms-2026-11-20261012-r3.pdf">PDFで開く</a></li></ul>
+<h2>キャンセル料金の免除申請</h2>
+<ul><li><a href="2026-11-20261012-r3/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261012-r3/waiver/stepwise-waiver-guide-20261012.pdf">案内をPDFで開く</a></li></ul>
+<h2>旧版：2026年11月版（2026年10月12日改訂・r2）</h2>
+<p>単価・指導区分、承認手続、精算・返金、資料の取り扱い等を整理した版です。</p>
+<ul><li><a href="2026-11-20261012-r2/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf">旧版のPDFで開く</a></li></ul>
 <h2>旧版：2026年11月版（2026年10月12日初回公開）</h2>
 <p>適用開始日：2026年11月1日。全7章・32条。</p>
 <ul><li><a href="2026-11-20261012/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261012/stepwise-terms-2026-11-20261012.pdf">旧版のPDFで開く</a></li></ul>
@@ -168,7 +188,7 @@ with sync_playwright() as p:
         path=str(OUT / PDF_NAME), format="A4", print_background=True,
         prefer_css_page_size=True, display_header_footer=True,
         header_template='<span></span>',
-        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">Stepwise / 2026-11-20261012-r2 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">Stepwise / 2026-11-20261012-r3 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
         tagged=True, outline=True,
     )
     page.emulate_media(media="screen")
@@ -237,4 +257,67 @@ report = {
     "visual_review_images":len(pdf)+2,
 }
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+
+# The companion guide is generated from its own canonical Markdown.
+guide_source = ROOT / "docs/terms-restructure-2026-11/WAIVER_GUIDE.md"
+guide_bytes = guide_source.read_bytes()
+assert git_blob(guide_bytes) == "f3154d2f930bfcc30f29f86ca9ff954e8e2c5925"
+guide_body = BeautifulSoup(md.render(guide_bytes.decode("utf-8")), "html.parser")
+assert source_text(guide_bytes.decode("utf-8")) == compact(guide_body.get_text("", strip=False))
+guide_out = OUT / "waiver"
+guide_review = REVIEW / "waiver"
+guide_out.mkdir(exist_ok=True)
+guide_review.mkdir(exist_ok=True)
+guide_pdf_name = "stepwise-waiver-guide-20261012.pdf"
+guide_html = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>キャンセル料金の免除申請のご案内｜ステップワイズ個別指導</title><style>' + css + '</style></head><body><nav class="tools" aria-label="関連ページ"><a href="' + guide_pdf_name + '">PDFで開く</a><a href="../">受講規約</a><a href="../../">規約の版一覧</a></nav><main id="guide">' + str(guide_body) + '</main></body></html>\n'
+(guide_out / "index.html").write_text(guide_html, encoding="utf-8")
+with sync_playwright() as p:
+    browser = p.chromium.launch()
+    page = browser.new_page(viewport={"width":1280,"height":1000})
+    page.goto((guide_out / "index.html").as_uri())
+    page.evaluate("document.fonts.ready")
+    page.pdf(path=str(guide_out / guide_pdf_name), format="A4", print_background=True,
+        prefer_css_page_size=True, display_header_footer=True, header_template="<span></span>",
+        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">Stepwise / Waiver guide 2026-10-12 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+        tagged=True, outline=True)
+    page.emulate_media(media="screen")
+    page.set_viewport_size({"width":390,"height":844})
+    page.screenshot(path=str(guide_review / "mobile.png"))
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Guide mobile overflow"
+    browser.close()
+guide_pdf = fitz.open(guide_out / guide_pdf_name)
+guide_page_texts = []
+for number, page in enumerate(guide_pdf, 1):
+    page.get_pixmap(matrix=fitz.Matrix(1.3,1.3)).save(guide_review / f"page-{number:02}.png")
+    content = [block[4] for block in page.get_text("blocks") if block[1] > 30 and block[3] < page.rect.height - 32]
+    assert content, "Blank guide page"
+    guide_page_texts.append("\n".join(content))
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
+            for span in line.get("spans", []):
+                assert span["bbox"][0] >= 25 and span["bbox"][2] <= page.rect.width - 25, "Guide margin overflow"
+guide_plain = compact("\n".join(guide_page_texts))
+guide_checks = []
+for tag in guide_body.find_all(["p","h1","h2","h3","li","td","th"]):
+    if tag.name == "li" and tag.find(["p","ul","ol"],recursive=False):
+        continue
+    value = compact(tag.get_text("",strip=False))
+    if value:
+        guide_checks.append(value)
+assert all(value in guide_plain for value in guide_checks), "Guide PDF text mismatch"
+guide_font_rows = subprocess.check_output(["pdffonts",str(guide_out / guide_pdf_name)],text=True).strip().splitlines()[2:]
+assert guide_font_rows and all(re.search(r"\s+yes\s+(?:yes|no)\s+(?:yes|no)\s+\d+\s+\d+\s*$", row) for row in guide_font_rows)
+report["changed_numbered_paragraphs"] = changed_clauses
+report["unchanged_numbered_paragraphs_verified"] = 130
+report["waiver_guide"] = {
+    "source_path": str(guide_source.relative_to(ROOT)),
+    "source_git_blob": git_blob(guide_bytes),
+    "html_sha256": hashlib.sha256((guide_out / "index.html").read_bytes()).hexdigest(),
+    "pdf_sha256": hashlib.sha256((guide_out / guide_pdf_name).read_bytes()).hexdigest(),
+    "pdf_pages": len(guide_pdf), "pdf_text_blocks_verified": len(guide_checks),
+    "markdown_to_html_full_text_equal": True, "pdf_missing_text_blocks": 0,
+    "pdf_fonts_embedded": True, "mobile_overflow": False
+}
+REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+
 print(json.dumps(report,ensure_ascii=False,indent=2))
