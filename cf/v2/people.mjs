@@ -22,7 +22,8 @@ export function familyAdminView(f) {
 export function studentAdminView(s) {
   return { id: s.id, familyId: s.familyId, name: fullName(s), familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana,
     grade: s.grade, school: s.school, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, status: s.status, enrolledOn: s.enrolledOn, subjects: s.subjects, note: s.note,
-    testOnly: !!s.testOnly, trial: !!s.trial, link: studentLink(s.linkCode), legacyId: s.legacyId, version: s.version };
+    testOnly: !!s.testOnly, trial: !!s.trial, link: String(s.linkCode || '').startsWith('off.') ? '' : studentLink(s.linkCode), // off. は使えない鍵（MCP で登録した体験生）。「専用リンクを作り直す」で使えるようになる
+    legacyId: s.legacyId, version: s.version };
 }
 // 保護者・生徒に見せる形（料金・先生用の備考・専用リンクは出さない）
 const studentPublicView = s => ({ id: s.id, name: fullName(s), familyName: s.familyName, givenName: s.givenName, grade: s.grade, school: s.school, status: s.status });
@@ -161,7 +162,7 @@ export const peopleRoutes = {
     const code = String(b.k || '');
     // スタッフのプレビュー（読むだけ）も、予定と同じ鍵で通す
     if (isPreviewToken(code)) { const p = await previewSubject(c, code, 'student'); if (!p) fail('badLink', 'プレビューの期限が切れました。管理画面からもう一度開いてください', 401); return { me: studentPublicView(p) }; }
-    const s = code && code.length <= 100 ? await c.db.prepare("select * from students where linkCode = ? and status <> 'left'").bind(code).first() : null;
+    const s = code && code.length <= 100 ? await c.db.prepare("select * from students where linkCode = ? and linkCode not like 'off.%' and status <> 'left'").bind(code).first() : null;
     if (!s) fail('badLink', '専用リンクが正しくありません。先生から届いたリンクを開き直してください', 401);
     c.actor = { kind: 'student', id: s.id };
     return { me: studentPublicView(s) };

@@ -17,3 +17,13 @@ export async function serviceActor(c, key) {
   const who = await c.db.prepare("select * from staff where status = 'active' and (contractType = 'owner' or roles like '%manager%') order by contractType = 'owner' desc, createdAt limit 1").first();
   return who || null;
 }
+
+// 書き込み用の鍵（V2_SERVICE_WRITE_KEY。読み取りの鍵とは別）。mcp/ の道（cf/v2/mcp-writes.mjs の SERVICE_WRITES）だけを、代表のスタッフとして通す。
+// 鍵が設定されていなければ書き込みは誰にもできない。対象は V2_SERVICE_WRITE_SCOPE が 'all' でなければテスト用の生徒だけ。
+export async function serviceWriteActor(c, key) {
+  const expected = String(c.env.V2_SERVICE_WRITE_KEY || '');
+  if (expected.length < 32 || typeof key !== 'string' || !same(key, expected)) return null;
+  if (expected === String(c.env.V2_SERVICE_KEY || '')) return null; // 読み取りの鍵と同じ値なら通さない（読み取りの鍵を書き込みに上げない）
+  const who = await c.db.prepare("select * from staff where status = 'active' and (contractType = 'owner' or roles like '%manager%') order by contractType = 'owner' desc, createdAt limit 1").first();
+  return who || null;
+}

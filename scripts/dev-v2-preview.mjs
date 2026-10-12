@@ -100,6 +100,8 @@ async function seed() {
 
 const { h, k, kh } = await seed();
 if (process.env.V2_SERVICE_KEY) h.env.V2_SERVICE_KEY = process.env.V2_SERVICE_KEY; // MCP の読み取りの鍵を試すとき
+if (process.env.V2_SERVICE_WRITE_KEY) h.env.V2_SERVICE_WRITE_KEY = process.env.V2_SERVICE_WRITE_KEY; // MCP の書き込みの鍵を試すとき（mcp/ の道だけ）
+if (process.env.V2_SERVICE_WRITE_SCOPE) h.env.V2_SERVICE_WRITE_SCOPE = process.env.V2_SERVICE_WRITE_SCOPE;
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   h.clock = Date.now();

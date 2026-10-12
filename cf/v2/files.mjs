@@ -51,7 +51,7 @@ export async function whoIs(c, b) {
   if (isPreviewToken(b.k)) { const s = await previewSubject(c, b.k, 'student'); if (s) return { kind: 'student', student: s }; fail('badLink', 'プレビューの期限が切れました', 401); }
   if (isPreviewToken(b.auth)) { const f = await previewSubject(c, b.auth, 'family'); if (f) return { kind: 'family', me: f }; fail('needLogin', 'プレビューの期限が切れました', 401); }
   if (b.k) {
-    const s = String(b.k).length <= 100 ? await c.db.prepare("select * from students where linkCode = ? and status <> 'left'").bind(String(b.k)).first() : null;
+    const s = String(b.k).length <= 100 ? await c.db.prepare("select * from students where linkCode = ? and linkCode not like 'off.%' and status <> 'left'").bind(String(b.k)).first() : null;
     if (!s) fail('badLink', '専用リンクが正しくありません。先生から届いたリンクを開き直してください', 401);
     c.actor = { kind: 'student', id: s.id }; return { kind: 'student', student: s };
   }
