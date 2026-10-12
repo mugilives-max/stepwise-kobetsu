@@ -1,4 +1,4 @@
-// 授業計画・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql、docs/TERMS_DRAFT_2026-10.md 第1・5・8条
+// 授業計画・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
 // - 教室管理者: 計画を作る・お知らせする・LINE などの承諾を記録する・先月と同じ内容で下書き、授業の種類と標準料金、
 //              キャンセル料の判断・減額や免除の申請への回答、月ごとの請求（確かめる・確定・取消・入金）
 // - 保護者: 計画の承認（回数を減らす・見送るも）・先生が記録した承諾の確認、請求の確認・振込の連絡、キャンセル料の減額・免除の申請
@@ -9,7 +9,7 @@ import { fail, newId, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
-import { familyTerms, currentTerms } from './terms.mjs';
+import { familyTerms } from './terms.mjs';
 import { familyConditions, familyNeedsConditions } from './conditions.mjs';
 import { storeInvoiceDoc, storeReceiptDoc, billingDocIds } from './billing-doc.mjs';
 import { agreedSpecialFor, familySpecials } from './specials.mjs';
@@ -304,7 +304,7 @@ export const billingRoutes = {
     const prior = consents.filter(knownBy).sort((a,b) => Date.parse(b.acceptedAt) - Date.parse(a.acceptedAt))[0];
     const termsVersion = prior?.version || (family.termsAcceptedAt && knownBy({acceptedAt:family.termsAcceptedAt}) ? family.termsVersion : '') || '';
     await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
-      .bind(count, now, 'staff:' + me.id, via, consentDate, note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, now, l.id, l.version).run();
+      .bind(count, now, 'staff:' + me.id, via, todayJst(Date.parse(evidence.consentedAt)), note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, now, l.id, l.version).run();
     await audit(c, 'planConsent', l.id, { via, consentDate, count });
     return { line: lineView(await getLine(c, l.id)) };
   },
@@ -320,8 +320,9 @@ export const billingRoutes = {
       const have = (await c.db.prepare("select * from planLines where studentId = ? and parentId = '' and status <> 'declined' and startDate <= ? and endDate >= ?").bind(sid, to, from).all()).results;
       for (const l of src) {
         if (have.some(h => h.subject === l.subject && h.kind === l.kind)) continue;
-        await c.db.prepare('insert into planLines (id, studentId, subject, kind, startDate, endDate, count, minutes, fee, comment, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .bind(newId('pl'), sid, l.subject, l.kind, from, to, l.status === 'approved' ? lineCap(l) || l.count : l.count, l.minutes, l.fee, l.comment, now, now).run();
+        await billingRoutes['billing/plans/save'](c, { auth: b.auth, studentId: sid, subject: l.subject, kind: l.kind,
+          startDate: from, endDate: to, count: l.status === 'approved' ? lineCap(l) || l.count : l.count,
+          minutes: l.minutes, fee: l.fee, comment: l.comment });
         created++;
       }
     }

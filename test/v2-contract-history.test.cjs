@@ -114,3 +114,11 @@ test('migration is additive: original columns, consent records, files and histor
   const cond=db._sqlite.prepare('select * from conditions').get(), student=h.rows('select * from students where id=?',kid.id)[0], family=h.rows('select * from families')[0], terms={version:'fixture-old',title:'旧版',url:'https://example.invalid/old'};
   assert.equal(current.conditionDocHtml({cond,student,family,terms}),legacy.conditionDocHtml({cond,student,family,terms}),'old templates stay exact');
 });
+
+test('copied plans keep their proposer without copying the previous consent', async()=>{
+ const {h,auth,kid,plan,approve}=await world();
+ const p=await plan(); assert.equal((await approve(p)).ok,true);
+ await h.ok('billing/plans/copyMonth',{auth,studentId:kid.id,month:'2026-12'});
+ const copy=h.rows("select * from planLines where startDate='2026-12-01'")[0];
+ assert.ok(copy.proposedByName);assert.equal(copy.instructionType,'regular');assert.equal(copy.consenterName,'');
+});

@@ -61,12 +61,12 @@ export function specialDocHtml({ sp, student, family, terms, proposer, now }) {
 <div class="sheet">
   <div class="head"><h1>特殊指導条件書</h1><div class="meta">第${sp.no}版${final ? '' : '　<span class="draft">案</span>'}<br>作成日 ${esc(jst(final ? sp.agreedAt : sp.proposedAt) || jst(now))}</div></div>
   <div class="to">${esc(family.name)}　様${family.guardianName ? `（保護者：${esc(family.guardianName)}）` : ''}</div>
-  <p class="lead">ステップワイズ個別指導 受講規約（第6条）に基づき、${esc(name)}さんについて、通常指導とは別に次の特殊指導を行い、その料金を適用することを提案します。内容と範囲、料金、期間をご確認のうえ、承認をお願いいたします。承認は、この承認書の範囲で特殊指導の基準単価を適用することへの同意であり、月ごとの回数は別に指導計画承認書で合意します。</p>
+  <p class="lead">ステップワイズ個別指導 受講規約（第6条）に基づき、${esc(name)}さんについて、通常指導とは別に次の特殊指導を行い、その料金を適用することを提案します。内容と範囲、料金、期間をご確認のうえ、承認をお願いいたします。承認は、この承認書の範囲で特殊指導の基準単価を上限とする適用単価で指導することへの同意であり、月ごとの回数は別に指導計画承認書で合意します。</p>
   <table><tbody>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</tbody></table>
   ${agreeBlock}
   <div class="juku"><strong>塾の記録</strong>　${sp.recordedAt ? '承認の記録日時 ' + esc(jstMin(sp.recordedAt)) + '　記録者 ' + esc(sp.recordedByName || '') + '<br>' : ''}提案日 ${esc(jstMin(sp.proposedAt))}　担当 ${esc(proposer || '')}　（条件書 ID ${esc(sp.id)}）</div>
   <div class="issuer"><div class="name">ステップワイズ個別指導</div>代表　麦倉 優輔<br>埼玉県越谷市袋山1319-9<br>080-6259-3025　／　mugilives@gmail.com</div>
-  <p class="foot">期間の途中でやめる場合、特殊指導の授業料は実施した分だけを精算し、終了自体に対する解約金は請求しません。予約済み授業の取消しには通常指導と同じキャンセルポリシーを適用します（規約第28条）。承認のない特殊指導の基準単価は請求しません。</p>
+  <p class="foot">期間の途中でやめる場合、特殊指導の授業料は実施した分だけを精算し、終了自体に対する解約金は請求しません。予約済み授業の取消しには通常指導と同じキャンセルポリシーを適用します（規約第28条）。事前に承認されていない特殊指導の授業料は請求しません。</p>
 </div>
 </body></html>`;
 }

@@ -199,7 +199,7 @@ export function conditionCard(x, { busy = false, checked = false } = {}) {
     <button class="primary wide" data-action="cond-agree" data-id="${esc(c.id)}"${busy ? ' disabled' : ''}>同意する</button></div>`;
 }
 export const conditionLine = items => (items || []).filter(x => x.agreed && !x.needs).map(x => `<p class="small muted">${esc(given(x.studentName))}さんの基本指導条件 第${x.agreed.no}版に同意済み（${esc(String(x.agreed.agreedAt).slice(0, 10))}）・1回 ${x.agreed.minutes}分 ${yen(x.agreed.fee)}・${esc(x.agreed.deliveryLabel)}${x.agreed.docFileId ? `　<button type="button" class="linkish" data-action="gr-open" data-id="${esc(x.agreed.docFileId)}">条件書を開く</button>` : ''}</p>`).join('');
-// 特殊指導の承認（規約 第5条）: 承認をお願いするカードと、承認済みの 1 行
+// 特殊指導の承認（規約 第6条）: 承認をお願いするカードと、承認済みの 1 行
 const ymdJa = v => v ? `${Number(v.slice(0, 4))}年${Number(v.slice(5, 7))}月${Number(v.slice(8))}日` : '';
 export function specialCard(x, { busy = false, checked = false } = {}) {
   return `<div class="pcard ask" data-special="${esc(x.id)}"><div class="pc-head"><strong>${esc(given(x.studentName))}さんの特殊指導「${esc(x.title)}」</strong><span class="tag warn">承認をお願いします</span></div>

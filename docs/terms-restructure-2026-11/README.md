@@ -4,7 +4,7 @@
 
 **最新の公開版はr3。** [Web版](https://www.stepwise-education.jp/terms/2026-11-20261012-r3/)・[PDF](https://www.stepwise-education.jp/terms/2026-11-20261012-r3/stepwise-terms-2026-11-20261012-r3.pdf)に、特殊指導の途中終了、翌月請求に充当できない差額の返金、免除申請の共通案内を反映した。7章32条133項・3表を維持。旧3版のURL・HTML・PDFは変更せず、[版一覧](https://www.stepwise-education.jp/terms/)から参照できる。
 
-[免除申請のご案内](WAIVER_GUIDE.md)は[Web](https://www.stepwise-education.jp/terms/2026-11-20261012-r3/waiver/)と[2ページPDF](https://www.stepwise-education.jp/terms/2026-11-20261012-r3/waiver/stepwise-waiver-guide-20261012.pdf)を用意した。システムは読み取り確認を行い、下記に[規約との相違](#system-alignment-review)を記録した。本番設定や同意記録は変更していない。
+[免除申請のご案内](WAIVER_GUIDE.md)は[Web](https://www.stepwise-education.jp/terms/2026-11-20261012-r3/waiver/)と[2ページPDF](https://www.stepwise-education.jp/terms/2026-11-20261012-r3/waiver/stepwise-waiver-guide-20261012.pdf)を用意した。システムの[規約との相違](#system-alignment-review)はPR #54で改修し、[実装・検証・公開手順](../REBUILD_DESIGN.md#contract-history-20261012)に記録した。本番反映前で、設定や既存の同意記録は変更していない。
 
 | 読むもの | 内容 |
 |---|---|
@@ -57,6 +57,8 @@
 
 ## 現行システムと規約の整合確認（2026-10-12）
 
+以下は改修前の確認記録。確認した不整合は[PR #54](https://github.com/mugilives-max/stepwise-kobetsu/pull/54)で修正し、GitHub上の隔離環境で検証した。旧書面・既存列を保持し、規約・条件書・計画の履歴と実際の承認者・日時の記録を追加。**本番D1・Worker・画面への反映は未完了**。本番反映前に新画面だけを公開しない。
+
 **確認範囲**：本番スタッフ画面の「設定 → 受講規約」を読み取り確認し、同日のmain `5b5dc1d729b889e72b40a6e269627fc532d838d2` のv2コード・台帳定義・書類ひな形を照合した。実家庭の承認操作・同意記録・設定は変更していない。下表の「コード確認」は、本番のデータやWorkerの配信バージョンまで同一と確認した意味ではない。
 
 | 規約上の約束・項目 | 確認した現状 | 必要な対応 |
@@ -80,7 +82,7 @@
 
 ## 残作業
 
-1. 上記のシステム差分を修正し、テスト用家庭で確認する。現行コードの存在だけで本番反映済みとは判断しない。
+1. PR #54の検証済み改修を、バックアップ・D1移行・Worker・Pagesの順に反映し、テスト用家庭で最終確認する。GitHub Actionsの公開用接続を確認するための設定閲覧が自動承認レビューに拒否され、本番反映は保留。実装の詳細と復旧手順は[REBUILD_DESIGN](../REBUILD_DESIGN.md#contract-history-20261012)。
 2. 変更点と適用時期を示し、規約版を登録して対象家庭から同意を取得・記録する。登録すると計画承認の制御が変わるため、案内と合わせて実施する。
 3. 広報利用承諾書を必要に応じて配布形式へ整える。今回の規約PDF・免除申請案内は承諾取得を兼ねない。
 
