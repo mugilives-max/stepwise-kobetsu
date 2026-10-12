@@ -14,6 +14,7 @@ import { storeInvoiceDoc, storeReceiptDoc, billingDocIds } from './billing-doc.m
 import { agreedSpecialFor, familySpecials } from './specials.mjs';
 import { todayJst, addDays, familyNotice, staffNotice } from './schedule.mjs';
 import { validMonth, monthEnd, shiftMonth, lineCap, lessonAmount, lineMatches, studentBilling, estimateFor, assignLines, parseParts, PART_LABEL } from './plan-calc.mjs';
+import { partsOf } from '../../assets/v2/plan-view.js';
 
 const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(Date.parse(d + 'T00:00:00Z'));
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
@@ -26,7 +27,7 @@ const DAY = 86400e3;
 export function lineView(l, extra = {}) {
   return { id: l.id, studentId: l.studentId, parentId: l.parentId, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, count: l.count, minutes: l.minutes, fee: l.fee,
     comment: l.comment, status: l.status, approvedCount: l.approvedCount, proposedAt: l.proposedAt, approvedAt: l.approvedAt, approvedBy: l.approvedBy ? (l.approvedBy === 'family' ? 'family' : 'staff') : '',
-    approvedVia: l.approvedVia, consentDate: l.consentDate, approvalNote: l.approvalNote, termsVersion: l.termsVersion || '', familyAck: l.familyAck, familyAckAt: l.familyAckAt, familyAckNote: l.familyAckNote, remindedAt: l.remindedAt || '', version: l.version, ...extra };
+    approvedVia: l.approvedVia, consentDate: l.consentDate, approvalNote: l.approvalNote, termsVersion: l.termsVersion || '', familyAck: l.familyAck, familyAckAt: l.familyAckAt, familyAckNote: l.familyAckNote, remindedAt: l.remindedAt || '', version: l.version, parts: partsOf(l), ...extra };
 }
 const feeView = f => ({ id: f.id, lessonId: f.lessonId, studentId: f.studentId, type: f.type, receivedAt: f.receivedAt, standardAmount: f.standardAmount, amount: f.amount, decision: f.decision, note: f.note,
   reliefStatus: f.reliefStatus, reliefReason: f.reliefReason, reliefResponse: f.reliefResponse, invoiceId: f.invoiceId, date: f.date, start: f.start, minutes: f.minutes, subject: f.subject, version: f.version,
@@ -52,6 +53,19 @@ function lineFields(b, base = {}) {
   }
   out.comment = String(out.comment || '').trim(); if (out.comment.length > 500) fail('tooLong', '説明は500文字以内にしてください');
   out.parentId = String(out.parentId || '');
+  // 目的・教材ごとの回数（任意。見せ方だけ）。名前 1〜40 文字・回数 1 以上・8 つまで・同じ名前は 1 つ・合計は計画の回数まで
+  delete out.parts; // 元の行の値は持ち越さない（送られたときだけ書く）
+  if (b.parts !== undefined) {
+    const raw = Array.isArray(b.parts) ? b.parts : [];
+    if (raw.length > 8) fail('badParts', '目的・教材の内訳は8つまでにしてください');
+    const parts = raw.map(p => ({ label: String((p && p.label) || '').trim(), count: Number(p && p.count) })).filter(p => p.label || p.count);
+    if (parts.some(p => !p.label || p.label.length > 40)) fail('badParts', '目的・教材の名前を40文字以内で入れてください');
+    if (parts.some(p => !Number.isInteger(p.count) || p.count < 1)) fail('badParts', '目的・教材ごとの回数を1回以上で入れてください');
+    if (new Set(parts.map(p => p.label)).size !== parts.length) fail('badParts', '同じ目的・教材が2つあります');
+    const sum = parts.reduce((n, p) => n + p.count, 0);
+    if (sum > out.count) fail('badParts', `目的・教材ごとの回数の合計（${sum}回）が、計画の回数（${out.count}回）を超えています`);
+    out.parts = parts.length ? JSON.stringify(parts) : '';
+  }
   return out;
 }
 async function checkLine(c, studentId, n, selfId = '') {
@@ -200,6 +214,7 @@ export const billingRoutes = {
     if (old) { sameVersion(old, b); if (await lineLocked(c, old.id)) fail('locked', '請求に入った授業がある計画は直せません。回数を足すときは「追加の計画」を作ってください', 409); }
     const s = await getStudent(c, old ? old.studentId : b.studentId);
     const n = lineFields(b, old || {});
+    if (n.parts === undefined && old && partsOf(old).reduce((k, p) => k + p.count, 0) > n.count) fail('badParts', '目的・教材ごとの回数の合計が、計画の回数を超えます。内訳も直してください');
     await checkLine(c, s.id, n, old ? old.id : '');
     // 基本単価（30分あたり）を超える料金は、承認済みの特殊指導（同じ名称の種類・期間内・承認した料金まで）がなければ設定できない（規約 第4条6項・第5条）
     const base = Number(s.baseRate30 || 0);
@@ -217,6 +232,8 @@ export const billingRoutes = {
         .bind(b.id, s.id, n.parentId, n.subject, n.kind, n.startDate, n.endDate, n.count, n.minutes, n.fee, n.comment, now, now).run();
     }
     await audit(c, old ? 'planUpdate' : 'planCreate', b.id, { count: n.count, fee: n.fee, minutes: n.minutes, wasStatus: old ? old.status : '' });
+    // 目的・教材の内訳: 送られたときだけ書く（送られなければ今のまま）。回数を減らして内訳の合計を下回ったら止める
+    if (n.parts !== undefined) await c.db.prepare('update planLines set parts = ? where id = ?').bind(n.parts, b.id).run();
     return { line: lineView(await getLine(c, b.id)) };
   },
   'billing/plans/delete': async (c, b) => {
@@ -304,6 +321,11 @@ export const billingRoutes = {
         await c.db.prepare('insert into planLines (id, studentId, subject, kind, startDate, endDate, count, minutes, fee, comment, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
           .bind(newId('pl'), sid, l.subject, l.kind, from, to, l.status === 'approved' ? lineCap(l) || l.count : l.count, l.minutes, l.fee, l.comment, now, now).run();
         created++;
+        // 目的・教材の内訳も写す（作った行を探して。承認で回数が減って内訳の合計を下回るときは写さない）
+        if (partsOf(l).length) {
+          const made = await c.db.prepare("select id, count from planLines where studentId = ? and parentId = '' and subject = ? and kind = ? and startDate = ? and endDate = ? order by createdAt desc, id desc limit 1").bind(sid, l.subject, l.kind, from, to).first();
+          if (made && partsOf(l).reduce((k, p) => k + p.count, 0) <= Number(made.count)) await c.db.prepare('update planLines set parts = ? where id = ?').bind(l.parts, made.id).run();
+        }
       }
     }
     await audit(c, 'planCopyMonth', '', { month: b.month, created });
