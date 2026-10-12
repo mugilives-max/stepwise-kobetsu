@@ -39,6 +39,9 @@ for name, expected in OLD.items():
 source = source_bytes.decode("utf-8")
 OUT.mkdir(parents=True, exist_ok=True)
 REVIEW.mkdir(parents=True, exist_ok=True)
+# Clear only this unpublished edition\'s generated page previews before rerendering.
+for prior_png in REVIEW.glob("page-*.png"):
+    prior_png.unlink()
 
 md = MarkdownIt("commonmark", {"html": True}).enable("table")
 body = BeautifulSoup(md.render(source), "html.parser")
@@ -135,7 +138,7 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  a { color:inherit; text-decoration:none; }
  #footer + p { font-size:8pt; }
  .chapter + p, #article-14-item-3 { break-after:avoid; }
- #appendix-online { break-before:page; }
+ #appendix-online { break-before:auto; }
 }
 """
 # Only the three approved numbered paragraphs may differ from the previous edition.
