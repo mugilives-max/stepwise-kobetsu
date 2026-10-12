@@ -50,7 +50,7 @@ export function plansPage(ctx) {
 }
 function studentPlans(ctx, s) {
   const { esc } = ctx;
-  let h = `<div class="group"><div class="sub-head"><strong>${esc(s.name)}</strong><small class="muted">基本単価 ${yen(s.baseRate30)}/30分${s.status === 'paused' ? '・休会' : ''}</small><button class="mini-btn" data-action="pl-add" data-id="${esc(s.id)}" aria-label="${esc(s.name)} の計画を足す"${ctx.dis()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
+  let h = `<div class="group"><div class="sub-head"><strong>${esc(s.name)}</strong><small class="muted">通常指導の基準単価 ${yen(s.baseRate30)}/30分${s.status === 'paused' ? '・休会' : ''}</small><button class="mini-btn" data-action="pl-add" data-id="${esc(s.id)}" aria-label="${esc(s.name)} の計画を足す"${ctx.dis()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
   if (s.unplanned) h += `<p class="small notice" style="margin:6px 0">計画に入っていない授業が ${s.unplanned}件あります（承認がないと請求できません）。</p>`;
   if (s.lines.length) h += s.lines.map(l => lineRow(ctx, s, l)).join('');
   else h += '<p class="small muted" style="padding:6px 0 10px">この月の計画はまだありません。</p>';
@@ -73,8 +73,8 @@ function planSheet(ctx) {
   if (editing) { const [s, l] = find(editing); return l ? sheet(esc, `${s.name} ${l.subject} を直す`, lineForm(ctx, s, l), 'pl-close') : ''; }
   if (consentFor) {
     const [s, l] = find(consentFor); if (!l) return '';
-    return sheet(esc, `${s.name} ${l.subject} の承諾を記録`, `<form class="stack" data-form="pl-consent" data-id="${esc(l.id)}" data-version="${l.version}"><div class="small muted">LINE・電話・対面で承諾をもらったときに記録します。保護者ページにも出て、保護者が確かめられます。</div>
-      <div class="row"><label style="flex:1">承諾をもらった日<input type="date" name="consentDate" required></label><label style="flex:1">方法<input name="via" maxlength="40" placeholder="LINE・電話・対面" required></label></div><label>回数<input type="number" name="approvedCount" min="1" max="${l.count}" value="${l.count}" style="width:6em"></label>
+    return sheet(esc, `${s.name} ${l.subject} の承諾を記録`, `<form class="stack" data-form="pl-consent" data-id="${esc(l.id)}" data-version="${l.version}"><div class="small muted">授業前にLINE・電話・対面で承認を得て、入力だけが後になった場合も記録できます。授業後に初めて得た承認は登録できません。保護者にも控えが表示されます。</div><label>承認した保護者の氏名<input name="consenterName" maxlength="100" required></label><div class="small muted"></div>
+      <div class="row"><label style="flex:1">授業前に承諾をもらった日時（日本時間）<input type="datetime-local" name="consentedAt" required></label><label style="flex:1">方法<input name="via" maxlength="40" placeholder="LINE・電話・対面" required></label></div><label>回数<input type="number" name="approvedCount" min="1" max="${l.count}" value="${l.count}" style="width:6em"></label>
       <label>メモ（授業のあとで承諾をもらったときは必須）<input name="note" maxlength="300"></label><div class="row"><button class="primary"${ctx.dis()}>承認として記録</button><button type="button" data-action="pl-close"${ctx.dis()}>やめる</button></div></form>`, 'pl-close');
   }
   if (!lineOpen) return '';
@@ -94,7 +94,7 @@ function planSheet(ctx) {
 function remindButton(ctx, familyId, n, last) {
   return `<button data-action="pl-remind" data-family="${ctx.esc(familyId)}"${ctx.dis()}>承認のお願いを送る（${n}件）</button>${last ? `<span class="small muted">前回 ${md(new Date(Date.parse(last) + 9 * 3600e3).toISOString().slice(0, 10))}</span>` : ''}`;
 }
-// 計画の行の入力欄（新しく足す・直す）。初期値は授業の種類の標準 → 基本単価
+// 計画の行の入力欄（新しく足す・直す）。初期値は授業の種類の標準 → 通常指導の基準単価
 function lineForm(ctx, s, l) {
   const { esc } = ctx, kinds = plans.kinds.filter(k => k.active || (l && k.name === l.kind));
   const std = kinds.find(k => k.name === (l ? l.kind : '通常')) || {};
@@ -107,7 +107,7 @@ function lineForm(ctx, s, l) {
     <label>回数<input type="number" name="count" min="1" max="60" value="${l ? l.count : 4}" style="width:5em" required></label>
     <label>1回の時間（分）<input type="number" name="minutes" min="15" max="300" step="15" value="${minutes}" style="width:6em" required></label>
     <label>1回の授業料（円）<input type="number" name="fee" min="0" max="100000" value="${fee}" style="width:7em" required></label></div>
-    <div class="small muted">基本単価なら 60分 ${yen(s.baseRate30 * 2)}・90分 ${yen(s.baseRate30 * 3)}・120分 ${yen(s.baseRate30 * 4)}</div>
+    <div class="small muted">通常指導の基準単価なら 60分 ${yen(s.baseRate30 * 2)}・90分 ${yen(s.baseRate30 * 3)}・120分 ${yen(s.baseRate30 * 4)}</div>
     <div class="row"><label>期間<input type="date" name="startDate" value="${l ? l.startDate : plans.month + '-01'}" required></label><label>〜<input type="date" name="endDate" value="${l ? l.endDate : monthEnd(plans.month)}" required></label>
     <label>追加の計画（テスト前など）<select name="parentId"><option value="">ふつうの計画</option>${parents.map(p => `<option value="${esc(p.id)}"${l && l.parentId === p.id ? ' selected' : ''}>${esc(p.subject)}（${md(p.startDate)}〜${md(p.endDate)}）への追加</option>`).join('')}</select></label></div>
     <label>保護者への説明（任意）<input name="comment" maxlength="500" value="${esc(l ? l.comment : '')}" placeholder="例: 2学期中間テストに向けて計算の復習"></label>
@@ -120,8 +120,8 @@ export function kindsPage(ctx) {
   let h = ctx.notice();
   if (plans.loading) return h + '<p class="muted">読み込んでいます…</p>';
   h += '<div class="group" style="margin-top:12px">' + plans.kinds.map(k => rowButton(esc, 'kind-open', { name: k.name }, `${esc(k.name)}${k.active ? '' : ' <span class="tag gray">使わない</span>'}`,
-    `標準 ${k.standardMinutes ? k.standardMinutes + '分' : '時間なし'}・${k.standardFee ? yen(k.standardFee) : '生徒の基本単価'}`)).join('') + '</div>';
-  h += `<p style="margin-top:12px"><button data-action="kind-open" data-name=""${ctx.dis()}>＋ 種類を足す</button></p><p class="small muted">計画を作るときの初期値です。標準の料金が0円なら、生徒の基本単価で計算します。</p>`;
+    `標準 ${k.standardMinutes ? k.standardMinutes + '分' : '時間なし'}・${k.standardFee ? yen(k.standardFee) : '生徒の通常指導の基準単価'}`)).join('') + '</div>';
+  h += `<p style="margin-top:12px"><button data-action="kind-open" data-name=""${ctx.dis()}>＋ 種類を足す</button></p><p class="small muted">計画を作るときの初期値です。標準の料金が0円なら、生徒の通常指導の基準単価で計算します。</p>`;
   if (kindOpen !== null) {
     const k = plans.kinds.find(x => x.name === kindOpen);
     const body = `<form class="stack" data-form="kind-save">${k ? `<input type="hidden" name="name" value="${esc(k.name)}">` : '<label>名前<input name="name" maxlength="20" placeholder="例: 講習" required></label>'}
@@ -233,7 +233,7 @@ export async function billingSubmit(ctx, kind, el) {
     r = await ctx.call('billing/plans/save', { id, version: id ? version : undefined, studentId: el.dataset.student, subject: v.subject, kind: v.kind, count: num(v.count), minutes: num(v.minutes), fee: num(v.fee), startDate: v.startDate, endDate: v.endDate, parentId: v.parentId, comment: v.comment });
     msg = '下書きにしました。「お知らせする」で家族に送ります'; if (r.ok) { editing = addFor = lineOpen = ''; plans = null; }
   } else if (kind === 'pl-consent') {
-    r = await ctx.call('billing/plans/consent', { id, version, consentDate: v.consentDate, via: v.via, approvedCount: num(v.approvedCount), note: v.note });
+    r = await ctx.call('billing/plans/consent', { id, version, consentedAt: v.consentedAt + '+09:00', consenterName: v.consenterName, via: v.via, approvedCount: num(v.approvedCount), note: v.note });
     msg = '承認として記録しました'; if (r.ok) { consentFor = lineOpen = ''; plans = null; }
   } else if (kind === 'kind-save') {
     r = await ctx.call('billing/kinds/save', { name: v.name, standardMinutes: num(v.standardMinutes) || 0, standardFee: num(v.standardFee) || 0, active: v.active === '1' });

@@ -13,7 +13,7 @@ const jst = t => t ? new Date(Date.parse(t) + 9 * 3600e3).toISOString().slice(5,
 // 台帳に残す書面の一覧。いつ作られ、誰がどこから開けるか。「見本を開く」で架空の家族（見本家）で描いた書面を新しいタブに出す。
 const DOCS = [
   { type: 'terms', title: '受講規約', when: '塾が版を決めて公開する。保護者は初めて計画を承認する前に同意する', who: '誰でも（公開ページ）。同意の状態は 設定 → 受講規約', where: '設定 → 受講規約' },
-  { type: 'condition', title: '個別指導条件書', when: '生徒ごとに条件を決めてお知らせしたとき（案）、保護者が同意したとき（確定）', who: '保護者はお支払い。塾は生徒の画面', where: '家族と生徒 → 生徒 → 個別指導条件' },
+  { type: 'condition', title: '基本指導条件書', when: '生徒ごとに条件を決めてお知らせしたとき（案）、保護者が同意したとき（確定）', who: '保護者はお支払い。塾は生徒の画面', where: '家族と生徒 → 生徒 → 基本指導条件' },
   { type: 'special', title: '特殊指導条件書', when: '特殊指導を提案したとき（案）、保護者が承認したとき（確定）', who: '保護者はお支払い。塾は生徒の画面', where: '家族と生徒 → 生徒 → 特殊指導' },
   { type: 'plan', title: '授業計画承認書', when: '計画を送ると保護者ページに出る（書面ではなく画面）。承認の記録は計画に残る', who: '保護者は授業計画。塾は授業計画の画面', where: '授業計画' },
   { type: 'invoice', title: '請求書', when: '月の請求を確定したとき', who: '保護者はお支払いの請求。塾は請求の画面', where: '請求 → 家族の月。振込先と備考は 設定 → 請求の下の「請求書の設定」' },
@@ -48,6 +48,8 @@ export function termsPage(ctx) {
   const t = terms.terms, f = terms.families;
   h += `<div class="pcard" style="margin-top:12px"><div class="pc-head"><strong>${t.version ? esc(t.title || '受講規約') : '規約の版がまだありません'}</strong>${t.version ? `<span class="tag">${esc(t.version)}</span>` : ''}</div>
     ${t.version ? `<p class="small muted">${t.from ? '適用 ' + esc(t.from) + '・' : ''}同意 ${f.agreed} / ${f.total} 家族${t.url ? `・<a href="${esc(t.url)}" target="_blank" rel="noopener">全文を開く</a>` : '・全文のリンクなし'}</p>${t.note ? `<p class="small">${esc(t.note)}</p>` : ''}` : '<p class="small muted">版を決めると、保護者ページに規約が出て、同意してから計画を承認する形になります。版が空のあいだは、同意は求めません。</p>'}</div>`;
+  h += '<p class="small muted">同意済みの記録と各版の全文リンクは保存されます。登録済みの版の内容を変える場合は、新しい版名にしてください。</p>';
+  h += (terms.catalogue || []).map(x => `<p class="small"><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title || x.version)}</a>（${esc(x.version)}）<button data-action="terms-select" data-version="${esc(x.version)}">この版を入力欄に選ぶ</button></p>`).join('');
   h += `<div class="sec-title">今の版を決める</div><form class="stack group" style="padding:12px" data-form="terms-set">
     <div class="row"><label style="flex:1">版（例: 2026-11）<input name="version" maxlength="40" value="${esc(t.version)}" placeholder="空にすると同意を求めない"></label><label style="flex:1">適用日<input type="date" name="from" value="${esc(t.from)}"></label></div>
     <label>規約の名前<input name="title" maxlength="80" value="${esc(t.title)}" placeholder="例: 受講規約（2026年11月版）"></label>
@@ -55,7 +57,7 @@ export function termsPage(ctx) {
     <label>保護者への一言（任意。何が変わったか）<input name="note" maxlength="500" value="${esc(t.note)}"></label>
     <p class="small muted" style="margin:0">版を変えると、すべての家族が「同意が要る」状態になり、同意するまで新しい計画を承認できません（見送りはできます）。</p>
     <button class="primary"${ctx.dis()}>この版にする</button></form>`;
-  h += '<div class="sec-title">同意の記録</div>' + (terms.history.length ? '<div class="group">' + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(x.acceptedAt.slice(0, 10))}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}${x.actorKind === 'staff' ? '（教室が記録）' : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div>' : '<p class="muted small">まだありません。書面や LINE でもらった同意は、家族の画面の「規約の同意を記録」で残せます。</p>');
+  h += '<div class="sec-title">同意の記録</div>' + (terms.history.length ? '<div class="group">' + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(x.acceptedAt)}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}<br>同意者：${esc(x.consenterName || '記録なし')}<br>記録日時：${esc(x.recordedAt || '記録なし')}・記録者：${esc(x.recordedByName || '記録なし')}${x.actorKind === 'staff' ? '（教室が記録）' : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div>' : '<p class="muted small">まだありません。書面や LINE でもらった同意は、家族の画面の「規約の同意を記録」で残せます。</p>');
   return h;
 }
 
@@ -104,6 +106,14 @@ export async function extrasSubmit(ctx, kind, el) {
 }
 export async function extrasClick(ctx, a, b) {
   let r;
+  if (a === 'terms-select') {
+    const selected = (terms.catalogue || []).find(x => x.version === b.dataset.version);
+    if (selected) {
+      const form = document.querySelector('[data-form="terms-set"]');
+      for (const [k,v] of Object.entries({version:selected.version,title:selected.title,url:selected.url,from:selected.fromDate,note:selected.note || ''})) form.elements[k].value = v || '';
+    }
+    return true;
+  }
   if (a === 'eff-open') { effOpen = Number(b.dataset.id); ctx.say(''); return true; }
   if (a === 'eff-close') { effOpen = 0; return true; }
   if (a === 'eff-test') {

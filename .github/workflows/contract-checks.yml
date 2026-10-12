@@ -1,0 +1,24 @@
+name: Contract history checks
+on:
+  push:
+    branches: [codex/contracts-system-20261012]
+  pull_request:
+    paths: ['cf/v2/**', 'cf/migrations-v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'test/v2-*', '.github/workflows/contract-checks.yml']
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Syntax
+        run: |
+          npm run check
+          for f in cf/v2/*.mjs; do node --check "$f"; done
+          for f in staff/*.js family/*.js assets/v2/*.js; do node --check --input-type=module < "$f"; done
+      - name: V2 regression tests
+        run: node --test test/v2-*.test.cjs
