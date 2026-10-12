@@ -112,7 +112,7 @@
 | [現行第18条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L198) | 塾は生徒の安全確保に努めます。生徒は設備・備品を適切に使用し、危険な行為をし… | [第25条第1項](TERMS.md#article-25-item-1) | 移動・参照更新（該当箇所） |
 | [現行第18条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L199) | 体調不良時は無理に受講せず、早めにご連絡ください。緊急時の連絡先を塾にお知ら… | [第25条第2項](TERMS.md#article-25-item-2) | 移動・参照更新（該当箇所） |
 | [現行第18条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L200) | 故意または重大な過失による設備等の破損・紛失については、事情を確認して相当額… | [第25条第3項](TERMS.md#article-25-item-3) | 移動・参照更新（該当箇所） |
-| [現行第18条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L201) | 事故等の責任は原因と法令に基づき判断し、本規約によって塾の法令上の責任を一律… | [第25条第4項](TERMS.md#article-25-item-4) | 移動・参照更新（該当箇所） |
+| [現行第18条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L201) | 事故等の責任は原因と法令に基づき判断し、本規約によって塾の法令上の責任を一律… | [第25条第5項](TERMS.md#article-25-item-5)〔追加指示で第4項から移動〕 | 移動・参照更新（該当箇所） |
 | [現行第19条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L205) | 指導計画承認書、予定、請求は保護者ページ等で案内し、登録された連絡先に通知し… | [第23条第1項](TERMS.md#article-23-item-1) | 移動・参照更新（該当箇所） |
 | [現行第19条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L206) | 日程、料金、受講終了など重要な内容は、双方が確認できる方法で記録します。電話… | [第23条第2項](TERMS.md#article-23-item-2) | 移動・参照更新（該当箇所） |
 | [現行第19条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L207) | 連絡先が変わった場合はお知らせください。ページを利用できないときは、指定のL… | [第23条第3項](TERMS.md#article-23-item-3) | 移動・参照更新（該当箇所） |
@@ -127,7 +127,7 @@
 | [現行第21条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L222) | 設定・再設定の方法はページ等で案内します。利用できない場合の連絡手段は第19… | [第24条第3項](TERMS.md#article-24-item-3) | 移動・参照更新（該当箇所） |
 | [現行第21条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L223) | アカウント共有等があったことだけを理由に、塾の責任を一律に免除するものではあ… | [第24条第4項](TERMS.md#article-24-item-4) | 移動・参照更新（該当箇所） |
 | [現行第22条本文](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L225) | 成績推移、写真、体験談、口コミ等を広報に使う場合は、利用内容、掲載先、表示す… | [第27条第1項](TERMS.md#article-27-item-1) | 移動・参照更新（該当箇所） |
-| [現行第23条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L229) | 暴力、暴言、威圧、著しい迷惑行為、許可のない授業の録音・録画・撮影・配信・公… | [第25条第5項](TERMS.md#article-25-item-5) | 移動・参照更新（該当箇所） |
+| [現行第23条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L229) | 暴力、暴言、威圧、著しい迷惑行為、許可のない授業の録音・録画・撮影・配信・公… | [第25条第4項](TERMS.md#article-25-item-4)〔追加指示で第5項から移動〕 | 移動・参照更新（該当箇所） |
 | [現行第23条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L230) | 契約違反がある場合は、相当な期間を定めて是正を求め、改善されないときに契約を… | [第29条第1項](TERMS.md#article-29-item-1) | 移動・参照更新（該当箇所） |
 | [現行第23条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L231) | 暴力など安全や信頼関係に重大な支障を与える場合は、直ちに受講を停止し、契約を… | [第29条第2項](TERMS.md#article-29-item-2) | 移動・参照更新（該当箇所） |
 | [現行第23条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L232) | 終了時の料金は第15条に従い精算します。 | [第29条第3項](TERMS.md#article-29-item-3) | 移動・参照更新（該当箇所） |
@@ -931,3 +931,54 @@
 **変更後：** [本文](TERMS.md#article-22-item-1)
 
 > 確定後の訂正は、元の請求と訂正理由を残して通知します。支払済みの請求額が減額された場合は、払い過ぎた差額を、原則として翌月の請求への充当で精算します。保護者が振込を希望する場合は、減額が確定した月の翌月15日までに振り込みます。塾から返金する場合の振込手数料は、塾が負担します。
+
+<a id="safety-privacy-publicity-revision"></a>
+
+## 2026-10-12 追加指示：安全・資料削除・広報承諾書の参照
+
+- 第25条第4・5項を入れ替え、禁止事項を第4項、事故等の責任についての説明を第5項とした。各項の文言は番号以外変更しない。全項対応表の移動先も更新した。
+- 第26条第6項：削除対象に「受診記録など」の具体例を加えた。免除確認に使用した資料の範囲・削除時期は変更しない。
+- 第27条第1項：作成済みの[口コミ・写真・実績等の広報利用承諾書](PUBLICITY_CONSENT.md)で利用内容・掲載先・表示情報・期間等を具体的に定めることを明記した。受講契約とは別の任意の同意、匿名でも推測され得ること、不利益な条件変更の禁止、利用停止の申出は維持する。
+- 規約の対象4項と版表示以外、他129項・別表・177アンカーは維持。承諾書の様式、未決の判断2、Web・PDF、システム設定、家庭別同意記録は変更しない。
+- 改訂前：[固定コミット](https://github.com/mugilives-max/stepwise-kobetsu/blob/0c294fc37bc715ac5d88ee3faff25e970d7f34a9/docs/terms-restructure-2026-11/TERMS.md)。
+
+### 第25条第4項
+
+**変更前：**
+
+> 事故等の責任は原因と法令に基づき判断し、本規約によって塾の法令上の責任を一律に免除するものではありません。
+
+**変更後：** [本文](TERMS.md#article-25-item-4)
+
+> 暴力、暴言、威圧、著しい迷惑行為、許可のない授業の録音・録画・撮影・配信・公開、教材の不正利用など、指導や他者の権利を侵害する行為は禁止します。
+
+### 第25条第5項
+
+**変更前：**
+
+> 暴力、暴言、威圧、著しい迷惑行為、許可のない授業の録音・録画・撮影・配信・公開、教材の不正利用など、指導や他者の権利を侵害する行為は禁止します。
+
+**変更後：** [本文](TERMS.md#article-25-item-5)
+
+> 事故等の責任は原因と法令に基づき判断し、本規約によって塾の法令上の責任を一律に免除するものではありません。
+
+### 第26条第6項
+
+**変更前：**
+
+> 記録に誤りがある場合は訂正を申し出ることができます。契約終了後の契約・請求記録等は、精算への対応および税務関係法令に基づく保存のため、記録の種類に応じて必要な期間（最長7年）保管します。免除の確認に使った資料は、確認が済み次第速やかに削除します。
+
+**変更後：** [本文](TERMS.md#article-26-item-6)
+
+> 記録に誤りがある場合は訂正を申し出ることができます。契約終了後の契約・請求記録等は、精算への対応および税務関係法令に基づく保存のため、記録の種類に応じて必要な期間（最長7年）保管します。免除の確認に使った受診記録などの資料は、確認が済み次第速やかに削除します。
+
+### 第27条第1項
+
+**変更前：**
+
+> 成績推移、写真、体験談、口コミ等を広報に使う場合は、利用内容、掲載先、表示する情報、期間等を示し、受講の同意とは別に同意を得ます。匿名でも個人が推測できる場合があります。同意しないことによって受講条件を不利に変更しません。利用停止は指定窓口に申し出ることができます。
+
+**変更後：** [本文](TERMS.md#article-27-item-1)
+
+> 成績推移、写真、体験談、口コミ等を広報に使う場合は、別途「口コミ・写真・実績等の広報利用承諾書」で利用内容、掲載先、表示する情報、期間等を具体的に定め、受講の同意とは別に同意を得ます。匿名でも個人が推測できる場合があります。同意しないことによって受講条件を不利に変更しません。利用停止は指定窓口に申し出ることができます。
+
