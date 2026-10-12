@@ -1,0 +1,44 @@
+{
+  "edition": "2026-11-20261012-r2",
+  "effective_date": "2026-11-01",
+  "source_path": "docs/terms-restructure-2026-11/TERMS.md",
+  "source_git_blob": "a684fd713ed2db846920d57ad2f02c2dff615656",
+  "source_commit": "eef4bf4609e64f5a7ca9570849d400be9563c003",
+  "html_sha256": "660402dc1e2acbf840bc24604043741e14ab90518ca587e8d041ea0a16f8e0ff",
+  "pdf_sha256": "9fb8aca08edf666c5156ecae716486406c5d0adfb9d6dc61229fd483290d5d41",
+  "old_blobs_preserved": {
+    "terms/2026-11-20261012/index.html": "8ad7081a13be099e8b3f8e76c04d986886bb971c",
+    "terms/2026-11-20261012/stepwise-terms-2026-11-20261012.pdf": "a391290531d024ff6d3bb1298fe2394b59345b92",
+    "terms/2026-11/index.html": "84325add6c395ff9cbe8588abcc3c0221e40b03f",
+    "terms/2026-11/stepwise-terms-2026-11.pdf": "94bcb70dc1eb25afdd78393c306d0d5ec518e6e9"
+  },
+  "chapters": 7,
+  "articles": 32,
+  "numbered_paragraphs": 133,
+  "tables": 3,
+  "markdown_to_html_full_text_equal": true,
+  "internal_links_valid": true,
+  "mobile_overflow": false,
+  "pdf_pages": 12,
+  "pdf_text_blocks_verified": 283,
+  "pdf_missing_text_blocks": 0,
+  "pdf_fonts": [
+    "DejaVuSans",
+    "NotoSansCJKjp-Bold",
+    "NotoSansCJKjp-Regular"
+  ],
+  "pdf_fonts_embedded": true,
+  "embedded_font_programs": 259,
+  "japanese_font_match": "Noto Sans CJK JP",
+  "visual_review_images": 14,
+  "anchors": 177,
+  "source_snapshot_commit": "23c72763c3f7f72f780bc398168ed78dc460faed",
+  "visual_review": {
+    "date": "2026-10-12",
+    "reviewed_commit": "28704e149713d502ecae1a581333ea7b473ce320",
+    "pdf_pages_reviewed": 12,
+    "mobile_views_reviewed": 2,
+    "result": "全12ページで文字欠落・重なり・表のはみ出しなし。章見出しと本文、負担率の説明と表、別表の改ページを確認。390pxの画面で本文と料金表の表示を確認。",
+    "preview_workflow_run": "https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38208571073"
+  }
+}

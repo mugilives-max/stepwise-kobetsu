@@ -2,7 +2,7 @@
 
 **正本は [TERMS.md](TERMS.md)。** 2026年10月12日に正式採用した本文へ、本人が承認した単価・指導区分・教材手配の整理に加え、システムの説明、承認と記録、回数の上限、第21条の確認・支払いの流れ、第22条の返金手順を反映した。第25条の項順、第26条の資料削除、第27条と広報利用承諾書の関係も整理した。7章32条を維持し、説明の追加・項分割により本文は133項となった。
 
-**本文と公開版の違い：今回の改訂は本文への反映まで。Web・PDFは同日確定の改訂前の本文を掲載している。** 改訂前の原稿は[固定コミット](https://github.com/mugilives-max/stepwise-kobetsu/blob/7c3c73e3ad3b7f8c42abf101f1a7fe0084eef97a/docs/terms-restructure-2026-11/TERMS.md)で保存する。
+**Web・PDFも最新本文へ更新。** [Web版](https://www.stepwise-education.jp/terms/2026-11-20261012-r2/)・[PDF](https://www.stepwise-education.jp/terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf)はPR #47～51までの修正を含む本文（7章32条133項）と一致する。旧32条版・旧25条版のURLとファイルは残し、[版一覧](https://www.stepwise-education.jp/terms/)から参照できる。 改訂前の原稿は[固定コミット](https://github.com/mugilives-max/stepwise-kobetsu/blob/7c3c73e3ad3b7f8c42abf101f1a7fe0084eef97a/docs/terms-restructure-2026-11/TERMS.md)で保存する。
 
 | 読むもの | 内容 |
 |---|---|
@@ -24,23 +24,30 @@
 - 返金手順の見直し：第22条第1項を「原則は翌月請求への充当、保護者が振込を希望する場合は減額確定月の翌月15日までに振込」の順に整理した。早期返金・予定日確認の申出と回答に関する一文を削除し、塾の振込手数料負担は維持。対象はキャンセル料金に限定せず、授業料等を含む支払済みの請求額の減額とする。[対応表](MAPPING.md#refund-procedure-revision)に変更前後を記録する。
 - 今回の見直し：第25条第4・5項を入れ替え、禁止事項の後に事故等の責任についての説明を配置。第26条第6項の削除対象に「受診記録など」の例を加え、第27条で利用内容・掲載先・表示情報・期間等を別途「口コミ・写真・実績等の広報利用承諾書」で定めることを明記した。[対応表](MAPPING.md#safety-privacy-publicity-revision)に変更前後を記録する。承諾書の本文・記入欄は変更していない。
 - 判断1・3は本人の指示に基づき反映済み。判断3は「保護者が了承した充当」という条件を、原則充当・希望時振込の方式に変更したものとして記録する。判断2（特殊指導の途中終了とキャンセル料金の関係）は未決のまま。第28条の精算条件は今回変更していない。
-- **Web版・PDFの公開**：前回の依頼により、今回の改訂前の正式本文から [Web版](https://www.stepwise-education.jp/terms/2026-11-20261012/) と [PDF](https://www.stepwise-education.jp/terms/2026-11-20261012/stepwise-terms-2026-11-20261012.pdf) を生成。[版一覧](https://www.stepwise-education.jp/terms/)から新版・旧版を案内する。旧版のURLとファイルは保持する。規約版のシステム設定と家庭ごとの同意記録は変更していない。
+- **Web版・PDFの公開**：本人の追加依頼により、PR #51までの正式本文から[Web版](https://www.stepwise-education.jp/terms/2026-11-20261012-r2/)と[PDF](https://www.stepwise-education.jp/terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf)を生成（PR #52）。[版一覧](https://www.stepwise-education.jp/terms/)の先頭に改訂版を案内する。初回公開の32条版と従来の25条版は、URL・HTML・PDFを変更せず保持した。規約版のシステム設定と家庭ごとの同意記録は変更していない。
 - 本文の適用開始日は2026年11月1日。同意済み契約への適用は第31条による。今回の採用だけで、家庭が新しい版に同意済みになったとは扱わない。
-- 作業は本人指定に従いGitHub上で実施。ローカルのファイル操作・Git操作・シェル実行は使用しない。
+- 本人指定に従い、原稿の保存・編集、Web・PDFの生成と検証はGitHub上で実施。ローカルに作業用の原稿や出力ファイルを作らない。
 
-## 改訂前のWeb版・PDFの生成と確認
+## 最新のWeb版・PDFの生成と確認
+
+- 公開識別子：`2026-11-20261012-r2`。改訂日は2026年10月12日、適用開始日は11月1日。URLとPDF名、PDFの各ページの版表示で旧版と区別する。
+- 作成元は[PR #51までのTERMS.md](https://github.com/mugilives-max/stepwise-kobetsu/blob/23c72763c3f7f72f780bc398168ed78dc460faed/docs/terms-restructure-2026-11/TERMS.md)（blob `a684fd713ed2db846920d57ad2f02c2dff615656`）。今回、規約の本文・項番号・別表は変更していない。
+- [生成処理](../../scripts/publish-terms.py)と[GitHub Actions](../../.github/workflows/terms-publication.yml)は新しい作成元・公開先・確認記録に固定した。今後の本文改訂時は別の公開識別子を使い、既存版に上書きする形で再実行しない。
+- 原稿からHTMLへの全文一致、7章32条133項・3表・177アンカーと項番号・内部参照、390pxのスマートフォン幅、PDFの文字抽出・余白・日本語フォントを確認。PDFは12ページ、283か所の本文を照合し、全12ページとスマートフォン表示2点を目視で確認した。[今回の検証記録](PUBLICATION_CHECKS_20261012_R2.json)と[PR #52](https://github.com/mugilives-max/stepwise-kobetsu/pull/52)を参照。
+- 旧32条版・旧25条版のHTML・PDF計4ファイルのGit blobが更新前と一致。旧確認記録と旧プレビューも保持し、新版への自動転送は設けない。
+
+## 初回公開時のWeb版・PDFの生成と確認〔履歴〕
 
 - 公開識別子：`2026-11-20261012`。正式本文の確定日は2026年10月12日、適用日は11月1日。従来の `terms/2026-11/` の25条版と区別する。
-- 作成元は[公開時点のTERMS.md](https://github.com/mugilives-max/stepwise-kobetsu/blob/7c3c73e3ad3b7f8c42abf101f1a7fe0084eef97a/docs/terms-restructure-2026-11/TERMS.md)（blob `56172a3c3754d03ceab921d85f088dd710b45547`）。生成処理は [scripts/publish-terms.py](../../scripts/publish-terms.py)。[GitHub Actions](../../.github/workflows/terms-publication.yml)でHTMLとPDFを作る。ローカルには原稿・出力ファイルを作らない。
+- 作成元は[公開時点のTERMS.md](https://github.com/mugilives-max/stepwise-kobetsu/blob/7c3c73e3ad3b7f8c42abf101f1a7fe0084eef97a/docs/terms-restructure-2026-11/TERMS.md)（blob `56172a3c3754d03ceab921d85f088dd710b45547`）。当時の生成処理は[固定コミット](https://github.com/mugilives-max/stepwise-kobetsu/blob/7c3c73e3ad3b7f8c42abf101f1a7fe0084eef97a/scripts/publish-terms.py)を参照。GitHub ActionsでHTMLとPDFを作成した。ローカルには原稿・出力ファイルを作らない。
 - 文字単位の原稿→HTML照合、32条129項・3表・項番号と内部リンク、スマートフォン幅、PDFの文字抽出・余白・日本語フォントを確認する。PDF全ページを画像化し目視確認した結果は [PUBLICATION_CHECKS.json](PUBLICATION_CHECKS.json) とPR #46に記録する。
 - 旧HTML・旧PDFのGit blobが元の値と一致することを確認し、本文・バイナリを変更しない。旧版URLから新版への自動転送は設けない。
 
 ## 残作業
 
-1. 今回の改訂をWeb・PDFに反映する。現行の公開版は保持し、新しい公開識別子・作成元・検証記録を用いる。既存の生成処理は改訂前の原稿と公開先を固定しているため、そのまま再実行しない。
-2. システムの規約版・表示名・条項参照を確認し、正式版への案内をそろえる。システムに登録された版と、家庭別同意の取得状況は今回変更・確認していない。
-3. 変更点と適用時期を示し、対象家庭から同意を取得・記録する。無回答や文書の公開を同意として記録しない。
-4. 広報利用承諾書を必要に応じて配布形式へ整える。今回のPDFは受講規約であり、承諾取得を兼ねない。
+1. システムの規約版・表示名・条項参照を確認し、正式版への案内をそろえる。システムに登録された版と、家庭別同意の取得状況は今回変更・確認していない。
+2. 変更点と適用時期を示し、対象家庭から同意を取得・記録する。無回答や文書の公開を同意として記録しない。
+3. 広報利用承諾書を必要に応じて配布形式へ整える。今回のPDFは受講規約であり、承諾取得を兼ねない。
 
 これらの進行管理は [FUTURE_WORK.md](../FUTURE_WORK.md#terms-formal-publication) に集約する。未決の判断2を公開作業の都合で補完しない。
 
