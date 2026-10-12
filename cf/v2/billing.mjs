@@ -318,12 +318,14 @@ export const billingRoutes = {
       const have = (await c.db.prepare("select * from planLines where studentId = ? and parentId = '' and status <> 'declined' and startDate <= ? and endDate >= ?").bind(sid, to, from).all()).results;
       for (const l of src) {
         if (have.some(h => h.subject === l.subject && h.kind === l.kind)) continue;
-        const nid = newId('pl'), cnt = l.status === 'approved' ? lineCap(l) || l.count : l.count;
         await c.db.prepare('insert into planLines (id, studentId, subject, kind, startDate, endDate, count, minutes, fee, comment, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .bind(nid, sid, l.subject, l.kind, from, to, cnt, l.minutes, l.fee, l.comment, now, now).run();
-        // 目的・教材の内訳も写す（承認で回数が減って内訳の合計を下回るときは写さない）
-        if (partsOf(l).length && partsOf(l).reduce((k, p) => k + p.count, 0) <= cnt) await c.db.prepare('update planLines set parts = ? where id = ?').bind(l.parts, nid).run();
+          .bind(newId('pl'), sid, l.subject, l.kind, from, to, l.status === 'approved' ? lineCap(l) || l.count : l.count, l.minutes, l.fee, l.comment, now, now).run();
         created++;
+        // 目的・教材の内訳も写す（作った行を探して。承認で回数が減って内訳の合計を下回るときは写さない）
+        if (partsOf(l).length) {
+          const made = await c.db.prepare("select id, count from planLines where studentId = ? and parentId = '' and subject = ? and kind = ? and startDate = ? and endDate = ? order by createdAt desc, id desc limit 1").bind(sid, l.subject, l.kind, from, to).first();
+          if (made && partsOf(l).reduce((k, p) => k + p.count, 0) <= Number(made.count)) await c.db.prepare('update planLines set parts = ? where id = ?').bind(l.parts, made.id).run();
+        }
       }
     }
     await audit(c, 'planCopyMonth', '', { month: b.month, created });
