@@ -10,14 +10,16 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261012"
+EDITION = "2026-11-20261012-r2"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261012-r2"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261012_R2.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "56172a3c3754d03ceab921d85f088dd710b45547"
+EXPECTED_SOURCE_BLOB = "a684fd713ed2db846920d57ad2f02c2dff615656"
 OLD = {
+    "terms/2026-11-20261012/index.html": "8ad7081a13be099e8b3f8e76c04d986886bb971c",
+    "terms/2026-11-20261012/stepwise-terms-2026-11-20261012.pdf": "a391290531d024ff6d3bb1298fe2394b59345b92",
     "terms/2026-11/index.html": "84325add6c395ff9cbe8588abcc3c0221e40b03f",
     "terms/2026-11/stepwise-terms-2026-11.pdf": "94bcb70dc1eb25afdd78393c306d0d5ec518e6e9",
 }
@@ -61,7 +63,7 @@ for heading in body.find_all(["h1", "h2", "h3"]):
 ids = [tag["id"] for tag in body.select("[id]")]
 assert len(ids) == len(set(ids)), "Duplicate anchors"
 assert len([v for v in ids if re.fullmatch(r"article-\d+", v)]) == 32
-assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 129
+assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 133
 assert len([v for v in ids if re.fullmatch(r"chapter-\d+", v)]) == 7
 assert len(body.find_all("table")) == 3
 for link in body.select('a[href^="#"]'):
@@ -134,7 +136,7 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:page; }
 }
 """
-html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月12日確定）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="../">規約の版一覧・旧版</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
+html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月12日改訂）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="../">規約の版一覧・旧版</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
 (OUT / "index.html").write_text(html, encoding="utf-8")
 
 index_html = """<!doctype html>
@@ -142,10 +144,13 @@ index_html = """<!doctype html>
 <style>body{font-family:"Yu Gothic","Noto Sans CJK JP",Meiryo,sans-serif;color:#172526;line-height:1.9;margin:36px auto;padding:0 22px;max-width:760px}h1{font-size:1.6rem}h2{font-size:1.2rem;border-bottom:1px solid #b9cdcb;padding-bottom:7px;margin-top:28px}a{color:#126964}li{margin:9px 0}.note{color:#405452}</style></head><body>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>受講規約の版一覧</h1>
 <p>受講規約の本文とPDFをご確認いただけます。適用されるのは、ご家庭が同意した版です。掲載の更新だけで過去に同意した内容を置き換えることはありません。</p>
-<h2>正式版：2026年11月版（2026年10月12日確定）</h2>
+<h2>正式版：2026年11月版（2026年10月12日改訂）</h2>
+<p>適用開始日：2026年11月1日。全7章・32条。単価・指導区分、承認手続、精算・返金、資料の取り扱い等の修正を反映しています。</p>
+<ul><li><a href="2026-11-20261012-r2/">Web版を読む</a></li><li><a href="2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf">PDFで開く</a></li></ul>
+<h2>旧版：2026年11月版（2026年10月12日初回公開）</h2>
 <p>適用開始日：2026年11月1日。全7章・32条。</p>
-<ul><li><a href="2026-11-20261012/">Web版を読む</a></li><li><a href="2026-11-20261012/stepwise-terms-2026-11-20261012.pdf">PDFで開く</a></li></ul>
-<h2>旧版</h2>
+<ul><li><a href="2026-11-20261012/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261012/stepwise-terms-2026-11-20261012.pdf">旧版のPDFで開く</a></li></ul>
+<h2>旧版：2026年11月版（25条版）</h2>
 <p>2026年11月版（20261006統合3を確定したもの）。全25条。旧版の本文とファイルを保存しています。</p>
 <ul><li><a href="2026-11/">旧版のWeb版を読む</a></li><li><a href="2026-11/stepwise-terms-2026-11.pdf">旧版のPDFで開く</a></li></ul>
 <p class="note">ご自身に適用される版が分からない場合は、当塾との通常連絡に使用しているLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
@@ -163,7 +168,7 @@ with sync_playwright() as p:
         path=str(OUT / PDF_NAME), format="A4", print_background=True,
         prefer_css_page_size=True, display_header_footer=True,
         header_template='<span></span>',
-        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">Stepwise / 2026-11-20261012 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">Stepwise / 2026-11-20261012-r2 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
         tagged=True, outline=True,
     )
     page.emulate_media(media="screen")
@@ -222,7 +227,7 @@ report = {
     "html_sha256":hashlib.sha256((OUT / "index.html").read_bytes()).hexdigest(),
     "pdf_sha256":hashlib.sha256((OUT / PDF_NAME).read_bytes()).hexdigest(),
     "old_blobs_preserved":OLD,
-    "chapters":7,"articles":32,"numbered_paragraphs":129,"tables":3,
+    "chapters":7,"articles":32,"numbered_paragraphs":133,"tables":3,
     "markdown_to_html_full_text_equal":True,
     "internal_links_valid":True,"mobile_overflow":False,
     "pdf_pages":len(pdf),"pdf_text_blocks_verified":len(checks),
