@@ -40,7 +40,7 @@ export function confirmByFor(dates, today, requested) {
 
 // ---- 見せ方 ----
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
-function lessonView(l, extra = {}) {
+export function lessonView(l, extra = {}) {
   return { id: l.id, studentId: l.studentId, staffId: l.staffId, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, deliveryMode: l.deliveryMode,
     status: l.status, confirmBy: l.confirmBy, meetUrl: l.meetUrl, lateStart: !!l.lateStart, lostMinutes: Number(l.lostMinutes || 0), version: l.version, ...extra };
 }
@@ -108,7 +108,7 @@ async function closeRequests(c, lessonId, kinds, by) {
 }
 
 // 授業の中身の確かめ（作る・直す共通）
-function lessonFields(b, base = {}) {
+export function lessonFields(b, base = {}) {
   const out = { ...base };
   for (const k of ['date', 'start', 'minutes', 'subject', 'kind', 'deliveryMode', 'staffId']) if (b[k] !== undefined) out[k] = b[k];
   out.minutes = Number(out.minutes);
@@ -122,7 +122,7 @@ function lessonFields(b, base = {}) {
   return out;
 }
 // 重なりの確かめ。同じ生徒の授業が重なれば断る。同じ講師は対面2人までなら確かめを求め、オンラインが入るか3人以上なら断る。休み・授業ができない日は、force がなければ確かめを求める
-async function checkConflicts(c, candidates, { force, exceptId = '' } = {}) {
+export async function checkConflicts(c, candidates, { force, exceptId = '' } = {}) {
   const dates = [...new Set(candidates.map(x => x.date))];
   const q = `(${dates.map(() => '?').join(', ')})`;
   const lessons = (await c.db.prepare(`select * from lessons where date in ${q} and status in ('held', 'proposed', 'decided', 'done') and id <> ?`).bind(...dates, exceptId).all()).results;
@@ -252,7 +252,7 @@ export async function studentByLink(c, b) {
   // スタッフのプレビュー（読むだけ。書き込みは index.mjs の入口で断る）
   if (isPreviewToken(b.k)) { const s = await previewSubject(c, b.k, 'student'); if (!s) fail('badLink', 'プレビューの期限が切れました。管理画面からもう一度開いてください', 401); return s; }
   const code = String(b.k || '');
-  const s = code && code.length <= 100 ? await c.db.prepare("select * from students where linkCode = ? and status <> 'left'").bind(code).first() : null;
+  const s = code && code.length <= 100 ? await c.db.prepare("select * from students where linkCode = ? and linkCode not like 'off.%' and status <> 'left'").bind(code).first() : null;
   if (!s) fail('badLink', '専用リンクが正しくありません。先生から届いたリンクを開き直してください', 401);
   c.actor = { kind: 'student', id: s.id };
   return s;
