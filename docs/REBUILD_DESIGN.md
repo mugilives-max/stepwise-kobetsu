@@ -558,7 +558,7 @@
 | `CLOUDFLARE_ACCOUNT_ID` | Stepwiseを運用するCloudflareアカウントのID |
 | `CLOUDFLARE_API_TOKEN` | 下記の対象と権限に限定した公開用APIトークン |
 
-必要な対象は既存Worker `stepwise-api`の公開、D1 `stepwise-v2`の読取・バックアップ・移行、R2 `stepwise-files`の非公開バックアップ保存・読戻しと公開設定の読取。Cloudflareの現行権限モデルでは各対象のEditorを使い、可能な限り個別リソースに限定する。旧権限名の画面ではWorkers Scripts Edit・D1 Edit・Workers R2 Storage Editに相当するが、画面の対象範囲を確認し、別アカウントやDNS等の不要な権限を追加しない。[公式のGitHub Actions設定](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)と[権限の説明](https://developers.cloudflare.com/workers/authorization/)を参照。
+Cloudflareの公開用認証情報は、本人が作成画面で対象と権限を確認してから発行・登録する。[GitHub Actionsの公式設定手順](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)、[Workerの権限](https://developers.cloudflare.com/workers/authorization/)、[R2のAPIと権限](https://developers.cloudflare.com/r2/api/tokens/)を参照する。特にR2のS3用Object権限とREST APIの権限は異なる。実アカウントに発行する認証情報の詳細は、公開資料には記載しない。
 
 登録後は、mainの`Contract system release`を`publish`で実行する。D1全体SQL・旧Worker・移行前の契約列の写しを、非公開を確認した同じR2の`release-backups/contracts-20261012/<run-id>-<attempt>/`へ保存する。公開GitHubのログや成果物には出さず、保存後の読戻し一致を確認する。日次バックアップとは別のキーで、既存の書面やバックアップを置き換えない。移行前後の既存契約列・家族の同意版・ファイル記録の不変を照合してからWorkerを公開し、公開APIの正常応答を確認する。生徒・保護者への通知は送らない。
 
