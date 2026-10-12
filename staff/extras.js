@@ -3,8 +3,9 @@
 // 送信の記録: 送れなかったメール・カレンダー（失敗・止まっているもの）を送り直す・取り下げる。最近送ったものも見える。
 import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
 
+let termsDraft = null;
 let terms = null, effects = null, effOpen = 0, backups = null;
-export function resetExtras() { terms = null; effects = null; effOpen = 0; backups = null; }
+export function resetExtras() { termsDraft = null; terms = null; effects = null; effOpen = 0; backups = null; }
 export function leaveExtras() { effOpen = 0; }
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ''}</svg>`;
 const jst = t => t ? new Date(Date.parse(t) + 9 * 3600e3).toISOString().slice(5, 16).replace('T', ' ').replace('-', '/') : '';
@@ -45,16 +46,16 @@ export function termsPage(ctx) {
   let h = ctx.notice();
   if (terms.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
   if (terms.error) return h + `<p class="notice error">${esc(terms.error)}</p>`;
-  const t = terms.terms, f = terms.families;
+  const t = terms.terms, f = terms.families, d = termsDraft || t;
   h += `<div class="pcard" style="margin-top:12px"><div class="pc-head"><strong>${t.version ? esc(t.title || '受講規約') : '規約の版がまだありません'}</strong>${t.version ? `<span class="tag">${esc(t.version)}</span>` : ''}</div>
     ${t.version ? `<p class="small muted">${t.from ? '適用 ' + esc(t.from) + '・' : ''}同意 ${f.agreed} / ${f.total} 家族${t.url ? `・<a href="${esc(t.url)}" target="_blank" rel="noopener">全文を開く</a>` : '・全文のリンクなし'}</p>${t.note ? `<p class="small">${esc(t.note)}</p>` : ''}` : '<p class="small muted">版を決めると、保護者ページに規約が出て、同意してから計画を承認する形になります。版が空のあいだは、同意は求めません。</p>'}</div>`;
   h += '<p class="small muted">同意済みの記録と各版の全文リンクは保存されます。登録済みの版の内容を変える場合は、新しい版名にしてください。</p>';
   h += (terms.catalogue || []).map(x => `<p class="small"><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title || x.version)}</a>（${esc(x.version)}）<button data-action="terms-select" data-version="${esc(x.version)}">この版を入力欄に選ぶ</button></p>`).join('');
   h += `<div class="sec-title">今の版を決める</div><form class="stack group" style="padding:12px" data-form="terms-set">
-    <div class="row"><label style="flex:1">版（例: 2026-11）<input name="version" maxlength="40" value="${esc(t.version)}" placeholder="空にすると同意を求めない"></label><label style="flex:1">適用日<input type="date" name="from" value="${esc(t.from)}"></label></div>
-    <label>規約の名前<input name="title" maxlength="80" value="${esc(t.title)}" placeholder="例: 受講規約（2026年11月版）"></label>
-    <label>全文のリンク（Drive の PDF など。https://）<input type="url" name="url" maxlength="500" value="${esc(t.url)}" placeholder="https://"></label>
-    <label>保護者への一言（任意。何が変わったか）<input name="note" maxlength="500" value="${esc(t.note)}"></label>
+    <div class="row"><label style="flex:1">版（例: 2026-11）<input name="version" maxlength="40" value="${esc(d.version)}" placeholder="空にすると同意を求めない"></label><label style="flex:1">適用日<input type="date" name="from" value="${esc(d.from)}"></label></div>
+    <label>規約の名前<input name="title" maxlength="80" value="${esc(d.title)}" placeholder="例: 受講規約（2026年11月版）"></label>
+    <label>全文のリンク（Drive の PDF など。https://）<input type="url" name="url" maxlength="500" value="${esc(d.url)}" placeholder="https://"></label>
+    <label>保護者への一言（任意。何が変わったか）<input name="note" maxlength="500" value="${esc(d.note)}"></label>
     <p class="small muted" style="margin:0">版を変えると、すべての家族が「同意が要る」状態になり、同意するまで新しい計画を承認できません（見送りはできます）。</p>
     <button class="primary"${ctx.dis()}>この版にする</button></form>`;
   h += '<div class="sec-title">同意の記録</div>' + (terms.history.length ? '<div class="group">' + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(x.acceptedAt)}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}<br>同意者：${esc(x.consenterName || '記録なし')}<br>記録日時：${esc(x.recordedAt || '記録なし')}・記録者：${esc(x.recordedByName || '記録なし')}${x.actorKind === 'staff' ? '（教室が記録）' : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div>' : '<p class="muted small">まだありません。書面や LINE でもらった同意は、家族の画面の「規約の同意を記録」で残せます。</p>');
@@ -101,7 +102,7 @@ export async function extrasSubmit(ctx, kind, el) {
   const v = Object.fromEntries(new FormData(el).entries());
   if (v.version && v.version !== ((terms && terms.terms && terms.terms.version) || '') && !confirm('規約の版を変えると、すべての家族に同意をお願いする形になります。よろしいですか？')) return true;
   const r = await ctx.call('admin/terms/set', { version: v.version, title: v.title, url: v.url, from: v.from, note: v.note });
-  if (r.ok) { terms = null; ctx.say(v.version ? '規約の版を決めました' : '規約の同意を求めない形にしました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+  if (r.ok) { terms = null; termsDraft = null; ctx.say(v.version ? '規約の版を決めました' : '規約の同意を求めない形にしました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;
 }
 export async function extrasClick(ctx, a, b) {
@@ -109,8 +110,7 @@ export async function extrasClick(ctx, a, b) {
   if (a === 'terms-select') {
     const selected = (terms.catalogue || []).find(x => x.version === b.dataset.version);
     if (selected) {
-      const form = document.querySelector('[data-form="terms-set"]');
-      for (const [k,v] of Object.entries({version:selected.version,title:selected.title,url:selected.url,from:selected.fromDate,note:selected.note || ''})) form.elements[k].value = v || '';
+      termsDraft = {version:selected.version,title:selected.title,url:selected.url,from:selected.fromDate,note:selected.note || ''};
     }
     return true;
   }

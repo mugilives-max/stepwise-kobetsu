@@ -1,7 +1,5 @@
 name: Contract history checks
 on:
-  push:
-    branches: [codex/contracts-system-20261012]
   pull_request:
     paths: ['scripts/check-contract-ui.cjs', 'cf/v2/**', 'cf/migrations-v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'test/v2-*', '.github/workflows/contract-checks.yml']
 permissions:
@@ -9,6 +7,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,6 +21,8 @@ jobs:
           for f in staff/*.js family/*.js assets/v2/*.js; do node --check --input-type=module < "$f"; done
       - name: V2 regression tests
         run: node --test test/v2-*.test.cjs
+      - name: D1 migration check on isolated GitHub runner
+        run: npx wrangler d1 migrations apply DB2 --config cf/wrangler.jsonc --env local --local --persist-to /tmp/stepwise-contract-d1
       - name: Browser checks with synthetic data
         run: |
           npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
