@@ -78,8 +78,10 @@ async function getStudent(c, id) { const s = await c.db.prepare('select * from s
 async function assertPriorConsent(c, line, at) {
   const cutoff = Date.parse(line.endDate + 'T23:59:59+09:00');
   if (Date.parse(at) > cutoff) fail('afterLessonConsent', '対象期間の終了後に初めて承認することはできません。授業前に承認済みの場合は、その日時と承認者を塾が記録してください', 409);
-  const rows = (await c.db.prepare("select date,start from lessons where studentId = ? and subject = ? and kind = ? and date between ? and ? and status in ('decided','done','cancelled')").bind(line.studentId,line.subject,line.kind,line.startDate,line.endDate).all()).results;
-  if (rows.some(ls => Date.parse(ls.date + 'T' + ls.start.slice(0,5) + ':00+09:00') <= Date.parse(at)))
+  const rows = (await c.db.prepare("select id,date,start from lessons where studentId = ? and subject = ? and coalesce(nullif(kind,''),'通常') = ? and date between ? and ? and status in ('decided','done','cancelled')").bind(line.studentId,line.subject,line.kind,line.startDate,line.endDate).all()).results;
+  const sb = await studentBilling(c.db, line.studentId);
+  const rest = assignLines(sb.lines.filter(x => x.id !== line.id), sb.lessons, Object.fromEntries(Object.entries(sb.invoicedLine).filter(([, id]) => id !== line.id)));
+  if (rows.filter(ls => !rest.line[ls.id]).some(ls => Date.parse(ls.date + 'T' + ls.start.slice(0,5) + ':00+09:00') <= Date.parse(at)))
     fail('afterLessonConsent', '授業開始後の承認は、授業前の承認として登録できません。授業前に承認済みで入力だけが後になった場合は、実際の承認日時を記録してください', 409);
 }
 
@@ -216,7 +218,7 @@ export const billingRoutes = {
     const ceiling = condition ? Math.floor(condition.fee * n.minutes / condition.minutes) : Math.floor(base * n.minutes / 30);
     const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
     if (sp && n.endDate > sp.toDate) fail('needSpecial', '計画の対象期間全体が、承認済みの特殊指導の対象期間に含まれる必要があります');
-    if ((condition || base > 0) && n.fee > ceiling && (!sp || n.fee > Math.floor(sp.fee * n.minutes / sp.minutes)))
+    if ((sp && n.fee > Math.floor(sp.fee * n.minutes / sp.minutes)) || ((condition || base > 0) && n.fee > ceiling && !sp))
       fail('needSpecial', '通常指導の基準単価を超える適用単価は、対象期間全体の特殊指導条件書について事前に承認を得て、その基準単価以内で設定してください');
     n.conditionId = condition ? condition.id : ''; n.specialId = sp ? sp.id : ''; n.instructionType = sp ? 'special' : 'regular';
     const now = iso(c.now);
@@ -297,7 +299,10 @@ export const billingRoutes = {
     const now = iso(c.now);
     const student = await getStudent(c, l.studentId);
     const family = await c.db.prepare('select * from families where id = ?').bind(student.familyId).first();
-    const termsVersion = family.termsVersion || '';
+    const consents = (await c.db.prepare('select version,acceptedAt from termsConsents where familyId = ? order by id desc').bind(family.id).all()).results;
+    const knownBy = r => Date.parse(r.acceptedAt.length === 10 ? r.acceptedAt + 'T23:59:59+09:00' : r.acceptedAt) <= Date.parse(evidence.consentedAt);
+    const prior = consents.filter(knownBy).sort((a,b) => Date.parse(b.acceptedAt) - Date.parse(a.acceptedAt))[0];
+    const termsVersion = prior?.version || (family.termsAcceptedAt && knownBy({acceptedAt:family.termsAcceptedAt}) ? family.termsVersion : '') || '';
     await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
       .bind(count, now, 'staff:' + me.id, via, consentDate, note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, now, l.id, l.version).run();
     await audit(c, 'planConsent', l.id, { via, consentDate, count });

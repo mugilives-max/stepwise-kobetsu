@@ -22,7 +22,7 @@ export async function termsForVersion(db, version) {
 function consentView(r, terms) {
   let fixed; try { fixed = JSON.parse(r.termsSnapshot || 'null'); } catch {}
   return { id: r.id, version: r.version, at: r.acceptedAt, via: r.via, consenterName: r.consenterName || '',
-    recordedAt: r.recordedAt || '', recordedByName: r.recordedByName || '', note: r.note, ...(fixed || terms) };
+    recordedAt: r.recordedAt || '', recordedByName: r.recordedByName || '', ...(fixed || terms), note: r.note, termsNote: (fixed || terms).note };
 }
 // 家族から見た規約: 今の版、同意した版、同意が要るか
 export async function familyTerms(db, f) {

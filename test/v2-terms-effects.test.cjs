@@ -22,7 +22,8 @@ function withFetch(reply, fn) {
 
 test('terms: no version means nothing is asked; setting a version makes every family agree before approving a plan', async () => {
   const { h, auth, parent, plan } = await world();
-  assert.deepEqual((await h.ok('family/terms', { auth: parent })).terms, { current: { version: '', title: '', url: '', from: '', note: '' }, agreed: { version: '', at: '' }, needs: false });
+  const empty = (await h.ok('family/terms', { auth: parent })).terms;
+  assert.equal(empty.current.version, ''); assert.equal(empty.agreed.version, ''); assert.equal(empty.needs, false); assert.deepEqual(empty.history, []);
   const l1 = await plan();
   assert.equal((await h.ok('family/plans/decide', { auth: parent, id: l1.id, version: l1.version, approvedCount: 4 })).line.status, 'approved', '版がなければ同意なしで承認できる');
   assert.equal((await h.call('admin/terms/set', { auth, version: '2026-11', title: '' })).error.code, 'needTitle');
@@ -52,15 +53,15 @@ test('terms: no version means nothing is asked; setting a version makes every fa
   assert.equal((await h.ok('family/terms', { auth: parent })).terms.needs, true);
   const fid = (await h.ok('family/me', { auth: parent })).me.id;
   assert.equal((await h.call('admin/families/terms', { auth, id: fid, date: '2026-11-20' })).error.code, 'needVia');
-  const rec = await h.ok('admin/families/terms', { auth, id: fid, date: '2026-11-20', via: '書面', note: '面談で署名' });
-  assert.deepEqual([rec.terms.needs, rec.terms.agreed.version, rec.terms.agreed.at], [false, '2026-12', '2026-11-20']);
+  const rec = await h.ok('admin/families/terms', { auth, id: fid, date: '2026-10-02', consenterName: '架空 保護者', consentedAt: '2026-10-02T12:00:00+09:00', via: '書面', note: '面談で署名' });
+  assert.deepEqual([rec.terms.needs, rec.terms.agreed.version, rec.terms.agreed.at], [false, '2026-12', '2026-10-02T03:00:00.000Z']);
   const g = await h.ok('admin/terms/get', { auth });
   assert.deepEqual([g.terms.version, g.families, g.history.length, g.history[0].via], ['2026-12', { total: 1, agreed: 1 }, 2, '書面']);
   const f = (await h.ok('admin/families/get', { auth, id: fid }));
   assert.deepEqual([f.terms.version, f.family.termsVersion], ['2026-12', '2026-12']);
   // 先生が LINE の承諾を記録した行にも、そのときの版が残る
   const l4 = (await h.ok('billing/plans/save', { auth, studentId: l1.studentId, subject: '理科', kind: '通常', startDate: '2026-12-01', endDate: '2026-12-31', count: 2, minutes: 90, fee: 4500 })).line;
-  await h.ok('billing/plans/consent', { auth, id: l4.id, version: h.rows('select version from planLines where id = ?', l4.id)[0].version, consentDate: '2026-10-02', via: 'LINE' });
+  await h.ok('billing/plans/consent', { auth, id: l4.id, version: h.rows('select version from planLines where id = ?', l4.id)[0].version, consentDate: '2026-10-02', consenterName: '架空 保護者', consentedAt: '2026-10-02T12:00:00+09:00', via: 'LINE' });
   assert.equal(h.rows('select termsVersion from planLines where id = ?', l4.id)[0].termsVersion, '2026-12');
 });
 

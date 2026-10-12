@@ -26,7 +26,7 @@ export const conditionView = r => r ? ({ ...evidenceView(r), id: r.id, studentId
 // 生徒の今の条件: 最新の版（latest。proposed か agreed）と、有効な合意（agreed。最新が proposed なら前の agreed）
 // 書面（条件書の HTML。files 表の refType=condition）の最新の id
 async function docIdOf(db, condId) {
-  const f = await db.prepare("select id from files where refType = 'condition' and refId = ? and status = 'ready' order by createdAt desc limit 1").bind(condId).first();
+  const f = await db.prepare("select id from files where refType = 'condition' and refId = ? and status = 'ready' order by createdAt desc, rowid desc limit 1").bind(condId).first();
   return f ? f.id : '';
 }
 async function withDoc(db, v) { return v ? { ...v, docFileId: await docIdOf(db, v.id) } : null; }

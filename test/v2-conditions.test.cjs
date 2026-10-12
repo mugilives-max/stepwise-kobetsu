@@ -1,5 +1,5 @@
 'use strict';
-// 作り直し（v2）: 個別指導条件（cf/v2/conditions.mjs、0018_conditions.sql）。お知らせ → 保護者の同意 → 計画の承認。
+// 作り直し（v2）: 基本指導条件（cf/v2/conditions.mjs、0018_conditions.sql）。お知らせ → 保護者の同意 → 計画の承認。
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createV2 } = require('./helpers/v2-harness.cjs');
@@ -20,7 +20,7 @@ test('conditions: the manager proposes, the family must agree before approving a
   const c1 = (await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', studentContact: true, subjects: '数学・英語', note: '', fromMonth: '2026-11' })).condition;
   assert.deepEqual([c1.no, c1.status, c1.groupSize, c1.studentContact], [1, 'proposed', '教室は講師1名につき生徒最大2名', true]);
   assert.equal(h.mails().length, mails + 1, '保護者にお知らせが 1 通');
-  assert.match(h.mails().at(-1).subject, /個別指導条件/);
+  assert.match(h.mails().at(-1).subject, /基本指導条件/);
   const s = h.rows('select baseRate30, deliveryMode, permissions from students where id = ?', kid.id)[0];
   assert.deepEqual([s.baseRate30, s.deliveryMode, JSON.parse(s.permissions).reschedule], [1500, 'in_person', true], '生徒の登録にも写す');
 
@@ -43,7 +43,7 @@ test('conditions: the manager proposes, the family must agree before approving a
   assert.deepEqual([st.latest.no, st.latest.status, st.agreed.no, st.needs, st.history.length], [2, 'proposed', 1, true, 2]);
   assert.deepEqual([st.student.baseRate30, st.student.deliveryMode, st.student.studentContact], [833, 'online', false]);
   assert.equal((await h.call('admin/conditions/record', { auth, id: c2.id, date: '2026-10-20', via: '' })).error.code, 'needVia');
-  const rec = await h.ok('admin/conditions/record', { auth, id: c2.id, date: '2026-10-20', via: 'LINE', note: '母' });
+  const rec = await h.ok('admin/conditions/record', { auth, id: c2.id, date: '2026-10-02', consenterName: '架空 保護者', consentedAt: '2026-10-02T12:00:00+09:00', via: 'LINE', note: '母' });
   assert.deepEqual([rec.latest.status, rec.agreed.no, rec.needs], ['agreed', 2, false]);
   assert.equal((await h.call('admin/conditions/record', { auth, id: c2.id, date: '2026-10-21', via: 'LINE' })).error.code, 'closed');
   assert.equal((await h.call('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 2500, deliveryMode: 'online', fromMonth: '2026/12' })).error.code, 'badMonth');
@@ -70,18 +70,18 @@ test('conditions: a written document (HTML, like the invoice template) is stored
   assert.ok(c1.docFileId, '案の書面がある');
   const draft = h.rows('select category, name, mime, refType, refId, familyId from files where id = ?', c1.docFileId)[0];
   assert.deepEqual([draft.category, draft.refType, draft.refId, draft.mime], ['contract', 'condition', c1.id, 'text/html; charset=utf-8']);
-  assert.match(draft.name, /個別指導条件書_第1版_案/);
+  assert.match(draft.name, /基本指導条件書_第1版_案/);
   const link = await h.ok('files/link', { auth: parent, id: c1.docFileId });
   const res = await h.raw('GET', link.url.replace(/^.*\/v2\//, ''));
   const html = await res.text();
   assert.equal(res.status, 200); assert.match(res.headers.get('content-type'), /text\/html/);
-  assert.match(html, /個別指導条件書/); assert.match(html, /4,500円/); assert.match(html, /兄弟割引なし/); assert.match(html, /まだ同意いただいていません/);
+  assert.match(html, /基本指導条件書/); assert.match(html, /4,500円/); assert.match(html, /兄弟割引なし/); assert.match(html, /まだ同意いただいていません/);
   assert.doesNotMatch(html, /<script/);
   await h.ok('family/conditions/agree', { auth: parent, id: c1.id, agree: true });
   const after = (await h.ok('family/conditions', { auth: parent })).conditions.items[0].agreed;
   assert.notEqual(after.docFileId, c1.docFileId, '同意したら確定の書面がもう 1 つできる');
   const fin = h.rows('select name, note from files where id = ?', after.docFileId)[0];
-  assert.match(fin.name, /個別指導条件書_第1版_/); assert.doesNotMatch(fin.name, /_案/); assert.equal(fin.note, '同意済み');
+  assert.match(fin.name, /基本指導条件書_第1版_/); assert.doesNotMatch(fin.name, /_案/); assert.equal(fin.note, '同意済み');
   const html2 = await (await h.raw('GET', (await h.ok('files/link', { auth: parent, id: after.docFileId })).url.replace(/^.*\/v2\//, ''))).text();
   assert.match(html2, /保護者の同意/); assert.match(html2, /保護者ページ/);
 });

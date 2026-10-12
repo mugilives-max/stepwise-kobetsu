@@ -22,7 +22,7 @@ export function conditionDocHtml({ cond, student, family, terms, proposer, now }
     ['指導科目', esc(cond.subjects || '指導計画承認書で月ごとに定める')],
     ['指導形態', esc(MODES[cond.deliveryMode] || cond.deliveryMode)],
     ['指導人数', esc(cond.groupSize)],
-    ['基本の授業時間と税込通常指導の基準単価', `1回 ${cond.minutes}分　<strong>${yen(cond.fee)}</strong>（税込）<br><span class="sub">通常指導の計画単価は、この通常指導の基準単価を上限とします（規約第7条）。授業時間が異なる場合は時間に比例して計算します。</span>`],
+    ['授業時間・通常指導の基準単価', `1回 ${cond.minutes}分　<strong>${yen(cond.fee)}</strong>（税込）<br><span class="sub">通常指導の計画単価は、この通常指導の基準単価を上限とします（規約第7条）。授業時間が異なる場合は時間に比例して計算します。</span>`],
     ['特殊指導', '<span class="sub">目的・内容と範囲・通常指導との違い・準備・時間・税込特殊指導の基準単価を別途提示し、保護者の承認を得た場合に特殊指導料金を適用します（規約第6条）。</span>'],
     ['教材費等', '<span class="sub">塾が必要と判断して用意する教材は授業料に含みます。家庭の強い希望による別の指定教材は家庭で用意するか、塾による購入を委託する場合に限り、事前承諾を得て購入実費を教材手配代行費用として請求します（規約第8条）。</span>'],
     ['支払方法', '<span class="sub">原則として銀行振込です。特別な事情がある場合は、塾が個別に承認した方法によります。授業料等の振込手数料は保護者の負担です。請求は翌月3日に確定し、支払期限はその月の15日です（規約第20条）。</span>'],
@@ -52,7 +52,7 @@ export function conditionDocHtml({ cond, student, family, terms, proposer, now }
   .lead { margin: 4mm 0 0; }
   table { width: 100%; border-collapse: collapse; margin-top: 5mm; }
   th, td { border: 1px solid #b9c0c8; padding: 2mm 2.5mm; vertical-align: top; }
-  th { background: #f3f5f7; font-weight: 600; text-align: left; width: 34%; white-space: nowrap; }
+  th { background: #f3f5f7; font-weight: 600; text-align: left; width: 34%; overflow-wrap: anywhere; }
   .sub { font-size: 11px; color: #556; }
   .sign { margin-top: 5mm; border: 1px solid #b9c0c8; padding: 3mm 4mm; }
   .sign.ok { border-color: #2e7d32; background: #f1f8f1; }

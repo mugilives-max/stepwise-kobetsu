@@ -41,14 +41,16 @@ test('plans: overlap is refused, add-ons stay inside the parent, sending notifie
   const money = await h.ok('family/money', { auth: parent });
   assert.equal(money.plans.find(p => p.id === a.id).minCount, 2, 'すでに決まっている授業より少なくはできない');
   assert.equal((await h.call('family/plans/decide', { auth: parent, id: a.id, version: line(a.id).version, approvedCount: 1 })).error.code, 'badCount');
+  h.clock = at('2026-09-01T09:00:00');
   const ok = await h.ok('family/plans/decide', { auth: parent, id: a.id, version: line(a.id).version, approvedCount: 3 });
   assert.deepEqual([ok.line.status, ok.line.approvedCount, ok.line.approvedVia, ok.line.approvedBy], ['approved', 3, '保護者ページ', 'family']);
   await h.ok('family/plans/decide', { auth: parent, id: b.id, version: line(b.id).version, approvedCount: 0 });
   assert.equal(line(b.id).status, 'declined', '0回は見送り');
+  h.clock = at('2026-10-02T12:00:00');
   // LINE での承諾を先生が記録し、保護者が確かめる
   assert.equal((await h.call('billing/plans/consent', { auth, id: add.id, version: line(add.id).version, consentDate: '2026-10-02' })).error.code, 'needVia');
-  assert.equal((await h.call('billing/plans/consent', { auth, id: add.id, version: line(add.id).version, consentDate: '2026-10-01', via: 'LINE' })).error.code, 'needNote', '期間のあとの承諾は事情を書く');
-  await h.ok('billing/plans/consent', { auth, id: add.id, version: line(add.id).version, consentDate: '2026-10-01', via: 'LINE', note: '9/19 に LINE で相談済み' });
+  assert.equal((await h.call('billing/plans/consent', { auth, id: add.id, version: line(add.id).version, consentDate: '2026-10-01', consenterName: '架空 保護者', consentedAt: '2026-10-01T09:00:00+09:00', via: 'LINE' })).error.code, 'afterLessonConsent', '期間後に初めて承認することはできない');
+  await h.ok('billing/plans/consent', { auth, id: add.id, version: line(add.id).version, consentDate: '2026-09-19', consenterName: '架空 保護者', consentedAt: '2026-09-19T09:00:00+09:00', via: 'LINE', note: '9/19 に LINE で相談済み' });
   assert.equal((await h.call('family/plans/ack', { auth: parent, id: add.id, version: line(add.id).version, ack: 'inquiry' })).error.code, 'needNote');
   await h.ok('family/plans/ack', { auth: parent, id: add.id, version: line(add.id).version, ack: 'inquiry', note: '回数を確かめたいです' });
   assert.match(h.mails().at(-1).subject, /計画の問い合わせ/);
@@ -60,7 +62,7 @@ test('plans: overlap is refused, add-ons stay inside the parent, sending notifie
 test('the month bill: approved lessons at the plan fee, unapproved ones wait, open issues block, and confirming freezes the lessons', async () => {
   const { h, auth, kid, sis, parent, plan, line, lesson, done } = await world();
   const a = await plan(kid.id, { count: 2 });
-  await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consentDate: '2026-09-01', via: '電話' });
+  await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' });
   const l1 = await lesson(kid.id, '2026-09-08'), l2 = await lesson(kid.id, '2026-09-15', '17:00', '数学', 90), l3 = await lesson(kid.id, '2026-09-22'), s1 = await lesson(sis.id, '2026-09-10', '18:00', '英語');
   h.clock = at('2026-10-02T12:00:00');
   for (const l of [l1, l2, l3]) await done(l);
@@ -95,7 +97,7 @@ test('the month bill: approved lessons at the plan fee, unapproved ones wait, op
   // 承認が足りたら、次の確定で全部入る
   await h.ok('billing/plans/save', { auth, studentId: sis.id, subject: '英語', kind: '通常', startDate: '2026-09-01', endDate: '2026-09-30', count: 1, minutes: 60, fee: 2800 });
   const ln = h.rows("select * from planLines where studentId = ? and subject = '英語'", sis.id)[0];
-  await h.ok('billing/plans/consent', { auth, id: ln.id, version: ln.version, consentDate: '2026-09-01', via: 'LINE', note: '9/1 に口頭で承諾' });
+  await h.ok('billing/plans/consent', { auth, id: ln.id, version: ln.version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: 'LINE', note: '9/1 に口頭で承諾' });
   const again = await h.ok('billing/confirm', { auth, familyId: kid.familyId, month: '2026-09' });
   assert.equal(again.invoice.total, 3200 + 4800 + 2800);
 });
@@ -103,7 +105,7 @@ test('the month bill: approved lessons at the plan fee, unapproved ones wait, op
 test('cancellation fees: late notice is 1,000 yen, a no-show costs the lesson, decisions need reasons, and families can ask for relief', async () => {
   const { h, auth, kid, parent, plan, line, lesson } = await world();
   const a = await plan(kid.id, { fee: 3500 });
-  await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consentDate: '2026-09-01', via: '電話' });
+  await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' });
   const l1 = await lesson(kid.id, '2026-09-08'), l2 = await lesson(kid.id, '2026-09-09');
   h.clock = at('2026-09-07T23:30:00');
   await h.ok('family/lessons/request', { auth: parent, lessonId: l1.id, kind: 'cancel', note: '熱が出ました' });
@@ -143,7 +145,7 @@ test('auto close runs only after the switch-over, from the 3rd, and holds famili
   const { h, auth, kid, sis, plan, line, lesson, done } = await world();
   const fam2 = (await h.ok('admin/families/create', { auth, name: '見本家', email: 'other@example.invalid' })).family;
   const other = (await h.ok('admin/students/create', { auth, familyId: fam2.id, familyName: '見本', givenName: '太郎', baseRate30: 1750 })).student;
-  for (const s of [kid, other]) { const a = await plan(s.id); await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consentDate: '2026-09-01', via: '電話' }); }
+  for (const s of [kid, other]) { const a = await plan(s.id); await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' }); }
   const l1 = await lesson(kid.id, '2026-09-08'), l2 = await lesson(other.id, '2026-09-08', '19:00'), l3 = await lesson(sis.id, '2026-09-09');
   h.clock = at('2026-10-02T12:00:00'); for (const l of [l1, l2, l3]) await done(l);
   const { runV2Scheduled } = await import('../cf/v2/index.mjs');
@@ -194,7 +196,7 @@ test('a lesson shorter or longer than the plan is charged by the time, rounding 
   const { h, auth, kid, plan, line, lesson, done } = await world();
   const long = await plan(kid.id, { subject: '英語', count: 2, minutes: 90, fee: 5000 });
   const short = await plan(kid.id, { subject: '英語', count: 1, minutes: 60, fee: 1500, parentId: long.id, comment: '追加' });
-  for (const l of [long, short]) await h.ok('billing/plans/consent', { auth, id: l.id, version: line(l.id).version, consentDate: '2026-09-01', via: '電話' });
+  for (const l of [long, short]) await h.ok('billing/plans/consent', { auth, id: l.id, version: line(l.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' });
   const a = await lesson(kid.id, '2026-09-05', '17:00', '英語', 60), b = await lesson(kid.id, '2026-09-06', '17:00', '英語', 90), c = await lesson(kid.id, '2026-09-07', '17:00', '英語', 45);
   h.clock = at('2026-10-02T12:00:00'); for (const l of [a, b, c]) await done(l);
   const p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
@@ -224,17 +226,17 @@ test('staff can send a reminder for plans still waiting for approval, once a day
   assert.equal(month.families[0].proposedPlans, 1);
 });
 
-test('a plan still waiting for approval stays on the family page after its period, so it can be approved', async () => {
+test('past plans remain visible, but new approval after their period is refused', async () => {
   const { h, auth, kid, parent, plan } = await world();
   const old = await plan(kid.id, { startDate: '2026-05-01', endDate: '2026-05-31' });
   const done = await plan(kid.id, { subject: '英語', startDate: '2026-05-01', endDate: '2026-05-31' });
   await h.ok('billing/plans/send', { auth, familyId: kid.familyId });
   const cur = h.rows('select * from planLines where id = ?', done.id)[0];
-  await h.ok('billing/plans/consent', { auth, id: done.id, version: cur.version, consentDate: '2026-05-01', via: 'LINE' });
+  await h.ok('billing/plans/consent', { auth, id: done.id, version: cur.version, consenterName: '架空 保護者', consentedAt: '2026-05-01T09:00:00+09:00', consentDate: '2026-05-01', via: 'LINE' });
   const shown = (await h.ok('family/money', { auth: parent })).plans;
-  assert.deepEqual(shown.map(l => [l.subject, l.status]), [['数学', 'proposed']], '5月の承認待ちは10月でも出る。承認済みの5月は出ない');
+  assert.deepEqual(shown.map(l => [l.subject, l.status]).sort(), [['数学', 'proposed'], ['英語', 'approved']].sort(), '古い承認済みの計画も残る');
   const v = h.rows('select * from planLines where id = ?', old.id)[0];
-  await h.ok('family/plans/decide', { auth: parent, id: old.id, version: v.version, approvedCount: 4 });
+  assert.equal((await h.call('family/plans/decide', { auth: parent, id: old.id, version: v.version, approvedCount: 4 })).error.code, 'afterLessonConsent');
 });
 
 test('only the checked drafts are sent when ids are given; the rest stay drafts for later', async () => {
@@ -259,7 +261,9 @@ test('an invoice document is stored when the month is confirmed and a receipt wh
   await h.ok('admin/billing/settings/set', { auth, bank: '架空銀行 架空支店 普通 0000000 ステップワイズ', note: '' });
   const line = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-09-01', endDate: '2026-09-30', count: 2, minutes: 90, fee: 4500 })).line;
   await h.ok('billing/plans/send', { auth, familyId: fam.id });
+  h.clock = at('2026-09-01T09:00:00');
   await h.ok('family/plans/decide', { auth: parent, id: line.id, version: line.version + 1, approvedCount: 2 });
+  h.clock = at('2026-10-02T12:00:00');
   await h.ok('schedule/lessons/create', { auth, studentId: kid.id, date: '2026-09-10', start: '17:00', minutes: 90, subject: '数学', deliveryMode: 'in_person', done: true });
   const inv = (await h.ok('billing/confirm', { auth, familyId: fam.id, month: '2026-09' })).invoice;
   const fam1 = await h.ok('billing/family', { auth, familyId: fam.id, month: '2026-09' });

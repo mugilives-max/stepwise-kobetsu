@@ -6,9 +6,9 @@ import { migratePage, migrateClick, migrateSubmit, resetMigrate } from '/staff/m
 import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule } from '/staff/schedule.js?v=20261008-launch1';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261008-launch1';
 import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261012-contracts';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents } from '/staff/students.js?v=20261008-launch1';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents } from '/staff/students.js?v=20261012-contracts';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261008-launch1';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261008-launch1';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261012-contracts';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261008-launch1';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261012-contracts';

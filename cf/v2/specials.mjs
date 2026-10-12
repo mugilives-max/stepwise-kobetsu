@@ -21,7 +21,7 @@ export const specialView = r => r ? ({ ...evidenceView(r), id: r.id, studentId: 
   termsVersion: r.termsVersion, status: r.status, statusLabel: STATUS_LABEL[r.status] || r.status, proposedAt: r.proposedAt, agreedAt: r.agreedAt, agreedVia: r.agreedVia, agreedNote: r.agreedNote, endedAt: r.endedAt }) : null;
 
 async function docIdOf(db, id) {
-  const f = await db.prepare("select id from files where refType = 'special' and refId = ? and status = 'ready' order by createdAt desc limit 1").bind(id).first();
+  const f = await db.prepare("select id from files where refType = 'special' and refId = ? and status = 'ready' order by createdAt desc, rowid desc limit 1").bind(id).first();
   return f ? f.id : '';
 }
 async function withDoc(db, v) { return v ? { ...v, docFileId: await docIdOf(db, v.id) } : null; }
