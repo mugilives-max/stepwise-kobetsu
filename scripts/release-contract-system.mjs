@@ -36,6 +36,18 @@ export function assertMigrations(local, applied) {
   const missing = local.filter(n => !applied.includes(n));
   ensure(missing.length === 1 && missing[0] === RELEASE.migration, 'Expected only migration 0023 to be pending.');
 }
+export function assertRecoveredMigrations(local, applied) {
+  ensure(new Set(applied).size === applied.length &&
+    JSON.stringify([...local].sort()) === JSON.stringify([...applied].sort()),
+    'Recovery requires every known migration exactly once.');
+}
+export async function verifyPublished(io) {
+  const state = await io.loadCheckpoint();
+  await io.verifyRecords(state);
+  const deployed = await io.verifyWorker(state);
+  await io.recordVerification(state, deployed);
+  return deployed;
+}
 export function activeDeployment(result) {
   const d = result?.deployments?.[0];
   ensure(d?.versions?.length === 1 && d.versions[0].percentage === 100, 'Expected one fully active Worker version.');
@@ -219,7 +231,109 @@ export async function main() {
       console.log('Worker published and healthy. Pages and authenticated screen verification remain.');
     },
   };
-  try { await release(io); }
+  const recovery = {
+    async loadCheckpoint() {
+      stage = 'recovery checkpoint';
+      await io.checkSource();
+      await privacy();
+      const original = 'release-backups/contracts-20261013/38353876646-1/';
+      async function readPrivate(name) {
+        const file = join(dir, 'original-' + name);
+        cli(['r2', 'object', 'get', RELEASE.bucket + '/' + original + name,
+          '--file', file, '--remote', '--config', 'cf/wrangler.jsonc']);
+        return readFile(file);
+      }
+      const before = JSON.parse(await readPrivate('manifest-before.json'));
+      const migrated = JSON.parse(await readPrivate('manifest-migrated.json'));
+      const state = JSON.parse(await readPrivate('contracts-before.json'));
+      ensure(before.source === RELEASE.source && migrated.source === RELEASE.source &&
+        migrated.migration === RELEASE.migration && migrated.preservation === true,
+        'The original migration checkpoint is not verified.');
+      ensure(before.dbHash === migrated.dbHash && before.workerHash === migrated.workerHash &&
+        before.dbHash === digest(await readPrivate('db2.sql')) &&
+        before.workerHash === digest(await readPrivate('worker-before.bin')),
+        'Original private backups no longer match their checkpoint.');
+      assertPreserved(before.before, state.old);
+      ensure(state.old.versionId.startsWith(RELEASE.previousVersionPrefix),
+        'Unexpected previous Worker in the checkpoint.');
+      manifest = before;
+      console.log('Original private backup and completed migration checkpoint verified.');
+      return state;
+    },
+    async verifyRecords(state) {
+      stage = 'recovery record comparison';
+      const local = (await readdir(join(cwd, 'cf/migrations-v2'))).filter(n => n.endsWith('.sql')).sort();
+      assertRecoveredMigrations(local, (await rows('SELECT name FROM d1_migrations ORDER BY name')).map(r => r.name));
+      assertPreserved(state.data, await snapshot(state.columns));
+      ensure((await rows('SELECT COUNT(*) AS n FROM planRevisions'))[0].n === state.data.planLines.length,
+        'Plan revision archive changed; inspect before continuing.');
+      console.log('Migration is already applied; existing columns and file records still match the original backup.');
+    },
+    async verifyWorker() {
+      stage = 'recovery Worker verification';
+      const current = await deployment();
+      ensure(current.versionId.startsWith('b0044e87'), 'Worker differs from the observed partial-publication result.');
+      await io.verifyDeployment(current);
+      const workerPath = '/workers/scripts/' + RELEASE.worker;
+      stage = 'recovery URL verification';
+      const subdomain = await cf(workerPath + '/subdomain');
+      ensure(subdomain.enabled === true, 'Existing Worker URL is not enabled.');
+      stage = 'recovery schedule verification';
+      const schedules = await cf(workerPath + '/schedules');
+      ensure(JSON.stringify(schedules.schedules.map(s => s.cron).sort()) === JSON.stringify(['10 15 * * *']),
+        'Production schedules differ from the reviewed configuration.');
+      stage = 'recovery settings verification';
+      const settings = await cf(workerPath + '/settings');
+      const bindings = settings.bindings || [];
+      const matches = (name, type, key, value) => bindings.some(b => b.name === name && b.type === type && b[key] === value);
+      ensure(matches('DB','d1','id','889ff9cf-4bb0-4ef9-ba0e-b4ce2105f039') &&
+        matches('DB2','d1','id',RELEASE.db) && matches('FILES','r2_bucket','bucket_name',RELEASE.bucket),
+        'Production storage bindings differ from the reviewed configuration.');
+      ensure(settings.compatibility_date === '2026-05-15' &&
+        settings.compatibility_flags?.includes('nodejs_compat') &&
+        settings.observability?.enabled === true && settings.placement?.mode === 'smart',
+        'Production runtime settings differ from the reviewed configuration.');
+      stage = 'recovery module comparison';
+      const afterRaw = await cf(workerPath, undefined, true);
+      async function parts(data, type) {
+        ensure(type?.includes('multipart/form-data'), 'Worker source format cannot be compared safely.');
+        return new Response(data, {headers:{'Content-Type':type}}).formData();
+      }
+      const currentParts = await parts(afterRaw.data, afterRaw.type);
+      const out = join(dir, 'rebuilt');
+      cli(['deploy','--config','cf/wrangler.jsonc','--dry-run','--outdir',out]);
+      const built = (await readdir(out)).filter(n => /\.(m?js|wasm)$/.test(n));
+      ensure(built.length > 0, 'No built modules to compare.');
+      for (const name of built) {
+        const part = currentParts.get(name);
+        ensure(part && typeof part.arrayBuffer === 'function' &&
+          digest(await readFile(join(out, name))) === digest(Buffer.from(await part.arrayBuffer())),
+          'Published module differs from the tested source.');
+      }
+      const remoteModules = [...currentParts.keys()].filter(n => /\.(m?js|wasm)$/.test(n));
+      ensure(JSON.stringify(remoteModules.sort()) === JSON.stringify([...built].sort()),
+        'Unexpected additional published modules.');
+      assertPreserved(current, await deployment());
+      console.log('Published modules match the pinned build; health, URL, schedules, storage and runtime settings verified.');
+      return current;
+    },
+    async recordVerification(state, current) {
+      stage = 'recovery verification record';
+      await savePrivate('manifest-published.json', Buffer.from(JSON.stringify({
+        ...manifest, after:current, migration:RELEASE.migration, preservation:true,
+        verifiedAfterPartialPublication:true, originalRun:'38353876646'})));
+      await writeFile(process.env.GITHUB_STEP_SUMMARY,
+        '## Contract Worker verified after partial publication\n\n' +
+        'Source: ' + RELEASE.source + '\n\nWorker version: ' + current.versionId +
+        '\n\nOriginal private backups and existing records verified. Published modules match the pinned build. ' +
+        'Health, schedules, URL, storage bindings and runtime settings are correct. ' +
+        'No migration or publication was repeated. PR #54 / Pages verification remain.\n');
+    }
+  };
+  try {
+    if (process.env.RELEASE_OPERATION === 'verify-published') await verifyPublished(recovery);
+    else await release(io);
+  }
   catch (error) {
     // Controlled messages only; unexpected fetch/CLI errors can include private URLs.
     const safe = error instanceof Error && !/https?:|Bearer|token=|password/i.test(error.message) ? error.message : 'Details withheld.';

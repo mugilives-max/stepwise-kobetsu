@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RELEASE, assertDiff, assertPrivateBucket, assertMigrations, activeDeployment, assertPreserved, release } from '../scripts/release-contract-system.mjs';
+import { RELEASE, assertDiff, assertPrivateBucket, assertMigrations, activeDeployment, assertPreserved, release, assertRecoveredMigrations, verifyPublished } from '../scripts/release-contract-system.mjs';
 
 test('only reviewed docs and bootstrap changes can follow the pinned source', () => {
   assertDiff({status:'identical', files:[]});
@@ -58,4 +58,22 @@ for (const stage of order) test('failure at '+stage+' cannot run later stages', 
   const {seen,io} = fake(stage);
   await assert.rejects(release(io));
   assert.deepEqual(seen, order.slice(0,order.indexOf(stage)+1));
+});
+
+test('verification requires the complete migration set exactly once', () => {
+  const local = ['0019_specials.sql', RELEASE.migration];
+  assertRecoveredMigrations(local, [...local].reverse());
+  for (const applied of [[], local.slice(0,1), [...local, RELEASE.migration], [...local, 'unknown.sql']])
+    assert.throws(() => assertRecoveredMigrations(local, applied));
+});
+const recoveryOrder = ['loadCheckpoint','verifyRecords','verifyWorker','recordVerification'];
+for (const failure of [null, ...recoveryOrder]) test('recovery never calls mutation stages: '+failure, async () => {
+  const seen = [];
+  const io = Object.fromEntries([...recoveryOrder, 'migrate','deploy'].map(name => [name, async () => {
+    seen.push(name);
+    if (name === failure || name === 'migrate' || name === 'deploy') throw new Error('stop');
+    return {};
+  }]));
+  if (failure) await assert.rejects(verifyPublished(io)); else await verifyPublished(io);
+  assert.deepEqual(seen, failure ? recoveryOrder.slice(0,recoveryOrder.indexOf(failure)+1) : recoveryOrder);
 });
