@@ -319,8 +319,8 @@ export async function main() {
         const entries = remoteModules.filter(([key, value]) => key === name || value.name === name);
         ensure(entries.length === 1, 'Published module name differs from the build.');
         const part = entries[0][1];
-        ensure(typeof part.arrayBuffer === 'function', 'Published module bytes are missing.');
-        const actual = Buffer.from(await part.arrayBuffer());
+        ensure(typeof part === 'string' || typeof part?.arrayBuffer === 'function', 'Published module bytes are missing.');
+        const actual = typeof part === 'string' ? Buffer.from(part, 'utf8') : Buffer.from(await part.arrayBuffer());
         const expected = await readFile(join(out, name));
         const comparison = compareModule(actual, expected, !name.endsWith('.wasm'));
         console.log('Module comparison: ' + comparison + '; built bytes=' + expected.length +
