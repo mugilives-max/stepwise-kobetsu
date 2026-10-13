@@ -41,6 +41,14 @@ export function assertRecoveredMigrations(local, applied) {
     JSON.stringify([...local].sort()) === JSON.stringify([...applied].sort()),
     'Recovery requires every known migration exactly once.');
 }
+export function compareModule(actual, expected, javascript = true) {
+  if (digest(actual) === digest(expected)) return 'exact';
+  if (!javascript) return 'different';
+  // Wrangler's --outdir adds a final debug source-map reference, not runtime code.
+  const strip = b => b.toString('utf8').replace(/\r\n/g, '\n')
+    .replace(/\n\/\/[#@] sourceMappingURL=[^\n]*\n?$/, '\n');
+  return strip(actual) === strip(expected) ? 'source-map-only' : 'different';
+}
 export async function verifyPublished(io) {
   const state = await io.loadCheckpoint();
   await io.verifyRecords(state);
@@ -304,15 +312,21 @@ export async function main() {
       cli(['deploy','--config','cf/wrangler.jsonc','--dry-run','--outdir',out]);
       const built = (await readdir(out)).filter(n => /\.(m?js|wasm)$/.test(n));
       ensure(built.length > 0, 'No built modules to compare.');
+      const remoteModules = [...currentParts.entries()].filter(([key, value]) =>
+        /\.(m?js|wasm)$/.test(key) || /\.(m?js|wasm)$/.test(value?.name || ''));
+      ensure(remoteModules.length === built.length, 'Published module count differs from the build.');
       for (const name of built) {
-        const part = currentParts.get(name);
-        ensure(part && typeof part.arrayBuffer === 'function' &&
-          digest(await readFile(join(out, name))) === digest(Buffer.from(await part.arrayBuffer())),
-          'Published module differs from the tested source.');
+        const entries = remoteModules.filter(([key, value]) => key === name || value.name === name);
+        ensure(entries.length === 1, 'Published module name differs from the build.');
+        const part = entries[0][1];
+        ensure(typeof part.arrayBuffer === 'function', 'Published module bytes are missing.');
+        const actual = Buffer.from(await part.arrayBuffer());
+        const expected = await readFile(join(out, name));
+        const comparison = compareModule(actual, expected, !name.endsWith('.wasm'));
+        console.log('Module comparison: ' + comparison + '; built bytes=' + expected.length +
+          '; published bytes=' + actual.length + '.');
+        ensure(comparison !== 'different', 'Published executable module differs from the tested source.');
       }
-      const remoteModules = [...currentParts.keys()].filter(n => /\.(m?js|wasm)$/.test(n));
-      ensure(JSON.stringify(remoteModules.sort()) === JSON.stringify([...built].sort()),
-        'Unexpected additional published modules.');
       assertPreserved(current, await deployment());
       console.log('Published modules match the pinned build; health, URL, schedules, storage and runtime settings verified.');
       return current;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RELEASE, assertDiff, assertPrivateBucket, assertMigrations, activeDeployment, assertPreserved, release, assertRecoveredMigrations, verifyPublished } from '../scripts/release-contract-system.mjs';
+import { RELEASE, assertDiff, assertPrivateBucket, assertMigrations, activeDeployment, assertPreserved, release, assertRecoveredMigrations, verifyPublished, compareModule } from '../scripts/release-contract-system.mjs';
 
 test('only reviewed docs and bootstrap changes can follow the pinned source', () => {
   assertDiff({status:'identical', files:[]});
@@ -76,4 +76,13 @@ for (const failure of [null, ...recoveryOrder]) test('recovery never calls mutat
   }]));
   if (failure) await assert.rejects(verifyPublished(io)); else await verifyPublished(io);
   assert.deepEqual(seen, failure ? recoveryOrder.slice(0,recoveryOrder.indexOf(failure)+1) : recoveryOrder);
+});
+
+test('module comparison ignores only the final source-map reference', () => {
+  const code = Buffer.from('export default {};\n');
+  assert.equal(compareModule(code,code),'exact');
+  assert.equal(compareModule(code,Buffer.from(code+'//# sourceMappingURL=index.js.map\n')),'source-map-only');
+  assert.equal(compareModule(code,Buffer.from('export default {changed:true};\n')),'different');
+  assert.equal(compareModule(code,Buffer.from(code+'//# sourceMappingURL=index.js.map\n'),false),'different');
+  assert.equal(compareModule(Buffer.from('// comment\n'+code),code),'different');
 });
