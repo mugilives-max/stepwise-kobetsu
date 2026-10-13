@@ -30,7 +30,7 @@ jobs:
       - run: node --test test/release-contract-system.test.mjs
       - uses: actions/checkout@v4
         with:
-          ref: b9334315c455b3a1357cd2701a260bcbe17deb7d
+          ref: 67a82aa432ec207329efb12949c4bb7eeab43fcf
           path: release-source
           persist-credentials: false
       - run: npm ci
@@ -52,7 +52,7 @@ jobs:
           node-version: '24'
       - uses: actions/checkout@v4
         with:
-          ref: b9334315c455b3a1357cd2701a260bcbe17deb7d
+          ref: 67a82aa432ec207329efb12949c4bb7eeab43fcf
           path: release-source
           persist-credentials: false
       - run: npm ci
