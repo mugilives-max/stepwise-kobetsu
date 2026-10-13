@@ -7,7 +7,7 @@ on:
         required: true
         default: validate
         type: choice
-        options: [validate, publish]
+        options: [validate, publish, verify-published]
   pull_request:
     paths: ['.github/workflows/contract-release.yml', 'scripts/release-contract-system.mjs', 'test/release-contract-system.test.mjs']
 permissions:
@@ -39,7 +39,7 @@ jobs:
         run: npx wrangler deploy --config cf/wrangler.jsonc --dry-run --outdir /tmp/contract-worker-build
         working-directory: release-source
   publish:
-    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'publish' && github.ref == 'refs/heads/main' && github.repository == 'mugilives-max/stepwise-kobetsu'
+    if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'publish' || inputs.operation == 'verify-published') && github.ref == 'refs/heads/main' && github.repository == 'mugilives-max/stepwise-kobetsu'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -62,5 +62,6 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RELEASE_OPERATION: ${{ inputs.operation }}
           GH_READ_TOKEN: ${{ github.token }}
           WRANGLER_SEND_METRICS: 'false'
