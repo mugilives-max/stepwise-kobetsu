@@ -1,20 +1,20 @@
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
-import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261012-contracts';
+import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261013-contracts';
 import { migratePage, migrateClick, migrateSubmit, resetMigrate } from '/staff/migrate.js?v=20261008-launch1';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule } from '/staff/schedule.js?v=20261008-launch1';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261008-launch1';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261008-launch1';
-import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261012-contracts';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents } from '/staff/students.js?v=20261012-contracts';
+import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261013-contracts';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261013-contracts';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261008-launch1';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261012-contracts';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261013-contracts';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261008-launch1';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
-import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261012-contracts';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261013-contracts';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261008-launch1';
-import { billingPick } from '/staff/billing.js?v=20261012-contracts';
+import { billingPick } from '/staff/billing.js?v=20261013-contracts';
 
 const store = session('sw2_staff');
 const ROLE_LABEL = { teacher: '講師', manager: '教室管理者', sysadmin: 'システム管理者' };
@@ -232,7 +232,13 @@ function render() {
   if (now && wasLabel === now.getAttribute('aria-label')) { now.classList.add('still'); (now.querySelector('.panel-body') || now).scrollTop = wasTop; }
   if (now && notice && notice.kind === 'error') now.querySelector('.bsheet-body, .panel-body').insertAdjacentHTML('afterbegin', noticeHtml()); // 下から出る画面の中でも見えるように
   if (r.page === 'record') soonAutosave();
+  // キーボード: 下から出る画面が開いたら閉じるボタンへ、閉じたら開いたボタンへ戻す（2026-10-13、計画全体のプレビューから）
+  if (now && !was) { sheetOpener = lastClicked; const x = now.querySelector('.bsheet-head button.icon, .panel-head button.icon'); if (x) x.focus({ preventScroll: true }); }
+  else if (!now && was && sheetOpener) { const back = app.querySelector(sheetOpener); sheetOpener = ''; if (back) back.focus({ preventScroll: true }); }
 }
+// 最後に押したボタン（下から出る画面を閉じたときに、フォーカスを戻す先）
+let lastClicked = '', sheetOpener = '';
+app.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('button[data-action]'); if (b && !b.closest('.bsheet, .panel.open')) lastClicked = `[data-action="${CSS.escape(b.dataset.action)}"]` + ['id', 'key', 'sid', 'family'].filter(k => b.dataset[k]).map(k => `[data-${k}="${CSS.escape(b.dataset[k])}"]`).join(''); }, true);
 // 記録の書きかけを、この端末に少し待ってから残す（書くたび・押すたび）
 let autosaveTimer = 0;
 const soonAutosave = () => { clearTimeout(autosaveTimer); autosaveTimer = setTimeout(() => { if (route().page === 'record') autosaveRecord(); }, 400); };
@@ -254,7 +260,7 @@ app.addEventListener('submit', ev => {
   const submitter = ev.submitter;
   captureRecordInputs(); // 記録の画面の書きかけを、描き直す前に覚えておく
   run(async () => {
-    if (await extrasSubmit(ctx, kind, el) || await familiesSubmit(ctx, kind, el) || await scheduleSubmit(ctx, kind, el) || await recordsSubmit(ctx, kind, el, { submitter }) || await billingSubmit(ctx, kind, el) || await gradesSubmit(ctx, kind, el) || await payrollSubmit(ctx, kind, el) || await migrateSubmit(ctx, kind, el)) return;
+    if (await studentsSubmit(ctx, kind, el) || await extrasSubmit(ctx, kind, el) || await familiesSubmit(ctx, kind, el) || await scheduleSubmit(ctx, kind, el) || await recordsSubmit(ctx, kind, el, { submitter }) || await billingSubmit(ctx, kind, el) || await gradesSubmit(ctx, kind, el) || await payrollSubmit(ctx, kind, el) || await migrateSubmit(ctx, kind, el)) return;
     let r;
     if (kind === 'login') { r = await call('staff/login', v); if (r.ok) return signedIn(r); }
     else if (kind === 'forgot') { r = await call('staff/reset/request', v); if (r.ok) return say(r.message, 'ok'); }
@@ -291,7 +297,7 @@ document.addEventListener('click', ev => {
   if (a === 'gr-resolve') { const sel = document.querySelector(`[data-resolve-exam="${b.dataset.id}"]`); b.dataset.exam = sel ? sel.value : ''; }
   captureRecordInputs();
   run(async () => {
-    if (await todayClick(ctx, a, b) || await extrasClick(ctx, a, b) || await familiesClick(ctx, a, b) || await migrateClick(ctx, a) || await scheduleClick(ctx, a, b) || await recordsClick(ctx, a, b) || await billingClick(ctx, a, b) || await gradesClick(ctx, a, b) || await payrollClick(ctx, a, b)) return;
+    if (await studentsClick(ctx, a, b) || await todayClick(ctx, a, b) || await extrasClick(ctx, a, b) || await familiesClick(ctx, a, b) || await migrateClick(ctx, a) || await scheduleClick(ctx, a, b) || await recordsClick(ctx, a, b) || await billingClick(ctx, a, b) || await gradesClick(ctx, a, b) || await payrollClick(ctx, a, b)) return;
     let r;
     if (a === 'bootstrap') {
       r = await call('staff/bootstrap', { legacyToken: legacyToken() });
@@ -308,7 +314,7 @@ document.addEventListener('click', ev => {
   });
 });
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape') { const x = app.querySelector('.bsheet-head button.icon, .panel.open .panel-head button.icon'); if (x) x.click(); } });
-app.addEventListener('change', ev => { if (ev.target.dataset && ev.target.dataset.slider) sliderInput(ev.target); if (ev.target.dataset && ev.target.dataset.pick) { billingPick(ev.target.dataset.pick, ev.target.checked); render(); return; } if (ev.target.type === 'file' && ev.target.closest('form[data-form=gr-attach]')) ev.target.closest('form').requestSubmit(); }); // 押しただけのときは change だけ来ることがある。成績票をつける: 選んだらすぐ送る
+app.addEventListener('change', ev => { if (ev.target.dataset && ev.target.dataset.slider) sliderInput(ev.target); if (ev.target.dataset && ev.target.dataset.pick) { billingPick(ev.target.dataset.pick, ev.target.checked); render(); return; } if (ev.target.dataset && ev.target.dataset.hpick) { schedulePick(ev.target.dataset.hpick, ev.target.checked); render(); return; } if (ev.target.type === 'file' && ev.target.closest('form[data-form=gr-attach]')) ev.target.closest('form').requestSubmit(); }); // 押しただけのときは change だけ来ることがある。成績票をつける: 選んだらすぐ送る
 app.addEventListener('input', ev => { if (route().page === 'record') soonAutosave(); if (ev.target.classList && ev.target.classList.contains('grow')) grow(ev.target); if (ev.target.dataset && ev.target.dataset.slider) return sliderInput(ev.target); const n = ev.target.dataset && ev.target.dataset.input; if (n && !studentsInput(ctx, n, ev.target)) familiesInput(ctx, n, ev.target); });
 window.addEventListener('hashchange', () => {
   // 「今日」「生徒」に戻ってきたら読み直す（記録を書いたあとなど）。同じ生徒の画面のタブを切り替えるときは読み直さない

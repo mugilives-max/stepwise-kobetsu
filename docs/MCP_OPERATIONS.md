@@ -17,8 +17,34 @@ ChatGPT / Codex ─OAuth(パスフレーズ)─► Workers "stepwise-mcp"(/mcp) 
 - **ツール**（名前と入力は前と同じ。中身は v2）：`find_student`（students/list）、`get_schedule`（schedule/staff/range。授業・連絡・共有予定・先生の休み・面談）、`get_student`（students/hub。記録・宿題・引き継ぎメモ・成績・計画・請求）、`get_pending_actions`（home/today ＋ monthly/overview）、`get_billing_summary`（billing/month ＋ billing/fees/list）、`get_teacher_off`、`get_student_wishes`（v2 に希望日程はないので共有予定を返す）。
 - **返さないもの**：メール・電話・専用リンク・Meet の URL・鍵（`scrub`）。
 - **確かめ方**：`stepwise-kobetsu` で `V2_SERVICE_KEY=<仮の鍵> node scripts/dev-v2-preview.mjs` を起動し、`stepwise-mcp` で `STEPWISE_API_URL=http://localhost:8790 STEPWISE_V2_KEY=<同じ鍵> node test/v2-client.mjs`。本番には触れない。
-- **登録・変更**は新しい管理画面（/staff/）で行う。MCP からの書き込みを v2 でも使いたくなったら、`SERVICE_READS` とは別に書き込みの範囲を決めてから作る。
+- **登録・変更**は新しい管理画面（/staff/）で行う。MCP からは、下の「書き込み」の道（予定の保存・選んだ授業のお知らせ・日程の変更・体験生の登録）だけ。
 - 以下の 1〜 章は今の仕組み（GAS / 今の Worker）向けの記述で、切り替え後は参考。
+
+### 書き込み（2026-10-13〜。予定の保存と、選んだ授業だけのお知らせを分ける）
+
+きっかけ：体験授業の登録で別の生徒を選び、その場でメールが届いてしまった（取り戻せない）。保存は未送信のまま、お知らせは選んだ授業だけを確かめてから、の 2 段にする。設計の元は Kura の reference/stepwise-mcp-write-claude-handoff.md、コードは `cf/v2/mcp-writes.mjs`（Worker）と `stepwise-mcp` の `src/toolsV2Write.ts`。
+
+```
+ChatGPT / Codex ─► stepwise-mcp ─serviceWriteKey─► stepwise-api /v2/mcp/… （mcp/ の道だけ）
+```
+
+| MCP のツール | Worker の道 | すること | メール |
+|---|---|---|---|
+| `save_lessons` | `mcp/lessons/save` | 授業をまとめて**未送信（held）**で保存。`dry_run` で判定だけ。`request_id` で冪等（同じ ID の再実行・並行・応答の消失で増えない。違う内容で同じ ID は断る） | 0 |
+| `get_lessons` | `mcp/lessons/get` | ID で読み戻す（状態・版・お知らせの履歴） | 0 |
+| `fix_unsent_lesson` | `mcp/lessons/fix` | 未送信の授業だけ直す（生徒の付け替えも）。版が合うときだけ | 0 |
+| `preview_lesson_notice` | `mcp/notices/preview` | 選んだ授業 ID だけについて、生徒・宛先（伏せ字）・本文・通数・状態の変わり方と確認値（confirm）。対象の生徒（studentIds）と違う授業・送ったあとの授業・重複は断る | 0 |
+| `send_lesson_notice` | `mcp/notices/send` | confirm が今の状態と合うときだけ、選んだ授業だけを送る。通常は仮予定（保護者に生徒ごと 1 通）、体験はメールなしで決定（カレンダー）。同じ requestId は二重に送らない | 生徒ごと 1 |
+| `reschedule_lesson` | `mcp/lessons/reschedule` | 日程の変更。未送信は黙って。送ったあとの授業は dry_run の confirm が要る。重なり・前日23時を過ぎた決定は断る（強制しない） | 送ったあとは 1 |
+| `create_trial_student` | `mcp/trials/create` | 体験生の登録。**専用リンク（生徒ページへの永続アクセス）は作らない**（`off.` の使えない鍵。管理画面の「専用リンクを作り直す」で使えるようになる）。同じ名前の体験生がいれば止める | 0 |
+| `get_write_request` | `mcp/requests/get` | requestId の結果と、送ったメールの今の状態（sent / pending / failed） | 0 |
+
+- **鍵**：`stepwise-api` の Secret `V2_SERVICE_WRITE_KEY` と、`stepwise-mcp` の Secret `STEPWISE_V2_WRITE_KEY` に同じ値。**読み取りの鍵（V2_SERVICE_KEY）とは別の値**にする（同じ値は Worker が断る）。読み取りの鍵では mcp/ の道は通らず、書き込みの鍵では mcp/ 以外（一般の管理 API）は通らない。どちらの Secret も無ければ、書き込みのツールは出ない・誰も書けない。
+- **範囲**：`stepwise-api` の `V2_SERVICE_WRITE_SCOPE` が `all` でなければ、テスト用の生徒（testOnly か名字が【テスト】）だけ。本物の生徒に使うのは、テストで流れを確かめてから `all` にする（本人の承認）。**2026-10-13 に `all`**（`cf/wrangler.jsonc` の vars。【テスト】の生徒で本番の一回りを確かめ、本人が承認）。テスト用だけに戻すときは、その行を消して deploy。
+- **履歴**：送ったお知らせは `lessonNotices`（授業ごと・宛先は伏せ字・メールの effects の ID）。訂正しても消さない。依頼は `mcpRequests` / `mcpRequestItems`。メールは送信の控え（effects）に入り、届いたかは effects の状態。送れなかったメールを自動で再送はしない（送信の記録で送り直す）。
+- **しないこと**：請求・金額・契約・同意の代行・支払い・削除・汎用の管理 API の直通。保存や訂正のついでのお知らせ。通常の授業を、メールを減らすために決定にすること。
+- **確かめ方（本番に触れない）**：`stepwise-kobetsu` で `node --test test/v2-mcp-writes.test.cjs`（受入条件。誤選択→訂正→プレビュー→送信、冪等、選んだ ID だけ、古いプレビュー、日程変更、体験生のリンク）。MCP までつなぐなら、仮の鍵 2 つで `scripts/dev-v2-preview.mjs --live`（`V2_SERVICE_KEY`・`V2_SERVICE_WRITE_KEY`）を起動し、`stepwise-mcp` で `node test/v2-write-client.mjs`（`STEPWISE_API_URL`・`STEPWISE_V2_KEY`・`STEPWISE_V2_WRITE_KEY`）。
+- **使えるようにする手順（本人の承認が要る）**：①DB2 の移行 `0021_mcp_writes.sql` → ②`stepwise-api` の deploy → ③新しい乱数を作り、`stepwise-api` に `V2_SERVICE_WRITE_KEY`、`stepwise-mcp` に `STEPWISE_V2_WRITE_KEY` を Secret で入れる（値は文書・Git・チャットに書かない）→ ④`stepwise-mcp` の deploy（ツールが出る）→ ⑤【テスト】の生徒で一回りを確かめる → ⑥`V2_SERVICE_WRITE_SCOPE=all`。止めるときは ③の Secret を消す（ツールが消え、Worker も断る）。
 
 ## 1. 構成と置き場所
 

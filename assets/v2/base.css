@@ -703,3 +703,39 @@ form[data-form=sch-meeting]:has(select[name=familyId] option[value=""]:checked) 
 .cond-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 10px 0; font-size: 14px; }
 .cond-dl dt { color: var(--muted); white-space: nowrap; }
 .cond-dl dd { margin: 0; }
+/* 体験生（2026-10-12） */
+.trial-new { margin: 10px 0 4px; }
+.trial-new summary { cursor: pointer; color: var(--primary); font-weight: 700; font-size: 14px; padding: 6px 2px; }
+.trial-new form { margin-top: 6px; background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+form[data-form=sch-create] .trial-hint { display: none; margin: -4px 0 0; }
+form[data-form=sch-create]:has(select[name=studentId] option[data-trial]:checked) .trial-hint { display: block; }
+
+/* 授業計画のまとめ（assets/v2/plan-view.js。管理画面の一覧・計画全体のプレビュー・保護者画面） */
+.pl-set { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin: 8px 0; background: var(--white); }
+.pl-set-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.pl-set-head small { color: var(--muted); }
+.pl-set-head .grow { flex: 1; }
+.pl-subj { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; }
+.pl-subj-head, .pv-sub-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 0 0 2px; font-size: 15px; }
+.pl-subj-head small, .pv-sub-head small { color: var(--muted); font-weight: 400; font-size: 13px; }
+.pl-subj-head .amt, .pv-sub-head b { margin-left: auto; white-space: nowrap; }
+.pv-sub-head span { font-weight: 700; overflow-wrap: anywhere; }
+.pv-notes { display: grid; gap: 4px; margin: 4px 0; }
+.pv-note { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.pv-purposes { display: grid; gap: 2px; margin: 4px 0; padding: 6px 8px; background: var(--soft); border-radius: 8px; }
+.pv-purpose { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.pv-purpose span { overflow-wrap: anywhere; min-width: 0; }
+.pv-purpose b { white-space: nowrap; }
+.pv-purpose.muted { color: var(--muted); }
+.pv-warn { color: var(--danger); margin: 2px 0; }
+.pv-lines { display: grid; }
+.pv-line { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 14px; }
+.pv-line .b { display: block; min-width: 0; overflow-wrap: anywhere; }
+.pv-line .b small { display: block; font-size: 12px; margin-top: 1px; }
+.pv-line .amt { font-weight: 700; text-align: right; white-space: nowrap; }
+.pv-head { margin: 0; }
+.pv-subject { padding: 8px 0; border-top: 1px solid var(--line); }
+.pv-total { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; border-top: 2px solid var(--ink); padding-top: 8px; margin-top: 4px; }
+.pv-total b { font-size: 18px; white-space: nowrap; }
+.pv-schedule { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.parts-in { display: grid; grid-template-columns: minmax(0, 1fr) 6em; gap: 4px 8px; }

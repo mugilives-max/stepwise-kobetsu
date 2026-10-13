@@ -94,8 +94,8 @@ test('migration is additive: original columns, consent records, files and histor
   await h.ok('family/conditions/agree',{ consenterName:'架空 保護者',auth:parent,id:c.id,agree:true});
   await h.ok('admin/terms/set',{auth,version:'fixture-old',title:'旧版',url:'https://example.invalid/old'});
   await h.ok('family/terms/accept',{ consenterName:'架空 保護者',auth:parent,version:'fixture-old',agree:true});
-  const db=createD1({migrate:false}), ms=migrationFiles('migrations-v2'), migration=ms.find(m=>m.name==='0020_contract_history.sql');
-  for(const m of ms.filter(m=>m.name<'0020_contract_history.sql')) db._sqlite.exec(m.sql);
+  const db=createD1({migrate:false}), ms=migrationFiles('migrations-v2'), migration=ms.find(m=>m.name==='0023_contract_history.sql');
+  for(const m of ms.filter(m=>m.name<'0023_contract_history.sql')) db._sqlite.exec(m.sql);
   const saved={}; db._sqlite.exec('pragma foreign_keys=off');
   for(const table of ['settings','families','students','conditions','specials','termsConsents','planLines','files']) {
     const cols=columns(db,table), rows=h.rows('select '+cols.join(',')+' from '+table);
@@ -142,4 +142,17 @@ test('a concurrently replaced condition cannot produce a false agreement or anot
  const r=await h.call('family/conditions/agree',{auth:parent,id:c.id,agree:true,consenterName:'架空 保護者'});
  assert.equal(r.error.code,'conflict');assert.equal(h.env.FILES._m.size,files);
  assert.equal(h.rows('select status from conditions where id=?',c.id)[0].status,'proposed');
+});
+
+test('plan history keeps purpose breakdowns with the exact saved version', async()=>{
+ const {h,auth,parent,plan,row,approve}=await world();
+ const parts=[{label:'テスト対策',count:2},{label:'教材の定着',count:2}];
+ const p=await plan({parts});
+ const archived=()=>h.rows('select snapshot from planRevisions where planId=? order by rowVersion',p.id).map(r=>JSON.parse(r.snapshot));
+ assert.equal(archived()[0].parts,JSON.stringify(parts));
+ assert.equal((await approve(p)).ok,true);
+ await h.ok('billing/plans/save',{auth,id:p.id,version:row(p.id).version,parts:[{label:'変更後',count:4}]});
+ assert.equal(archived().at(-1).parts,JSON.stringify([{label:'変更後',count:4}]));
+ const history=(await h.ok('family/contracts',{auth:parent})).plans;
+ assert.deepEqual(history.find(x=>x.status==='approved').parts,parts);
 });

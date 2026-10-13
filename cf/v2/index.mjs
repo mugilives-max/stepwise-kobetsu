@@ -25,8 +25,10 @@ import { monthlyRoutes } from './monthly.mjs';
 import { recordEffects, deliverEffects } from './effects.mjs';
 import { effectsAdminRoutes, retryFailedEffects, sweepStaleEffects } from './effects-admin.mjs';
 import { termsRoutes } from './terms.mjs';
-import { serviceActor, SERVICE_READS } from './service.mjs';
+import { serviceActor, serviceWriteActor, SERVICE_READS } from './service.mjs';
 import { backupRoutes, backupToR2 } from './backup.mjs';
+import { trialRoutes } from './trial.mjs';
+import { mcpWriteRoutes, SERVICE_WRITES } from './mcp-writes.mjs';
 import { conditionRoutes } from './conditions.mjs';
 import { billingDocRoutes } from './billing-doc.mjs';
 import { specialRoutes } from './specials.mjs';
@@ -34,7 +36,7 @@ import { docsSampleRoutes } from './docs-sample.mjs';
 
 import { contractRoutes } from './contracts.mjs';
 
-const ROUTES = { ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes };
+const ROUTES = { ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...mcpWriteRoutes };
 const MAX_BODY = 200000;
 
 // 毎日0時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、締め切りを過ぎた仮予定を決定する。切り替えたあとは、3日以降に前月分の請求を確定する
@@ -82,11 +84,17 @@ export async function handleV2(request, env, ctx, head = {}) {
     const who = await serviceActor(c, body.serviceKey);
     if (!who) return reply(401, { ok: false, error: { code: 'badKey', message: '鍵が正しくありません' } });
     c.serviceStaff = who; delete body.serviceKey; delete body.auth;
+  } else if (body.serviceWriteKey !== undefined) {
+    // 書き込み用の鍵: mcp/ の道だけ（予定の保存・選んだ授業のお知らせ・日程の変更・体験生の登録と、その読み戻し）
+    if (!SERVICE_WRITES.has(route)) return reply(403, { ok: false, error: { code: 'service', message: 'この鍵で使えるのは MCP の書き込み用の操作だけです' } });
+    const who = await serviceWriteActor(c, body.serviceWriteKey);
+    if (!who) return reply(401, { ok: false, error: { code: 'badKey', message: '鍵が正しくありません' } });
+    c.serviceStaff = who; c.serviceWrite = true; delete body.serviceWriteKey; delete body.auth;
   }
   try {
     const result = await handler(c, body);
-    if (c.effects.length) {
-      const queued = await recordEffects(c.db, c.effects, c.now);
+    if (c.effects.length || (c.queued && c.queued.length)) {
+      const queued = (c.queued || []).concat(c.effects.length ? await recordEffects(c.db, c.effects, c.now) : []); // c.queued: 道の中で先に記録したメール（mcp/notices/send など）
       const finish = deliverEffects(env, c.db, queued).catch(() => {});
       if (ctx && ctx.waitUntil) ctx.waitUntil(finish); else await finish;
     } else if (ctx && ctx.waitUntil && c.actor) {

@@ -10,6 +10,7 @@ import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/a
 import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261008-launch1';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
+import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261013-plan1';
 
 export const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 export const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
@@ -138,13 +139,18 @@ const planMonth = l => l.startDate.slice(0, 7);
 const groupByMonth = lines => { const m = new Map(); for (const l of lines) { const k = planMonth(l); if (!m.has(k)) m.set(k, []); m.get(k).push(l); } return [...m.entries()].sort((a, b) => a[0] < b[0] ? 1 : -1); };
 const lineLabel = (l, multi) => `${multi ? `<b>${esc(given(l.studentName))}</b> ` : ''}${esc(l.subject)}${l.kind !== '通常' ? `（${esc(l.kind)}）` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''}${l.comment ? `<small class="muted">${esc(l.comment)}</small>` : ''}`;
 const period = l => l.startDate.slice(8) === '01' && Number(l.endDate.slice(8)) >= 28 && l.startDate.slice(0, 7) === l.endDate.slice(0, 7) ? '' : `${md(l.startDate)}〜${md(l.endDate)}`;
+// 科目ごとのまとまり（assets/v2/plan-view.js。管理画面のプレビューと同じまとめ方）。兄弟がいるときは 生徒＋科目。
+// 中に 説明・目的ごとの回数、そのあとに行（授業・演習を言葉で）。lineHtml(l) は行の HTML（回数の選択などはそのまま）
+const formLabel = l => { const f = formOf(l.kind); return `<span><span class="tag">${esc(f.form)}</span>${f.detail ? ` <span class="tag gray">${esc(f.detail)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''}</span>`; };
+const planSubjects = (lines, multi, lineHtml) => subjectGroups(lines, l => (multi ? l.studentId + '|' : '') + l.subject).map(g =>
+  `<div class="pl-subj"><div class="pl-subj-head"><strong>${multi ? esc(given(g.lines[0].studentName)) + ' ' : ''}${esc(g.subject)}</strong><small>${esc(formsText(g.forms))}</small></div>${subjectInfoHtml(g, esc)}${g.lines.map(lineHtml).join('')}</div>`).join('');
 // 承認をお願いしている月。counts: { [lineId]: 承認する回数 }（画面で変えた値）
 export function planApprovalCard(month, lines, { multi, counts = {}, dis = '', consenterName = '' }) {
   const n = l => counts[l.id] === undefined ? l.count : counts[l.id];
   const total = lines.reduce((s, l) => s + n(l) * l.fee, 0);
-  const rows = lines.map(l => `<div class="pl"><span class="b">${lineLabel(l, multi)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span>
+  const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span>
       <span class="n"><select name="count-${esc(l.id)}" data-plan-count="${esc(l.id)}" aria-label="回数">${Array.from({ length: l.count - l.minCount + 1 }, (_, i) => l.count - i).map(k => `<option value="${k}"${n(l) === k ? ' selected' : ''}>${k}回</option>`).join('')}${l.minCount === 0 ? `<option value="0"${n(l) === 0 ? ' selected' : ''}>見送る</option>` : ''}</select><small>1回 ${esc(l.minutes)}分・${yen(l.fee)}</small></span>
-      <span class="amt">${yen(n(l) * l.fee)}</span></div>${l.minCount ? `<div class="small muted pl-note">すでに決まっている授業が${l.minCount}回あるため、${l.minCount}回より少なくはできません。</div>` : ''}`).join('');
+      <span class="amt">${yen(n(l) * l.fee)}</span></div>${l.minCount ? `<div class="small muted pl-note">すでに決まっている授業が${l.minCount}回あるため、${l.minCount}回より少なくはできません。</div>` : ''}`);
   return `<form class="pcard ask" data-form="plan-approve" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の授業計画</strong><span class="tag warn">承認をお願いします</span></div>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
     <p class="small muted">回数を減らしたいときは、各行の回数を変えてから承認してください。承認すると、この回数で授業を進めます。</p>
@@ -153,7 +159,7 @@ export function planApprovalCard(month, lines, { multi, counts = {}, dis = '', c
 // 先生が記録した承諾（LINE など）を確かめてもらう月
 export function planAckCard(month, lines, { multi, dis = '' }) {
   const via = lines[0].approvedVia, date = lines[0].consentDate;
-  const rows = lines.map(l => `<div class="pl"><span class="b">${lineLabel(l, multi)}</span><span class="n"><small>${l.approvedCount}回・1回 ${yen(l.fee)}</small></span><span class="amt">${yen(l.approvedCount * l.fee)}</span></div>`).join('');
+  const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span><span class="n"><small>${l.approvedCount}回・1回 ${yen(l.fee)}</small></span><span class="amt">${yen(l.approvedCount * l.fee)}</span></div>`);
   const total = lines.reduce((s, l) => s + l.approvedCount * l.fee, 0);
   return `<div class="pcard ack" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の授業計画</strong><span class="tag">確かめてください</span></div>
     <p class="small muted">${esc(via)}で承諾いただいた内容を、先生が記録しました（${esc(date)}）。</p>
@@ -167,7 +173,7 @@ export function planHistory(lines, { multi }) {
   return '<div class="group">' + groups.map(([m, ls]) => {
     const total = ls.reduce((s, l) => s + (l.status === 'approved' ? l.approvedCount * l.fee : 0), 0);
     return `<details class="ph"><summary><span class="b"><b>${monthLabel(m)}</b><small>${ls.map(l => `${multi ? given(l.studentName) + ' ' : ''}${l.subject}${l.status === 'approved' ? ` ${l.approvedCount}回` : '（見送り）'}`).map(esc).join('・')}</small></span><span class="amt">${yen(total)}</span></summary>
-      <div class="pl-list">${ls.map(l => `<div class="pl"><span class="b">${lineLabel(l, multi)}</span><span class="n"><small>${l.status === 'approved' ? `${l.approvedCount}回・1回 ${yen(l.fee)}<br>${esc(l.consentDate)}・${esc(l.approvedVia)}${l.familyAck === 'inquiry' ? '・問い合わせ中' : ''}` : '見送り'}</small></span><span class="amt">${l.status === 'approved' ? yen(l.approvedCount * l.fee) : ''}</span></div>`).join('')}</div></details>`;
+      <div class="pl-list">${planSubjects(ls, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span><span class="n"><small>${l.status === 'approved' ? `${l.approvedCount}回・1回 ${yen(l.fee)}<br>${esc(l.consentDate)}・${esc(l.approvedVia)}${l.familyAck === 'inquiry' ? '・問い合わせ中' : ''}` : '見送り'}</small></span><span class="amt">${l.status === 'approved' ? yen(l.approvedCount * l.fee) : ''}</span></div>`)}</div></details>`;
   }).join('') + '</div>';
 }
 export function planGroups(plans) {
@@ -189,7 +195,7 @@ export function termsCard(terms, { busy = false, checked = false, consenterName 
 // 基本指導条件（規約 第2条の基本指導条件書）: 同意をお願いするカードと、同意済みの 1 行
 const condRow = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : '';
 const monthJa = m => m ? `${Number(m.slice(0, 4))}年${Number(m.slice(5, 7))}月` : '';
-export function conditionCard(x, { busy = false, checked = false } = {}) {
+export function conditionCard(x, { busy = false, checked = false, consenterName = '' } = {}) {
   const c = x.latest;
   return `<div class="pcard ask" data-condition="${esc(c.id)}"><div class="pc-head"><strong>${esc(given(x.studentName))}さんの基本指導条件（第${c.no}版）</strong><span class="tag warn">同意をお願いします</span></div>
     <dl class="cond-dl">${condRow('通常指導の基準単価', `1回 ${c.minutes}分 <strong>${yen(c.fee)}</strong>（税込）`)}${condRow('形式', esc(c.deliveryLabel))}${condRow('人数', esc(c.groupSize))}${condRow('生徒本人からの連絡', c.studentContact ? '前日23時までの無料のお休みは、本人からも連絡できます' : '保護者からお願いします')}${condRow('科目', esc(c.subjects))}${condRow('特記事項', esc(c.note))}${condRow('適用開始', monthJa(c.fromMonth))}</dl>
@@ -201,7 +207,7 @@ export function conditionCard(x, { busy = false, checked = false } = {}) {
 export const conditionLine = items => (items || []).filter(x => x.agreed && !x.needs).map(x => `<p class="small muted">${esc(given(x.studentName))}さんの基本指導条件 第${x.agreed.no}版に同意済み（${esc(String(x.agreed.agreedAt).slice(0, 10))}）・1回 ${x.agreed.minutes}分 ${yen(x.agreed.fee)}・${esc(x.agreed.deliveryLabel)}${x.agreed.docFileId ? `　<button type="button" class="linkish" data-action="gr-open" data-id="${esc(x.agreed.docFileId)}">条件書を開く</button>` : ''}</p>`).join('');
 // 特殊指導の承認（規約 第6条）: 承認をお願いするカードと、承認済みの 1 行
 const ymdJa = v => v ? `${Number(v.slice(0, 4))}年${Number(v.slice(5, 7))}月${Number(v.slice(8))}日` : '';
-export function specialCard(x, { busy = false, checked = false } = {}) {
+export function specialCard(x, { busy = false, checked = false, consenterName = '' } = {}) {
   return `<div class="pcard ask" data-special="${esc(x.id)}"><div class="pc-head"><strong>${esc(given(x.studentName))}さんの特殊指導「${esc(x.title)}」</strong><span class="tag warn">承認をお願いします</span></div>
     <dl class="cond-dl">${condRow('指導の目的', esc(x.purpose))}${condRow('内容と範囲', esc(x.content).replace(/\n/g, '<br>'))}${condRow('通常指導との違い', esc(x.reason).replace(/\n/g, '<br>'))}${condRow('必要な準備', esc(x.prep))}${condRow('1回の時間と特殊指導の基準単価', `${x.minutes}分 <strong>${yen(x.fee)}</strong>（税込）`)}${condRow('対象期間', `${ymdJa(x.fromDate)} 〜 ${ymdJa(x.toDate)}`)}${condRow('特記事項', esc(x.note))}</dl>
     <p class="small muted">承認すると、この期間の指導計画承認書に種類「${esc(x.title)}」として、この基準単価を上限とした適用単価で提案できます。月ごとの回数は授業計画で別に承認していただきます。</p>
