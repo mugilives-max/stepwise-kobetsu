@@ -18,7 +18,7 @@ async function world() {
   const parent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' })).auth;
   const line = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-11-01', endDate: '2026-11-30', count: 8, minutes: 90, fee: 4500 })).line;
   const cur = h.rows('select * from planLines where id = ?', line.id)[0];
-  await h.ok('billing/plans/consent', { auth, id: line.id, version: cur.version, consentDate: '2026-10-20', via: '保護者ページ' });
+  await h.ok('billing/plans/consent', { auth, id: line.id, version: cur.version, consentDate: '2026-10-20', consenterName: '架空 保護者', consentedAt: '2026-10-20T09:00:00+09:00', via: '保護者ページ' });
   const lesson = async (date, extra = {}) => {
     const keep = h.clock; h.clock = at('2026-10-20T09:00:00');
     await h.ok('schedule/lessons/create', { auth, studentId: kid.id, date, start: '18:00', minutes: 90, subject: '数学', deliveryMode: 'in_person', force: true, ...extra });

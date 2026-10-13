@@ -1,14 +1,15 @@
-// 授業計画・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql、docs/TERMS_DRAFT_2026-10.md 第1・5・8条
+// 授業計画・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
 // - 教室管理者: 計画を作る・お知らせする・LINE などの承諾を記録する・先月と同じ内容で下書き、授業の種類と標準料金、
 //              キャンセル料の判断・減額や免除の申請への回答、月ごとの請求（確かめる・確定・取消・入金）
 // - 保護者: 計画の承認（回数を減らす・見送るも）・先生が記録した承諾の確認、請求の確認・振込の連絡、キャンセル料の減額・免除の申請
 // - 毎日0時10分: 3日以降、前月分の請求を家族ごとに確定する（確かめることがある家族は止める）。切り替え（settings.live）まで動かさない
 // 料金は承認した計画の行で決まる。計画の承認がない授業は請求しない（承認されたら、その月か次の月の請求に入る）。
+import { consentEvidence, evidenceView } from './consent-evidence.mjs';
 import { fail, newId, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
-import { familyTerms, currentTerms } from './terms.mjs';
+import { familyTerms } from './terms.mjs';
 import { familyConditions, familyNeedsConditions } from './conditions.mjs';
 import { storeInvoiceDoc, storeReceiptDoc, billingDocIds } from './billing-doc.mjs';
 import { agreedSpecialFor, familySpecials } from './specials.mjs';
@@ -25,7 +26,7 @@ const DAY = 86400e3;
 
 // ---- 見せ方 ----
 export function lineView(l, extra = {}) {
-  return { id: l.id, studentId: l.studentId, parentId: l.parentId, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, count: l.count, minutes: l.minutes, fee: l.fee,
+  return { ...evidenceView(l), conditionId: l.conditionId || '', specialId: l.specialId || '', instructionType: l.instructionType || '', id: l.id, studentId: l.studentId, parentId: l.parentId, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, count: l.count, minutes: l.minutes, fee: l.fee,
     comment: l.comment, status: l.status, approvedCount: l.approvedCount, proposedAt: l.proposedAt, approvedAt: l.approvedAt, approvedBy: l.approvedBy ? (l.approvedBy === 'family' ? 'family' : 'staff') : '',
     approvedVia: l.approvedVia, consentDate: l.consentDate, approvalNote: l.approvalNote, termsVersion: l.termsVersion || '', familyAck: l.familyAck, familyAckAt: l.familyAckAt, familyAckNote: l.familyAckNote, remindedAt: l.remindedAt || '', version: l.version, parts: partsOf(l), ...extra };
 }
@@ -86,6 +87,17 @@ async function lineLocked(c, id) {
 }
 async function getLine(c, id) { const l = await c.db.prepare('select * from planLines where id = ?').bind(String(id || '')).first(); if (!l) fail('notFound', '計画が見つかりません', 404); return l; }
 async function getStudent(c, id) { const s = await c.db.prepare('select * from students where id = ?').bind(String(id || '')).first(); if (!s) fail('notFound', '生徒が見つかりません', 404); return s; }
+
+// Do not turn first-time approval after a lesson into prior authorization.
+async function assertPriorConsent(c, line, at) {
+  const cutoff = Date.parse(line.endDate + 'T23:59:59+09:00');
+  if (Date.parse(at) > cutoff) fail('afterLessonConsent', '対象期間の終了後に初めて承認することはできません。授業前に承認済みの場合は、その日時と承認者を塾が記録してください', 409);
+  const rows = (await c.db.prepare("select id,date,start from lessons where studentId = ? and subject = ? and coalesce(nullif(kind,''),'通常') = ? and date between ? and ? and status in ('decided','done','cancelled')").bind(line.studentId,line.subject,line.kind,line.startDate,line.endDate).all()).results;
+  const sb = await studentBilling(c.db, line.studentId);
+  const rest = assignLines(sb.lines.filter(x => x.id !== line.id), sb.lessons, Object.fromEntries(Object.entries(sb.invoicedLine).filter(([, id]) => id !== line.id)));
+  if (rows.filter(ls => !rest.line[ls.id]).some(ls => Date.parse(ls.date + 'T' + ls.start.slice(0,5) + ':00+09:00') <= Date.parse(at)))
+    fail('afterLessonConsent', '授業開始後の承認は、授業前の承認として登録できません。授業前に承認済みで入力だけが後になった場合は、実際の承認日時を記録してください', 409);
+}
 
 // この行を外したときに、ほかの承認済みの行に入りきらない授業の数（回数をこれより減らせない）
 async function minCountFor(c, line) {
@@ -209,31 +221,31 @@ export const billingRoutes = {
   },
   // 作る・直す。直すと承認は消えて下書きに戻る（もう一度お知らせする）。請求に入った授業がある行は直せない
   'billing/plans/save': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    const me = await requireStaff(c, b, 'manager');
     const old = b.id ? await getLine(c, b.id) : null;
     if (old) { sameVersion(old, b); if (await lineLocked(c, old.id)) fail('locked', '請求に入った授業がある計画は直せません。回数を足すときは「追加の計画」を作ってください', 409); }
     const s = await getStudent(c, old ? old.studentId : b.studentId);
     const n = lineFields(b, old || {});
     if (n.parts === undefined && old && partsOf(old).reduce((k, p) => k + p.count, 0) > n.count) fail('badParts', '目的・教材ごとの回数の合計が、計画の回数を超えます。内訳も直してください');
     await checkLine(c, s.id, n, old ? old.id : '');
-    // 基本単価（30分あたり）を超える料金は、承認済みの特殊指導（同じ名称の種類・期間内・承認した料金まで）がなければ設定できない（規約 第4条6項・第5条）
+    const condition = await c.db.prepare("select * from conditions where studentId = ? and status = 'agreed' and fromMonth <= ? order by fromMonth desc, no desc limit 1").bind(s.id,n.startDate.slice(0,7)).first();
     const base = Number(s.baseRate30 || 0);
-    if (base > 0 && n.fee > Math.floor(base * n.minutes / 30)) {
-      const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
-      if (!sp || n.fee > Math.floor(Number(sp.fee) * n.minutes / Number(sp.minutes))) fail('needSpecial', `基本単価（30分 ${yen(base)}）を超える料金は、特殊指導条件書で保護者の承認を得てから設定します。授業の種類は特殊指導条件書の名称（例: 英検準1級対策）にし、料金は承認した金額までにしてください`);
-    }
+    const ceiling = condition ? Math.floor(condition.fee * n.minutes / condition.minutes) : Math.floor(base * n.minutes / 30);
+    const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
+    if (sp && n.endDate > sp.toDate) fail('needSpecial', '計画の対象期間全体が、承認済みの特殊指導の対象期間に含まれる必要があります');
+    if ((sp && n.fee > Math.floor(sp.fee * n.minutes / sp.minutes)) || ((condition || base > 0) && n.fee > ceiling && !sp))
+      fail('needSpecial', '通常指導の基準単価を超える適用単価は、対象期間全体の特殊指導条件書について事前に承認を得て、その基準単価以内で設定してください');
+    n.conditionId = condition ? condition.id : ''; n.specialId = sp ? sp.id : ''; n.instructionType = sp ? 'special' : 'regular';
     const now = iso(c.now);
     if (old) {
-      await c.db.prepare(`update planLines set parentId = ?, subject = ?, kind = ?, startDate = ?, endDate = ?, count = ?, minutes = ?, fee = ?, comment = ?, status = 'draft', approvedCount = null, proposedAt = '', approvedAt = '', approvedBy = '', approvedVia = '', consentDate = '', approvalNote = '', familyAck = '', familyAckAt = '', familyAckNote = '', updatedAt = ?, version = version + 1 where id = ? and version = ?`)
-        .bind(n.parentId, n.subject, n.kind, n.startDate, n.endDate, n.count, n.minutes, n.fee, n.comment, now, old.id, old.version).run();
+      await c.db.prepare(`update planLines set parentId = ?, subject = ?, kind = ?, startDate = ?, endDate = ?, count = ?, minutes = ?, fee = ?, comment = ?, parts = ?, status = 'draft', approvedCount = null, proposedAt = '', approvedAt = '', approvedBy = '', approvedVia = '', consentDate = '', approvalNote = '', familyAck = '', familyAckAt = '', familyAckNote = '', termsVersion = '', consenterName = '', consentedAt = '', recordedAt = '', recordedByName = '', proposedByName = ?, conditionId = ?, specialId = ?, instructionType = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?`)
+        .bind(n.parentId, n.subject, n.kind, n.startDate, n.endDate, n.count, n.minutes, n.fee, n.comment, n.parts === undefined ? old.parts || '' : n.parts, me.name || '', n.conditionId, n.specialId, n.instructionType, now, old.id, old.version).run();
     } else {
       b.id = newId('pl');
-      await c.db.prepare('insert into planLines (id, studentId, parentId, subject, kind, startDate, endDate, count, minutes, fee, comment, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .bind(b.id, s.id, n.parentId, n.subject, n.kind, n.startDate, n.endDate, n.count, n.minutes, n.fee, n.comment, now, now).run();
+      await c.db.prepare('insert into planLines (id, studentId, parentId, subject, kind, startDate, endDate, count, minutes, fee, comment, parts, proposedByName, conditionId, specialId, instructionType, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .bind(b.id, s.id, n.parentId, n.subject, n.kind, n.startDate, n.endDate, n.count, n.minutes, n.fee, n.comment, n.parts || '', me.name || '', n.conditionId, n.specialId, n.instructionType, now, now).run();
     }
     await audit(c, old ? 'planUpdate' : 'planCreate', b.id, { count: n.count, fee: n.fee, minutes: n.minutes, wasStatus: old ? old.status : '' });
-    // 目的・教材の内訳: 送られたときだけ書く（送られなければ今のまま）。回数を減らして内訳の合計を下回ったら止める
-    if (n.parts !== undefined) await c.db.prepare('update planLines set parts = ? where id = ?').bind(n.parts, b.id).run();
     return { line: lineView(await getLine(c, b.id)) };
   },
   'billing/plans/delete': async (c, b) => {
@@ -291,18 +303,24 @@ export const billingRoutes = {
     const me = await requireStaff(c, b, 'manager');
     const l = await getLine(c, b.id); sameVersion(l, b);
     if (l.status === 'approved') fail('already', 'もう承認されています', 409);
-    const consentDate = String(b.consentDate || ''), via = String(b.via || '').trim(), note = String(b.note || '').trim();
+    const consentDate = String(b.consentedAt || b.consentDate || '').slice(0, 10), via = String(b.via || '').trim(), note = String(b.note || '').trim();
     if (!validDate(consentDate) || consentDate > todayJst(c.now)) fail('badDate', '承諾をもらった日（今日まで）を入れてください');
     if (!via || via.length > 40) fail('needVia', '承諾の方法（LINE・電話など）を入れてください');
     if (note.length > 300) fail('tooLong', 'メモは300文字以内にしてください');
     const count = b.approvedCount === undefined || b.approvedCount === '' ? l.count : Number(b.approvedCount);
     if (!Number.isInteger(count) || count < 1 || count > l.count) fail('badCount', `承認の回数は1〜${l.count}回にしてください`);
-    const sb = await studentBilling(c.db, l.studentId);
-    const before = sb.lessons.some(ls => lineMatches(l, ls) && ls.date < consentDate);
-    if ((l.endDate < consentDate || before) && !note) fail('needNote', '授業のあとで承諾をもらったときは、メモに事情を書いてください');
-    const now = iso(c.now), terms = await currentTerms(c.db);
-    await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ?")
-      .bind(count, now, 'staff:' + me.id, via, consentDate, note, terms.version, now, now, l.id).run();
+    const evidence = consentEvidence(c, b, me);
+    await assertPriorConsent(c, l, evidence.consentedAt);
+    const now = iso(c.now);
+    const student = await getStudent(c, l.studentId);
+    const family = await c.db.prepare('select * from families where id = ?').bind(student.familyId).first();
+    const consents = (await c.db.prepare('select version,acceptedAt from termsConsents where familyId = ? order by id desc').bind(family.id).all()).results;
+    const knownBy = r => Date.parse(r.acceptedAt.length === 10 ? r.acceptedAt + 'T23:59:59+09:00' : r.acceptedAt) <= Date.parse(evidence.consentedAt);
+    const prior = consents.filter(knownBy).sort((a,b) => Date.parse(b.acceptedAt) - Date.parse(a.acceptedAt))[0];
+    const termsVersion = prior?.version || (family.termsAcceptedAt && knownBy({acceptedAt:family.termsAcceptedAt}) ? family.termsVersion : '') || '';
+    const saved = await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
+      .bind(count, now, 'staff:' + me.id, via, todayJst(Date.parse(evidence.consentedAt)), note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, now, l.id, l.version).run();
+    if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
     await audit(c, 'planConsent', l.id, { via, consentDate, count });
     return { line: lineView(await getLine(c, l.id)) };
   },
@@ -318,14 +336,12 @@ export const billingRoutes = {
       const have = (await c.db.prepare("select * from planLines where studentId = ? and parentId = '' and status <> 'declined' and startDate <= ? and endDate >= ?").bind(sid, to, from).all()).results;
       for (const l of src) {
         if (have.some(h => h.subject === l.subject && h.kind === l.kind)) continue;
-        await c.db.prepare('insert into planLines (id, studentId, subject, kind, startDate, endDate, count, minutes, fee, comment, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .bind(newId('pl'), sid, l.subject, l.kind, from, to, l.status === 'approved' ? lineCap(l) || l.count : l.count, l.minutes, l.fee, l.comment, now, now).run();
+        await billingRoutes['billing/plans/save'](c, { auth: b.auth, studentId: sid, subject: l.subject, kind: l.kind,
+          startDate: from, endDate: to, count: l.status === 'approved' ? lineCap(l) || l.count : l.count,
+          minutes: l.minutes, fee: l.fee, comment: l.comment,
+          parts: partsOf(l).reduce((k,p)=>k+p.count,0) <= (l.status === 'approved' ? lineCap(l) || l.count : l.count) ? partsOf(l) : [] });
         created++;
-        // 目的・教材の内訳も写す（作った行を探して。承認で回数が減って内訳の合計を下回るときは写さない）
-        if (partsOf(l).length) {
-          const made = await c.db.prepare("select id, count from planLines where studentId = ? and parentId = '' and subject = ? and kind = ? and startDate = ? and endDate = ? order by createdAt desc, id desc limit 1").bind(sid, l.subject, l.kind, from, to).first();
-          if (made && partsOf(l).reduce((k, p) => k + p.count, 0) <= Number(made.count)) await c.db.prepare('update planLines set parts = ? where id = ?').bind(l.parts, made.id).run();
-        }
+
       }
     }
     await audit(c, 'planCopyMonth', '', { month: b.month, created });
@@ -472,8 +488,8 @@ export const billingRoutes = {
     const terms = await familyTerms(c.db, me), conditions = await familyConditions(c.db, students.filter(s => s.status !== 'left')), specials = await familySpecials(c.db, students.filter(s => s.status !== 'left'));
     if (!ids.length) return { plans: [], fees: [], invoices: [], terms, conditions, specials };
     const q = `(${ids.map(() => '?').join(', ')})`, since = addDays(todayJst(c.now), -92);
-    // 承認待ちは期間が過ぎても出し続ける（承認できるように）。ほかは終わってから3か月まで
-    const lines = (await c.db.prepare(`select * from planLines where studentId in ${q} and (status = 'proposed' or (status <> 'draft' and endDate >= ?)) order by startDate, subject`).bind(...ids, since).all()).results;
+    // 保存された過去の計画を期間で隠さない。過去に初めて承認する操作は別に拒否する
+    const lines = (await c.db.prepare(`select * from planLines where studentId in ${q} and status <> 'draft' order by startDate, subject`).bind(...ids).all()).results;
     const plans = [];
     for (const l of lines) plans.push(lineView(l, { studentName: names[l.studentId], minCount: l.status === 'proposed' ? await minCountFor(c, l) : 0 }));
     const fees = (await staffFees(c, `f.studentId in ${q} and f.decision <> 'pending' and (f.invoiceId = '' or l.date >= ?)`, ...ids, since)).map(f => ({ ...feeView(f), studentName: names[f.studentId] }));
@@ -495,10 +511,12 @@ export const billingRoutes = {
     // 受講規約の今の版に同意していなければ、承認できない（統合3 D07。見送りは同意がなくてもよい）
     const terms = await familyTerms(c.db, me);
     if (count > 0 && terms.needs) fail('needTerms', '受講規約への同意が必要です。「お支払い」の画面で規約を確かめて、同意してから承認してください', 409);
-    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '個別指導条件への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
-    const now = iso(c.now);
-    await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
-      .bind(count > 0 ? 'approved' : 'declined', count, now, todayJst(c.now), terms.agreed.version, now, l.id, l.version).run();
+    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '基本指導条件への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
+    const now = iso(c.now), evidence = consentEvidence(c, b, me, me);
+    if (count > 0) await assertPriorConsent(c, l, evidence.consentedAt);
+    const saved = await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
+      .bind(count > 0 ? 'approved' : 'declined', count, now, todayJst(c.now), terms.agreed.version, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, l.id, l.version).run();
+    if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
     const s = await getStudent(c, l.studentId);
     await staffNotice(c, `【計画の${count > 0 ? '承認' : '見送り'}】${fullName(s)}さん`, `${fullName(s)}さん ${l.subject}（${md(l.startDate)}〜${md(l.endDate)}）\n${count > 0 ? `${count}回で承認されました（お知らせは${l.count}回）` : '見送りになりました'}`);
     await audit(c, 'planDecide', l.id, { count });

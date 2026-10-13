@@ -5,7 +5,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261008-launch1';
-import { termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261008-launch1';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261013-contracts';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -19,8 +19,10 @@ let me = null, busy = false, notice = null, sched = null, learning = null, money
 let cal = null, calData = {}; // 月の予定表と、月ごとに読んだ予定（{ 'YYYY-MM': 応答 }）
 let sheetState = null; // 下から出る画面: { kind: 'lesson', id, pick, note } | { kind: 'event' } | { kind: 'invoice', id } | { kind: 'fee', id, note } | { kind: 'inquiry', month, note }
 const planCounts = {}; // 承認の画面で変えた回数 { [lineId]: n }
+let contracts = null;
+const consentNames = {};
 let termsChecked = false; // 規約の「同意します」の印（描き直しても消えないように）
-const condChecked = {}; // 個別指導条件の「同意します」の印（条件の id ごと）
+const condChecked = {}; // 基本指導条件の「同意します」の印（条件の id ごと）
 const specialChecked = {}; // 特殊指導の「承認します」の印
 
 function route() {
@@ -102,7 +104,7 @@ function homePage() {
   const todo = [], { asks, acks } = planGroups(money.plans);
   if (money.terms && money.terms.needs) todo.push(['#money', 'file', '#c98a00', '受講規約への同意', (money.terms.current.title || '受講規約') + '・全文を読んで同意してください', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs) : [];
-  if (needConds.length) todo.push(['#money', 'file', '#c98a00', '個別指導条件への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
+  if (needConds.length) todo.push(['#money', 'file', '#c98a00', '基本指導条件への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
   if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特殊指導の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・') + '・内容と料金を確かめて承認してください', needSpecials.length]);
   if (asks.length) todo.push(['#money', 'plan', '#5b6672', '授業計画の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
@@ -178,10 +180,10 @@ function moneyPage() {
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
   if (asks.length || acks.length || blocked || needSpecials.length) {
     h += secTitle('確かめていただきたいこと');
-    if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked });
-    h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id] })).join('');
-    h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id] })).join('');
-    h += asks.map(([m, ls]) => planApprovalCard(m, ls, { multi, counts: planCounts, dis: dis() || (blocked ? ' disabled' : '') })).join('');
+    if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
+    h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id], consenterName: consentNames[x.latest.id] || me.guardianName || '' })).join('');
+    h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id], consenterName: consentNames[x.id] || me.guardianName || '' })).join('');
+    h += asks.map(([m, ls]) => planApprovalCard(m, ls, { multi, counts: planCounts, consenterName: consentNames[m] || me.guardianName || '', dis: dis() || (blocked ? ' disabled' : '') })).join('');
     h += acks.map(([m, ls]) => planAckCard(m, ls, { multi, dis: dis() })).join('');
   }
   h += secTitle('授業料') + invoiceRows(money.invoices);
@@ -190,6 +192,7 @@ function moneyPage() {
   if (money.terms && !needTerms) h += termsLine(money.terms);
   if (money.conditions) h += conditionLine(money.conditions.items);
   if (money.specials) h += specialLine(money.specials.items);
+  h += '<p><button data-action="contracts-open">過去の契約・同意の控え</button></p>' + contractArchive(contracts);
   return h;
 }
 function accountPage() {
@@ -234,7 +237,7 @@ function render() {
   const box = app.querySelector('.bsheet');
   if (box && notice && notice.k === 'error') box.querySelector('.bsheet-body').insertAdjacentHTML('afterbegin', noticeHtml()); // 下から出る画面の中でも見えるように
 }
-function signedIn(r) { store.set(r.auth); me = r.me; sched = null; calData = {}; cal = null; learning = null; money = null; grades = null; say(''); location.hash = '#home'; }
+function signedIn(r) { store.set(r.auth); me = r.me; sched = null; calData = {}; cal = null; learning = null; money = null; contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; grades = null; say(''); location.hash = '#home'; }
 const closeSheet = () => { sheetState = null; };
 // 下から出る画面の入力は、描き直す前に読んでおく（描き直すと入力欄が作り直される）
 function captureSheetInputs() {
@@ -271,7 +274,7 @@ app.addEventListener('submit', ev => {
       let okCount = 0;
       for (const l of lines) {
         const n = planCounts[l.id] === undefined ? l.count : planCounts[l.id];
-        r = await call('family/plans/decide', { id: l.id, version: l.version, approvedCount: n }, store.get());
+        r = await call('family/plans/decide', { id: l.id, version: l.version, approvedCount: n, consenterName: v.consenterName }, store.get());
         if (!r.ok) break; okCount++; delete planCounts[l.id];
       }
       money = null;
@@ -282,6 +285,7 @@ app.addEventListener('submit', ev => {
     failed(r);
   });
 });
+app.addEventListener('input', ev => { if (ev.target.dataset?.consenter) consentNames[ev.target.dataset.consenter] = ev.target.value; });
 app.addEventListener('change', ev => { if (ev.target.id === 'terms-agree') { termsChecked = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.condAgree) { condChecked[ev.target.dataset.condAgree] = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.specialAgree) { specialChecked[ev.target.dataset.specialAgree] = ev.target.checked; return; } const id = ev.target.dataset && ev.target.dataset.planCount; if (id) { planCounts[id] = Number(ev.target.value); render(); } });
 app.addEventListener('click', ev => {
   const b = ev.target.closest('[data-action]'); if (!b) return;
@@ -315,13 +319,17 @@ app.addEventListener('click', ev => {
       const [, lines] = planGroups(money.plans).acks.find(([m]) => m === s.month) || [];
       for (const l of (lines || [])) { r = await call('family/plans/ack', { id: l.id, version: l.version, ack: 'inquiry', note }, store.get()); if (!r.ok) break; }
       money = null; if (r && r.ok) { closeSheet(); return say('先生に伝えました。返事をお待ちください', 'ok'); }
-    } else if (a === 'special-agree') { const id = b.dataset.id; if (!specialChecked[id]) return say('内容を確かめて「承認します」に印を付けてください', 'error'); r = await call('family/specials/agree', { id, agree: true }, store.get()); if (r.ok) { money = null; delete specialChecked[id]; return say('特殊指導を承認いただきました。ありがとうございます', 'ok'); }
-    } else if (a === 'cond-agree') { const id = b.dataset.id; if (!condChecked[id]) return say('内容を確かめて「同意します」に印を付けてください', 'error'); r = await call('family/conditions/agree', { id, agree: true }, store.get()); if (r.ok) { money = null; delete condChecked[id]; return say('個別指導条件に同意いただきました。ありがとうございます', 'ok'); }
-    } else if (a === 'terms-accept') { if (!termsChecked) return say('全文を読んで「同意します」に印を付けてください', 'error'); r = await call('family/terms/accept', { version: b.dataset.version, agree: true }, store.get()); if (r.ok) { money = null; termsChecked = false; return say('受講規約に同意いただきました。ありがとうございます', 'ok'); } }
+    } else if (a === 'contracts-open') {
+      contracts = { loading: true }; render();
+      const result = await call('family/contracts', {}, store.get());
+      contracts = result.ok ? result : { error: result.error.message };
+    } else if (a === 'special-agree') { const id = b.dataset.id; if (!specialChecked[id]) return say('内容を確かめて「承認します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('承認する保護者の氏名を入れてください', 'error'); r = await call('family/specials/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete specialChecked[id]; return say('特殊指導を承認いただきました。ありがとうございます', 'ok'); }
+    } else if (a === 'cond-agree') { const id = b.dataset.id; if (!condChecked[id]) return say('内容を確かめて「同意します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/conditions/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete condChecked[id]; return say('基本指導条件に同意いただきました。ありがとうございます', 'ok'); }
+    } else if (a === 'terms-accept') { if (!termsChecked) return say('全文を読んで「同意します」に印を付けてください', 'error'); if (!(consentNames.terms || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/terms/accept', { version: b.dataset.version, agree: true, consenterName: consentNames.terms || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; termsChecked = false; return say('受講規約に同意いただきました。ありがとうございます', 'ok'); } }
     else if (a === 'inv-report') { if (!confirm('振り込んだことを先生に知らせますか？')) return; r = await call('family/invoices/report', { id: b.dataset.id, version: Number(b.dataset.version) }, store.get()); if (r.ok) { closeSheet(); money = null; return say('振込のご連絡を受け付けました。ありがとうございます', 'ok'); } }
     else if (a === 'send-relief') { const s = sheetState; const reason = (s.note || '').trim(); if (!reason) return say('事情を書いてください', 'error'); r = await call('family/fees/relief', { id: b.dataset.id, version: Number(b.dataset.version), reason }, store.get()); if (r.ok) { closeSheet(); money = null; return say('申請を受け付けました。先生が確かめて返事をします', 'ok'); } }
     else if (a === 'del-event') { r = await call('family/events/delete', { id: b.dataset.id }, store.get()); if (r.ok) { sched = null; calData = {}; return say('消しました', 'ok'); } }
-    else if (a === 'logout') { await call('family/logout', {}, store.get()); store.set(''); me = null; location.hash = ''; return say('ログアウトしました', 'ok'); }
+    else if (a === 'logout') { await call('family/logout', {}, store.get()); store.set(''); me = null; money = contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; location.hash = ''; return say('ログアウトしました', 'ok'); }
     if (r) failed(r);
   });
 });
