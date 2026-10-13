@@ -535,13 +535,17 @@
 
 <a id="contract-history-20261012"></a>
 
-### 契約と同意の履歴を保持する改修（2026-10-13更新、PR #54・本番反映前）
+### 契約と同意の履歴を保持する改修（2026-10-13更新、PR #54・本番反映済み）
 
 **10/13の再確認**：PR #56〜61の体験生・MCP書込・予定の選択送信・授業計画表示を保持して#54へ統合した（`67a82aa432ec207329efb12949c4bb7eeab43fcf`）。未公開の契約移行は `0023_contract_history.sql` へ改番し、計画内訳 `parts` も当時の版に保存。基本・特殊条件書の同意欄の表示を修正した。[Actions 38346311055](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38346311055)で111テスト・隔離D1の全移行・架空家庭の画面確認が成功。
 
-**現在の公開手順**：PR #62をmergeし、main `309e16a93bb9b500aedc2c838afc68a320e264d9` の手動公開を上記ソース・移行0023・確認済みの現在Workerに固定した。[Actions 38346626032](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38346626032)で17テスト・統合版の公開なしビルド成功。本人は本番反映を承認済み。公開先IDは登録済みだが、公開用APIトークンの発行・登録は本人操作待ち。本番台帳・Workerへの今回の変更は未実施、#54は未merge。
+**本番反映完了（2026-10-13）**：本人が公開用認証情報を登録後、[公開実行38353876646](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38353876646)で非公開バックアップの保存・読戻し一致、移行0023、既存8表の全既存列とファイル記録の不変を確認した。Worker公開コマンドは非ゼロで終了したが、新しい版は既に100%稼働していたため、移行・再公開を繰り返さずに状態を照合した。
 
-登録後はmainの`Contract system release`を`publish`で実行する。非公開バックアップを`release-backups/contracts-20261013/<run-id>-<attempt>/`へ保存・読戻し照合 → 0023のみ適用 → 既存契約列・ファイル記録の不変照合 → Workerの版名と正常応答を確認 → テスト用家庭の読取 → #54 mergeとPages反映確認。規約の有効化・家庭への通知や同意の代行は行わない。途中失敗後は状態と非公開manifestを調べ、再実行だけで済ませない。
+[確認実行38355394709](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38355394709)が成功。元のバックアップ・移行済み状態・既存記録の一致、API版名 `2026-10-13-contract-history`、公開URL、定期処理、D1/R2接続、実行設定を確認した。稼働Worker `b0044e87-dad6-40e2-b05d-ad565bc69466` の実行コードは検証済みソース67a82aaの再ビルドとバイト単位で完全一致。確認手順の24テストも成功した。途中の確認処理ではCloudflareの文字列形式のモジュールをファイル扱いして停止しており、読取りを修正した。公開コマンド自体の終了エラーの詳細原因は特定していないが、公開結果は独立した検証で確認済み。
+
+PR #54を `a5e7e0ce27e6155282914a60399fe8ac53403f46` としてmergeし、[Pages 38355558801](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38355558801)の公開も成功。本番スタッフ画面でr3の版一覧を確認し、保護者の閲覧専用プレビューで「過去の契約・同意の控え」と既存計画の履歴・当時の承認日／経路・不明な項目の「記録なし」を確認した。実家庭の契約・承認・同意を書き換えるテストは実施していない。
+
+**保存・残作業**：元のSQL・旧Worker・移行前記録・移行完了manifestは非公開R2の `release-backups/contracts-20261013/38353876646-1/`、公開確認manifestは `release-backups/contracts-20261013/38355394709-1/` に保存し照合済み。既存の契約・同意・書面は保持した。現在の規約版は未設定のまま（r3は版一覧のみ）。規約の有効化・家庭への案内・同意取得は別途実施する。今回専用の公開手順は再実行しない。
 
 本人の指示により、正式規約r3との確認済みの差分を改修した。編集・検証はGitHub上。既存の規約本文・公開Web・PDFは変更しない。
 
@@ -556,7 +560,7 @@
 
 **10/12時点の公開準備（以下は更新前の記録）**：本人の「ok」を受け、GitHub ActionsのSecrets登録状況を閲覧した。Environment・Repositoryとも未登録。Cloudflareの`stepwise-api`もGitリポジトリ未接続で、公開中はWranglerによる手動版（先頭`86728c46`）だった。閲覧の承認待ちは解消したが、GitHubから本番へ接続する認証情報の登録が必要。PR #54は未merge、本番D1・Worker・アプリ画面は未変更。
 
-#### GitHub上だけで公開するための準備
+#### 10/12時点の公開準備の詳細（更新前の履歴）
 
 公開手順だけを先にmainへ保存した（PR #55、`db33fc993f01c9ba6064e98a7deadad28eae1e7b`）。[PR #55](https://github.com/mugilives-max/stepwise-kobetsu/pull/55)の`Contract system release`は手動実行で、既定の`validate`は本番へ接続しない。`publish`はmainからだけ実行でき、対象を検証済みの`b9334315c455b3a1357cd2701a260bcbe17deb7d`に固定する。ソース・稼働版・未適用移行の変化があれば停止して再確認する。17件の公開順序・停止条件のテストとWorkerの公開なしビルドは[Actions 38222071043](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38222071043)で成功。本番の接続・権限・バックアップ実行まで検証したという意味ではない。
 
