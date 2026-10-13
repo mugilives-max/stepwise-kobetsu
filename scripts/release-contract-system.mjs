@@ -9,13 +9,13 @@ import { pathToFileURL } from 'node:url';
 
 export const RELEASE = Object.freeze({
   repo: 'mugilives-max/stepwise-kobetsu',
-  source: 'b9334315c455b3a1357cd2701a260bcbe17deb7d',
-  base: 'e0fd80cbf1abd2c2da35ee000fe9c32225b1d4cd',
+  source: '67a82aa432ec207329efb12949c4bb7eeab43fcf',
+  base: 'e3852e0e6a945c659fb719972d8f33999259d71f',
   worker: 'stepwise-api',
-  previousVersionPrefix: '86728c46',
+  previousVersionPrefix: '0d48507b',
   db: '91ea045c-94a4-413f-91c1-1e29ebe6eb24',
   bucket: 'stepwise-files',
-  migration: '0020_contract_history.sql',
+  migration: '0023_contract_history.sql',
 });
 const bootstrapFiles = new Set(['.github/workflows/contract-release.yml',
   'scripts/release-contract-system.mjs', 'test/release-contract-system.test.mjs']);
@@ -34,7 +34,7 @@ export function assertMigrations(local, applied) {
   ensure(new Set(applied).size === applied.length, 'Duplicate migration records.');
   ensure(applied.every(n => local.includes(n)), 'Unknown production migration; stop.');
   const missing = local.filter(n => !applied.includes(n));
-  ensure(missing.length === 1 && missing[0] === RELEASE.migration, 'Expected only migration 0020 to be pending.');
+  ensure(missing.length === 1 && missing[0] === RELEASE.migration, 'Expected only migration 0023 to be pending.');
 }
 export function activeDeployment(result) {
   const d = result?.deployments?.[0];
@@ -80,7 +80,7 @@ export async function main() {
   const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8' });
   ensure(head.status === 0 && head.stdout.trim() === RELEASE.source, 'Unexpected release checkout.');
   const dir = await mkdtemp(join(tmpdir(), 'stepwise-contract-release-'));
-  const prefix = 'release-backups/contracts-20261012/' + process.env.GITHUB_RUN_ID + '-' + process.env.GITHUB_RUN_ATTEMPT;
+  const prefix = 'release-backups/contracts-20261013/' + process.env.GITHUB_RUN_ID + '-' + process.env.GITHUB_RUN_ATTEMPT;
   let stage = 'initial checks', manifest;
   async function cf(path, data, raw = false) {
     const r = await fetch('https://api.cloudflare.com/client/v4/accounts/' + account + path, {
@@ -137,12 +137,15 @@ export async function main() {
       assertDiff(await gh('/compare/' + RELEASE.source + '...' + pr.head.sha));
       const main = await gh('/git/ref/heads/main');
       assertDiff(await gh('/compare/' + RELEASE.base + '...' + main.object.sha), true);
-      const run = await gh('/actions/runs/38217923186');
+      const run = await gh('/actions/runs/38346311055');
       ensure(run.conclusion === 'success' && run.head_sha === RELEASE.source, 'The pinned application checks are not successful.');
     },
     async preflight() {
       stage = 'production preflight';
       await privacy();
+      const healthResponse = await fetch('https://stepwise-api.stepwise-edu.workers.dev/', {signal: AbortSignal.timeout(60000)});
+      const health = await healthResponse.json();
+      ensure(healthResponse.ok && health.ok === true && health.release === '2026-10-13-plan-presentation', 'Production release changed; review it before publishing.');
       const old = await deployment();
       ensure(old.versionId.startsWith(RELEASE.previousVersionPrefix), 'Production Worker changed; inspect it before publishing.');
       const local = (await readdir(join(cwd, 'cf/migrations-v2'))).filter(n => n.endsWith('.sql')).sort();
@@ -176,7 +179,7 @@ export async function main() {
       assertPreserved(state.data, await snapshot(state.columns));
     },
     async migrate() {
-      stage = 'D1 migration 0020';
+      stage = 'D1 migration 0023';
       cli(['d1', 'migrations', 'apply', 'DB2', '--remote', '--config', 'cf/wrangler.jsonc']);
     },
     async verifyPreserved(state) {
@@ -185,10 +188,10 @@ export async function main() {
       assertPreserved(state.data, after);
       const revisionCount = (await rows('SELECT COUNT(*) AS n FROM planRevisions'))[0].n;
       ensure(revisionCount === state.data.planLines.length, 'The initial plan archive count does not match.');
-      const applied = await rows("SELECT name FROM d1_migrations WHERE name='0020_contract_history.sql'");
-      ensure(applied.length === 1, 'Migration 0020 was not recorded.');
+      const applied = await rows("SELECT name FROM d1_migrations WHERE name='0023_contract_history.sql'");
+      ensure(applied.length === 1, 'Migration 0023 was not recorded.');
       await savePrivate('manifest-migrated.json', Buffer.from(JSON.stringify({...manifest, migration: RELEASE.migration, preservation: true})));
-      console.log('Migration 0020 applied; every captured existing contract column and file record is unchanged.');
+      console.log('Migration 0023 applied; every captured existing contract column and file record is unchanged.');
     },
     async checkWorkerUnchanged(state) {
       ensure(JSON.stringify(await deployment()) === JSON.stringify(state.old), 'Concurrent Worker deployment detected; stop.');
@@ -202,13 +205,14 @@ export async function main() {
       stage = 'Worker verification';
       ensure(deployed.versionId !== manifest.before.versionId, 'No new active Worker version was observed.');
       const response = await fetch('https://stepwise-api.stepwise-edu.workers.dev/', {signal: AbortSignal.timeout(60000)});
-      ensure(response.ok && (await response.json()).ok === true, 'Public API health check failed; inspect before merging Pages.');
+      const health = await response.json();
+      ensure(response.ok && health.ok === true && health.release === '2026-10-13-contract-history', 'Public API health check failed; inspect before merging Pages.');
     },
     async finish(state, deployed) {
       stage = 'release record';
       await savePrivate('manifest-published.json', Buffer.from(JSON.stringify({...manifest, after: deployed, migration: RELEASE.migration, preservation: true})));
       const summary = '## Contract Worker publication\n\nSource: ' + RELEASE.source +
-        '\n\nPrivate backups verified; migration 0020 applied; existing contract columns and file records preserved.' +
+        '\n\nPrivate backups verified; migration 0023 applied; existing contract columns and file records preserved.' +
         '\n\nWorker version: ' + deployed.versionId +
         '\n\nPR #54 remains unmerged. Verify the staff/test-family read-only screens, then merge #54 and verify Pages. Terms activation and family notices were not performed.\n';
       await writeFile(process.env.GITHUB_STEP_SUMMARY, summary);
