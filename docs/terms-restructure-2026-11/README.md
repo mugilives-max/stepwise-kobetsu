@@ -1,10 +1,20 @@
-# 受講規約・2026年11月版（2026年10月14日改訂・r6）
+# 受講規約・2026年11月版（2026年10月14日改訂・r7）
+
+<a id="agreement-role-r7"></a>
+
+## 最新の公開資料（r7）
+
+- 正本：[TERMS.md](TERMS.md)。第2条第4項で、受講合意書に合意する対象期間・科目・回数・各回の時間・適用単価を具体的に示し、合意した範囲内で回数を上限として授業を実施できることを先に説明する。
+- 第9～11条は詳細として維持。他137項・3表・条番号・料金・合意や予約の条件は変えない。8章36条138項、適用開始日2026年11月1日。
+- [Web版](https://www.stepwise-education.jp/terms/2026-11-20261014-r7/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r7/stepwise-terms-2026-11-20261014-r7.pdf)／[新旧版一覧](https://www.stepwise-education.jp/terms/)。空欄3様式と免除申請案内は、条番号・条件が同じr6を引き続き使用する。
+- [変更前後](MAPPING.md#agreement-role-r7)・[検証記録](PUBLICATION_CHECKS_20261014_R7.json)。原稿・生成・検証はGitHub上で実施し、旧版HTML・PDF30ファイルを保持する。
+- システム設定・契約・提案・同意記録は変更しない。システムへの適用前の残件はr6の整理から変わらない。
 
 <a id="scheduling-chapter-r6"></a>
 
-## 最新の公開資料（r6）
+## 前回の公開資料（r6・履歴）
 
-- 正本：[TERMS.md](TERMS.md)。8章36条138項・3表。適用開始日は2026年11月1日。
+- 当時の正本：[r6固定版](https://github.com/mugilives-max/stepwise-kobetsu/blob/9ebc11548dfe74c3f19dbba65fb034cd7ce7d1b3/docs/terms-restructure-2026-11/TERMS.md)。8章36条138項・3表。適用開始日は2026年11月1日。
 - 「下書き」の説明を規約から外し、調整中・確認待ち・確定を説明。第3章「受講内容の合意」と第4章「授業日時の調整と予約」を分離した。料金・承認・予約確定・取消し等の条件は変えていない。
 - [Web版](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/stepwise-terms-2026-11-20261014-r6.pdf)／[空欄様式と旧版一覧](https://www.stepwise-education.jp/terms/)。
 - 条番号をそろえた3つの空欄様式と[免除申請案内](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/)（[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/waiver.pdf)）を同じ版に用意した。
