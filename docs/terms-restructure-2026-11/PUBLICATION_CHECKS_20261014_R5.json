@@ -3,9 +3,9 @@
   "effective_date": "2026-11-01",
   "source_path": "docs/terms-restructure-2026-11/TERMS.md",
   "source_git_blob": "ca5231c1a53229227918f2aa55342a54758f5dd1",
-  "source_commit": "807600e0f352bf2427d118003855f46b67d5ea76",
+  "source_commit": "f32646b518cec891ecd4a067c9165ecfe7345e6c",
   "html_sha256": "5f3d49795448b30327b54275c7f5be6f58af837708da02c415ec6534236ffd31",
-  "pdf_sha256": "cbdf155740054eb14bc85ce80d64d3bd371d3320bae6a9079b604179a0b174e5",
+  "pdf_sha256": "8d6a5930bdbeb3958d74bd6910a184352024a691a42730665854fa2ea697b8b3",
   "old_blobs_preserved": {
     "terms/2026-11-20261014-r4/index.html": "f72916fd77944ad3b9ff5aba58847c824bed430a",
     "terms/2026-11-20261014-r4/stepwise-terms-2026-11-20261014-r4.pdf": "603aa2417b772ae43911408c5743c3bf9efb051f",
@@ -95,23 +95,23 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "ce31a080fc2433caec40b951a2312893a31f86f12803c9df94214a0506d928bb"
+      "pdf_sha256": "941afc5a081cf7f567deb71e4e7ecf1f809f651e88a93934f966c4593db09989"
     },
     {
       "name": "受講条件書（特殊指導）",
       "source": "TEACHING_CONDITIONS_SPECIAL.md",
-      "pages": 2,
+      "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "0fd362b204c39d9bf8e0728b5f3436eb58b7742f3c65828beba6018719a1db77"
+      "pdf_sha256": "655815cb7d7d50941db1d1c79d01129b93232cffd755f2c0fc329bd211b1d89b"
     },
     {
       "name": "受講合意書",
       "source": "TUITION_AGREEMENT.md",
-      "pages": 2,
+      "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "afea0d88093af1aea90ba61d2526424c45752c1b4765ca27be09e38e47e99f91"
+      "pdf_sha256": "4838325911ddc7b71d179649208ad926489e873f92ca55c69a0489bd1593a02e"
     }
   ]
 }
