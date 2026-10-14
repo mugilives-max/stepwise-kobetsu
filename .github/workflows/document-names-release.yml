@@ -1,0 +1,47 @@
+name: Publish document names
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Reviewed main commit SHA
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: stepwise-production-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && github.repository == 'mugilives-max/stepwise-kobetsu'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: release-source
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 77b91fbdfb9e40ccbb2f28a082d3577a3ff052b2
+          path: baseline
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: release-source
+      - run: npm ci
+        working-directory: baseline
+      - name: Verify the exact release checkout
+        working-directory: release-source
+        run: |
+          node --check scripts/release-document-names.mjs
+          node --test test/v2-*.test.cjs
+      - name: Back up, publish without migrations, and verify
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          GH_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: node release-source/scripts/release-document-names.mjs
