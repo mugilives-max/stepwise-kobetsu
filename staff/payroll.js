@@ -19,7 +19,7 @@ const taxBasis = s => s.taxColumn === 'kou' ? `甲欄・扶養${s.dependents}人
 function statementTable(esc, s) {
   const rows = s.items.map(i => `<tr><td>${i.kind === 'adjust' ? '調整' : md(i.date)}</td><td>${esc(i.label)}${i.carried ? ' <span class="small muted">前の月の分</span>' : ''}</td><td>${i.minutes ? i.minutes + '分' : ''}</td><td>${i.rate ? yen(i.rate) : ''}</td><td style="text-align:right">${yen(i.amount)}</td></tr>`).join('');
   return `<table class="small" style="width:100%;border-collapse:collapse"><tr><th style="text-align:left">日</th><th style="text-align:left">内容</th><th style="text-align:left">時間</th><th style="text-align:left">時給</th><th style="text-align:right">金額</th></tr>${rows}</table>
-    <table class="small" style="width:100%;margin-top:6px"><tr><td>授業 ${hm(s.lessonMinutes)}</td><td style="text-align:right">${yen(s.lessonAmount)}</td></tr>${s.meetingMinutes ? `<tr><td>面談 ${hm(s.meetingMinutes)}</td><td style="text-align:right">${yen(s.meetingAmount)}</td></tr>` : ''}${s.adjustAmount ? `<tr><td>調整</td><td style="text-align:right">${yen(s.adjustAmount)}</td></tr>` : ''}
+    <table class="small" style="width:100%;margin-top:6px"><tr><td>授業 ${hm(s.lessonMinutes)}</td><td style="text-align:right">${yen(s.lessonAmount)}</td></tr>${s.meetingMinutes ? `<tr><td>面談 ${hm(s.meetingMinutes)}</td><td style="text-align:right">${yen(s.meetingAmount)}</td></tr>` : ''}${s.prepMinutes ? `<tr><td>授業の準備・記録 ${hm(s.prepMinutes)}</td><td style="text-align:right">${yen(s.prepAmount)}</td></tr>` : ''}${s.adjustAmount ? `<tr><td>調整</td><td style="text-align:right">${yen(s.adjustAmount)}</td></tr>` : ''}
     <tr><td><strong>総支給額</strong></td><td style="text-align:right"><strong>${yen(s.gross)}</strong></td></tr><tr><td>源泉徴収（所得税${taxBasis(s) ? '・' + taxBasis(s) : ''}）</td><td style="text-align:right">${s.withholding ? '−' + yen(s.withholding) : '0円'}</td></tr><tr><td><strong>差引支給額</strong></td><td style="text-align:right"><strong>${yen(s.net)}</strong></td></tr></table>`;
 }
 // 印刷用の窓に明細だけを出す（ブラウザの印刷で PDF にも保存できる）
@@ -45,14 +45,14 @@ export function payrollPage(ctx, me) {
   const status = s => s.payroll ? STATUS[s.payroll.status] : s.preview.issues.length ? ['確かめることあり', 'danger'] : ['確定前', 'gray'];
   h += list.staff.length ? '<div class="group">' + list.staff.map(s => {
     const p = s.payroll, v = s.preview, st = status(s);
-    return `<button type="button" class="irow" data-action="pr-open" data-id="${esc(s.staffId)}"><span class="b"><b>${esc(s.name)}</b><small><span class="tag ${st[1]}">${st[0]}</span> 授業 ${hm((p || v).lessonMinutes)}${(p || v).meetingMinutes ? '・面談 ' + hm((p || v).meetingMinutes) : ''}${v && v.issues.length ? `・確かめること ${v.issues.length}件` : ''}</small></span><span class="amt">${yen(p ? p.net : v.net)}</span><span class="go">›</span></button>`;
+    return `<button type="button" class="irow" data-action="pr-open" data-id="${esc(s.staffId)}"><span class="b"><b>${esc(s.name)}</b><small><span class="tag ${st[1]}">${st[0]}</span> 授業 ${hm((p || v).lessonMinutes)}${(p || v).meetingMinutes ? '・面談 ' + hm((p || v).meetingMinutes) : ''}${(p || v).prepMinutes ? '・準備・記録 ' + hm((p || v).prepMinutes) : ''}${v && v.issues.length ? `・確かめること ${v.issues.length}件` : ''}</small></span><span class="amt">${yen(p ? p.net : v.net)}</span><span class="go">›</span></button>`;
   }).join('') + '</div>' : '<p class="muted small">この月の勤務はありません。</p>';
   const s = open && list.staff.find(x => x.staffId === open);
   if (s) {
     const st = status(s);
     h += sheet(esc, `${s.name}（${label(month)}）`, `<p style="margin-top:0"><span class="tag ${st[1]}">${st[0]}</span></p>${s.preview && s.preview.issues.length ? `<ul class="small">${s.preview.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}${detailPart(ctx, s.name)}`, 'pr-close', { wide: true });
   }
-  h += '<p class="small muted" style="margin-top:16px">月末締め・翌月25日払い。実施済みの授業と、日が過ぎた面談の時間を数えます。準備や研修の時間は明細の「調整」で足します。時給と源泉徴収は<a href="#rates">設定</a>にあります。</p>';
+  h += '<p class="small muted" style="margin-top:16px">月末締め・翌月25日払い。実施済みの授業と、日が過ぎた面談の時間を数えます。授業の準備・記録は、授業の前後5分のうち授業・面談をしていない分を授業の時給で足します（授業と授業の間は10分まで。同じ時間は二重に数えません）。研修の時間などは明細の「調整」で足します。時給と源泉徴収は<a href="#rates">設定</a>にあります。</p>';
   return h;
 }
 function detailPart(ctx, name) {
@@ -74,7 +74,7 @@ function detailPart(ctx, name) {
   const v = detail.preview, ended = month < thisMonth();
   let h = `<div class="stack">${statementTable(esc, v)}<div class="small muted">源泉徴収は税額表の${esc(taxBasis(v))}で計算しています（欄は「設定」の「時給と源泉徴収」で変えられます）。</div>`;
   if (v.issues.length) h += `<ul class="small">${v.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
-  h += '<div class="small muted">調整（授業の準備・研修の時間、立て替えなど。マイナスもよい）</div>' + detail.adjusts.map(a => `<div class="row small">${esc(a.label)} ${yen(a.amount)} <button data-action="pr-adj-del" data-id="${esc(a.id)}"${ctx.dis()}>外す</button></div>`).join('')
+  h += '<div class="small muted">調整（研修の時間・立て替えなど。準備・記録が前後5分を超えた分もここ。自動の準備・記録と重ならないように。マイナスもよい）</div>' + detail.adjusts.map(a => `<div class="row small">${esc(a.label)} ${yen(a.amount)} <button data-action="pr-adj-del" data-id="${esc(a.id)}"${ctx.dis()}>外す</button></div>`).join('')
     + `<form class="row" data-form="pr-adj"><input name="label" maxlength="60" placeholder="理由（例: 研修 2時間）" style="flex:2" required><input type="number" name="amount" placeholder="金額" style="width:8em" required><button${ctx.dis()}>足す</button></form>`;
   if (v.canConfirm && ended) h += `<p><button class="primary" data-action="pr-confirm" data-net="${v.net}"${ctx.dis()}>この内容で確定する（差引 ${yen(v.net)}）</button></p><p class="small muted">確定すると講師に明細のお知らせが届きます。確定した明細は変えず、直すときは取り消して確定し直します。</p>`;
   else if (!ended) h += '<p class="small muted">月が終わってから確定できます（月末締め）。</p>';
@@ -117,7 +117,7 @@ function minePage(ctx, me) {
   let h = `<p class="small muted" style="margin-top:12px">あなたの給与明細です。月末締め・翌月25日払い。</p>${ctx.notice()}`;
   if (mine.loading) return h + '<p class="muted">読み込んでいます…</p>';
   if (mine.owner) return h + '<p class="muted">代表のアカウントには給与明細はありません。</p>';
-  if (mine.current && mine.current.items) h += `<p class="notice small">${label(mine.current.month)}の見込み（確定前の目安）: 授業 ${hm(mine.current.lessonMinutes)}${mine.current.meetingMinutes ? '・面談 ' + hm(mine.current.meetingMinutes) : ''}・総支給 ${yen(mine.current.gross)}</p>`;
+  if (mine.current && mine.current.items) h += `<p class="notice small">${label(mine.current.month)}の見込み（確定前の目安）: 授業 ${hm(mine.current.lessonMinutes)}${mine.current.meetingMinutes ? '・面談 ' + hm(mine.current.meetingMinutes) : ''}${mine.current.prepMinutes ? '・準備・記録 ' + hm(mine.current.prepMinutes) : ''}・総支給 ${yen(mine.current.gross)}</p>`;
   h += mine.statements.length ? mine.statements.map((s, i) => `<details class="sheet"${i === 0 ? ' open' : ''}><summary><strong>${label(s.month)}分</strong> 差引 ${yen(s.net)} <span class="tag ${STATUS[s.status][1]}">${STATUS[s.status][0]}</span></summary>${statementTable(esc, s)}
     <div class="small muted">お支払い ${esc(s.paidOn || s.payOn)}${s.paidOn ? '（済み）' : '（予定）'}</div><p><button data-action="pr-print-mine" data-i="${i}">印刷・PDF で保存</button></p></details>`).join('') : '<p class="muted">まだ確定した明細はありません。</p>';
   return h;
