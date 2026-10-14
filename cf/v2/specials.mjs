@@ -1,6 +1,6 @@
 // 特殊指導の承認（規約 第6条。migrations-v2/0019_specials.sql）
 // - 教室管理者が「特殊指導を提案」する（admin/specials/propose）：名称、内容と範囲、通常指導との違い、準備、1回の時間と税込料金、対象期間。
-//   提案すると、その名称で「授業の種類」（lessonKinds）ができ、保護者にメールが届く。書面（特殊指導条件書・案）も残す
+//   提案すると、その名称で「授業の種類」（lessonKinds）ができ、保護者にメールが届く。書面（受講条件書（特殊指導）・案）も残す
 // - 保護者は保護者ページで内容を見て承認する（family/specials/agree）。承認された名称の種類でだけ、通常指導の基準単価を超える料金の計画を作れる
 //   （billing/plans/save の needSpecial）。計画の承認そのものは止めない（特殊指導は任意）
 // - 書面・LINE でもらった承諾は教室管理者が記録する（admin/specials/record）。終わったら「終える」（admin/specials/end）
@@ -67,7 +67,7 @@ async function storeDoc(c, id) {
   const html = specialDocHtml({ sp, student, family, terms: await termsForVersion(c.db, sp.termsVersion), proposer: proposer ? proposer.name : '', now: iso(c.now) });
   const final = sp.status === 'agreed';
   return putGenerated(c, { category: 'contract', familyId: family.id, studentId: student.id, refType: 'special', refId: sp.id,
-    name: `特殊指導条件書_${sp.title}_第${sp.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '承認済み' : '案' });
+    name: `${sp.templateVersion === '20261014-r5' ? '受講条件書（特殊指導）' : '特殊指導条件書'}_${sp.title}_第${sp.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '承認済み' : '案' });
 }
 async function markAgreed(c, row, { at, via, by, note, evidence }) {
   const saved = await c.db.prepare("update specials set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'").bind(at, via, by, note, evidence.consenterName, evidence.recordedAt, evidence.recordedByName, iso(c.now), row.id).run();
@@ -91,13 +91,13 @@ export const specialRoutes = {
     const stmts = [];
     if (b.replaceId) stmts.push(c.db.prepare("update specials set status = 'replaced', updatedAt = ? where id = ? and studentId = ? and status in ('proposed', 'agreed')").bind(now, String(b.replaceId), s.id));
     stmts.push(c.db.prepare('insert into specials (id, studentId, no, title, content, reason, prep, minutes, fee, fromDate, toDate, note, termsVersion, status, proposedAt, proposedBy, createdAt, updatedAt, purpose, templateVersion) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, s.id, no, f.title, f.content, f.reason, f.prep, f.minutes, f.fee, f.fromDate, f.toDate, f.note, terms.version, 'proposed', now, 'staff:' + me.id, now, now, f.purpose, '20261012-r3'));
+      .bind(id, s.id, no, f.title, f.content, f.reason, f.prep, f.minutes, f.fee, f.fromDate, f.toDate, f.note, terms.version, 'proposed', now, 'staff:' + me.id, now, now, f.purpose, '20261014-r5'));
     // 同じ名称の「授業の種類」を用意する（計画の種類に選べるように）
     stmts.push(c.db.prepare('insert into lessonKinds (name, standardMinutes, standardFee, active, sortOrder, createdAt, updatedAt) values (?, ?, ?, 1, 50, ?, ?) on conflict(name) do update set standardMinutes = excluded.standardMinutes, standardFee = excluded.standardFee, active = 1, updatedAt = excluded.updatedAt')
       .bind(f.title, f.minutes, f.fee, now, now));
     await c.db.batch(stmts);
     await storeDoc(c, id);
-    await familyNotice(c, s.id, '特殊指導のご提案', `${fullName(s)}さんの特殊指導「${f.title}」をご提案します。保護者ページの「お支払い」で内容（特殊指導条件書）を確かめて、承認をお願いします。\n・1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・期間：${f.fromDate}〜${f.toDate}`);
+    await familyNotice(c, s.id, '特殊指導のご提案', `${fullName(s)}さんの特殊指導「${f.title}」をご提案します。保護者ページの「お支払い」で内容（受講条件書（特殊指導））を確かめて、承認をお願いします。\n・1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・期間：${f.fromDate}〜${f.toDate}`);
     await audit(c, 'specialPropose', id, { studentId: s.id, no, title: f.title, fee: f.fee, minutes: f.minutes });
     return { special: await withDoc(c.db, specialView(await c.db.prepare('select * from specials where id = ?').bind(id).first())) };
   },

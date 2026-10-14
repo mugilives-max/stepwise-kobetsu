@@ -1,4 +1,4 @@
-// 授業計画・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
+// 受講合意書・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
 // - 教室管理者: 計画を作る・お知らせする・LINE などの承諾を記録する・先月と同じ内容で下書き、授業の種類と標準料金、
 //              キャンセル料の判断・減額や免除の申請への回答、月ごとの請求（確かめる・確定・取消・入金）
 // - 保護者: 計画の承認（回数を減らす・見送るも）・先生が記録した承諾の確認、請求の確認・振込の連絡、キャンセル料の減額・免除の申請
@@ -234,7 +234,7 @@ export const billingRoutes = {
     const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
     if (sp && n.endDate > sp.toDate) fail('needSpecial', '計画の対象期間全体が、承認済みの特殊指導の対象期間に含まれる必要があります');
     if ((sp && n.fee > Math.floor(sp.fee * n.minutes / sp.minutes)) || ((condition || base > 0) && n.fee > ceiling && !sp))
-      fail('needSpecial', '通常指導の基準単価を超える適用単価は、対象期間全体の特殊指導条件書について事前に承認を得て、その基準単価以内で設定してください');
+      fail('needSpecial', '通常指導の基準単価を超える適用単価は、対象期間全体の受講条件書（特殊指導）について事前に承認を得て、その基準単価以内で設定してください');
     n.conditionId = condition ? condition.id : ''; n.specialId = sp ? sp.id : ''; n.instructionType = sp ? 'special' : 'regular';
     const now = iso(c.now);
     if (old) {
@@ -269,7 +269,7 @@ export const billingRoutes = {
     const now = iso(c.now);
     await c.db.batch(drafts.map(l => c.db.prepare("update planLines set status = 'proposed', proposedAt = ?, updatedAt = ?, version = version + 1 where id = ? and status = 'draft'").bind(now, now, l.id)));
     const names = Object.fromEntries((await c.db.prepare(`select * from students where id in (${ids.map(() => '?').join(', ')})`).bind(...ids).all()).results.map(s => [s.id, fullName(s)]));
-    await familyNotice(c, drafts[0].studentId, '授業計画のお知らせ', '授業計画をお送りしました。内容を確かめて、承認をお願いします。\n' + drafts.map(l => `・${names[l.studentId]}さん ${l.subject}${l.kind !== '通常' ? '（' + l.kind + '）' : ''} ${md(l.startDate)}〜${md(l.endDate)} ${l.count}回`).join('\n'));
+    await familyNotice(c, drafts[0].studentId, '受講合意書のお知らせ', '受講合意書をお送りしました。内容を確かめて、承認をお願いします。\n' + drafts.map(l => `・${names[l.studentId]}さん ${l.subject}${l.kind !== '通常' ? '（' + l.kind + '）' : ''} ${md(l.startDate)}〜${md(l.endDate)} ${l.count}回`).join('\n'));
     await audit(c, 'planSend', '', { lines: drafts.length });
     return { sent: drafts.length };
   },
@@ -290,7 +290,7 @@ export const billingRoutes = {
       const sb = await studentBilling(c.db, sid);
       waiting += sb.lessons.filter(ls => !sb.line[ls.id] && !ls.invoiceId && lines.some(l => lineMatches(l, ls))).length;
     }
-    await familyNotice(c, lines[0].studentId, '授業計画の承認のお願い', 'まだ承認をいただいていない授業計画があります。内容をご確認のうえ、保護者ページから承認をお願いします。\n'
+    await familyNotice(c, lines[0].studentId, '受講合意書の承認のお願い', 'まだ承認をいただいていない受講合意書があります。内容をご確認のうえ、保護者ページから承認をお願いします。\n'
       + lines.map(l => `・${names[l.studentId]}さん ${l.subject}${l.kind !== '通常' ? '（' + l.kind + '）' : ''} ${md(l.startDate)}〜${md(l.endDate)} ${l.count}回・1回 ${yen(l.fee)}`).join('\n')
       + (waiting ? `\nこの計画に当たる授業が、すでに${waiting}回決まっています（実施済みを含みます）。` : ''));
     const now = iso(c.now);
@@ -511,7 +511,7 @@ export const billingRoutes = {
     // 受講規約の今の版に同意していなければ、承認できない（統合3 D07。見送りは同意がなくてもよい）
     const terms = await familyTerms(c.db, me);
     if (count > 0 && terms.needs) fail('needTerms', '受講規約への同意が必要です。「お支払い」の画面で規約を確かめて、同意してから承認してください', 409);
-    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '基本指導条件への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
+    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '受講条件書（通常指導）への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
     const now = iso(c.now), evidence = consentEvidence(c, b, me, me);
     if (count > 0) await assertPriorConsent(c, l, evidence.consentedAt);
     const saved = await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")

@@ -5,7 +5,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261008-launch1';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261013-contracts';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261014-names';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -22,7 +22,7 @@ const planCounts = {}; // 承認の画面で変えた回数 { [lineId]: n }
 let contracts = null;
 const consentNames = {};
 let termsChecked = false; // 規約の「同意します」の印（描き直しても消えないように）
-const condChecked = {}; // 基本指導条件の「同意します」の印（条件の id ごと）
+const condChecked = {}; // 受講条件書（通常指導）の「同意します」の印（条件の id ごと）
 const specialChecked = {}; // 特殊指導の「承認します」の印
 
 function route() {
@@ -104,11 +104,11 @@ function homePage() {
   const todo = [], { asks, acks } = planGroups(money.plans);
   if (money.terms && money.terms.needs) todo.push(['#money', 'file', '#c98a00', '受講規約への同意', (money.terms.current.title || '受講規約') + '・全文を読んで同意してください', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs) : [];
-  if (needConds.length) todo.push(['#money', 'file', '#c98a00', '基本指導条件への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
+  if (needConds.length) todo.push(['#money', 'file', '#c98a00', '受講条件書（通常指導）への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
   if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特殊指導の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・') + '・内容と料金を確かめて承認してください', needSpecials.length]);
-  if (asks.length) todo.push(['#money', 'plan', '#5b6672', '授業計画の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
-  if (acks.length) todo.push(['#money', 'check', '#138a8a', '授業計画の確認', acks.map(([m]) => monthLabel(m)).join('・') + '・先生が記録した承諾の内容を確かめてください', acks.length]);
+  if (asks.length) todo.push(['#money', 'plan', '#5b6672', '受講合意書の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
+  if (acks.length) todo.push(['#money', 'check', '#138a8a', '受講合意書の確認', acks.map(([m]) => monthLabel(m)).join('・') + '・先生が記録した承諾の内容を確かめてください', acks.length]);
   const kari = sched.lessons.filter(l => l.status === 'proposed' && l.confirmBy);
   if (kari.length) { const by = kari.map(l => l.confirmBy).sort()[0]; todo.push(['#schedule', 'calendar', '#e0a100', '調整中の授業の確認', `${md(by)}までに連絡がなければ、この日時で決まります`, kari.length]); }
   const due = money.invoices.filter(v => v.status === 'confirmed');
@@ -170,7 +170,7 @@ function learningPage(sub) {
   const st = grades.students.find(s => s.id === kid) || grades.students[0];
   return h + (st ? gradesView(st, { who: 'family', dis: dis() }) : '<p class="muted">まだ成績はありません。</p>');
 }
-// お支払い: 授業計画（月ごとに 1 枚）・授業料・キャンセル料
+// お支払い: 受講合意書（月ごとに 1 枚）・授業料・キャンセル料
 function moneyPage() {
   if (need('money')) return loading;
   const multi = new Set(money.plans.map(l => l.studentId).concat(money.fees.map(f => f.studentId))).size > 1;
@@ -188,7 +188,7 @@ function moneyPage() {
   }
   h += secTitle('授業料') + invoiceRows(money.invoices);
   if (money.fees.length) h += secTitle('キャンセル料・取消料') + feeRows(money.fees, { multi });
-  if (others.length) h += secTitle('授業計画') + planHistory(others, { multi });
+  if (others.length) h += secTitle('受講合意書') + planHistory(others, { multi });
   if (money.terms && !needTerms) h += termsLine(money.terms);
   if (money.conditions) h += conditionLine(money.conditions.items);
   if (money.specials) h += specialLine(money.specials.items);
@@ -324,7 +324,7 @@ app.addEventListener('click', ev => {
       const result = await call('family/contracts', {}, store.get());
       contracts = result.ok ? result : { error: result.error.message };
     } else if (a === 'special-agree') { const id = b.dataset.id; if (!specialChecked[id]) return say('内容を確かめて「承認します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('承認する保護者の氏名を入れてください', 'error'); r = await call('family/specials/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete specialChecked[id]; return say('特殊指導を承認いただきました。ありがとうございます', 'ok'); }
-    } else if (a === 'cond-agree') { const id = b.dataset.id; if (!condChecked[id]) return say('内容を確かめて「同意します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/conditions/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete condChecked[id]; return say('基本指導条件に同意いただきました。ありがとうございます', 'ok'); }
+    } else if (a === 'cond-agree') { const id = b.dataset.id; if (!condChecked[id]) return say('内容を確かめて「同意します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/conditions/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete condChecked[id]; return say('受講条件書（通常指導）に同意いただきました。ありがとうございます', 'ok'); }
     } else if (a === 'terms-accept') { if (!termsChecked) return say('全文を読んで「同意します」に印を付けてください', 'error'); if (!(consentNames.terms || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/terms/accept', { version: b.dataset.version, agree: true, consenterName: consentNames.terms || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; termsChecked = false; return say('受講規約に同意いただきました。ありがとうございます', 'ok'); } }
     else if (a === 'inv-report') { if (!confirm('振り込んだことを先生に知らせますか？')) return; r = await call('family/invoices/report', { id: b.dataset.id, version: Number(b.dataset.version) }, store.get()); if (r.ok) { closeSheet(); money = null; return say('振込のご連絡を受け付けました。ありがとうございます', 'ok'); } }
     else if (a === 'send-relief') { const s = sheetState; const reason = (s.note || '').trim(); if (!reason) return say('事情を書いてください', 'error'); r = await call('family/fees/relief', { id: b.dataset.id, version: Number(b.dataset.version), reason }, store.get()); if (r.ok) { closeSheet(); money = null; return say('申請を受け付けました。先生が確かめて返事をします', 'ok'); } }

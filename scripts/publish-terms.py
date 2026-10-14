@@ -10,14 +10,16 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261014-r4"
+EDITION = "2026-11-20261014-r5"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261014-r4"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261014_R4.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261014-r5"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261014_R5.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "21125457601574d9d2a8abe04e7fac7d6a60fd4c"
+EXPECTED_SOURCE_BLOB = "ca5231c1a53229227918f2aa55342a54758f5dd1"
 OLD = {
+    "terms/2026-11-20261014-r4/index.html": "f72916fd77944ad3b9ff5aba58847c824bed430a",
+    "terms/2026-11-20261014-r4/stepwise-terms-2026-11-20261014-r4.pdf": "603aa2417b772ae43911408c5743c3bf9efb051f",
     "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
     "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
     "terms/2026-11-20261012-r3/index.html": "85e0c094cc0653e5b4983ed6c8793424c9b89556",
@@ -44,7 +46,7 @@ source = source_bytes.decode("utf-8")
 OUT.mkdir(parents=True, exist_ok=True)
 REVIEW.mkdir(parents=True, exist_ok=True)
 # Clear only this unpublished edition\'s generated page previews before rerendering.
-for prior_png in REVIEW.glob("page-*.png"):
+for prior_png in REVIEW.glob("*.png"):
     prior_png.unlink()
 
 md = MarkdownIt("commonmark", {"html": True}).enable("table")
@@ -145,21 +147,25 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:auto; }
 }
 """
-# Only the calendar description and article 12 may change from r3.
-prior_body = BeautifulSoup((ROOT / "terms/2026-11-20261012-r3/index.html").read_text(encoding="utf-8"), "html.parser")
-prior_clauses = {c["id"]: c for c in prior_body.select("ol.clause")}
-current_clauses = {c["id"]: c for c in body.select("ol.clause")}
-assert set(prior_clauses) <= set(current_clauses), "An existing numbered paragraph is missing"
-changed_clauses = [key for key, clause in current_clauses.items()
-    if key in prior_clauses and compact(prior_clauses[key].get_text()) != compact(clause.get_text())]
-added_clauses = sorted(set(current_clauses) - set(prior_clauses))
-assert set(changed_clauses) == {"article-2-item-1", "article-2-item-5"} | {f"article-12-item-{i}" for i in range(1, 9)}, changed_clauses
-assert set(added_clauses) == {"article-12-item-9", "article-12-item-10"}, added_clauses
-unchanged_count = len(prior_clauses) - len(changed_clauses)
-assert unchanged_count == 123
+# Naming-only change: compare all source bytes after the reviewed substitutions.
+RENAMES = [["基本指導条件書","受講条件書（通常指導）"],["特殊指導条件書","受講条件書（特殊指導）"],["指導計画承認書","受講合意書"],["受講条件書（通常指導）・受講条件書（特殊指導）の記載事項と合意","受講条件書の記載事項と合意"],["指導計画の承認と日時の予約","受講内容の合意と日時の予約"],["計画の承認方法と記録","受講内容の合意方法と記録"],["指導条件・指導計画の確認や承認","受講条件書・受講合意書の確認や承認"],["指導計画が未承認の場合は、その計画や日時候補","受講合意書が未承認の場合は、その案や日時候補"],["新しい計画の送付","新しい受講合意書の案の送付"],["対象となる計画、","対象となる受講合意書、"],["翌月の計画等","翌月の受講合意書の案等"],["2026年10月14日改訂・授業予定の段階と予約の整理","2026年10月14日改訂・契約書類の名称統一"]]
+prior_source = subprocess.check_output(["git","show","77b91fbdfb9e40ccbb2f28a082d3577a3ff052b2:docs/terms-restructure-2026-11/TERMS.md"],text=True)
+expected_source = prior_source
+for old_name, new_name in RENAMES:
+    expected_source = expected_source.replace(old_name, new_name)
+assert source == expected_source, "Unexpected non-naming source change"
+prior_body = BeautifulSoup((ROOT / "terms/2026-11-20261014-r4/index.html").read_text(encoding="utf-8"),"html.parser")
+prior_clauses = {c["id"]:c for c in prior_body.select("ol.clause")}
+current_clauses = {c["id"]:c for c in body.select("ol.clause")}
+assert set(prior_clauses) == set(current_clauses)
+changed_clauses = [k for k in current_clauses if compact(prior_clauses[k].get_text()) != compact(current_clauses[k].get_text())]
+added_clauses = []
+unchanged_count = len(prior_clauses)-len(changed_clauses)
 for key, prior in prior_clauses.items():
-    if int(key.split("-")[1]) >= 13:
-        assert compact(prior.get_text()) == compact(current_clauses[key].get_text()), key
+    text = prior.get_text()
+    for old_name,new_name in RENAMES:
+        text = text.replace(old_name,new_name)
+    assert compact(text) == compact(current_clauses[key].get_text()), key
 assert [compact(t.get_text()) for t in prior_body.select("table")] == [compact(t.get_text()) for t in body.select("table")]
 assert len(ids) == 179
 
@@ -171,9 +177,14 @@ index_html = """<!doctype html>
 <style>body{font-family:"Yu Gothic","Noto Sans CJK JP",Meiryo,sans-serif;color:#172526;line-height:1.9;margin:36px auto;padding:0 22px;max-width:760px}h1{font-size:1.6rem}h2{font-size:1.2rem;border-bottom:1px solid #b9cdcb;padding-bottom:7px;margin-top:28px}a{color:#126964}li{margin:9px 0}.note{color:#405452}</style></head><body>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>受講規約の版一覧</h1>
 <p>受講規約の本文とPDFをご確認いただけます。適用されるのは、ご家庭が同意した版です。掲載の更新だけで過去に同意した内容を置き換えることはありません。</p>
-<h2>正式版：2026年11月版（2026年10月14日改訂・授業予定の段階と予約の整理）</h2>
-<p>適用開始日：2026年11月1日。全7章・32条。授業予定の「下書き・調整中・確認待ち・確定」と、予約の成立・無料取消しの関係を整理しています。</p>
-<ul><li><a href="2026-11-20261014-r4/">Web版を読む</a></li><li><a href="2026-11-20261014-r4/stepwise-terms-2026-11-20261014-r4.pdf">PDFで開く</a></li></ul>
+<h2>正式版：2026年11月版（2026年10月14日改訂・契約書類の名称統一）</h2>
+<p>適用開始日：2026年11月1日。全7章・32条。受講条件書（通常指導）・受講条件書（特殊指導）・受講合意書に名称を統一した版です。料金や承認の条件は変えていません。</p>
+<ul><li><a href="2026-11-20261014-r5/">Web版を読む</a></li><li><a href="2026-11-20261014-r5/stepwise-terms-2026-11-20261014-r5.pdf">PDFで開く</a></li></ul>
+<h2>関連書類の空欄様式</h2>
+<ul><li><a href="2026-11-20261014-r5/documents/regular/">受講条件書（通常指導）</a>（<a href="2026-11-20261014-r5/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261014-r5/documents/special/">受講条件書（特殊指導）</a>（<a href="2026-11-20261014-r5/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261014-r5/documents/agreement/">受講合意書</a>（<a href="2026-11-20261014-r5/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
+<h2>旧版：2026年11月版（2026年10月14日改訂・r4）</h2>
+<p>授業予定の段階と予約を整理した版です。</p>
+<ul><li><a href="2026-11-20261014-r4/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261014-r4/stepwise-terms-2026-11-20261014-r4.pdf">旧版のPDFで開く</a></li></ul>
 <h2>キャンセル料金の免除申請</h2>
 <ul><li><a href="2026-11-20261012-r3/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261012-r3/waiver/stepwise-waiver-guide-20261012.pdf">案内をPDFで開く</a></li></ul>
 <h2>旧版：2026年11月版（2026年10月12日改訂・r3）</h2>
@@ -203,7 +214,7 @@ with sync_playwright() as p:
         path=str(OUT / PDF_NAME), format="A4", print_background=True,
         prefer_css_page_size=True, display_header_footer=True,
         header_template='<span></span>',
-        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">Stepwise / 2026-11-20261014-r4 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">Stepwise / 2026-11-20261014-r5 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
         tagged=True, outline=True,
     )
     page.emulate_media(media="screen")
@@ -284,12 +295,63 @@ REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="
 report["changed_numbered_paragraphs"] = changed_clauses
 report["added_numbered_paragraphs"] = added_clauses
 report["unchanged_numbered_paragraphs_verified"] = unchanged_count
-report["article_13_onwards_text_unchanged"] = True
+report["all_source_changes_limited_to_reviewed_names"] = True
+report["all_135_clauses_verified_after_name_substitution"] = True
 report["tables_unchanged"] = True
 report["reused_waiver_guide"] = {
     "html_path": "terms/2026-11-20261012-r3/waiver/index.html",
     "pdf_path": "terms/2026-11-20261012-r3/waiver/stepwise-waiver-guide-20261012.pdf",
     "files_unchanged": True
 }
+REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+
+
+# The three public blank forms use the same source-to-HTML/PDF checks.
+forms = [
+    ("regular","TEACHING_CONDITIONS_REGULAR.md"),
+    ("special","TEACHING_CONDITIONS_SPECIAL.md"),
+    ("agreement","TUITION_AGREEMENT.md"),
+]
+report["forms"] = []
+with sync_playwright() as p:
+    browser=p.chromium.launch()
+    page=browser.new_page(viewport={"width":1000,"height":1400})
+    for slug, filename in forms:
+        form_source=(SOURCE.parent / filename).read_text(encoding="utf-8")
+        form_body=BeautifulSoup(md.render(form_source),"html.parser")
+        assert source_text(form_source)==compact(form_body.get_text("",strip=False))
+        title=form_body.h1.get_text()
+        dest=OUT/"documents"/slug
+        dest.mkdir(parents=True,exist_ok=True)
+        form_css=css+"\ntable:has(th:nth-child(2):last-child) th:first-child{width:38%} @media print { body{font-size:8.8pt;line-height:1.5} h1{font-size:15pt} h2{margin:8pt 0 5pt;font-size:11pt} p{margin:4pt 0} table{font-size:8.3pt;line-height:1.5;margin:6pt 0} th,td{padding:4pt 5pt} }"
+        form_html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>'+title+'｜ステップワイズ個別指導</title><style>'+form_css+'</style></head><body><nav class="tools"><a href="'+slug+'.pdf">PDFで開く</a><a href="../../">受講規約</a><a href="../../../">書類・旧版一覧</a></nav><main>'+str(form_body)+'</main></body></html>'
+        (dest/"index.html").write_text(form_html,encoding="utf-8")
+        page.goto((dest/"index.html").as_uri());page.evaluate("document.fonts.ready")
+        page.pdf(path=str(dest/(slug+".pdf")),format="A4",prefer_css_page_size=True,print_background=True,display_header_footer=True,header_template="<span></span>",footer_template='<div style="width:100%;font:8px sans-serif;text-align:center">Stepwise / 20261014-r5 / '+slug+'　<span class="pageNumber"></span> / <span class="totalPages"></span></div>',tagged=True)
+        page.set_viewport_size({"width":320,"height":844})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"),slug
+        page.screenshot(path=str(REVIEW/(slug+"-mobile.png")))
+        doc=fitz.open(dest/(slug+".pdf"))
+        plain=compact("\n".join(block[4] for pg in doc for block in pg.get_text("blocks") if block[1]>30 and block[3]<pg.rect.height-32))
+        for tag in form_body.find_all(["p","h1","h2","th","td"]):
+            text=compact(tag.get_text())
+            assert not text or text in plain, (slug,text)
+        for i,pg in enumerate(doc,1):
+            pg.get_pixmap(matrix=fitz.Matrix(1.3,1.3)).save(REVIEW/f"{slug}-page-{i:02}.png")
+            for block in pg.get_text("blocks"):
+                assert block[0]>=25 and block[2]<=pg.rect.width-25,(slug,"side margin")
+        fonts=subprocess.check_output(["pdffonts",str(dest/(slug+".pdf"))],text=True).strip().splitlines()[2:]
+        assert fonts and all(re.search(r"\s+yes\s+(?:yes|no)\s+(?:yes|no)\s+\d+\s+\d+\s*$",row) for row in fonts)
+        report["forms"].append({"name":title,"source":filename,"pages":len(doc),"text_verified":True,"fonts_embedded":True,"pdf_sha256":hashlib.sha256((dest/(slug+".pdf")).read_bytes()).hexdigest()})
+    # Future system-generated documents, rendered with synthetic sample data only.
+    for kind in ["condition","special"]:
+        page.set_viewport_size({"width":1000,"height":1500})
+        page.goto((REVIEW/(kind+"-sample.html")).as_uri());page.evaluate("document.fonts.ready")
+        page.emulate_media(media="print")
+        assert page.locator("h1").inner_text()==("受講条件書（通常指導）" if kind=="condition" else "受講条件書（特殊指導）")
+        assert page.locator("table").evaluate("(t)=>t.scrollWidth<=t.clientWidth+1")
+        page.screenshot(path=str(REVIEW/(kind+"-sample.png")),full_page=True)
+        (REVIEW/(kind+"-sample.html")).unlink()
+    browser.close()
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(report,ensure_ascii=False,indent=2))

@@ -1,5 +1,5 @@
 // スタッフの「月の仕事」と「設定」（docs/UX_STRUCTURE.md 3）。設定は アカウント・教室の運営（時給・授業の種類）・システム（スタッフ・移行）。
-// 月の仕事は、月の流れの順（前月分の請求 → 翌月の計画 → 翌月の予定表 → 前月分の給与）に、どこまで済んだかを出す（API monthly/overview）。
+// 月の仕事は、月の流れの順（前月分の請求 → 翌月の受講合意書 → 翌月の予定表 → 前月分の給与）に、どこまで済んだかを出す（API monthly/overview）。
 // 1 つの仕事が 1 枚の白い枠。上の行（色つきのアイコン・名前・時期）を押すとその画面へ。今の時期の枠は青い縁。
 import { ICON } from '/staff/ui.js?v=20261008-launch1';
 
@@ -28,13 +28,13 @@ export function monthlyPage(ctx) {
   let bb = chips([['確定', b.confirmed, '', true], ['確定できる', b.ready, 'ok'], ['確かめること', b.check.length, 'danger'], ['入金済み', b.paid, 'ok'], ['振込の連絡', b.reported, 'warn'], ['お支払い待ち', b.waiting, 'gray'], ['キャンセル料の判断', b.fees, 'danger']]);
   bb += `<div class="small muted">${b.families}家族。${md(b.closeOn)}の0時10分に、確かめることのない家族の分を自動で確定します。</div>`;
   if (b.check.length) bb += '<div class="small">' + b.check.map(f => `<div><b>${esc(f.name)}</b>：${esc(f.issues.join(' / '))}</div>`).join('') + '</div>';
-  if (b.unapproved.length) bb += `<div class="small muted">計画の承認がない授業: ${b.unapproved.map(f => esc(f.name) + ' ' + f.n + '件').join('・')}</div>`;
+  if (b.unapproved.length) bb += `<div class="small muted">受講合意書の承認がない授業: ${b.unapproved.map(f => esc(f.name) + ' ' + f.n + '件').join('・')}</div>`;
   h += step('billing', 'yen', '#c0392b', '1〜2日', `${mon(b.month)}分の請求`, '#billing', bb);
-  // 2. 翌月の計画
-  let pb = chips([['生徒', p.students, 'gray', true], ['計画なし', p.none.length, 'danger'], ['下書き', p.draft, 'gray'], ['承認待ち', p.proposed.length, 'warn'], ['承認済み', p.approved, 'ok']]);
-  if (p.none.length) pb += `<div class="small">計画がまだない: ${names(esc, p.none)}</div>`;
+  // 2. 翌月の受講合意書
+  let pb = chips([['生徒', p.students, 'gray', true], ['受講合意書なし', p.none.length, 'danger'], ['下書き', p.draft, 'gray'], ['承認待ち', p.proposed.length, 'warn'], ['承認済み', p.approved, 'ok']]);
+  if (p.none.length) pb += `<div class="small">受講合意書がまだない: ${names(esc, p.none)}</div>`;
   if (p.proposed.length) pb += `<div class="small muted">承認待ち: ${p.proposed.map(x => esc(x.name) + (x.remindedAt ? `（お願い ${md(x.remindedAt.slice(0, 10))}）` : '')).join('・')}</div>`;
-  h += step('planning', 'plan', '#5b6672', '〜20日', `${mon(p.month)}の計画`, '#plans', pb);
+  h += step('planning', 'plan', '#5b6672', '〜20日', `${mon(p.month)}の受講合意書`, '#plans', pb);
   // 3. 翌月の予定表
   let sb = chips([['予定なし', s.none.length, 'danger'], ['未送信', s.held.reduce((n, x) => n + x.n, 0), 'gray'], ['調整中', s.proposed, 'warn'], ['決定', s.decided, 'ok', true]]);
   if (s.none.length) sb += `<div class="small">授業がまだない: ${names(esc, s.none)}</div>`;
@@ -56,7 +56,7 @@ export function settingsPage(ctx, me) {
   const { esc } = ctx, roles = me.roles;
   let h = ctx.notice();
   h += '<div class="group" style="margin-top:12px">' + row('#account', 'person', '#2f6fde', esc(me.name) + ' さん', esc(me.email) + '・パスワード・ログアウト') + '</div>';
-  if (roles.includes('manager')) h += '<div class="sec-title">教室の運営</div><div class="group">' + row('#rates', 'yen', '#2e9b5f', '時給と源泉徴収', '講師ごとの授業・面談の時給、甲欄・乙欄') + row('#kinds', 'plan', '#5b6672', '授業の種類と標準料金', '計画を作るときの初期値') + row('#terms', 'file', '#c98a00', '受講規約', '今の版・全文のリンク・家族の同意') + row('#docs', 'file', '#5b6672', '書類のひな形', '基本指導条件書・特殊指導条件書・請求書・領収書の見本をすぐ開く') + row('#effects', 'mail', '#d0533c', '送信の記録と控え', '送れなかったメール・カレンダーを送り直す。台帳の控え') + '</div>';
+  if (roles.includes('manager')) h += '<div class="sec-title">教室の運営</div><div class="group">' + row('#rates', 'yen', '#2e9b5f', '時給と源泉徴収', '講師ごとの授業・面談の時給、甲欄・乙欄') + row('#kinds', 'plan', '#5b6672', '授業の種類と標準料金', '受講合意書を作るときの初期値') + row('#terms', 'file', '#c98a00', '受講規約', '今の版・全文のリンク・家族の同意') + row('#docs', 'file', '#5b6672', '書類のひな形', '受講条件書（通常指導）・受講条件書（特殊指導）・請求書・領収書の見本をすぐ開く') + row('#effects', 'mail', '#d0533c', '送信の記録と控え', '送れなかったメール・カレンダーを送り直す。台帳の控え') + '</div>';
   if (roles.includes('sysadmin')) h += '<div class="sec-title">システム</div><div class="group">' + row('#staff', 'person', '#7b4fd6', 'スタッフ', '招待・名前と役割・停止') + row('#migrate', 'swap', '#c98a00', '移行と切り替え', '今の仕組みからの写し・照らし合わせ・切り替え') + '</div>';
   return h;
 }

@@ -24,7 +24,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.ref }}
-          fetch-depth: 1
+          fetch-depth: 0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: npm ci
+      - name: Export synthetic document samples
+        run: node scripts/export-contract-samples.mjs
       - name: Install renderer and Japanese fonts
         run: |
           sudo apt-get update -qq
@@ -42,16 +48,16 @@ jobs:
         with:
           name: terms-publication-review
           path: |
-            terms/2026-11-20261014-r4/
-            docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261014_R4.json
-            docs/terms-restructure-2026-11/publication-preview-20261014-r4/
+            terms/2026-11-20261014-r5/
+            docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261014_R5.json
+            docs/terms-restructure-2026-11/publication-preview-20261014-r5/
           if-no-files-found: warn
           retention-days: 30
       - name: Commit generated files to the work branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- terms/2026-11-20261014-r4 terms/index.html docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261014_R4.json docs/terms-restructure-2026-11/publication-preview-20261014-r4
+          git add -- terms/2026-11-20261014-r5 terms/index.html docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261014_R5.json docs/terms-restructure-2026-11/publication-preview-20261014-r5
           if ! git diff --cached --quiet; then
             git commit -m "docs: generate adopted terms HTML and PDF on GitHub"
             git push origin "HEAD:$GITHUB_REF_NAME"

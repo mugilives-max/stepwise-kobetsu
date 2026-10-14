@@ -7,7 +7,7 @@ const { createV2 } = require('./helpers/v2-harness.cjs');
 test('docs sample: each stored document can be previewed with sample data by a manager only', async () => {
   const h = await createV2(); const auth = await h.owner();
   await h.ok('admin/billing/settings/set', { auth, bank: '見本銀行 見本支店 普通 0000000', note: '' });
-  const expect = { condition: /基本指導条件書[\s\S]*見本 太郎[\s\S]*4,500円/, special: /特殊指導条件書[\s\S]*英検準1級対策[\s\S]*7,000円/, invoice: /請求書[\s\S]*見本家[\s\S]*19,000[\s\S]*見本銀行/, receipt: /領収書[\s\S]*19,000/ };
+  const expect = { condition: /受講条件書（通常指導）[\s\S]*見本 太郎[\s\S]*4,500円/, special: /受講条件書（特殊指導）[\s\S]*英検準1級対策[\s\S]*7,000円/, invoice: /請求書[\s\S]*見本家[\s\S]*19,000[\s\S]*見本銀行/, receipt: /領収書[\s\S]*19,000/ };
   for (const [type, re] of Object.entries(expect)) {
     const r = await h.ok('admin/docs/sample', { auth, type });
     assert.match(r.html, re, type); assert.doesNotMatch(r.html, /<script/, type);
