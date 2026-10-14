@@ -16,7 +16,7 @@ OUT = ROOT / "terms" / EDITION
 REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261014-r6"
 REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261014_R6.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "0ab35ef5c002627ffefcf5ae7065b3894c661194"
+EXPECTED_SOURCE_BLOB = "bdfbf152652b29d75a156689633c89688826a464"
 OLD = {
     "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
     "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
@@ -53,7 +53,10 @@ for name, expected in OLD.items():
 source = source_bytes.decode("utf-8")
 OUT.mkdir(parents=True, exist_ok=True)
 REVIEW.mkdir(parents=True, exist_ok=True)
-# Clear only this unpublished edition\'s generated page previews before rerendering.
+# Preserve the reviewed layout while correcting only outgoing waiver links.
+reviewed_images = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in REVIEW.glob("*.png")}
+assert len(reviewed_images) == 26, "Expected all reviewed r6 images"
+# Regenerate this edition's previews; older editions remain untouched.
 for prior_png in REVIEW.glob("*.png"):
     prior_png.unlink()
 
@@ -172,6 +175,7 @@ for key,value in prior_clauses.items():
     if key.startswith("article-12-"): continue
     target=renumber(key)
     expected=renumber(value).replace("[第12条](#article-12)","[第4章](#chapter-4)")
+    expected=expected.replace("https://www.stepwise-education.jp/terms/2026-11-20261012-r3/waiver/", "https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/")
     assert expected == current_clauses[target], "Unexpected change outside scheduling: "+key
     unchanged_count+=1
 assert unchanged_count == 125
@@ -210,6 +214,10 @@ for filename in form_sources:
     if filename=="WAIVER_GUIDE.md":
         expected=expected.replace("2026-11-20261012-r3","2026-11-20261014-r6").replace("2026年10月12日作成／2026年11月版受講規約に対応","2026年10月14日改訂／2026年11月版受講規約（r6）に対応")
     assert expected==(SOURCE.parent/filename).read_text(encoding="utf-8"),filename
+
+waiver_url = "https://www.stepwise-education.jp/terms/" + EDITION + "/waiver/"
+waiver_links = [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]]
+assert waiver_links == [waiver_url, waiver_url], "Terms must link to the current waiver guide"
 
 html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月14日改訂）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">規約の版一覧・旧版</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
 (OUT / "index.html").write_text(html, encoding="utf-8")
@@ -389,5 +397,15 @@ with sync_playwright() as p:
         assert fonts and all(re.search(r"\s+yes\s+(?:yes|no)\s+(?:yes|no)\s+\d+\s+\d+\s*$",row) for row in fonts)
         report["forms"].append({"name":title,"source":filename,"pages":len(doc),"text_verified":True,"fonts_embedded":True,"pdf_sha256":hashlib.sha256((dest/(slug+".pdf")).read_bytes()).hexdigest()})
     browser.close()
+REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+rendered_images = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in REVIEW.glob("*.png")}
+assert rendered_images == reviewed_images, "Link-only correction changed the reviewed visual layout"
+pdf_waiver_links = [(i, link["uri"]) for i, pg in enumerate(pdf, 1) for link in pg.get_links() if "/waiver/" in link.get("uri","")]
+# Wrapped link text can produce multiple PDF link rectangles for one source link.
+assert {uri for _, uri in pdf_waiver_links} == {waiver_url}, ("PDF waiver destinations differ", pdf_waiver_links)
+assert {i for i, _ in pdf_waiver_links} == {8, 13}, ("Missing PDF waiver link on a source page", pdf_waiver_links)
+report["pdf_waiver_link_annotations"] = len(pdf_waiver_links)
+report["current_waiver_links_verified"] = 2
+report["reviewed_image_blobs_unchanged"] = len(reviewed_images)
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(report,ensure_ascii=False,indent=2))

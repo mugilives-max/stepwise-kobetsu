@@ -2,10 +2,10 @@
   "edition": "2026-11-20261014-r6",
   "effective_date": "2026-11-01",
   "source_path": "docs/terms-restructure-2026-11/TERMS.md",
-  "source_git_blob": "0ab35ef5c002627ffefcf5ae7065b3894c661194",
-  "source_commit": "f4ede1a0d8bc82689134dab9a7c13d99b332788d",
-  "html_sha256": "b30ea316aa5aeeb4746952b4c951173f0dc3d1c7763d87da82d07fb12fc18593",
-  "pdf_sha256": "5ed8f3b5db22e2e0cc5cc18783bcc577eb978a1d07a3e3bae49a531524db7bff",
+  "source_git_blob": "bdfbf152652b29d75a156689633c89688826a464",
+  "source_commit": "360d868cafd8cd3132c7f460116827ccb008ddcc",
+  "html_sha256": "bcedc959414b0b2fd3e17d7c4324edd59d0dab30c7f16392aa7e92f342b848ab",
+  "pdf_sha256": "84bab862a538730b7ca8534eca697217163d51575425ad847b23783858c7a38f",
   "old_blobs_preserved": {
     "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
     "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
@@ -65,7 +65,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "08a8ce2be992ef6929862164fc07892bfebb28d304201b66cdc8ea4d457290c1"
+      "pdf_sha256": "57811c6763b3a73eba67911ab4a7108406b622ece0c0433aa5de225b0ce02d5e"
     },
     {
       "name": "受講条件書（特殊指導）",
@@ -73,7 +73,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "a208872bd4c98b72c997c83c85c6cec8d2ac1f424593843a8a744a93a46ca4b7"
+      "pdf_sha256": "4d8beeb615d328feab3d5404b127ced0ffcb87ec5cdd25b61f821f5753ddde53"
     },
     {
       "name": "受講合意書",
@@ -81,7 +81,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "28963317671030cff524cfc553a5766fd88ccd2fd6a4bf9c523167de1bffc92a"
+      "pdf_sha256": "dd6e8a3511f5a78cdb65e872794d97be58d87a81f6562be15ec9f9fde49ca322"
     },
     {
       "name": "キャンセル料金の免除申請のご案内",
@@ -89,7 +89,10 @@
       "pages": 2,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "9ff5690184dfb57588a33fd599e72ea050d074449ce6a016bc45ae053187a69a"
+      "pdf_sha256": "7627353f8872f7572e92850441b19e8f2f14aa23878616f8aff111f775aced24"
     }
-  ]
+  ],
+  "pdf_waiver_link_annotations": 3,
+  "current_waiver_links_verified": 2,
+  "reviewed_image_blobs_unchanged": 26
 }

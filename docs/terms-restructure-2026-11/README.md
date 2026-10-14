@@ -10,6 +10,7 @@
 - 条番号をそろえた3つの空欄様式と[免除申請案内](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/)（[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/waiver.pdf)）を同じ版に用意した。
 - [対応表](MAPPING.md#scheduling-chapter-r6)・[判断記録](DECISIONS.md)・[検証記録](PUBLICATION_CHECKS_20261014_R6.json)。旧第12条以外の125項、移動対象13断片、3表を全文照合した。旧版公開ファイル20点はblob単位で一致する。
 - [生成・検証実行](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38568087236)が成功。本文はMarkdownとHTMLの全文一致、187アンカー、PDF本文298か所・日本語フォント埋込み、390px・320pxの幅を確認した。規約13ページ、空欄様式3点各1ページ、免除申請案内2ページの全18ページとスマートフォン表示8点を画像で目視確認し、文字欠けや表の崩れは見つからなかった。[PR #73](https://github.com/mugilives-max/stepwise-kobetsu/pull/73)。
+- 公開確認で見つかった本文中の免除申請案内リンク2点もr6へ統一。HTML・PDFのリンク先を検証し、リンク修正前の全26点のページ・スマホ画像と一致することを生成時に照合する。
 - システムの下書き機能・保存済み書面・適用版設定・同意記録は変更しない。r5等の旧書面はその版の番号を維持する。r6のシステム適用前に、新規発行様式の参照番号の対応と予定段階の残件を検証する。
 
 ## 2026-10-14：契約書類の名称統一（r5・履歴）
