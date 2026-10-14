@@ -1,5 +1,5 @@
 'use strict';
-// 作り直し（v2）5段目: 授業計画・キャンセル料・請求、今の台帳からの写し。cf/v2/billing.mjs・plan-calc.mjs・migrate-billing.mjs
+// 作り直し（v2）5段目: 受講合意書・キャンセル料・請求、今の台帳からの写し。cf/v2/billing.mjs・plan-calc.mjs・migrate-billing.mjs
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createV2 } = require('./helpers/v2-harness.cjs');
@@ -217,7 +217,7 @@ test('staff can send a reminder for plans still waiting for approval, once a day
   const r = await h.ok('billing/plans/remind', { auth, familyId: kid.familyId });
   assert.deepEqual([r.reminded, r.waiting], [1, 2]);
   const mail = h.mails().at(-1);
-  assert.match(mail.subject, /授業計画の承認のお願い/); assert.match(mail.body, /すでに2回決まっています/);
+  assert.match(mail.subject, /受講合意書の承認のお願い/); assert.match(mail.body, /すでに2回決まっています/);
   assert.equal(mail.status, 'dismissed', '切り替え前は送らない');
   assert.equal((await h.call('billing/plans/remind', { auth, familyId: kid.familyId })).error.code, 'tooSoon');
   h.clock += 86400e3;
