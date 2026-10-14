@@ -5,7 +5,7 @@
 import { fail } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { isLive } from './accounts.mjs';
-import { todayJst } from './schedule.mjs';
+import { todayJst, isCalMarker } from './schedule.mjs';
 import { typedFee } from './migrate-billing.mjs';
 
 const truthy = v => v === 1 || v === true || v === '1' || v === 'true' || v === 'TRUE';
@@ -103,8 +103,8 @@ export async function cutoverPreview(c) {
     families: { total: withKids.length, canLogin: withKids.filter(f => f.status === 'active' && f.email).length, needInvite: withKids.filter(f => f.status !== 'active' && f.email).length, noEmail: withKids.filter(f => !f.email).length,
       testOnly: withKids.filter(f => f.testOnly).length },
     students: (await c.db.prepare("select count(*) n from students where status <> 'left'").first()).n,
-    calendar: { keep: lessons.filter(l => l.calendarEventId && !l.calendarEventId.startsWith('swv2')).length + meetings.filter(m => m.calendarEventId && !m.calendarEventId.startsWith('swv2')).length,
-      create: lessons.filter(l => !l.calendarEventId || l.calendarEventId.startsWith('swv2')).length + meetings.filter(m => !m.calendarEventId || m.calendarEventId.startsWith('swv2')).length,
+    calendar: { keep: lessons.filter(l => l.calendarEventId && !isCalMarker(l.calendarEventId)).length + meetings.filter(m => m.calendarEventId && !isCalMarker(m.calendarEventId)).length,
+      create: lessons.filter(l => !l.calendarEventId || isCalMarker(l.calendarEventId)).length + meetings.filter(m => !m.calendarEventId || isCalMarker(m.calendarEventId)).length,
       onlineWithoutMeet: lessons.filter(l => l.deliveryMode === 'online' && !l.meetUrl).length },
     open,
   };

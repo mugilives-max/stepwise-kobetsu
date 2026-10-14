@@ -61,19 +61,24 @@ const requestView = r => ({ id: r.id, lessonId: r.lessonId, kind: r.kind, note: 
 const eventView = e => ({ id: e.id, studentId: e.studentId, kind: e.kind, date: e.date, dateTo: e.dateTo, start: e.start, end: e.end, title: e.title, createdByKind: e.createdByKind, version: e.version });
 
 // ---- カレンダー（切り替え前は held） ----
+// 予定の仮の目印（予定ができたら Apps Script が本物の ID「…@google.com」を書き戻す）。目印はそのまま Google の予定 ID に使うので、
+// 使える文字は英小文字 a-v と数字だけ（base32hex）。2026-10-14 まで使っていた「swv2…」は w が使えず、作成が毎回断られていた（Kura 調査 #195）。
+// 「swv2…」が残っている行も仮の目印として扱い、作り直すときは新しい形の目印にする
+export const CAL_MARK = 'v2m';
+export const isCalMarker = id => !!id && !String(id).includes('@') && /^(swv2|v2m)/.test(String(id));
 export async function calendarEffect(c, kind, lesson, studentName) {
   const live = await isLive(c);
   if (kind === 'delete') {
-    if (lesson.calendarEventId && !lesson.calendarEventId.startsWith('swv2')) c.effects.push({ kind: 'calendarDelete', eventId: lesson.calendarEventId, audience: 'calendar', held: !live });
+    if (lesson.calendarEventId && !isCalMarker(lesson.calendarEventId)) c.effects.push({ kind: 'calendarDelete', eventId: lesson.calendarEventId, audience: 'calendar', held: !live });
     return '';
   }
-  const marker = lesson.calendarEventId && !lesson.calendarEventId.startsWith('swv2') ? lesson.calendarEventId : 'swv2' + sha256Hex(lesson.id + ':' + c.now).slice(0, 40);
+  const marker = lesson.calendarEventId && !isCalMarker(lesson.calendarEventId) ? lesson.calendarEventId : CAL_MARK + sha256Hex(lesson.id + ':' + c.now).slice(0, 40);
   const end = new Date(startMs(lesson.date, lesson.start) + lesson.minutes * 60000).toISOString();
   const body = { summary: CAL_PREFIX + studentName + 'さん ' + (lesson.subject || '授業') + ' (' + (lesson.deliveryMode === 'online' ? 'オンライン' : '対面') + ')',
     start: { dateTime: new Date(startMs(lesson.date, lesson.start)).toISOString(), timeZone: 'Asia/Tokyo' }, end: { dateTime: end, timeZone: 'Asia/Tokyo' },
     reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 60 }] }, extendedProperties: { private: { stepwiseLesson: lesson.id } } };
   const wantMeet = lesson.deliveryMode === 'online';
-  if (kind === 'create' || marker.startsWith('swv2')) {
+  if (kind === 'create' || isCalMarker(marker)) {
     body.id = marker;
     if (wantMeet) body.conferenceData = { createRequest: { requestId: marker, conferenceSolutionKey: { type: 'hangoutsMeet' } } };
     c.effects.push({ kind: 'calendarCreate', marker, body, wantMeet, audience: 'calendar', held: !live });

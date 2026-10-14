@@ -26,8 +26,15 @@ export async function deliverEffects(env, db, queued, fetcher = fetch) {
   const writebacks = payload && Array.isArray(payload.writebacks) ? payload.writebacks : [];
   for (const table of ['lessons', 'meetings']) if (writebacks.length) await db.batch(writebacks.map(w => db.prepare(`update ${table} set calendarEventId = ?, meetUrl = case when ? <> '' then ? else meetUrl end where calendarEventId = ? or calendarEventId = ? || '@google.com'`)
     .bind(String(w.eventId || ''), String(w.meetUrl || ''), String(w.meetUrl || ''), String(w.marker || ''), String(w.marker || ''))));
+  // 予定を作る頼みは、その目印の書き戻しが返ってきたときだけ「送れた」。返ってこなければ（作成を断られた・設定が off など）失敗として残す。
+  // Apps Script は項目ごとの失敗を failed に入れて、全体は ok を返す（gas/Sync.gs effectsOp_）。どの項目かは分からないので、カレンダーの失敗の文を添える
+  const backs = new Set(writebacks.map(w => String(w.marker || '')));
+  const calFailed = (payload && Array.isArray(payload.failed) ? payload.failed : []).filter(f => /^calendar/.test(String(f && f.kind || ''))).map(f => String(f.error || '')).filter(Boolean);
+  const itemError = q => error || (q.item.kind === 'calendarCreate' && !backs.has(String(q.item.marker || ''))
+    ? 'カレンダーに予定ができませんでした（' + (calFailed[0] || '予定の ID が返ってきませんでした') + '）' : '');
   const at = new Date().toISOString();
-  await db.batch(queued.map(q => db.prepare('update effects set status = ?, attempts = attempts + 1, error = ?, sentAt = ? where id = ?')
-    .bind(error ? 'failed' : 'sent', error.slice(0, 300), error ? '' : at, q.id)));
-  return { sent: error ? 0 : queued.length, error };
+  await db.batch(queued.map(q => { const e = itemError(q); return db.prepare('update effects set status = ?, attempts = attempts + 1, error = ?, sentAt = ? where id = ?')
+    .bind(e ? 'failed' : 'sent', e.slice(0, 300), e ? '' : at, q.id); }));
+  const failed = queued.filter(q => itemError(q)).length;
+  return { sent: queued.length - failed, failed, error };
 }

@@ -10,13 +10,13 @@
 import { fail, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { isLive } from './accounts.mjs';
-import { todayJst, calendarEffect } from './schedule.mjs';
+import { todayJst, calendarEffect, isCalMarker } from './schedule.mjs';
 import { copyAll } from './migrate-records.mjs';
 import { checkRows } from './migrate-check.mjs';
 import { peopleRoutes } from './people.mjs';
 
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
-const needsEvent = id => !id || id.startsWith('swv2');
+const needsEvent = id => !id || isCalMarker(id);
 async function setLive(c, on) {
   await c.db.prepare("insert into settings (key, value, updatedAt) values ('live', ?, ?) on conflict(key) do update set value = excluded.value, updatedAt = excluded.updatedAt").bind(on ? '1' : '0', iso(c.now)).run();
 }
