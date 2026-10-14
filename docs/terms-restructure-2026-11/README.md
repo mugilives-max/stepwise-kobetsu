@@ -8,6 +8,7 @@
 - 第9～11条は詳細として維持。他137項・3表・条番号・料金・合意や予約の条件は変えない。8章36条138項、適用開始日2026年11月1日。
 - [Web版](https://www.stepwise-education.jp/terms/2026-11-20261014-r7/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r7/stepwise-terms-2026-11-20261014-r7.pdf)／[新旧版一覧](https://www.stepwise-education.jp/terms/)。空欄3様式と免除申請案内は、条番号・条件が同じr6を引き続き使用する。
 - [変更前後](MAPPING.md#agreement-role-r7)・[検証記録](PUBLICATION_CHECKS_20261014_R7.json)。原稿・生成・検証はGitHub上で実施し、旧版HTML・PDF30ファイルを保持する。
+- [生成・検証実行](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38572163787)が成功。第2条第4項と版表示以外の原稿全文、他137項・3表の一致、MarkdownからHTMLへの全文一致、187アンカー、PDF本文298か所・日本語フォント埋込み、390px・320pxの幅を確認した。PDF全13ページとスマートフォン表示4点を画像で目視確認し、文字欠け・表の崩れ・余白のはみ出しは見つからなかった。旧版HTML・PDF30ファイルもblob単位で一致する。[PR #75](https://github.com/mugilives-max/stepwise-kobetsu/pull/75)。
 - システム設定・契約・提案・同意記録は変更しない。システムへの適用前の残件はr6の整理から変わらない。
 
 <a id="scheduling-chapter-r6"></a>
