@@ -323,7 +323,7 @@ with sync_playwright() as p:
         title=form_body.h1.get_text()
         dest=OUT/"documents"/slug
         dest.mkdir(parents=True,exist_ok=True)
-        form_css=css+"\n@media print { h1{font-size:15pt} h2{margin-top:12pt;font-size:11pt} table{font-size:8.5pt} th,td{padding:6pt} }"
+        form_css=css+"\ntable:has(th:nth-child(2):last-child) th:first-child{width:38%} @media print { body{font-size:8.8pt;line-height:1.5} h1{font-size:15pt} h2{margin:8pt 0 5pt;font-size:11pt} p{margin:4pt 0} table{font-size:8.3pt;line-height:1.5;margin:6pt 0} th,td{padding:4pt 5pt} }"
         form_html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>'+title+'｜ステップワイズ個別指導</title><style>'+form_css+'</style></head><body><nav class="tools"><a href="'+slug+'.pdf">PDFで開く</a><a href="../../">受講規約</a><a href="../../../">書類・旧版一覧</a></nav><main>'+str(form_body)+'</main></body></html>'
         (dest/"index.html").write_text(form_html,encoding="utf-8")
         page.goto((dest/"index.html").as_uri());page.evaluate("document.fonts.ready")
