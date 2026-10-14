@@ -1,4 +1,4 @@
-// 受講条件（通常指導）（規約 第2条の「受講条件書（通常指導）」。migrations-v2/0018_conditions.sql）
+// 受講条件書（通常指導）（規約 第2条の「受講条件書（通常指導）」。migrations-v2/0018_conditions.sql）
 // - 教室管理者が生徒ごとに「条件を決めてお知らせ」する（admin/conditions/propose）。基本の授業時間と1回の税込通常指導の基準単価、形式、人数、
 //   生徒本人の連絡の可否、科目、特記、適用開始月。お知らせすると保護者にメールが届き、保護者ページに同意のお願いが出る
 // - 保護者は保護者ページで内容を見て同意する（family/conditions/agree）。同意していない条件がある家族は、計画を承認できない（規約と同じ）
@@ -101,7 +101,7 @@ export const conditionRoutes = {
         .bind(Math.round(f.fee * 30 / f.minutes), Math.round(f.fee * 90 / f.minutes), f.deliveryMode === 'both' ? s.deliveryMode : f.deliveryMode, JSON.stringify(perms), now, s.id),
     ]);
     await storeDoc(c, id);
-    await familyNotice(c, s.id, '受講条件（通常指導）のお知らせ', `${fullName(s)}さんの受講条件（通常指導）（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書（通常指導））を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月`);
+    await familyNotice(c, s.id, '受講条件書（通常指導）のお知らせ', `${fullName(s)}さんの受講条件書（通常指導）（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書（通常指導））を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月`);
     await audit(c, 'conditionPropose', id, { studentId: s.id, no, minutes: f.minutes, fee: f.fee, fromMonth: f.fromMonth });
     return { condition: await withDoc(c.db, conditionView(await c.db.prepare('select * from conditions where id = ?').bind(id).first())) };
   },

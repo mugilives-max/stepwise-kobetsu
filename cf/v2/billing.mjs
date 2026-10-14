@@ -511,7 +511,7 @@ export const billingRoutes = {
     // 受講規約の今の版に同意していなければ、承認できない（統合3 D07。見送りは同意がなくてもよい）
     const terms = await familyTerms(c.db, me);
     if (count > 0 && terms.needs) fail('needTerms', '受講規約への同意が必要です。「お支払い」の画面で規約を確かめて、同意してから承認してください', 409);
-    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '受講条件（通常指導）への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
+    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '受講条件書（通常指導）への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
     const now = iso(c.now), evidence = consentEvidence(c, b, me, me);
     if (count > 0) await assertPriorConsent(c, l, evidence.consentedAt);
     const saved = await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
