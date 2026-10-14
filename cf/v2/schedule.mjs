@@ -209,7 +209,7 @@ async function lessonRequest(c, studentIds, who, b) {
   if (kind === 'cancel') { if (await usesRate(c.db, l)) fee = await setRateFee(c, l, 'cancel', Number(l.minutes), iso(c.now)); else await createCancelFee(c, l, 'late', iso(c.now)); }
   const when = `${l.date.slice(5).replace('-', '/')} ${l.start}〜（${l.subject}）`, from = who.kind === 'family' ? name + 'さんの保護者' : name + 'さん';
   const title = { move: '日時の変更のお願い', rest: 'お休みの連絡', late: '開始を遅らせたい', cancel: 'キャンセル' }[kind];
-  await staffNotice(c, `【${title}】${name}さん`, `${from}から${title}が届きました。\n${when}${l.status === 'proposed' ? '（仮予定）' : ''}\n${note ? '内容: ' + note : ''}${kind === 'cancel' ? (fee ? `\n前日23時を過ぎた連絡です（キャンセル料 ${fee.amount.toLocaleString('ja-JP')}円）。` : '\n前日23時を過ぎた連絡です（キャンセル料の対象）。') : ''}`);
+  await staffNotice(c, `【${title}】${name}さん`, `${from}から${title}が届きました。\n${when}${l.status === 'proposed' ? '（調整中）' : ''}\n${note ? '内容: ' + note : ''}${kind === 'cancel' ? (fee ? `\n前日23時を過ぎた連絡です（キャンセル料 ${fee.amount.toLocaleString('ja-JP')}円）。` : '\n前日23時を過ぎた連絡です（キャンセル料の対象）。') : ''}`);
   await audit(c, 'lessonRequest:' + kind, l.id, { request: id });
   return { lesson: lessonView(next), request: { id, kind, status: kind === 'rest' ? 'done' : 'open' }, ...(fee ? { fee: { amount: fee.amount } } : {}) };
 }
@@ -335,7 +335,7 @@ export const scheduleRoutes = {
     // 請求は、その月の承認済みの計画に（科目・種類が合う行へ）入る（2026-10-11 本人「授業を実施済みなのですが、授業計画も送ってないし、過去の記録だし」）
     const done = b.done === true, trial = !!s.trial && !done && b.hold !== true; // 体験生はお知らせ先がないので、そのまま決定
     if (done && candidates.some(x => x.date > today)) fail('future', '実施済みで登録できるのは今日までの授業です');
-    if (!done && candidates.some(x => x.date < today)) fail('past', '過去の日付には仮予定を作れません。実施した授業なら「実施済みとして登録」にしてください');
+    if (!done && candidates.some(x => x.date < today)) fail('past', '過去の日付には調整中の授業を作れません。実施した授業なら「実施済みとして登録」にしてください');
     await checkConflicts(c, candidates, { force: !!b.force });
     const hold = b.hold === true && !done, bys = hold || done || trial ? candidates.map(() => '') : confirmByFor(candidates.map(x => x.date), today, b.confirmBy || '');
     const status = done ? 'done' : hold ? 'held' : trial ? 'decided' : 'proposed';
@@ -351,7 +351,7 @@ export const scheduleRoutes = {
       await audit(c, 'lessonsTrial', s.id, { count: candidates.length });
       return { created: candidates.length, decided: true, trial: true };
     }
-    if (!hold) await familyNotice(c, s.id, '授業の仮予定が届いています', `${fullName(s)}さんの授業の仮予定が届いています。${bys[0] ? Number(bys[0].slice(5, 7)) + '/' + Number(bys[0].slice(8)) + 'までに連絡がなければ、この日時で決定します。' : ''}`);
+    if (!hold) await familyNotice(c, s.id, '授業の予定（調整中）が届いています', `${fullName(s)}さんの授業の予定（調整中）が届いています。${bys[0] ? Number(bys[0].slice(5, 7)) + '/' + Number(bys[0].slice(8)) + 'までに連絡がなければ、この日時で決定します。' : ''}`);
     await audit(c, hold ? 'lessonsHold' : 'lessonsPropose', s.id, { count: candidates.length });
     return { created: candidates.length, held: hold, confirmBy: bys[0] || '' };
   },
@@ -393,7 +393,7 @@ export const scheduleRoutes = {
   'schedule/lessons/decide': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const l = await getLesson(c, b.id); sameVersion(l, b);
-    if (!['held', 'proposed'].includes(l.status)) fail('badStatus', '仮予定だけ決定できます');
+    if (!['held', 'proposed'].includes(l.status)) fail('badStatus', '調整中・未送信の授業だけ決定できます');
     const s = await studentRow(c, l.studentId);
     const next = await setLesson(c, l, { status: 'decided', decidedAt: iso(c.now), decidedBy: 'staff:' + c.actor.id, calendarEventId: '' });
     const done = await setLesson(c, next, { calendarEventId: await calendarEffect(c, 'create', next, fullName(s)) });
@@ -437,7 +437,7 @@ export const scheduleRoutes = {
   'schedule/lessons/rest': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const l = await getLesson(c, b.id); sameVersion(l, b);
-    if (!['proposed', 'decided'].includes(l.status)) fail('badStatus', '仮予定・決定した授業だけお休みにできます');
+    if (!['proposed', 'decided'].includes(l.status)) fail('badStatus', '調整中・決定した授業だけお休みにできます');
     const next = await setLesson(c, l, { status: 'rested' });
     if (l.status === 'decided') await calendarEffect(c, 'delete', l, '');
     await closeRequests(c, l.id, ['move', 'late', 'rest'], 'staff:' + c.actor.id);

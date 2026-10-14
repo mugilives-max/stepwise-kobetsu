@@ -39,7 +39,7 @@ export async function checkRows(old, db2) {
   for (const s of slots) want[s.status === 'offered' ? (String(s.confirmBy || '') === 'hold' ? 'held' : 'proposed') : truthy(s.done) ? 'done' : 'decided']++;
   const got = { held: 0, proposed: 0, decided: 0, done: 0 }; for (const l of lessons2) if (l.status in got) got[l.status]++;
   add('予定', '授業（すべて）', slots.length, lessons2.length);
-  for (const [k, label] of [['held', '未送信'], ['proposed', '仮予定'], ['decided', '決定'], ['done', '実施済み']]) add('予定', `授業: ${label}`, want[k], got[k]);
+  for (const [k, label] of [['held', '未送信'], ['proposed', '調整中'], ['decided', '決定'], ['done', '実施済み']]) add('予定', `授業: ${label}`, want[k], got[k]);
   const reqOld = slots.filter(s => s.req && s.status === 'booked' && !truthy(s.done)).length + slots.filter(s => s.changeReqAt && ['move', 'late'].includes(s.changeReqKind)).length;
   add('予定', '対応待ちの連絡（お休み・キャンセル・日時の変更）', reqOld, (await one(db2, "select count(*) n from lessonRequests where id like 'rq_%' and lessonId in (select id from lessons where legacyId <> '')")).n);
   const ev = (await one(old, 'select count(*) n from events where studentId <> \'\'')).n + (await one(old, 'select count(*) n from blocked where studentId <> \'\'')).n;

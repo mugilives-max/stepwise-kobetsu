@@ -3,7 +3,7 @@ import { esc } from '/assets/v2/api.js';
 import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 
 export const STATUS = {
-  held: ['gray', '未送信'], proposed: ['warn', '仮予定'], decided: ['', '決定'], done: ['ok', '実施済み'], rested: ['gray', 'お休み'], cancelled: ['danger', 'キャンセル'],
+  held: ['gray', '未送信'], proposed: ['warn', '調整中'], decided: ['', '決定'], done: ['ok', '実施済み'], rested: ['gray', 'お休み'], cancelled: ['danger', 'キャンセル'],
 };
 export const REQUEST = { move: '日時の変更のお願い', rest: 'お休みの連絡', late: '開始を遅らせたい', cancel: 'キャンセル' };
 export const CHOICE = {

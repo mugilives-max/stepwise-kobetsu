@@ -61,7 +61,7 @@ function cutoverPart(ctx) {
     <div><strong>保護者</strong>（子どもがいる家族 ${f.total}）: 今のパスワードでログインできる ${f.canLogin}・登録の案内を送る ${f.needInvite}・メールアドレスなし ${f.noEmail}${f.testOnly ? `・テスト用 ${f.testOnly}` : ''}</div>
     <div><strong>生徒</strong> ${c.students}人: 今の専用リンクの鍵のまま新しいページを開ける</div>
     <div><strong>カレンダー</strong>（今日以降の決定の授業・面談）: 今の予定を引き継ぐ ${c.calendar.keep}・新しく作る ${c.calendar.create}${c.calendar.onlineWithoutMeet ? `・<strong>Meet のないオンライン授業 ${c.calendar.onlineWithoutMeet}</strong>（切り替えたあとで作り直す）` : ''}</div>
-    <div><strong>残っている対応</strong>: 連絡 ${c.open.requests}・キャンセル料の判断 ${c.open.fees}・承認待ちの計画 ${c.open.plans}・仮予定 ${c.open.proposed}</div>
+    <div><strong>残っている対応</strong>: 連絡 ${c.open.requests}・キャンセル料の判断 ${c.open.fees}・承認待ちの計画 ${c.open.plans}・調整中 ${c.open.proposed}</div>
     <div class="muted">切り替え前に止めてあったお知らせ ${c.open.held}件は、切り替えても送りません（古い内容のため）。</div></div>`;
   return h;
 }
@@ -117,7 +117,7 @@ function schedulePart(ctx) {
     <p><button data-action="mig-s-preview"${ctx.dis()}>${schedPreview ? 'もう一度見る' : 'どう写るかを見る'}</button></p>`;
   if (!schedPreview) return h;
   const l = schedPreview.lessons;
-  h += `<p>授業 ${l.total}件（未送信 ${l.held}・仮予定 ${l.proposed}・決定 ${l.decided}・実施済み ${l.done}）、連絡 ${schedPreview.requests}件、共有予定 ${schedPreview.sharedEvents}件、休み ${schedPreview.unavailability}件、授業の種類 ${esc(schedPreview.kinds.join('・'))}${schedPreview.copied ? `（前に写した授業 ${schedPreview.copied}件を置き換えます）` : ''}</p>`;
+  h += `<p>授業 ${l.total}件（未送信 ${l.held}・調整中 ${l.proposed}・決定 ${l.decided}・実施済み ${l.done}）、連絡 ${schedPreview.requests}件、共有予定 ${schedPreview.sharedEvents}件、休み ${schedPreview.unavailability}件、授業の種類 ${esc(schedPreview.kinds.join('・'))}${schedPreview.copied ? `（前に写した授業 ${schedPreview.copied}件を置き換えます）` : ''}</p>`;
   if (schedPreview.problems.length) h += `<ul>${schedPreview.problems.map(p => `<li>${esc(p)}</li>`).join('')}</ul>`;
   return h + `<p><button class="primary" data-action="mig-s-apply"${ctx.dis()}>予定を新しい台帳に写す</button></p>`;
 }
