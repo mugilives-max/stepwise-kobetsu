@@ -46,7 +46,7 @@ const statusText = l => {
   if (r) return [`<span class="tag ${r.kind === 'cancel' ? 'danger' : 'warn'}">${REQUEST[r.kind]}・先生の返事待ち</span>`];
   const [cls, label] = STATUS[l.status] || ['gray', l.status];
   const t = [];
-  if (l.status === 'proposed') t.push(`<span class="tag warn">仮予定${l.confirmBy ? '・' + md(l.confirmBy) + 'まで' : ''}</span>`);
+  if (l.status === 'proposed') t.push(`<span class="tag warn">調整中${l.confirmBy ? '・' + md(l.confirmBy) + 'まで' : ''}</span>`);
   else if (l.status !== 'decided') t.push(`<span class="tag ${cls}">${label}</span>`);
   return t;
 };
@@ -75,7 +75,7 @@ export function nextLessonHero(l, { names = {}, today = '' } = {}) {
   const when = daysText(l.date, today);
   return `<button type="button" class="hero" data-action="lesson" data-id="${esc(l.id)}"><span class="k">次の授業${when ? `<b>${when}</b>` : ''}</span>
     <strong>${md(l.date)}<small>（${wd(l.date)}）</small> ${l.start}<small>〜${endOf(l.start, l.minutes)}</small></strong>
-    <span class="s">${names[l.studentId] ? esc(given(names[l.studentId])) + '　' : ''}${esc(l.subject)}${l.deliveryMode === 'online' ? '・オンライン' : '・教室'}${l.status === 'proposed' ? '<span class="tag warn">仮予定</span>' : ''}</span></button>`;
+    <span class="s">${names[l.studentId] ? esc(given(names[l.studentId])) + '　' : ''}${esc(l.subject)}${l.deliveryMode === 'online' ? '・オンライン' : '・教室'}${l.status === 'proposed' ? '<span class="tag warn">調整中</span>' : ''}</span></button>`;
 }
 // 授業を押したときの画面。state: { id, pick, note }。canRequest=false なら見るだけ
 export function lessonSheet(l, state, { names = {}, canRequest = true, busy = false, sendLabel = '連絡する' } = {}) {
@@ -96,7 +96,7 @@ export function lessonSheet(l, state, { names = {}, canRequest = true, busy = fa
     return `<button type="button" class="choice${on ? ' on' : ''}${c === 'cancel' ? ' danger' : ''}" data-action="pick" data-c="${c}" aria-pressed="${on}"><span class="b"><b>${esc(label)}</b>${on ? `<small>${esc(how)}</small>` : ''}</span><span class="cost">${esc(cost)}</span></button>`; }).join('') + '</div>';
   if (state.pick) {
     const offerRest = state.pick === 'rest' && l.status === 'proposed';
-    body += offerRest ? '<p class="small muted">この仮予定をお休みにします。料金はかかりません。</p>' : `<input id="change-note" maxlength="500" value="${esc(state.note || '')}" placeholder="${esc(choiceOf(l, state.pick)[3])}" autocomplete="off">`;
+    body += offerRest ? '<p class="small muted">この授業（調整中）をお休みにします。料金はかかりません。</p>' : `<input id="change-note" maxlength="500" value="${esc(state.note || '')}" placeholder="${esc(choiceOf(l, state.pick)[3])}" autocomplete="off">`;
     body += `<div class="row" style="margin-top:10px"><button class="${state.pick === 'cancel' ? 'danger' : 'primary'} wide" data-action="send-change"${busy ? ' disabled' : ''}>${busy ? '送っています…' : sendLabel}</button></div>`;
   }
   return sheet(esc, title, body, 'close-sheet');

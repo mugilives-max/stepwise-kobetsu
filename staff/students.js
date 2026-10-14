@@ -109,7 +109,7 @@ function schedule(ctx, x) {
   return `<h2>これからの授業 <span class="count">${x.upcoming.length}</span></h2>` + (x.upcoming.length ? '<div class="rows">' + x.upcoming.map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">決まっている授業はありません。</p>')
     + (x.events.length ? '<h2>テスト・行事・授業ができない日</h2><div class="rows">' + x.events.map(e => `<div class="ev ${e.kind}"><span class="t">${md(e.date)}${e.dateTo !== e.date ? '〜' : ''}</span><span class="b">${esc(e.title || (e.kind === 'unavailable' ? '授業ができない日' : ''))}</span><span></span></div>`).join('') + '</div>' : '')
     + '<h2>これまでの授業</h2>' + (x.past.length ? '<div class="rows">' + x.past.map(l => lessonRow(esc, l, ['decided', 'done'].includes(l.status) ? '#record=' + encodeURIComponent(l.id) : '')).join('') + '</div>' : '<p class="muted small">まだありません。</p>')
-    + '<p class="small" style="margin-top:12px"><a href="#schedule">月の予定表を開く（仮予定を作る・直す）</a></p>';
+    + '<p class="small" style="margin-top:12px"><a href="#schedule">月の予定表を開く（授業を作る・直す）</a></p>';
 }
 function records(ctx, x) {
   const { esc } = ctx;

@@ -26,7 +26,7 @@ test('the check counts the current ledger directly and explains every expected d
   assert.equal(r.problems, 0, JSON.stringify(r.rows.filter(x => !x.same && !x.expected)));
   assert.deepEqual([get('家族').old, get('家族').new, get('家族').expected], [2, 2, false], '家族に入っていない生徒は1人の家族になる');
   assert.deepEqual([get('授業（すべて）').old, get('授業（すべて）').new], [3, 3]);
-  assert.deepEqual([get('授業: 実施済み').new, get('授業: 決定').new, get('授業: 仮予定').new], [1, 1, 1]);
+  assert.deepEqual([get('授業: 実施済み').new, get('授業: 決定').new, get('授業: 調整中').new], [1, 1, 1]);
   assert.deepEqual([get('授業記録').old, get('授業記録').new, get('授業記録').expected], [2, 1, true], '枠の消えた記録は写さない（理由つき）');
   assert.deepEqual([get('生徒の専用リンク（同じ鍵のまま）').old, get('生徒の専用リンク（同じ鍵のまま）').new], [3, 3]);
   assert.equal(get('1回の授業料を入力した金額に戻した計画').new, 1, '2,799円 → 2,800円');

@@ -75,7 +75,7 @@ function lineRow(ctx, s, l) {
   const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="お知らせに入れる">` : '';
   const f = formOf(l.kind), parts = partsOf(l);
   return (pick ? '<div class="pl-row">' + pick : '') + rowButton(esc, 'pl-line', { id: l.id }, `<span class="tag">${esc(f.form)}</span>${f.detail ? ` <span class="tag gray">${esc(f.detail)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''} ${lineCount(l)} <span class="tag ${cls}">${label}</span>`,
-    `1回 ${l.minutes}分 ${yen(l.fee)}・決定・実施 ${l.assigned}回${l.tentative ? `・仮予定 ${l.tentative}回` : ''}${parts.length ? '・' + esc(parts.map(p => `${p.label} ${p.count}回`).join('・')) : ''}${l.familyAck === 'inquiry' ? '・<strong style="color:var(--danger)">保護者から問い合わせ</strong>' : ''}`) + (pick ? '</div>' : '');
+    `1回 ${l.minutes}分 ${yen(l.fee)}・決定・実施 ${l.assigned}回${l.tentative ? `・調整中 ${l.tentative}回` : ''}${parts.length ? '・' + esc(parts.map(p => `${p.label} ${p.count}回`).join('・')) : ''}${l.familyAck === 'inquiry' ? '・<strong style="color:var(--danger)">保護者から問い合わせ</strong>' : ''}`) + (pick ? '</div>' : '');
 }
 // 計画の行を押したとき・直す・承諾を記録・足す（下から出る画面）
 function planSheet(ctx) {
@@ -103,7 +103,7 @@ function planSheet(ctx) {
   const [s, l] = find(lineOpen); if (!l) return '';
   const [label, cls] = LINE_STATUS[l.status];
   let body = `<p style="margin-top:0"><span class="tag ${cls}">${label}</span>${l.kind !== '通常' ? ` <span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''}</p>
-    <div class="small">${md(l.startDate)}〜${md(l.endDate)}・${lineCount(l)}・1回 ${l.minutes}分 ${yen(l.fee)}</div><div class="small muted">決定・実施 ${l.assigned}回${l.tentative ? `・仮予定 ${l.tentative}回` : ''}</div>`;
+    <div class="small">${md(l.startDate)}〜${md(l.endDate)}・${lineCount(l)}・1回 ${l.minutes}分 ${yen(l.fee)}</div><div class="small muted">決定・実施 ${l.assigned}回${l.tentative ? `・調整中 ${l.tentative}回` : ''}</div>`;
   if (l.comment) body += `<div class="small" style="margin-top:6px">保護者への説明: ${esc(l.comment)}</div>`;
   { const parts = partsOf(l), sum = parts.reduce((n, p) => n + p.count, 0);
     if (parts.length) body += `<div class="small" style="margin-top:6px">目的・教材: ${esc(parts.map(p => `${p.label} ${p.count}回`).join('・'))}${sum < l.count ? `・内訳なし ${l.count - sum}回` : ''}</div>`; }

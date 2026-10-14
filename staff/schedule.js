@@ -58,7 +58,7 @@ export function schedulePage(ctx, me) {
   let h = `<div class="sch-bar"><button class="icon" data-action="sch-month" data-n="-1" aria-label="前の月">‹</button><strong class="sch-month">${Number(month.slice(0, 4))}年${Number(month.slice(5))}月</strong><button class="icon" data-action="sch-month" data-n="1" aria-label="次の月">›</button>
     <button class="small-btn" data-action="sch-today">今日</button><span style="flex:1"></span>
     ${todo ? `<button class="small-btn warn" data-action="sch-sheet" data-k="todo">対応すること ${todo}</button>` : ''}
-    <button class="small-btn primary" data-action="sch-sheet" data-k="${manager ? 'create' : 'off'}">＋ ${manager ? '仮予定' : '休み'}</button></div>`;
+    <button class="small-btn primary" data-action="sch-sheet" data-k="${manager ? 'create' : 'off'}">＋ ${manager ? '授業' : '休み'}</button></div>`;
   if (!data.live) h += '<p class="small muted" style="margin:2px 0 6px">切り替え前のため、ここでの操作では Google カレンダーへの登録と保護者へのメールは行いません。</p>';
   h += ctx.notice();
   h += '<div class="sch">';
@@ -180,7 +180,7 @@ function dayPanel(ctx, me, manager, nameOf, staffOf) {
 function oneDay(ctx, me, manager, nameOf, staffOf, d, first) {
   const { esc } = ctx;
   const ls = data.lessons.filter(l => l.date === d).sort((a, b) => a.start.localeCompare(b.start)), offs = data.unavailability.filter(o => o.date === d), evs = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo)), mts = data.meetings.filter(m => m.date === d);
-  let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span class="muted small">授業 ${ls.filter(l => l.status in RANK).length}件</span><span style="flex:1"></span>${manager ? `<button class="small-btn" data-action="sch-sheet" data-k="create">${d < data.today ? '＋ 実施した授業を登録' : '＋ この日に仮予定'}</button>` : ''}</div>`
+  let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span class="muted small">授業 ${ls.filter(l => l.status in RANK).length}件</span><span style="flex:1"></span>${manager ? `<button class="small-btn" data-action="sch-sheet" data-k="create">${d < data.today ? '＋ 実施した授業を登録' : '＋ この日に授業'}</button>` : ''}</div>`
     : `<button class="day-band" data-action="sch-day" data-date="${d}">${mdw(d)}</button>`;
   if (!ls.length && !offs.length && !evs.length && !mts.length) return h + `<p class="muted small"${first ? '' : ' style="margin:4px 2px 8px"'}>予定はありません。</p>`;
   h += '<div class="rows">';
@@ -223,7 +223,7 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held) {
         + (danger.length ? `<details class="small"><summary class="muted">そのほかの操作</summary><div class="row" style="margin-top:8px">${danger.join('')}</div></details>` : '');
     }
     body += '</div>';
-  } else if (sheet.kind === 'create') { title = '仮予定を作る'; body = createForm(ctx, me); }
+  } else if (sheet.kind === 'create') { title = '授業を作る'; body = createForm(ctx, me); }
   else if (sheet.kind === 'off') { title = '休みを登録'; body = offForm(ctx, me, manager); }
   else if (sheet.kind === 'meeting') { title = '面談を登録'; body = meetingForm(ctx); }
   else if (sheet.kind === 'todo') {
@@ -232,9 +232,9 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held) {
       <div class="small">${esc(r.note || '')}<span class="muted">（${r.fromKind === 'family' ? '保護者' : r.fromKind === 'student' ? '生徒' : 'スタッフ'}・${esc(r.receivedAt.slice(5, 16).replace('T', ' '))}）</span></div>
       <div class="small muted">${r.kind === 'move' ? '授業を開いて「日時・内容を直す」で日時を変えると、済みになります。' : r.kind === 'late' ? (rateRule(r) ? '応じるときは「日時・内容を直す」で開始時刻を変え、「生徒の申し出で開始を遅らせる」に印を付けてください（遅らせた分の取消料）。応じないときは「済みにする」。' : '応じるときは「日時・内容を直す」で開始時刻を変えてください（料金は変わりません）。') : r.kind === 'cancel' ? (rateRule(r) ? 'キャンセル料は連絡の時刻で自動に計算しました（「請求」で確かめられます）。' : 'キャンセル料は「請求」で決めます。') : ''}</div></div>
       <div class="row"><button data-action="sch-goto" data-date="${r.date}" data-id="${esc(r.lessonId || '')}">授業を開く</button><button data-action="sch-resolve" data-id="${esc(r.id)}"${ctx.dis()}>済みにする</button></div></div>`).join('') + '</div>' : '')
-      + (Object.keys(held).length ? `<h2>未送信の仮予定</h2><p class="small muted" style="margin-top:-4px">送る授業に印を付けてください。印を外した授業は未送信のまま残ります。</p>` + Object.keys(held).map(sid => heldGroup(ctx, sid, nameOf)).join('') : '');
+      + (Object.keys(held).length ? `<h2>未送信の授業</h2><p class="small muted" style="margin-top:-4px">送る授業に印を付けてください。印を外した授業は未送信のまま残ります。</p>` + Object.keys(held).map(sid => heldGroup(ctx, sid, nameOf)).join('') : '');
   }
-  const tabs = (manager && ['create', 'off', 'meeting'].includes(sheet.kind)) ? `<div class="seg">${[['create', '仮予定'], ['off', '休み'], ['meeting', '面談']].map(([k, lb]) => `<button class="${sheet.kind === k ? 'on' : ''}" data-action="sch-sheet" data-k="${k}">${lb}</button>`).join('')}</div>` : '';
+  const tabs = (manager && ['create', 'off', 'meeting'].includes(sheet.kind)) ? `<div class="seg">${[['create', '授業'], ['off', '休み'], ['meeting', '面談']].map(([k, lb]) => `<button class="${sheet.kind === k ? 'on' : ''}" data-action="sch-sheet" data-k="${k}">${lb}</button>`).join('')}</div>` : '';
   return `<div class="overlay" data-action="sch-close"></div><section class="bsheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div><div class="bsheet-head"><strong>${esc(title)}</strong><button class="icon" data-action="sch-close" aria-label="閉じる">×</button></div>${tabs}<div class="bsheet-body">${body}</div></section>`;
 }
 
@@ -324,7 +324,7 @@ export async function scheduleSubmit(ctx, kind, el) {
     const body = { studentId: v.studentId, date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, repeat: v.send === 'done' ? 1 : Number(v.repeat), hold: v.send === 'hold', done: v.send === 'done' };
     let r = await ctx.call('schedule/lessons/create', body);
     if ((await after(ctx, r, '')) === 'force') r = await ctx.call('schedule/lessons/create', { ...body, force: true });
-    if (r.ok) { sheet = null; cache = {}; sel = v.date; ctx.say(r.trial ? `体験の授業を${r.created}件、決定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を予定表に入れました（まだ送っていません）` : `${r.created}件の仮予定を送りました${r.confirmBy ? '（締め切り ' + Number(r.confirmBy.slice(5, 7)) + '/' + Number(r.confirmBy.slice(8)) + '）' : ''}`, 'ok'); data = null; loadedFor = ''; }
+    if (r.ok) { sheet = null; cache = {}; sel = v.date; ctx.say(r.trial ? `体験の授業を${r.created}件、決定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を予定表に入れました（まだ送っていません）` : `${r.created}件を調整中として送りました${r.confirmBy ? '（締め切り ' + Number(r.confirmBy.slice(5, 7)) + '/' + Number(r.confirmBy.slice(8)) + '）' : ''}`, 'ok'); data = null; loadedFor = ''; }
     return true;
   }
   if (kind === 'sch-update') {
@@ -382,7 +382,7 @@ export async function scheduleClick(ctx, a, b) {
     const sid = b.dataset.sid, mine = heldLessons().filter(l => l.studentId === sid), ids = mine.filter(l => !unpicked.has(l.id)).map(l => l.id), rest = mine.length - ids.length;
     const st = data.students.find(x => x.id === sid) || {}, trial = !!st.trial;
     if (!ids.length) return true;
-    const ask = trial ? `${st.name || ''}さんの体験の授業 ${ids.length}件を決定にして、Google カレンダーに入れますか？（メールは送りません）` : `${st.name || ''}さんの仮予定 ${ids.length}件を予定表として送りますか？ 保護者に1回お知らせします。`;
+    const ask = trial ? `${st.name || ''}さんの体験の授業 ${ids.length}件を決定にして、Google カレンダーに入れますか？（メールは送りません）` : `${st.name || ''}さんの授業 ${ids.length}件を予定表（調整中）として送りますか？ 保護者に1回お知らせします。`;
     if (!confirm(ask + (rest ? `\n印を外した ${rest}件は未送信のまま残ります。` : ''))) return true;
     const r = await ctx.call('schedule/lessons/sendHeld', { studentId: sid, lessonIds: ids });
     if (r.ok) ids.forEach(x => unpicked.delete(x));

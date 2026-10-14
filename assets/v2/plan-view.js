@@ -139,7 +139,7 @@ export function planPreviewHtml(set, esc, opts = {}) {
   h += `<p class="small muted">予定の金額は計画の回数 × 1回の授業料です。請求は、実施した授業の分だけです。</p>`;
   if (opts.schedule) {
     const rows = set.lines.map(l => { const s = opts.schedule.find(x => x.lineId === l.id) || {}; const n = plannedCount(l), placed = Number(s.assigned || 0) + Number(s.tentative || 0); return { l, s, rest: n - placed }; });
-    h += `<section class="pv-schedule" aria-label="日程"><h3 class="pv-sub-head"><span>日程（計画とは別）</span></h3><div class="pv-lines">${rows.map(({ l, s, rest }) => `<div class="pv-line"><span class="b">${esc(l.subject)} <span class="tag">${esc(formOf(l.kind).form)}</span><small class="muted">決定・実施 ${Number(s.assigned || 0)}回・仮予定 ${Number(s.tentative || 0)}回${rest > 0 ? `・日時がまだの回数 ${rest}回` : rest < 0 ? `・計画より ${-rest}回多い` : ''}</small></span></div>`).join('')}</div><p class="small muted">日時は予定の画面で確かめます。</p></section>`;
+    h += `<section class="pv-schedule" aria-label="日程"><h3 class="pv-sub-head"><span>日程（計画とは別）</span></h3><div class="pv-lines">${rows.map(({ l, s, rest }) => `<div class="pv-line"><span class="b">${esc(l.subject)} <span class="tag">${esc(formOf(l.kind).form)}</span><small class="muted">決定・実施 ${Number(s.assigned || 0)}回・調整中 ${Number(s.tentative || 0)}回${rest > 0 ? `・日時がまだの回数 ${rest}回` : rest < 0 ? `・計画より ${-rest}回多い` : ''}</small></span></div>`).join('')}</div><p class="small muted">日時は予定の画面で確かめます。</p></section>`;
   }
   return h + '</div>';
 }

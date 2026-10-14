@@ -110,7 +110,7 @@ function homePage() {
   if (asks.length) todo.push(['#money', 'plan', '#5b6672', '授業計画の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
   if (acks.length) todo.push(['#money', 'check', '#138a8a', '授業計画の確認', acks.map(([m]) => monthLabel(m)).join('・') + '・先生が記録した承諾の内容を確かめてください', acks.length]);
   const kari = sched.lessons.filter(l => l.status === 'proposed' && l.confirmBy);
-  if (kari.length) { const by = kari.map(l => l.confirmBy).sort()[0]; todo.push(['#schedule', 'calendar', '#e0a100', '仮予定の確認', `${md(by)}までに連絡がなければ、この日時で決まります`, kari.length]); }
+  if (kari.length) { const by = kari.map(l => l.confirmBy).sort()[0]; todo.push(['#schedule', 'calendar', '#e0a100', '調整中の授業の確認', `${md(by)}までに連絡がなければ、この日時で決まります`, kari.length]); }
   const due = money.invoices.filter(v => v.status === 'confirmed');
   if (due.length) todo.push(['#money', 'yen', '#c0392b', 'お支払い', due.map(v => `${monthLabel(v.month)}分 ${yen(v.total)}`).join('・'), due.length]);
   const hw = learning.homework.filter(w => w.status === 'open');
@@ -141,7 +141,7 @@ function schedulePage() {
   const d = calData[cal.month], multi = multiKids() && !kid, nm = names();
   const lessons = forKid(d.lessons).filter(l => l.status !== 'held'), events = forKid(d.events);
   const kari = lessons.filter(l => l.status === 'proposed' && l.confirmBy);
-  if (kari.length) h += `<p class="notice small" style="margin:0 0 6px">仮予定（オレンジ）${kari.length}件：都合の悪い授業だけ押して連絡してください。連絡がなければ締め切りで決まります。</p>`;
+  if (kari.length) h += `<p class="notice small" style="margin:0 0 6px">調整中（オレンジ）${kari.length}件：都合の悪い授業だけ押して連絡してください。連絡がなければ締め切りで決まります。</p>`;
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
     const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`);

@@ -122,13 +122,13 @@ async function noticePlan(c, b) {
       continue;
     }
     const bys = confirmByFor(mine.map(l => l.date), today, '');
-    mine.forEach((l, i) => targets.push({ lessonId: l.id, version: l.version, student: studentLabel(s), date: l.date, start: l.start, end: endOf(l.start, l.minutes), subject: l.subject, kind: l.kind, action: 'propose', becomes: 'proposed', confirmBy: bys[i], effect: bys[i] ? `仮予定として保護者ページに出す（${mdw(bys[i])}までに連絡がなければ決定）` : '仮予定として保護者ページに出す（締め切りなし。決定は管理画面で）' }));
+    mine.forEach((l, i) => targets.push({ lessonId: l.id, version: l.version, student: studentLabel(s), date: l.date, start: l.start, end: endOf(l.start, l.minutes), subject: l.subject, kind: l.kind, action: 'propose', becomes: 'proposed', confirmBy: bys[i], effect: bys[i] ? `調整中として保護者ページに出す（${mdw(bys[i])}までに連絡がなければ決定）` : '調整中として保護者ページに出す（締め切りなし。決定は管理画面で）' }));
     const willSend = !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
     const reason = willSend ? '' : !s.familyEmail ? '家族のメールが無い' : s.familyStatus !== 'active' ? '保護者ページの登録がまだ' : 'テスト用の家族（送らない）';
     const lines = mine.map((l, i) => `・${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)} ${l.subject}${l.kind && l.kind !== '通常' ? '（' + l.kind + '）' : ''}`);
     const by = bys.filter(Boolean).sort()[0];
-    mails.push({ studentId: sid, student: studentLabel(s), to: maskEmail(s.familyEmail), willSend, reason, subject: '【ステップワイズ】授業の仮予定が届いています',
-      body: `${fullName(s)}さんの授業の仮予定をお送りします。\n${lines.join('\n')}\n${by ? `${mdw(by)}までに連絡がなければ、この日時で決定します。` : '日時のご都合が悪ければご連絡ください。'}`, lessonIds: mine.map(l => l.id) });
+    mails.push({ studentId: sid, student: studentLabel(s), to: maskEmail(s.familyEmail), willSend, reason, subject: '【ステップワイズ】授業の予定（調整中）が届いています',
+      body: `${fullName(s)}さんの授業の予定（調整中）をお送りします。\n${lines.join('\n')}\n${by ? `${mdw(by)}までに連絡がなければ、この日時で決定します。` : '日時のご都合が悪ければご連絡ください。'}`, lessonIds: mine.map(l => l.id) });
   }
   // 選ばれていない未送信の授業（同じ生徒）。送らないことを見せる
   const left = (await c.db.prepare(`select count(*) n from lessons where status = 'held' and studentId in (${Object.keys(students).map(() => '?').join(', ')}) and id not in (${ids.map(() => '?').join(', ')})`).bind(...Object.keys(students), ...ids).first()).n;
@@ -271,7 +271,7 @@ export const mcpWriteRoutes = {
     for (const m of plan.mails) {
       let effectId = null;
       if (m.willSend) {
-        await familyNotice(c, m.studentId, '授業の仮予定が届いています', m.body);
+        await familyNotice(c, m.studentId, '授業の予定（調整中）が届いています', m.body);
         effectId = (await takeMails(c))[0] || null;
       }
       mails.push({ student: m.student.name, to: m.to, effectId, status: m.willSend ? (effectId ? 'queued' : 'notQueued') : 'notSent', reason: m.reason, lessonIds: m.lessonIds });

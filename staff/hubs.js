@@ -36,7 +36,7 @@ export function monthlyPage(ctx) {
   if (p.proposed.length) pb += `<div class="small muted">承認待ち: ${p.proposed.map(x => esc(x.name) + (x.remindedAt ? `（お願い ${md(x.remindedAt.slice(0, 10))}）` : '')).join('・')}</div>`;
   h += step('planning', 'plan', '#5b6672', '〜20日', `${mon(p.month)}の計画`, '#plans', pb);
   // 3. 翌月の予定表
-  let sb = chips([['予定なし', s.none.length, 'danger'], ['未送信', s.held.reduce((n, x) => n + x.n, 0), 'gray'], ['仮予定', s.proposed, 'warn'], ['決定', s.decided, 'ok', true]]);
+  let sb = chips([['予定なし', s.none.length, 'danger'], ['未送信', s.held.reduce((n, x) => n + x.n, 0), 'gray'], ['調整中', s.proposed, 'warn'], ['決定', s.decided, 'ok', true]]);
   if (s.none.length) sb += `<div class="small">授業がまだない: ${names(esc, s.none)}</div>`;
   if (s.held.length) sb += `<div class="small muted">予定表を送っていない: ${s.held.map(x => esc(x.name) + ' ' + x.n + '件').join('・')}</div>`;
   sb += '<div class="small muted">締め切りは原則25日。連絡がなければ締め切りの翌日に決定します。</div>';
