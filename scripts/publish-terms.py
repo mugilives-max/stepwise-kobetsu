@@ -400,8 +400,11 @@ with sync_playwright() as p:
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 rendered_images = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in REVIEW.glob("*.png")}
 assert rendered_images == reviewed_images, "Link-only correction changed the reviewed visual layout"
-pdf_waiver_links = [link["uri"] for pg in pdf for link in pg.get_links() if "/waiver/" in link.get("uri","")]
-assert pdf_waiver_links == [waiver_url, waiver_url], "PDF waiver links differ"
+pdf_waiver_links = [(i, link["uri"]) for i, pg in enumerate(pdf, 1) for link in pg.get_links() if "/waiver/" in link.get("uri","")]
+# Wrapped link text can produce multiple PDF link rectangles for one source link.
+assert {uri for _, uri in pdf_waiver_links} == {waiver_url}, ("PDF waiver destinations differ", pdf_waiver_links)
+assert {i for i, _ in pdf_waiver_links} == {8, 13}, ("Missing PDF waiver link on a source page", pdf_waiver_links)
+report["pdf_waiver_link_annotations"] = len(pdf_waiver_links)
 report["current_waiver_links_verified"] = 2
 report["reviewed_image_blobs_unchanged"] = len(reviewed_images)
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
