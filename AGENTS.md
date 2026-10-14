@@ -25,7 +25,7 @@ Claude / Codex 共通。塾のホームページと予約・管理システム�
 | MCPの接続・停止・更新 / 将来の書き込み設計 | [MCP_OPERATIONS.md](docs/MCP_OPERATIONS.md) / [MCP_DESIGN.md](docs/MCP_DESIGN.md) |
 | 授業サイクルの導入順 / 初回実装 | [REDESIGN_MASTER_PLAN.md](docs/REDESIGN_MASTER_PLAN.md) / [LESSON_CYCLE_PHASE1_SPEC.md](docs/LESSON_CYCLE_PHASE1_SPEC.md) |
 | 作り直し（v2）の要件・設計・進み具合（家族が根っこ、`cf/v2/`・`cf/migrations-v2/`・`/staff/`） | [REQUIREMENTS.md](docs/REQUIREMENTS.md) / [REBUILD_DESIGN.md](docs/REBUILD_DESIGN.md) / [FEATURE_INVENTORY.md](docs/FEATURE_INVENTORY.md) / 切り替えの手順と案内文 [CUTOVER_RUNBOOK.md](docs/CUTOVER_RUNBOOK.md) |
-| 受講規約・正式採用本文（2026-10-12改訂、Web・PDFとの差はREADME）/ 公開・同意への反映状況 | [TERMS.md](docs/terms-restructure-2026-11/TERMS.md) / [採用・公開の状態](docs/terms-restructure-2026-11/README.md) |
+| 受講規約・正式採用本文（2026-10-14改訂、Web・PDFとシステムへの適用状況はREADME）/ 公開・同意への反映状況 | [TERMS.md](docs/terms-restructure-2026-11/TERMS.md) / [採用・公開の状態](docs/terms-restructure-2026-11/README.md) |
 | 日程の決め方（締め切りと自動確定・確定後の変更）の設計 | [SCHEDULING_FLOW_DESIGN.md](docs/SCHEDULING_FLOW_DESIGN.md)。旧規約草案ではなく上記の正式採用本文を参照する |
 | 講師の雇用契約書（労働条件通知書を兼ねる）の下書き | [EMPLOYMENT_CONTRACT_DRAFT.md](docs/EMPLOYMENT_CONTRACT_DRAFT.md) |
 | 過去の調査根拠 / 旧契約条項案 | [REDESIGN_CURRENT_STATE.md](docs/REDESIGN_CURRENT_STATE.md) / [CONTRACT_CLAUSES_DRAFT.md](docs/CONTRACT_CLAUSES_DRAFT.md) |

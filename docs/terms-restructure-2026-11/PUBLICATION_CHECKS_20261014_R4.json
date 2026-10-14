@@ -1,0 +1,69 @@
+{
+  "edition": "2026-11-20261014-r4",
+  "effective_date": "2026-11-01",
+  "source_path": "docs/terms-restructure-2026-11/TERMS.md",
+  "source_git_blob": "21125457601574d9d2a8abe04e7fac7d6a60fd4c",
+  "source_commit": "be9f72df8700e5afa7fbd1c2784b9bea6007c28b",
+  "html_sha256": "9592823ae9e3389f1fe8e61d36b83241b2b13eb319b624c7e53ce005f87aa2db",
+  "pdf_sha256": "4a14383514113da92d8c36b2ed1366975e0d9f39b6cd6c2b030568a4fd2430cc",
+  "old_blobs_preserved": {
+    "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
+    "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
+    "terms/2026-11-20261012-r3/index.html": "85e0c094cc0653e5b4983ed6c8793424c9b89556",
+    "terms/2026-11-20261012-r3/stepwise-terms-2026-11-20261012-r3.pdf": "e8c2f643a818e79e9e619a279a416de0e1f8d708",
+    "terms/2026-11-20261012-r3/waiver/index.html": "5ffc89314099bbc37d218b4563e60987294ea63f",
+    "terms/2026-11-20261012-r3/waiver/stepwise-waiver-guide-20261012.pdf": "a337e856f11b6301d4be8e1a237092ec804aba8c",
+    "terms/2026-11-20261012/index.html": "8ad7081a13be099e8b3f8e76c04d986886bb971c",
+    "terms/2026-11-20261012/stepwise-terms-2026-11-20261012.pdf": "a391290531d024ff6d3bb1298fe2394b59345b92",
+    "terms/2026-11/index.html": "84325add6c395ff9cbe8588abcc3c0221e40b03f",
+    "terms/2026-11/stepwise-terms-2026-11.pdf": "94bcb70dc1eb25afdd78393c306d0d5ec518e6e9"
+  },
+  "chapters": 7,
+  "articles": 32,
+  "numbered_paragraphs": 135,
+  "tables": 3,
+  "markdown_to_html_full_text_equal": true,
+  "internal_links_valid": true,
+  "mobile_overflow": false,
+  "pdf_pages": 12,
+  "pdf_text_blocks_verified": 289,
+  "pdf_missing_text_blocks": 0,
+  "pdf_fonts": [
+    "DejaVuSans",
+    "NotoSansCJKjp-Bold",
+    "NotoSansCJKjp-Regular"
+  ],
+  "pdf_fonts_embedded": true,
+  "embedded_font_programs": 260,
+  "japanese_font_match": "Noto Sans CJK JP",
+  "visual_review_images": 16,
+  "anchors": 179,
+  "mobile_widths_checked": [
+    390,
+    320
+  ],
+  "changed_numbered_paragraphs": [
+    "article-2-item-1",
+    "article-2-item-5",
+    "article-12-item-1",
+    "article-12-item-2",
+    "article-12-item-3",
+    "article-12-item-4",
+    "article-12-item-5",
+    "article-12-item-6",
+    "article-12-item-7",
+    "article-12-item-8"
+  ],
+  "added_numbered_paragraphs": [
+    "article-12-item-10",
+    "article-12-item-9"
+  ],
+  "unchanged_numbered_paragraphs_verified": 123,
+  "article_13_onwards_text_unchanged": true,
+  "tables_unchanged": true,
+  "reused_waiver_guide": {
+    "html_path": "terms/2026-11-20261012-r3/waiver/index.html",
+    "pdf_path": "terms/2026-11-20261012-r3/waiver/stepwise-waiver-guide-20261012.pdf",
+    "files_unchanged": true
+  }
+}

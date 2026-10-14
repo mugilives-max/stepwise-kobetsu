@@ -25,7 +25,7 @@
 | [現行第2条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L25) | 契約者は、受講申込書に記載する保護者その他受講契約を締結する権限を有する方で… | [第1条第2項](TERMS.md#article-1-item-2) | 移動・参照更新（該当箇所） |
 | [現行第2条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L26) | 個別指導条件書は、生徒・家庭ごとの継続的な指導条件を記録し、双方で合意する書… | 第1文 → [第2条第2項](TERMS.md#article-2-item-2)<br>第2文 → [第6条第1項](TERMS.md#article-6-item-1) | 役割と記載事項を分割 |
 | [現行第2条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L27) | 特殊指導条件書は、長時間の個別の準備が必要となる指導を行う場合に、個別指導条… | 第1文・第4文 → [第2条第3項](TERMS.md#article-2-item-3)<br>第2文＋条件列挙 → [第5条第2項](TERMS.md#article-5-item-2)<br>第3文 → [第6条第2項](TERMS.md#article-6-item-2) | 役割・記載事項・特殊指導の定義を分割。判断1は原文維持 |
-| [現行第2条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L32) | 指導計画承認書は、保護者または塾が案を提示し、双方が合意した指導の実施範囲を… | 第1文 → [第2条第4項](TERMS.md#article-2-item-4)<br>第2文 → [第9条第2項](TERMS.md#article-9-item-2)<br>第3文・第4文 → [第12条第2項](TERMS.md#article-12-item-2) | 役割・記載事項・日時を分割。記載事項のみ集約 |
+| [現行第2条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L32) | 指導計画承認書は、保護者または塾が案を提示し、双方が合意した指導の実施範囲を… | 第1文 → [第2条第4項](TERMS.md#article-2-item-4)<br>第2文 → [第9条第2項](TERMS.md#article-9-item-2)<br>第3文・第4文 → [第12条第1項](TERMS.md#article-12-item-1)・[第3項](TERMS.md#article-12-item-3) | 役割・記載事項・日時を分割。記載事項のみ集約 |
 | [現行第2条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L33) | 契約は本規約、個別指導条件書、双方が合意した特殊指導条件書、双方が合意した指… | 第1文 → [第2条第1項](TERMS.md#article-2-item-1)<br>第2文・第3文 → [第30条第1項](TERMS.md#article-30-item-1) | 書類の構成と条件変更を分割 |
 | [現行第3条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L37) | 指導は、個別指導条件書で合意した教室指導、オンライン指導、またはその組合せで… | [第4条第2項](TERMS.md#article-4-item-2) | 移動・参照更新（該当箇所） |
 | [現行第3条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L38) | 教室指導は講師1名につき生徒最大2名を基本とし、最大2名の形態で実際の参加者… | [第4条第3項](TERMS.md#article-4-item-3) | 移動・参照更新（該当箇所） |
@@ -51,12 +51,12 @@
 | [現行第6条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L67) | 体験・割引は金額、適用期間、回数、終了後の条件を示します。基本単価、特殊指導… | [第7条第3項](TERMS.md#article-7-item-3) | 移動・参照更新（該当箇所） |
 | [現行第6条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L68) | 教材の費用は第16条によります。 | [第7条第4項](TERMS.md#article-7-item-4) | 移動・参照更新（該当箇所） |
 | [現行第7条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L72) | 日程調整カレンダーは、指導計画承認書で実施承認された授業について、具体的な実… | [第12条第1項](TERMS.md#article-12-item-1) | 移動・参照更新（該当箇所） |
-| [現行第7条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L73) | 双方が合意した指導計画承認書の期間・科目・回数・時間の範囲で日時を合意し、予… | [第12条第3項](TERMS.md#article-12-item-3) | 移動・参照更新（該当箇所） |
-| [現行第7条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L74) | 承認済みの指導計画承認書の範囲で塾が日時を提案する場合、塾は保護者ページ・L… | [第12条第4項](TERMS.md#article-12-item-4) | 移動・参照更新（該当箇所） |
-| [現行第7条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L75) | 塾からのお知らせがなかった場合、または判断の余裕がないまま直前に提案した場合… | [第12条第5項](TERMS.md#article-12-item-5) | 移動・参照更新（該当箇所） |
-| [現行第7条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L76) | 未承認の将来月の学習計画や日時候補を表示する場合は、実施承認済みの授業予約と… | [第12条第6項](TERMS.md#article-12-item-6) | 移動後、本人の依頼で表現を修正（[変更前後](#wording-clarifications)） |
-| [現行第7条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L77) | 前日23時は無料取消し期限です。期限後に新しく予約する場合は、その時点から適… | [第12条第7項](TERMS.md#article-12-item-7) | 移動後、本人の依頼で表現を修正（[変更前後](#wording-clarifications)） |
-| [現行第7条第7項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L78) | 将来の固定曜日・時刻の枠は、別途約束しない限り保証しません。 | [第12条第8項](TERMS.md#article-12-item-8) | 移動・参照更新（該当箇所） |
+| [現行第7条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L73) | 双方が合意した指導計画承認書の期間・科目・回数・時間の範囲で日時を合意し、予… | [第12条第3項](TERMS.md#article-12-item-3)・[第4項](TERMS.md#article-12-item-4) | 移動・参照更新（該当箇所） |
+| [現行第7条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L74) | 承認済みの指導計画承認書の範囲で塾が日時を提案する場合、塾は保護者ページ・L… | [第12条第5項](TERMS.md#article-12-item-5) | 移動・参照更新（該当箇所） |
+| [現行第7条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L75) | 塾からのお知らせがなかった場合、または判断の余裕がないまま直前に提案した場合… | [第12条第6項](TERMS.md#article-12-item-6) | 移動・参照更新（該当箇所） |
+| [現行第7条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L76) | 未承認の将来月の学習計画や日時候補を表示する場合は、実施承認済みの授業予約と… | [第12条第7項](TERMS.md#article-12-item-7) | 移動後、本人の依頼で表現を修正（[変更前後](#wording-clarifications)） |
+| [現行第7条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L77) | 前日23時は無料取消し期限です。期限後に新しく予約する場合は、その時点から適… | [第12条第9項](TERMS.md#article-12-item-9) | 移動後、本人の依頼で表現を修正（[変更前後](#wording-clarifications)） |
+| [現行第7条第7項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L78) | 将来の固定曜日・時刻の枠は、別途約束しない限り保証しません。 | [第12条第10項](TERMS.md#article-12-item-10) | 移動・参照更新（該当箇所） |
 | [現行第8条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L84) | 保護者は、授業日の前日23時まで、予約した授業を無料でお休み（取消し）にでき… | [第13条第1項](TERMS.md#article-13-item-1) | 移動後、本人の依頼で表現を修正（[変更前後](#wording-clarifications)） |
 | [現行第8条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L85) | お休みの連絡が指定のページ・LINE等の窓口に到達した時点で、元の予約は取り… | [第13条第2項](TERMS.md#article-13-item-2) | 移動後、本人の依頼で表現を修正（[変更前後](#wording-clarifications)） |
 | [現行第8条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/63dc34d90dea5310db8139dc83e70fd93ed9541e/terms/2026-11/index.html#L86) | 予約済みの授業を取り消して、別の日または別の時刻に授業を希望する場合は、元の… | [第13条第3項](TERMS.md#article-13-item-3) | 移動・参照更新（該当箇所） |
@@ -249,7 +249,7 @@
 
 > 塾からのお知らせがなかった場合、または判断の余裕がないまま直前に提案した場合は、保護者はその予約を無効（取消し）にでき、キャンセル料金はかかりません。ただし、事前に当事者の間でその日時について相談して同意していた場合（翌日の授業を希望して登録した場合など）は、時間的な余裕がなかったことを理由にしません。
 
-**変更後：** [本文](TERMS.md#article-12-item-5)
+**変更後：** [本文](https://github.com/mugilives-max/stepwise-kobetsu/blob/291c536daa209bd5cfc06c50bd1ef18c6f0c907c/docs/terms-restructure-2026-11/TERMS.md#article-12-item-5)
 
 > 塾からのお知らせがなかった場合、または判断の余裕がないまま直前に提案した場合は、保護者はその予約を無効（取消し）にでき、キャンセル料金はかかりません。ただし、事前に当事者の間でその日時について相談して同意していた場合（翌日の授業を希望して登録した場合など）は、塾からのお知らせが直前だったことだけを理由に、予約を無効にして無料で取り消すことはできません。
 
@@ -261,7 +261,7 @@
 
 > 未承認の将来月の学習計画や日時候補を表示する場合は、実施承認済みの授業予約と明確に区別します。指導計画承認書（期間・科目・回数・単価）の承認は、無回答・既読・期限経過だけでは成立しません。
 
-**変更後：** [本文](TERMS.md#article-12-item-6)
+**変更後：** [本文](https://github.com/mugilives-max/stepwise-kobetsu/blob/291c536daa209bd5cfc06c50bd1ef18c6f0c907c/docs/terms-restructure-2026-11/TERMS.md#article-12-item-6)
 
 > 翌月以降の指導計画が未承認の場合は、その計画や日時候補に「未承認の案」などと表示し、決定済みの授業予約と区別します。案を読んだこと、返信しなかったこと、回答期限が過ぎたことだけでは、その期間・科目・回数・単価で授業を行う承認にはなりません。第4項の「連絡がなければ日時が決まる」扱いは、指導計画承認書で既に承認された授業の日時調整に限ります。
 
@@ -609,7 +609,7 @@
 
 > 3. 双方が合意した指導計画承認書の期間・科目・回数・時間の範囲で日時を合意し、予約を記録します。カレンダー操作だけで、合意した期間・科目・回数の範囲を広げたり、単価を上げたりしません。日時一覧を計画とともに承認した場合は、その日時を予約として記録できます。
 
-**変更後：** [本文](TERMS.md#article-12-item-3)
+**変更後：** [本文](https://github.com/mugilives-max/stepwise-kobetsu/blob/291c536daa209bd5cfc06c50bd1ef18c6f0c907c/docs/terms-restructure-2026-11/TERMS.md#article-12-item-3)
 
 > 3. 双方が合意した指導計画承認書の期間・科目・回数・時間の範囲で日時を合意し、予約を記録します。カレンダー操作だけで、合意した期間・科目・回数の範囲を広げたり、適用単価を上げたりしません。日時一覧を計画とともに承認した場合は、その日時を予約として記録できます。
 
@@ -619,7 +619,7 @@
 
 > 6. 翌月以降の指導計画が未承認の場合は、その計画や日時候補に「未承認の案」などと表示し、決定済みの授業予約と区別します。案を読んだこと、返信しなかったこと、回答期限が過ぎたことだけでは、その期間・科目・回数・単価で授業を行う承認にはなりません。第4項の「連絡がなければ日時が決まる」扱いは、指導計画承認書で既に承認された授業の日時調整に限ります。
 
-**変更後：** [本文](TERMS.md#article-12-item-6)
+**変更後：** [本文](https://github.com/mugilives-max/stepwise-kobetsu/blob/291c536daa209bd5cfc06c50bd1ef18c6f0c907c/docs/terms-restructure-2026-11/TERMS.md#article-12-item-6)
 
 > 6. 翌月以降の指導計画が未承認の場合は、その計画や日時候補に「未承認の案」などと表示し、決定済みの授業予約と区別します。案を読んだこと、返信しなかったこと、回答期限が過ぎたことだけでは、その期間・科目・回数・適用単価で授業を行う承認にはなりません。第4項の「連絡がなければ日時が決まる」扱いは、指導計画承認書で既に承認された授業の日時調整に限ります。
 
@@ -829,7 +829,7 @@
 
 > 日程調整カレンダーは、指導計画承認書で実施承認された授業について、具体的な実施日時を調整し、決定・予約するためのシステムです。学校行事・試験等の予定も、日程調整の参考として登録できます。
 
-**変更後：** [本文](TERMS.md#article-12-item-1)
+**変更後：** [本文](https://github.com/mugilives-max/stepwise-kobetsu/blob/291c536daa209bd5cfc06c50bd1ef18c6f0c907c/docs/terms-restructure-2026-11/TERMS.md#article-12-item-1)
 
 > [第2条](#article-2)の受講管理システムにある日程調整カレンダーで、指導計画承認書で実施承認された授業の具体的な実施日時を調整し、決定・予約します。学校行事・試験等の予定も、日程調整の参考として登録できます。
 
@@ -1003,3 +1003,29 @@
 - [免除申請案内](WAIVER_GUIDE.md)を新規作成。7日以内は目安とし、期限経過による自動失効は設けない。取消し連絡と免除申請を区別し、資料の後日提出・緊急時・個別提出・審査中の支払保留を案内する。
 - 第22条の対象はキャンセル料金に限定せず、支払済み請求の減額全体を維持する。
 - 旧3版のWeb・PDFを保持し、r3に新規公開する。旧原稿はGitの履歴に保持する。
+
+<a id="lesson-stages-revision"></a>
+
+## 授業予定の段階と予約（2026-10-14、r4）
+
+本人の「引き継ぎ資料を参考に、予定周りの規約を適切な形にする」という依頼に基づく。基準は[r3と同一の改訂前正本](https://github.com/mugilives-max/stepwise-kobetsu/blob/291c536daa209bd5cfc06c50bd1ef18c6f0c907c/docs/terms-restructure-2026-11/TERMS.md)。下書き・調整中・確認待ち・確定の4段階を第12条で定義し、予約と無料取消し期限を区別する。
+
+| r3の箇所・内容 | r4の移動先 | 変更と理由 |
+|---|---|---|
+| 第2条第1項・合意した予約日時 | [第2条第1項](TERMS.md#article-2-item-1) | 第12条により確定した予約日時へ。明示合意と、既存の締め切りによる日時確定の両方を参照する |
+| 第2条第5項・カレンダーの説明 | [第2条第5項](TERMS.md#article-2-item-5) | 調整中・確認待ち・確定を先に紹介し、確定した授業が予約であると説明する |
+| 第12条第1項・カレンダーの目的 | [第12条第1項](TERMS.md#article-12-item-1) | 「決定・予約」を「確定（予約）」へ。学校行事等の登録は維持 |
+| 第12条第2項・カレンダーで予約、計画と日時一覧の同時承認 | [第12条第1項](TERMS.md#article-12-item-1)・[第3項](TERMS.md#article-12-item-3) | 重複する案内を統合し、計画と日時一覧を同時承認できることを残す |
+| 第12条第3項・計画の範囲、日時の合意、単価上限 | [第12条第3項](TERMS.md#article-12-item-3)・[第4項](TERMS.md#article-12-item-4) | 予約できる範囲と合意の方法を分ける。確認操作とLINE・電話等での合意記録を明記 |
+| 第12条第4項・日時と締め切りの通知、無回答での日時決定 | [第12条第5項](TERMS.md#article-12-item-5) | 「確認待ち」として通知し、無回答の場合の確定も明示。期限前に日時へ同意した場合はその時点で確定。お知らせから3日以上あと・授業日の2日前までの原則は維持 |
+| 第12条第5項・無通知や直前提案の無料取消し、事前合意の例外 | [第12条第6項](TERMS.md#article-12-item-6) | 既存の無料取消しと例外を維持。十分な締め切りを置けない提案は無回答では確定せず、明示合意で確定すると明確化 |
+| 第12条第6項・未承認計画と候補、期限だけで実施承認にならない | [第12条第7項](TERMS.md#article-12-item-7) | 未承認の案と確定した授業を区別。翌月以降に限らず未承認計画に適用する既存の承認原則を明記 |
+| 第12条第7項・前日23時の無料期限、期限後の新規予約 | [第12条第9項](TERMS.md#article-12-item-9) | 予約の確定だけでは料金が生じないこと、確定後も前日23時まで無料取消しできることを説明。期限後は適用ポリシーを示して承認を得る扱いを維持 |
+| 第12条第8項・将来の固定枠は原則保証しない | [第12条第10項](TERMS.md#article-12-item-10) | 項番号のみ変更 |
+| 新設・4段階の定義 | [第12条第2項](TERMS.md#article-12-item-2) | 下書きは非表示、調整中は締め切りなし・自動確定なし、確認待ちは締め切りつきの提案、確定は予約 |
+| 新設・未確定の取りやめ | [第12条第8項](TERMS.md#article-12-item-8) | 調整中・確認待ちは予約ではなく、取りやめにキャンセル料金はかからない |
+
+- 第12条は8項から10項へ。全体は7章32条135項・3表・179アンカー。
+- 同じ項番号で比較した変更は第2条の2項と第12条の旧8項、追加は第12条第9・10項。他123項を文字単位で維持した。第13条以降の本文・料金表・別表は一切変更していない。
+- 先頭の全項対応表は現在の移動先へ更新した。過去の改訂説明内の第12条のリンクは、当時の説明と異なる項へ飛ばないようr3の固定コミットへ向けた。
+- 版表示・目次内の第12条見出しも更新。r3以前の公開HTML・PDF・免除申請案内は固定ファイルのまま保持する。
