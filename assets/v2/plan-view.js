@@ -1,5 +1,5 @@
-// 授業計画の見せ方（管理画面・保護者画面の両方で使う。DOM を使わない。node のテストからも読む）
-// 計画の正本は planLines の 1 行（科目 × 種類 × 期間 × 回数 × 1回の時間・授業料）。ここでは行を変えず、読むためにまとめるだけ。
+// 受講合意書の見せ方（管理画面・保護者画面の両方で使う。DOM を使わない。node のテストからも読む）
+// 受講合意書の正本は planLines の 1 行（科目 × 種類 × 期間 × 回数 × 1回の時間・授業料）。ここでは行を変えず、読むためにまとめるだけ。
 // - まとまり（set）: 生徒 × 正確な期間 × 状態。同じ月でも期間や状態が違えば別のまとまり（承認済みと下書きを一つにしない）
 // - 科目（subject）: まとまりの中を科目ごとに。「授業 n回／演習 m回」は形（授業・演習・講習・その他）ごとに足す。
 //   時間・授業料・種類が違う行は 1 行のまま残し、足し算は形ごとの回数と金額だけ（内訳はいつも行で読める）
@@ -30,7 +30,7 @@ export function partsOf(line) {
   return v.map(p => ({ label: String((p && p.label) || '').trim(), count: Number(p && p.count) }))
     .filter(p => p.label && Number.isInteger(p.count) && p.count > 0);
 }
-// 計画の回数（承認済みは承認した回数、見送りは 0）と、お知らせした回数
+// 受講合意書の回数（承認済みは承認した回数、見送りは 0）と、お知らせした回数
 export function plannedCount(l) {
   if (l.status === 'declined') return 0;
   if (l.status === 'approved' && l.approvedCount !== null && l.approvedCount !== undefined && l.approvedCount !== '') return Number(l.approvedCount);
@@ -112,7 +112,7 @@ export function subjectInfoHtml(g, esc) {
     const rest = {}; for (const u of g.unallocated) rest[u.form] = (rest[u.form] || 0) + u.count;
     if (Object.keys(rest).length) h += `<div class="pv-purpose muted" role="listitem"><span>目的の内訳なし</span><b>${esc(formsText(rest))}</b></div>`;
     h += '</div>';
-    if (g.over.length) h += `<p class="small pv-warn">目的ごとの回数の合計が、計画の回数を超えています（${g.over.map(o => `${esc(o.form)} 内訳 ${o.sum}回／計画 ${o.count}回`).join('・')}）。</p>`;
+    if (g.over.length) h += `<p class="small pv-warn">目的ごとの回数の合計が、受講合意書の回数を超えています（${g.over.map(o => `${esc(o.form)} 内訳 ${o.sum}回／受講合意書 ${o.count}回`).join('・')}）。</p>`;
     if (g.reduced.length) h += `<p class="small muted">承認で回数が変わった行があります。目的ごとの回数は、お知らせしたときの内訳です。</p>`;
   }
   return h;
@@ -126,20 +126,20 @@ export function subjectBodyHtml(g, esc, opts = {}) {
   }).join('')}</div>`;
   return h;
 }
-// 計画全体のプレビュー（読むだけ。保存・送信・承認は起こさない）
+// 受講合意書全体のプレビュー（読むだけ。保存・送信・承認は起こさない）
 // set: { startDate, endDate, status, lines }。opts.schedule: [{ lineId, assigned, tentative }]（日程の区画。管理画面だけ）
 export function planPreviewHtml(set, esc, opts = {}) {
   const groups = subjectGroups(set.lines), t = planTotals(set.lines);
   let h = `<div class="pv"><p class="pv-head"><b>${esc(periodText(set.startDate, set.endDate))}</b> <span class="tag">${esc(STATUS_LABEL[set.status] || set.status)}</span>${opts.student ? ` ${esc(opts.student)}` : ''}</p>`;
-  h += `<p class="small muted" style="margin:2px 0 10px">この期間・この状態の計画 ${set.lines.length}行をまとめています。${opts.others ? `同じ月のほかの計画（${esc(opts.others)}）は含めていません。` : ''}</p>`;
+  h += `<p class="small muted" style="margin:2px 0 10px">この期間・この状態の受講合意書 ${set.lines.length}行をまとめています。${opts.others ? `同じ月のほかの受講合意書（${esc(opts.others)}）は含めていません。` : ''}</p>`;
   for (const g of groups) {
     h += `<section class="pv-subject" aria-label="${esc(g.subject)}"><h3 class="pv-sub-head"><span>${esc(g.subject)}</span><small>${esc(formsText(g.forms))}</small><b>${esc(amountText(g))}</b></h3>${subjectBodyHtml(g, esc)}</section>`;
   }
   h += `<div class="pv-total"><span>期間全体（${esc(formsText(t.forms))}）</span><b>${esc(amountText(t))}</b></div>`;
-  h += `<p class="small muted">予定の金額は計画の回数 × 1回の授業料です。請求は、実施した授業の分だけです。</p>`;
+  h += `<p class="small muted">予定の金額は受講合意書の回数 × 1回の授業料です。請求は、実施した授業の分だけです。</p>`;
   if (opts.schedule) {
     const rows = set.lines.map(l => { const s = opts.schedule.find(x => x.lineId === l.id) || {}; const n = plannedCount(l), placed = Number(s.assigned || 0) + Number(s.tentative || 0); return { l, s, rest: n - placed }; });
-    h += `<section class="pv-schedule" aria-label="日程"><h3 class="pv-sub-head"><span>日程（計画とは別）</span></h3><div class="pv-lines">${rows.map(({ l, s, rest }) => `<div class="pv-line"><span class="b">${esc(l.subject)} <span class="tag">${esc(formOf(l.kind).form)}</span><small class="muted">決定・実施 ${Number(s.assigned || 0)}回・調整中 ${Number(s.tentative || 0)}回${rest > 0 ? `・日時がまだの回数 ${rest}回` : rest < 0 ? `・計画より ${-rest}回多い` : ''}</small></span></div>`).join('')}</div><p class="small muted">日時は予定の画面で確かめます。</p></section>`;
+    h += `<section class="pv-schedule" aria-label="日程"><h3 class="pv-sub-head"><span>日程（受講合意書とは別）</span></h3><div class="pv-lines">${rows.map(({ l, s, rest }) => `<div class="pv-line"><span class="b">${esc(l.subject)} <span class="tag">${esc(formOf(l.kind).form)}</span><small class="muted">決定・実施 ${Number(s.assigned || 0)}回・調整中 ${Number(s.tentative || 0)}回${rest > 0 ? `・日時がまだの回数 ${rest}回` : rest < 0 ? `・受講合意書より ${-rest}回多い` : ''}</small></span></div>`).join('')}</div><p class="small muted">日時は予定の画面で確かめます。</p></section>`;
   }
   return h + '</div>';
 }
