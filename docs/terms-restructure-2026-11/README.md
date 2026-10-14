@@ -1,6 +1,18 @@
-# 受講規約・2026年11月版（2026年10月14日改訂・r5）
+# 受講規約・2026年11月版（2026年10月14日改訂・r6）
 
-## 2026-10-14：契約書類の名称統一（r5）
+<a id="scheduling-chapter-r6"></a>
+
+## 最新の公開資料（r6）
+
+- 正本：[TERMS.md](TERMS.md)。8章36条138項・3表。適用開始日は2026年11月1日。
+- 「下書き」の説明を規約から外し、調整中・確認待ち・確定を説明。第3章「受講内容の合意」と第4章「授業日時の調整と予約」を分離した。料金・承認・予約確定・取消し等の条件は変えていない。
+- [Web版](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/stepwise-terms-2026-11-20261014-r6.pdf)／[空欄様式と旧版一覧](https://www.stepwise-education.jp/terms/)。
+- 条番号をそろえた3つの空欄様式と[免除申請案内](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/)（[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/waiver.pdf)）を同じ版に用意した。
+- [対応表](MAPPING.md#scheduling-chapter-r6)・[判断記録](DECISIONS.md)・[検証記録](PUBLICATION_CHECKS_20261014_R6.json)。旧第12条以外の125項、移動対象13断片、3表を全文照合した。旧版公開ファイル20点はblob単位で一致する。
+- [生成・検証実行](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38568087236)が成功。本文はMarkdownとHTMLの全文一致、187アンカー、PDF本文298か所・日本語フォント埋込み、390px・320pxの幅を確認した。規約13ページ、空欄様式3点各1ページ、免除申請案内2ページの全18ページとスマートフォン表示8点を画像で目視確認し、文字欠けや表の崩れは見つからなかった。[PR #73](https://github.com/mugilives-max/stepwise-kobetsu/pull/73)。
+- システムの下書き機能・保存済み書面・適用版設定・同意記録は変更しない。r5等の旧書面はその版の番号を維持する。r6のシステム適用前に、新規発行様式の参照番号の対応と予定段階の残件を検証する。
+
+## 2026-10-14：契約書類の名称統一（r5・履歴）
 
 本人の決定により、規約・関連書類・Web・PDF・管理画面・保護者画面・今後発行する書面の名称をそろえる。条件・料金・承認の要件は変えない。
 
@@ -10,24 +22,13 @@
 | 特殊指導条件書 | 受講条件書（特殊指導） | 例外的な指導の条件と特殊指導の基準単価 |
 | 指導計画承認書 | 受講合意書 | 双方が合意する対象期間・科目・回数・時間・適用単価 |
 
-提案段階の受講合意書は「案」として区別する。過去の書類・同意履歴・旧版Web/PDFは保存し、過去の名称が記録に残ることを認める。発行済みファイルの再生成・置換は行わない。r3以前の提案が更新後に承認された場合も、提案時のひな形と名称を維持する。システムで使用する規約版は自動で切り替えない。予定段階のシステム実装は別作業。現行規約の構成は下記r6を参照する。
+提案段階の受講合意書は「案」として区別する。過去の書類・同意履歴・旧版Web/PDFは保存し、過去の名称が記録に残ることを認める。発行済みファイルの再生成・置換は行わない。r3以前の提案が更新後に承認された場合も、提案時のひな形と名称を維持する。システムで使用する規約版は自動で切り替えない。予定段階のシステム実装は別作業。現行規約の構成は上記r6を参照する。
 
 空欄様式：[通常指導](TEACHING_CONDITIONS_REGULAR.md)・[特殊指導](TEACHING_CONDITIONS_SPECIAL.md)・[受講合意書](TUITION_AGREEMENT.md)。
 
-<a id="scheduling-chapter-r6"></a>
-
-## 最新の公開資料（r6）
-
-- 正本：[TERMS.md](TERMS.md)。8章36条138項・3表。適用開始日は2026年11月1日。
-- 「下書き」の説明を規約から外し、調整中・確認待ち・確定を説明。第3章「受講内容の合意」と第4章「授業日時の調整と予約」を分離した。料金・承認・予約確定・取消し等の条件は変えていない。
-- [Web版](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/stepwise-terms-2026-11-20261014-r6.pdf)／[空欄様式と旧版一覧](https://www.stepwise-education.jp/terms/)。
-- 条番号をそろえた3つの空欄様式と[免除申請案内](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/)（[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r6/waiver/waiver.pdf)）を同じ版に用意する。
-- [対応表](MAPPING.md#scheduling-chapter-r6)・[判断記録](DECISIONS.md)・[検証記録](PUBLICATION_CHECKS_20261014_R6.json)。旧第12条以外の125項、移動対象13断片、表と旧版公開ファイルの保持を照合する。
-- システムの下書き機能・保存済み書面・適用版設定・同意記録は変更しない。r5等の旧書面はその版の番号を維持する。r6のシステム適用前に、新規発行様式の参照番号の対応と予定段階の残件を検証する。
-
 ## 前回の公開資料（r5・履歴）
 
-- 正本：[TERMS.md](TERMS.md)。7章32条135項・3表。適用開始日は2026年11月1日。
+- 当時の正本：[r5固定版](https://github.com/mugilives-max/stepwise-kobetsu/blob/bd60046fc8a8ffab54b5ef2c02992659e67d8847/docs/terms-restructure-2026-11/TERMS.md)。7章32条135項・3表。適用開始日は2026年11月1日。
 - [Web版](https://www.stepwise-education.jp/terms/2026-11-20261014-r5/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r5/stepwise-terms-2026-11-20261014-r5.pdf)／[空欄様式と旧版一覧](https://www.stepwise-education.jp/terms/)。
 - [検証記録](PUBLICATION_CHECKS_20261014_R5.json)：名称等の所定置換を除いてr4の原稿全文が一致、全135項と3表を照合。旧5版と免除案内の12ファイルは不変。
 - [システムを含む変更・公開の確認記録](NAMING_RELEASE_20261014.md)／[PR #71](https://github.com/mugilives-max/stepwise-kobetsu/pull/71)。
@@ -49,7 +50,7 @@
 | [免除申請のご案内](WAIVER_GUIDE.md) | 申請先・時期の目安・資料・緊急時・審査中の支払い |
 | [読みやすさの確認結果](READABILITY_REVIEW.md) | 当時の未採用案。今回の変更は、その後の本人の追加指示による |
 
-## 採用した版と、公開・適用の状態
+## 採用と公開の経緯（r4以前の条番号は当時の版による）
 
 - 前回改訂：2026年10月14日（r4）。本人の予定周りの規約整理の依頼に基づく。変更対象は第2条・第12条、版表示・目次。第13条以降の本文と別表はr3から変更していない。詳細は[対応表](MAPPING.md#lesson-stages-revision)・[判断記録](DECISIONS.md#lesson-stages-revision)。
 
