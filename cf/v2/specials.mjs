@@ -78,7 +78,7 @@ export const specialRoutes = {
   'admin/specials/get': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const s = await studentRow(c, b.studentId); if (!s) fail('notFound', '生徒が見つかりません', 404);
-    return { student: { id: s.id, name: fullName(s), baseRate30: s.baseRate30 }, ...(await studentSpecials(c.db, s.id)) };
+    return { student: { id: s.id, name: fullName(s), baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30 }, ...(await studentSpecials(c.db, s.id)) };
   },
   // 特殊指導を提案する（新しい版）。replaceId を渡すと、その提案・承認を置き換える
   'admin/specials/propose': async (c, b) => {

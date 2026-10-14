@@ -14,7 +14,9 @@ export const shiftMonth = (m, n) => { const [y, mo] = m.split('-').map(Number); 
 export const lineCap = l => (l.approvedCount === null || l.approvedCount === undefined ? Number(l.count) : Number(l.approvedCount));
 // 遅刻で行わなかった分（lostMinutes）は授業料に入れない
 export const lessonAmount = (line, lesson) => { const m = Number(lesson.minutes) - Number(lesson.lostMinutes || 0); return Number(line.minutes) === m ? Number(line.fee) : Math.floor(Number(line.fee) * m / Number(line.minutes)); };
-export const baseAmount = (student, minutes) => Math.floor(Number(student.baseRate30 || 0) * Number(minutes) / 30);
+// 通常指導の基準単価（90分の授業料。0025_base_fee90.sql。古い行・古い呼び出しは baseRate30 × 3）
+export const base90 = s => Number((s && s.baseFee90) || 0) || Number((s && s.baseRate30) || 0) * 3;
+export const baseAmount = (student, minutes) => Math.floor(base90(student) * Number(minutes) / 90);
 const kindOf = k => String(k || '') || '通常';
 export const lineMatches = (line, lesson) => line.studentId === lesson.studentId && line.subject === lesson.subject && kindOf(line.kind) === kindOf(lesson.kind) && line.startDate <= lesson.date && lesson.date <= line.endDate;
 const byTime = (a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.id.localeCompare(b.id);
@@ -59,7 +61,7 @@ export function estimateFor(lines, student, lesson) {
 // その授業の1回の授業料（予定の長さで。承認済みの計画 → 承認待ちの計画 → 生徒の基本単価）
 export async function lessonFee(db, lesson) {
   const lines = (await db.prepare("select * from planLines where studentId = ? and status in ('approved', 'proposed')").bind(lesson.studentId).all()).results;
-  const s = await db.prepare('select baseRate30 from students where id = ?').bind(lesson.studentId).first();
+  const s = await db.prepare('select baseRate30, baseFee90 from students where id = ?').bind(lesson.studentId).first();
   return estimateFor(lines.sort((a, b) => (a.status === 'approved' ? 0 : 1) - (b.status === 'approved' ? 0 : 1)), s || {}, { ...lesson, lostMinutes: 0 });
 }
 // 今までの決まりのキャンセル料の規定額。開始前の連絡は 1,000円、開始後・連絡なしはその授業の授業料

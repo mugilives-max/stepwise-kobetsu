@@ -52,7 +52,7 @@ export function plansPage(ctx) {
 }
 function studentPlans(ctx, s) {
   const { esc } = ctx;
-  let h = `<div class="group"><div class="sub-head"><strong>${esc(s.name)}</strong><small class="muted">通常指導の基準単価 ${yen(s.baseRate30)}/30分${s.status === 'paused' ? '・休会' : ''}</small><button class="mini-btn" data-action="pl-add" data-id="${esc(s.id)}" aria-label="${esc(s.name)} の計画を足す"${ctx.dis()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
+  let h = `<div class="group"><div class="sub-head"><strong>${esc(s.name)}</strong><small class="muted">通常指導の基準単価 90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}${s.status === 'paused' ? '・休会' : ''}</small><button class="mini-btn" data-action="pl-add" data-id="${esc(s.id)}" aria-label="${esc(s.name)} の計画を足す"${ctx.dis()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
   if (s.unplanned) h += `<p class="small notice" style="margin:6px 0">計画に入っていない授業が ${s.unplanned}件あります（承認がないと請求できません）。</p>`;
   if (s.lines.length) h += planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('');
   else h += '<p class="small muted" style="padding:6px 0 10px">この月の計画はまだありません。</p>';
@@ -123,7 +123,7 @@ function lineForm(ctx, s, l) {
   const { esc } = ctx, kinds = plans.kinds.filter(k => k.active || (l && k.name === l.kind));
   if (l && !kinds.some(k => k.name === l.kind)) kinds.push({ name: l.kind }); // 種類の一覧に無い種類でも、直すときに勝手に変えない
   const std = kinds.find(k => k.name === (l ? l.kind : '通常')) || {};
-  const minutes = l ? l.minutes : std.standardMinutes || 60, fee = l ? l.fee : std.standardFee || Math.round(s.baseRate30 * minutes / 30);
+  const minutes = l ? l.minutes : std.standardMinutes || 60, fee = l ? l.fee : std.standardFee || Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * minutes / 90);
   const parents = s.lines.filter(x => !x.parentId && x.status !== 'declined' && (!l || x.id !== l.id));
   return `<form class="stack" data-form="pl-save" data-student="${esc(s.id)}"${l ? ` data-id="${esc(l.id)}" data-version="${l.version}"` : ''}>
     ${l && l.status !== 'draft' ? '<p class="small notice">直すと承認は消えて下書きに戻ります。もう一度お知らせしてください。</p>' : ''}
@@ -132,7 +132,7 @@ function lineForm(ctx, s, l) {
     <label>回数<input type="number" name="count" min="1" max="60" value="${l ? l.count : 4}" style="width:5em" required></label>
     <label>1回の時間（分）<input type="number" name="minutes" min="15" max="300" step="15" value="${minutes}" style="width:6em" required></label>
     <label>1回の授業料（円）<input type="number" name="fee" min="0" max="100000" value="${fee}" style="width:7em" required></label></div>
-    <div class="small muted">通常指導の基準単価なら 60分 ${yen(s.baseRate30 * 2)}・90分 ${yen(s.baseRate30 * 3)}・120分 ${yen(s.baseRate30 * 4)}</div>
+    <div class="small muted">通常指導の基準単価（90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}）なら 60分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 60 / 90))}・120分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 120 / 90))}</div>
     <div class="row"><label>期間<input type="date" name="startDate" value="${l ? l.startDate : plans.month + '-01'}" required></label><label>〜<input type="date" name="endDate" value="${l ? l.endDate : monthEnd(plans.month)}" required></label>
     <label>追加の計画（テスト前など）<select name="parentId"><option value="">ふつうの計画</option>${parents.map(p => `<option value="${esc(p.id)}"${l && l.parentId === p.id ? ' selected' : ''}>${esc(p.subject)}（${md(p.startDate)}〜${md(p.endDate)}）への追加</option>`).join('')}</select></label></div>
     <label>保護者への説明（任意）<input name="comment" maxlength="500" value="${esc(l ? l.comment : '')}" placeholder="例: 2学期中間テストに向けて計算の復習"></label>

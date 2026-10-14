@@ -81,7 +81,7 @@ export const conditionRoutes = {
     await requireStaff(c, b, 'manager');
     const s = await studentRow(c, b.studentId); if (!s) fail('notFound', '生徒が見つかりません', 404);
     let perms = {}; try { perms = JSON.parse(s.permissions || '{}'); } catch {}
-    return { ...(await studentConditions(c.db, s.id)), student: { id: s.id, name: fullName(s), baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, subjects: s.subjects, studentContact: perms.reschedule !== false } };
+    return { ...(await studentConditions(c.db, s.id)), student: { id: s.id, name: fullName(s), baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, subjects: s.subjects, studentContact: perms.reschedule !== false } };
   },
   // 条件を決めて保護者にお知らせする（新しい版）。生徒の登録にも写す
   'admin/conditions/propose': async (c, b) => {
@@ -97,8 +97,8 @@ export const conditionRoutes = {
       c.db.prepare("update conditions set status = 'replaced', updatedAt = ? where studentId = ? and status = 'proposed'").bind(now, s.id),
       c.db.prepare('insert into conditions (id, studentId, no, minutes, fee, deliveryMode, groupSize, studentContact, subjects, note, fromMonth, termsVersion, status, proposedAt, proposedBy, createdAt, updatedAt, templateVersion) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .bind(id, s.id, no, f.minutes, f.fee, f.deliveryMode, f.groupSize, f.studentContact, f.subjects, f.note, f.fromMonth, terms.version, 'proposed', now, 'staff:' + me.id, now, now, '20261012-r3'),
-      c.db.prepare('update students set baseRate30 = ?, deliveryMode = ?, permissions = ?, updatedAt = ?, version = version + 1 where id = ?')
-        .bind(Math.round(f.fee * 30 / f.minutes), f.deliveryMode === 'both' ? s.deliveryMode : f.deliveryMode, JSON.stringify(perms), now, s.id),
+      c.db.prepare('update students set baseRate30 = ?, baseFee90 = ?, deliveryMode = ?, permissions = ?, updatedAt = ?, version = version + 1 where id = ?')
+        .bind(Math.round(f.fee * 30 / f.minutes), Math.round(f.fee * 90 / f.minutes), f.deliveryMode === 'both' ? s.deliveryMode : f.deliveryMode, JSON.stringify(perms), now, s.id),
     ]);
     await storeDoc(c, id);
     await familyNotice(c, s.id, '基本指導条件のお知らせ', `${fullName(s)}さんの基本指導条件（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（基本指導条件書）を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月`);

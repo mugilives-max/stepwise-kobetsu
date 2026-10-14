@@ -21,7 +21,7 @@ export function familyAdminView(f) {
 }
 export function studentAdminView(s) {
   return { id: s.id, familyId: s.familyId, name: fullName(s), familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana,
-    grade: s.grade, school: s.school, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, status: s.status, enrolledOn: s.enrolledOn, subjects: s.subjects, note: s.note,
+    grade: s.grade, school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, status: s.status, enrolledOn: s.enrolledOn, subjects: s.subjects, note: s.note,
     testOnly: !!s.testOnly, trial: !!s.trial, link: String(s.linkCode || '').startsWith('off.') ? '' : studentLink(s.linkCode), // off. は使えない鍵（MCP で登録した体験生）。「専用リンクを作り直す」で使えるようになる
     legacyId: s.legacyId, version: s.version };
 }
@@ -34,7 +34,9 @@ function studentFields(b, base = {}) {
   for (const [k, max] of Object.entries(TEXT_LIMITS)) if (b[k] !== undefined) {
     const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = v;
   }
-  if (b.baseRate30 !== undefined) { const n = Number(b.baseRate30); if (!Number.isInteger(n) || n < 0 || n > 100000) fail('badRate', '基本単価（30分）は0〜100,000円の整数で入れてください'); out.baseRate30 = n; }
+  // 通常指導の基準単価は 90 分の授業料（baseFee90）。baseRate30（30 分）は互換のために一緒に書く。baseRate30 だけ送られたら × 3
+  if (b.baseFee90 !== undefined) { const n = Number(b.baseFee90); if (!Number.isInteger(n) || n < 0 || n > 300000) fail('badRate', '通常指導の基準単価（90分）は0〜300,000円の整数で入れてください'); out.baseFee90 = n; out.baseRate30 = Math.round(n / 3); }
+  else if (b.baseRate30 !== undefined) { const n = Number(b.baseRate30); if (!Number.isInteger(n) || n < 0 || n > 100000) fail('badRate', '基本単価（30分）は0〜100,000円の整数で入れてください'); out.baseRate30 = n; out.baseFee90 = n * 3; }
   if (b.deliveryMode !== undefined) { if (!['', 'in_person', 'online'].includes(b.deliveryMode)) fail('badMode', '授業の形式を選んでください'); out.deliveryMode = b.deliveryMode; }
   if (b.status !== undefined) { if (!['enrolled', 'paused', 'left'].includes(b.status)) fail('badStatus', '在籍の状態を選んでください'); out.status = b.status; }
   if (b.enrolledOn !== undefined) { if (b.enrolledOn && !/^\d{4}-\d{2}-\d{2}$/.test(b.enrolledOn)) fail('badDate', '入塾日を確かめてください'); out.enrolledOn = b.enrolledOn || ''; }
@@ -115,11 +117,11 @@ export const peopleRoutes = {
   'admin/students/create': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const fam = await getFamily(c, b.familyId);
-    const s = studentFields(b, { familyName: '', givenName: '', familyKana: '', givenKana: '', grade: '', school: '', subjects: '', note: '', baseRate30: 0, deliveryMode: '', status: 'enrolled', enrolledOn: '' });
+    const s = studentFields(b, { familyName: '', givenName: '', familyKana: '', givenKana: '', grade: '', school: '', subjects: '', note: '', baseRate30: 0, baseFee90: 0, deliveryMode: '', status: 'enrolled', enrolledOn: '' });
     const id = newId('su');
-    await c.db.prepare(`insert into students (id, familyId, familyName, givenName, familyKana, givenKana, grade, school, subjects, note, baseRate30, deliveryMode, status, enrolledOn, linkCode, testOnly, createdAt, updatedAt)
-      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .bind(id, fam.id, s.familyName, s.givenName, s.familyKana, s.givenKana, s.grade, s.school, s.subjects, s.note, s.baseRate30, s.deliveryMode, s.status, s.enrolledOn, newLinkCode(), fam.testOnly ? 1 : 0, iso(c.now), iso(c.now)).run();
+    await c.db.prepare(`insert into students (id, familyId, familyName, givenName, familyKana, givenKana, grade, school, subjects, note, baseRate30, baseFee90, deliveryMode, status, enrolledOn, linkCode, testOnly, createdAt, updatedAt)
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(id, fam.id, s.familyName, s.givenName, s.familyKana, s.givenKana, s.grade, s.school, s.subjects, s.note, s.baseRate30, s.baseFee90, s.deliveryMode, s.status, s.enrolledOn, newLinkCode(), fam.testOnly ? 1 : 0, iso(c.now), iso(c.now)).run();
     await audit(c, 'studentCreate', id, { familyId: fam.id });
     return { student: studentAdminView(await getStudent(c, id)) };
   },
@@ -127,10 +129,10 @@ export const peopleRoutes = {
     await requireStaff(c, b, 'manager');
     const s = await getStudent(c, b.id); sameVersion(s, b);
     const n = studentFields(b, s);
-    await c.db.prepare(`update students set familyName = ?, givenName = ?, familyKana = ?, givenKana = ?, grade = ?, school = ?, subjects = ?, note = ?, baseRate30 = ?, deliveryMode = ?, status = ?, enrolledOn = ?,
+    await c.db.prepare(`update students set familyName = ?, givenName = ?, familyKana = ?, givenKana = ?, grade = ?, school = ?, subjects = ?, note = ?, baseRate30 = ?, baseFee90 = ?, deliveryMode = ?, status = ?, enrolledOn = ?,
       updatedAt = ?, version = version + 1 where id = ? and version = ?`)
-      .bind(n.familyName, n.givenName, n.familyKana, n.givenKana, n.grade, n.school, n.subjects, n.note, n.baseRate30, n.deliveryMode, n.status, n.enrolledOn, iso(c.now), s.id, s.version).run();
-    await audit(c, 'studentUpdate', s.id, { status: n.status, baseRate30: n.baseRate30 });
+      .bind(n.familyName, n.givenName, n.familyKana, n.givenKana, n.grade, n.school, n.subjects, n.note, n.baseRate30, Number(n.baseFee90 || 0) || Number(n.baseRate30 || 0) * 3, n.deliveryMode, n.status, n.enrolledOn, iso(c.now), s.id, s.version).run();
+    await audit(c, 'studentUpdate', s.id, { status: n.status, baseFee90: n.baseFee90, baseRate30: n.baseRate30 });
     return { student: studentAdminView(await getStudent(c, s.id)) };
   },
   // 生徒を別の家族へ移す（兄弟をまとめる・登録の間違いを直す）
