@@ -14,7 +14,7 @@ import { familyConditions, familyNeedsConditions } from './conditions.mjs';
 import { storeInvoiceDoc, storeReceiptDoc, billingDocIds } from './billing-doc.mjs';
 import { agreedSpecialFor, familySpecials } from './specials.mjs';
 import { todayJst, addDays, familyNotice, staffNotice } from './schedule.mjs';
-import { validMonth, monthEnd, shiftMonth, lineCap, lessonAmount, lineMatches, studentBilling, estimateFor, assignLines, parseParts, PART_LABEL } from './plan-calc.mjs';
+import { validMonth, monthEnd, shiftMonth, lineCap, lessonAmount, lineMatches, studentBilling, estimateFor, assignLines, parseParts, PART_LABEL, base90 } from './plan-calc.mjs';
 import { partsOf } from '../../assets/v2/plan-view.js';
 
 const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(Date.parse(d + 'T00:00:00Z'));
@@ -212,7 +212,7 @@ export const billingRoutes = {
       const usage = usageOf(sb, tentative);
       const lines = sb.lines.filter(l => l.startDate <= to && from <= l.endDate);
       const lessonsInMonth = sb.lessons.filter(l => l.date >= from && l.date <= to);
-      rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseRate30: s.baseRate30,
+      rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseFee90: base90(s), baseRate30: s.baseRate30,
         lines: await Promise.all(lines.map(async l => lineView(l, { ...usage[l.id], locked: await lineLocked(c, l.id) }))),
         // 計画のない授業: 承認済みの行に入らず、下書き・承認待ちの行にも当たらないもの
         unplanned: lessonsInMonth.concat(tentative).filter(ls => !sb.line[ls.id] && !lines.some(l => ['draft', 'proposed'].includes(l.status) && lineMatches(l, ls))).length });
@@ -229,8 +229,8 @@ export const billingRoutes = {
     if (n.parts === undefined && old && partsOf(old).reduce((k, p) => k + p.count, 0) > n.count) fail('badParts', '目的・教材ごとの回数の合計が、計画の回数を超えます。内訳も直してください');
     await checkLine(c, s.id, n, old ? old.id : '');
     const condition = await c.db.prepare("select * from conditions where studentId = ? and status = 'agreed' and fromMonth <= ? order by fromMonth desc, no desc limit 1").bind(s.id,n.startDate.slice(0,7)).first();
-    const base = Number(s.baseRate30 || 0);
-    const ceiling = condition ? Math.floor(condition.fee * n.minutes / condition.minutes) : Math.floor(base * n.minutes / 30);
+    const base = base90(s);
+    const ceiling = condition ? Math.floor(condition.fee * n.minutes / condition.minutes) : Math.floor(base * n.minutes / 90);
     const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
     if (sp && n.endDate > sp.toDate) fail('needSpecial', '計画の対象期間全体が、承認済みの特殊指導の対象期間に含まれる必要があります');
     if ((sp && n.fee > Math.floor(sp.fee * n.minutes / sp.minutes)) || ((condition || base > 0) && n.fee > ceiling && !sp))
