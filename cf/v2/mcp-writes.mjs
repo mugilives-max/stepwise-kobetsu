@@ -16,7 +16,7 @@
 import { fail, audit, newId, iso, sha256Hex } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
-import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, calendarEffect, confirmByFor, todayJst, freeDeadline } from './schedule.mjs';
+import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker } from './schedule.mjs';
 
 const MAX_ITEMS = 30;
 const RID = /^[A-Za-z0-9._:-]{8,80}$/, KEY = /^[A-Za-z0-9._:-]{1,40}$/;
@@ -340,6 +340,36 @@ export const mcpWriteRoutes = {
     await finishRequest(c, b.requestId, 'done', result);
     await audit(c, 'mcpTrialCreate', sid, { familyId: fid });
     return result;
+  },
+
+  // カレンダーの作り直し（2026-10-14、Kura 調査 #195）。今日以降の決定の授業と予定の面談のうち、予定がまだ仮の目印（作成を断られたまま）か空のもの。
+  // 送っている途中（pending）の頼みがある行は除く。メールは送らない。dryRun で対象だけ返す。範囲（V2_SERVICE_WRITE_SCOPE）がテスト用なら、テスト用の生徒の授業だけ
+  'mcp/calendar/repair': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const today = todayJst(c.now);
+    const pending = (await c.db.prepare("select payload from effects where status = 'pending' and kind = 'calendarCreate'").all()).results.map(r => parse(r.payload).marker).filter(Boolean);
+    const stale = id => (!id || isCalMarker(id)) && !pending.includes(id);
+    const lessons = [];
+    for (const l of (await c.db.prepare("select * from lessons where status = 'decided' and date >= ? order by date, start").bind(today).all()).results) {
+      if (!stale(l.calendarEventId)) continue;
+      const s = await studentWithFamily(c, l.studentId);
+      if (scopeOf(c) === 'test' && !isTestStudent(s, { testOnly: s.familyTestOnly })) continue;
+      lessons.push({ l, s });
+    }
+    const meetings = scopeOf(c) === 'all' ? (await c.db.prepare("select m.*, f.name familyLabel from meetings m left join families f on f.id = m.familyId where m.status = 'scheduled' and m.date >= ? order by m.date, m.start").bind(today).all()).results.filter(m => stale(m.calendarEventId)) : [];
+    const targets = lessons.map(({ l, s }) => ({ kind: 'lesson', id: l.id, student: studentLabel(s), date: l.date, start: l.start, subject: l.subject, was: l.calendarEventId ? 'まだ仮の目印' : '空' }))
+      .concat(meetings.map(m => ({ kind: 'meeting', id: m.id, date: m.date, start: m.start, title: m.title, was: m.calendarEventId ? 'まだ仮の目印' : '空' })));
+    if (b.dryRun === true) return { dryRun: true, targets, mails: 0 };
+    for (const { l, s } of lessons) {
+      const marker = await calendarEffect(c, 'create', { ...l, calendarEventId: '' }, fullName(s));
+      await c.db.prepare('update lessons set calendarEventId = ? where id = ? and calendarEventId = ?').bind(marker, l.id, l.calendarEventId).run();
+    }
+    for (const m of meetings) {
+      const marker = await calendarEffect(c, 'create', { ...m, subject: m.title, calendarEventId: '' }, String(m.withName || m.familyLabel || '').replace(/さん$/, ''));
+      await c.db.prepare('update meetings set calendarEventId = ? where id = ? and calendarEventId = ?').bind(marker, m.id, m.calendarEventId).run();
+    }
+    await audit(c, 'calendarRepair', '', { lessons: lessons.length, meetings: meetings.length });
+    return { targets, queued: targets.length, mails: 0, note: '予定を作る頼みを送りました。届いたかは授業の calendarEventId が「…@google.com」に変わるか、送信の記録で確かめてください' };
   },
 
   'mcp/requests/get': async (c, b) => {

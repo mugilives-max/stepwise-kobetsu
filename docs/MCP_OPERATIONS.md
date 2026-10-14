@@ -38,6 +38,7 @@ ChatGPT / Codex ─► stepwise-mcp ─serviceWriteKey─► stepwise-api /v2/mc
 | `reschedule_lesson` | `mcp/lessons/reschedule` | 日程の変更。未送信は黙って。送ったあとの授業は dry_run の confirm が要る。重なり・前日23時を過ぎた決定は断る（強制しない） | 送ったあとは 1 |
 | `create_trial_student` | `mcp/trials/create` | 体験生の登録。**専用リンク（生徒ページへの永続アクセス）は作らない**（`off.` の使えない鍵。管理画面の「専用リンクを作り直す」で使えるようになる）。同じ名前の体験生がいれば止める | 0 |
 | `get_write_request` | `mcp/requests/get` | requestId の結果と、送ったメールの今の状態（sent / pending / failed） | 0 |
+| （ツールなし） | `mcp/calendar/repair` | 今日以降の決定の授業・予定の面談で、カレンダーの予定がまだ仮の目印のもの（作成を断られたまま）を、新しい目印で作り直す。`dryRun` で対象だけ。2026-10-14、Kura 調査 #195（目印「swv2…」が Google の予定 ID の規則に合わず、v2 の予定作成が毎回断られていた） | 0 |
 
 - **鍵**：`stepwise-api` の Secret `V2_SERVICE_WRITE_KEY` と、`stepwise-mcp` の Secret `STEPWISE_V2_WRITE_KEY` に同じ値。**読み取りの鍵（V2_SERVICE_KEY）とは別の値**にする（同じ値は Worker が断る）。読み取りの鍵では mcp/ の道は通らず、書き込みの鍵では mcp/ 以外（一般の管理 API）は通らない。どちらの Secret も無ければ、書き込みのツールは出ない・誰も書けない。
 - **範囲**：`stepwise-api` の `V2_SERVICE_WRITE_SCOPE` が `all` でなければ、テスト用の生徒（testOnly か名字が【テスト】）だけ。本物の生徒に使うのは、テストで流れを確かめてから `all` にする（本人の承認）。**2026-10-13 に `all`**（`cf/wrangler.jsonc` の vars。【テスト】の生徒で本番の一回りを確かめ、本人が承認）。テスト用だけに戻すときは、その行を消して deploy。

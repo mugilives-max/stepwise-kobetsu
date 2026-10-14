@@ -160,7 +160,7 @@ test('after the switch-over, the calendar event id and Meet link are written bac
   const l = lessonsOf(h)[0];
   await h.ok('schedule/lessons/decide', { auth, id: l.id, version: l.version });
   const marker = lessonsOf(h)[0].calendarEventId;
-  assert.match(marker, /^swv2/);
+  assert.match(marker, /^v2m[a-v0-9]{40}$/, 'Google の予定 ID に使える文字だけ（英小文字 a-v と数字）');
   const { deliverEffects } = await import('../cf/v2/effects.mjs');
   const queued = h.rows("select id, payload from effects where kind = 'calendarCreate' and status = 'pending'").map(r => ({ id: r.id, item: JSON.parse(r.payload) }));
   assert.equal(queued.length, 1, '切り替え後は送る');
