@@ -48,7 +48,8 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  th,td { padding:5pt 6pt; }
  a { color:inherit; text-decoration:none; }
  #footer + p { font-size:8pt; }
- .chapter + p, #article-18-item-4 { break-after:avoid; }
+ .chapter + p, .clause:has(+ table) { break-after:avoid; }
+ #article-2 { break-before:page; }
  #appendix-online { break-before:auto; }
 }
 

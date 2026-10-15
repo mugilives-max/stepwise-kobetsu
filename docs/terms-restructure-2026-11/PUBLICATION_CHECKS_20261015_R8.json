@@ -3,9 +3,9 @@
   "effective_date": "2026-11-01",
   "source_path": "docs/terms-restructure-2026-11/TERMS.md",
   "source_git_blob": "4f8f77fb3be149877b53b162cb44814337ce7d57",
-  "source_commit": "8b82521db3d39ce07b485a0d94eb9def3364419e",
-  "html_sha256": "4a11f95c988d2b1f759067a48adc71926691c7d1215717b3db5472437adea603",
-  "pdf_sha256": "180f139f09b8a070190266810a834957d003483f82f5db6e5a4c7b4ecfd7dea8",
+  "source_commit": "bafe81289e92601101a5f6256abb5c9cd54dc85e",
+  "html_sha256": "701790e85028482164ad5bf518f9c09fd87a0cc86e06ad89b66a25379a8b250a",
+  "pdf_sha256": "b14b7af6cccf0d1532759bb74bb912f7637ff22553b2d4b4aaf9153100acdd62",
   "old_blobs_preserved": {
     "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
     "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
@@ -58,7 +58,7 @@
   "pdf_fonts_embedded": true,
   "embedded_font_programs": 253,
   "japanese_font_match": "Noto Sans CJK JP",
-  "visual_review_images": 17,
+  "visual_review_images": 27,
   "anchors": 196,
   "mobile_widths_checked": [
     390,
@@ -78,7 +78,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "cd5da34db3a0738f035860d3221454825aa772e68d53a03303832fc7a15a88f7"
+      "pdf_sha256": "6acc2cc026416c4b2b9e84d23e50cd1fafae767a4f54c33946b2405c8552d9b7"
     },
     {
       "name": "受講条件書（特殊指導）",
@@ -86,7 +86,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "c074d1da6058be68fe4d41ee328c919f63f5e04d84a19a4a81c8c76821ec6eff"
+      "pdf_sha256": "c11f795c9e42d5e556d6edf61661fcc8624ca4b36edb99fe3439331d58235845"
     },
     {
       "name": "受講合意書",
@@ -94,7 +94,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "bae094aadedc5a99c220eaf59d3731cbe4d7ae624a4c5ad794346692cf29a443"
+      "pdf_sha256": "a40a4fc1a0425a11de38281fb47da1a09cbe5ec2798058ecf84ede845292484f"
     },
     {
       "name": "キャンセル料金の免除申請のご案内",
@@ -102,8 +102,9 @@
       "pages": 2,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "1f9370508a23b33fc571b64de7dc9d493435232add9ae2523950c08fe875fec5"
+      "pdf_sha256": "0330576e4c3d30c5717662dffb7567769b77365eb24e44189f5a6aaa1faf0235"
     }
   ],
-  "waiver_links_verified": true
+  "waiver_links_verified": true,
+  "total_pdf_pages": 18
 }
