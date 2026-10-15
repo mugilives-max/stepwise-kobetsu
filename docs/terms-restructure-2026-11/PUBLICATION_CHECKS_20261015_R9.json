@@ -3,9 +3,9 @@
   "effective_date": "2026-11-01",
   "source_path": "docs/terms-restructure-2026-11/TERMS.md",
   "source_git_blob": "753f3f1c8bf2435c661bb4d1009c3c017e397932",
-  "source_commit": "93ab77d0ea22b4870099198ea341801912f13a9f",
+  "source_commit": "b8eec2a24105204ce3cd56d3ec1ab02bd15dc562",
   "html_sha256": "2e3614fc90ed32870e6edddeceafa52ab8e5299de9363306677b87168b4fb9e9",
-  "pdf_sha256": "3eef5043b55d36e543d86fe1367474e6017d5f55df201858af883ff91a609daa",
+  "pdf_sha256": "31122d65a20347a2ab3698d8cbf910a2efabf5da08166c36d93f98e36afd7fa3",
   "old_blobs_preserved": {
     "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
     "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
@@ -68,7 +68,7 @@
   "pdf_fonts_embedded": true,
   "embedded_font_programs": 254,
   "japanese_font_match": "Noto Sans CJK JP",
-  "visual_review_images": 28,
+  "visual_review_images": 27,
   "anchors": 196,
   "mobile_widths_checked": [
     390,
@@ -89,7 +89,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "930ac6949c1d5494a13d37b4c2849f0f3288b1ae410bc7e4ad1eeec315950a24"
+      "pdf_sha256": "91b47c74ac612bfa4a1dfe518352633449f1d4d649c94c801246437a984659af"
     },
     {
       "name": "特別単価合意書",
@@ -97,15 +97,15 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "303a4c4594f6767081624b64ff3cd5ee033748bb0637354f4c4d609e5f6bf508"
+      "pdf_sha256": "1fec9d60beddac64123b99c240cf4ce5a18abc70d97d32fe979dac9d01414a18"
     },
     {
       "name": "受講合意書",
       "source": "TUITION_AGREEMENT.md",
-      "pages": 2,
+      "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "b3c078d2f5f22717ca70e79dbf3ab69c598e28a08961b6a176e9be88a85bf26a"
+      "pdf_sha256": "60ed6b6d953d84f9fa27f7fc8c2a7202562e071f68011c09aa16cc46a0388d1a"
     },
     {
       "name": "キャンセル料金の免除申請のご案内",
@@ -113,9 +113,9 @@
       "pages": 2,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "346e8ef5bfce7f408a88e7227bb1a11da93c7cac084538a5e6a06209ff3bfa97"
+      "pdf_sha256": "5a346fe17e557a42ddd71b7ca7f3b76d26e3f92e51a2f956cb160941b9ac2d1d"
     }
   ],
   "waiver_links_verified": true,
-  "total_pdf_pages": 19
+  "total_pdf_pages": 18
 }
