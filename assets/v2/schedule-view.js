@@ -2,9 +2,13 @@
 import { esc } from '/assets/v2/api.js';
 import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 
+// 段階（2026-10-14 本人決定）: 下書き（塾だけ）→ 調整中（お互いに見える・締め切りなし）→ 確認待ち（締め切りあり。proposed で asked）→ 確定
 export const STATUS = {
-  held: ['gray', '未送信'], proposed: ['warn', '調整中'], decided: ['', '決定'], done: ['ok', '実施済み'], rested: ['gray', 'お休み'], cancelled: ['danger', 'キャンセル'],
+  held: ['gray', '下書き'], proposed: ['warn', '調整中'], decided: ['', '確定'], done: ['ok', '実施済み'], rested: ['gray', 'お休み'], cancelled: ['danger', 'キャンセル'],
 };
+export const ASKING = ['ask', '確認待ち'];
+export const stageLabel = l => l.status === 'proposed' && l.asked ? ASKING[1] : (STATUS[l.status] || ['', l.status])[1];
+const byText = l => l.confirmBy ? ' ' + Number(l.confirmBy.slice(5, 7)) + '/' + Number(l.confirmBy.slice(8)) + 'まで' : '';
 export const REQUEST = { move: '日時の変更のお願い', rest: 'お休みの連絡', late: '開始を遅らせたい', cancel: 'キャンセル' };
 export const CHOICE = {
   move: ['日時の変更をお願いする', '無料', '先生が別の日時を相談します。決まるまでは今の日時のままです。', '希望の日時など（必須）'],
@@ -27,7 +31,7 @@ export const EVENT_KIND = { test: 'テスト', event: '行事', unavailable: '�
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 export const mdw = d => { const t = new Date(d + 'T00:00:00Z'); return (t.getUTCMonth() + 1) + '/' + t.getUTCDate() + '(' + WD[t.getUTCDay()] + ')'; };
 export const endOf = (start, minutes) => { const m = Number(start.slice(0, 2)) * 60 + Number(start.slice(3)) + Number(minutes); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
-export const statusTag = l => { const [cls, label] = STATUS[l.status] || ['gray', l.status]; return `<span class="tag ${cls}">${label}${l.status === 'proposed' && l.confirmBy ? ' ' + Number(l.confirmBy.slice(5, 7)) + '/' + Number(l.confirmBy.slice(8)) + 'まで' : ''}</span>`; };
+export const statusTag = l => { if (l.status === 'proposed' && l.asked) return `<span class="tag ${ASKING[0]}">${ASKING[1]}${byText(l)}</span>`; const [cls, label] = STATUS[l.status] || ['gray', l.status]; return `<span class="tag ${cls}">${label}</span>`; };
 export const requestTags = l => (l.requests || []).filter(r => r.status === 'open').map(r => `<span class="tag ${r.kind === 'cancel' ? 'danger' : 'warn'}">${REQUEST[r.kind]}</span>`).join('');
 
 export function eventList(events, { names = {}, canDelete = () => false } = {}) {

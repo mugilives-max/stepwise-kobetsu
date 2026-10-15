@@ -34,8 +34,8 @@ ChatGPT / Codex ─► stepwise-mcp ─serviceWriteKey─► stepwise-api /v2/mc
 | `get_lessons` | `mcp/lessons/get` | ID で読み戻す（状態・版・お知らせの履歴） | 0 |
 | `fix_unsent_lesson` | `mcp/lessons/fix` | 未送信の授業だけ直す（生徒の付け替えも）。版が合うときだけ | 0 |
 | `preview_lesson_notice` | `mcp/notices/preview` | 選んだ授業 ID だけについて、生徒・宛先（伏せ字）・本文・通数・状態の変わり方と確認値（confirm）。対象の生徒（studentIds）と違う授業・送ったあとの授業・重複は断る | 0 |
-| `send_lesson_notice` | `mcp/notices/send` | confirm が今の状態と合うときだけ、選んだ授業だけを送る。通常は仮予定（保護者に生徒ごと 1 通）、体験はメールなしで決定（カレンダー）。同じ requestId は二重に送らない | 生徒ごと 1 |
-| `reschedule_lesson` | `mcp/lessons/reschedule` | 日程の変更。未送信は黙って。送ったあとの授業は dry_run の confirm が要る。重なり・前日23時を過ぎた決定は断る（強制しない） | 送ったあとは 1 |
+| `send_lesson_notice` | `mcp/notices/send` | confirm が今の状態と合うときだけ、選んだ授業（下書き・調整中）だけの**確認をお願いする**（確認待ち。締め切りを 1 つにそろえ、保護者に生徒ごと 1 通。近い授業は締め切りなし。結果に LINE に貼る文 `lineText`）。体験はメールなしで確定（カレンダー）。同じ requestId は二重に送らない | 生徒ごと 1 |
+| `reschedule_lesson` | `mcp/lessons/reschedule` | 日程の変更。下書きは黙って。送ったあとの授業は dry_run の confirm が要る。確認待ちは調整中に戻る（メールなし）。メールは確定した授業だけ。重なり・前日23時を過ぎた確定は断る（強制しない） | 確定した授業だけ 1 |
 | `create_trial_student` | `mcp/trials/create` | 体験生の登録。**専用リンク（生徒ページへの永続アクセス）は作らない**（`off.` の使えない鍵。管理画面の「専用リンクを作り直す」で使えるようになる）。同じ名前の体験生がいれば止める | 0 |
 | `get_write_request` | `mcp/requests/get` | requestId の結果と、送ったメールの今の状態（sent / pending / failed） | 0 |
 | （ツールなし） | `mcp/calendar/repair` | 今日以降の決定の授業・予定の面談で、カレンダーの予定がまだ仮の目印のもの（作成を断られたまま）を、新しい目印で作り直す。`dryRun` で対象だけ。2026-10-14、Kura 調査 #195（目印「swv2…」が Google の予定 ID の規則に合わず、v2 の予定作成が毎回断られていた） | 0 |

@@ -1,6 +1,7 @@
-// スタッフの画面: 予定（3段目）。月の予定表・選んだ日の授業・連絡への対応・仮予定を作る・休み・面談。
+// スタッフの画面: 予定（3段目）。月の予定表・選んだ日の授業・連絡への対応・授業を作る・休み・面談。
+// 授業の段階（2026-10-14 本人決定）: 下書き → 調整中（見せるだけ・メールなし）→ 確認待ち（締め切りとメール 1 通・LINE に貼る文）→ 確定
 // 教室管理者はすべて、講師は自分の担当の授業と自分の休みだけ。
-import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags } from '/assets/v2/schedule-view.js?v=20261008-launch1';
+import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261016-stages';
 import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 
 let month = null, data = null, sel = null, sheet = null, families = null, loadedFor = '';
@@ -9,17 +10,19 @@ let calOpen = true, wasOpen = true, calH = null, calTop = null, shownSel = '';
 const phone = () => matchMedia('(max-width: 719px)').matches;
 // 新しい決まりの取消料（規約案 第4〜7条）の授業か。授業の日が cancelRuleFrom 以降
 const rateRule = l => !!(data && data.cancelRuleFrom && l.date >= data.cancelRuleFrom);
-// sheet: 下から出る画面。{ kind: 'lesson', id, edit, cancel, tardy } / { kind: 'create' } / { kind: 'off' } / { kind: 'meeting' } / { kind: 'todo' }
+// sheet: 下から出る画面。{ kind: 'lesson', id, edit, cancel, tardy, decide } / { kind: 'create' } / { kind: 'off' } / { kind: 'meeting' } / { kind: 'todo' } / { kind: 'line', title, text }（LINE に貼る文）
 const ymOf = d => d.slice(0, 7);
 const addMonths = (ym, n) => { const [y, m] = ym.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1)); return t.toISOString().slice(0, 7); };
 const gridStart = ym => { const first = new Date(ym + '-01T00:00:00Z'); return new Date(first - first.getUTCDay() * 86400e3).toISOString().slice(0, 10); };
 const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400e3).toISOString().slice(0, 10);
 export function resetSchedule() { data = null; loadedFor = ''; sheet = null; cache = {}; }
-// 予定表を送るときに外した未送信の授業（チェックを外したもの）。既定は全部入れる
+// 「対応すること」で印を外した授業（下書き・調整中）。既定は全部入れる
 const unpicked = new Set();
 export function schedulePick(id, on) { if (on) unpicked.delete(id); else unpicked.add(id); }
-// 未送信の仮予定（今日以降は全部。古い応答なら表示中の月の分）
+// 下書き（今日以降は全部。古い応答なら表示中の月の分）と、調整中（今日以降は全部）
 const heldLessons = () => data.heldAll || data.lessons.filter(l => l.status === 'held');
+const adjustingLessons = () => data.adjustingAll || data.lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= data.today);
+const soon = l => l.date <= addDays(data.today, 5); // 5 日以内（調整中のままなら確認をお願いするか、合意を記録して確定）
 // 月ごとに読んだ予定をとっておく（スワイプで月を変えたとき、すぐ出せるように。前後の月は先に読んでおく）。予定を変えたら捨てる
 let cache = {}, swipeAt = 0, slideIn = '';
 // 月の表では、生徒ごとに授業をまとめ、まだ決まっていないものがあればその色で出す
@@ -53,7 +56,8 @@ export function schedulePage(ctx, me) {
   if (!data || loadedFor !== month) { if (loadedFor !== month) load(ctx); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
   const nameOf = Object.fromEntries(data.students.map(s => [s.id, s.name])), staffOf = Object.fromEntries(data.staff.map(s => [s.id, s.name])), short = shortNames();
   const held = {}; heldLessons().forEach(l => { held[l.studentId] = (held[l.studentId] || 0) + 1; });
-  const todo = manager ? data.openRequests.length + Object.keys(held).length : 0;
+  const adjusting = {}; adjustingLessons().forEach(l => { adjusting[l.studentId] = (adjusting[l.studentId] || 0) + 1; });
+  const todo = manager ? data.openRequests.length + new Set(Object.keys(held).concat(Object.keys(adjusting))).size : 0;
   // 上の帯: 月の切り替え・今日・対応すること・作る
   let h = `<div class="sch-bar"><button class="icon" data-action="sch-month" data-n="-1" aria-label="前の月">‹</button><strong class="sch-month">${Number(month.slice(0, 4))}年${Number(month.slice(5))}月</strong><button class="icon" data-action="sch-month" data-n="1" aria-label="次の月">›</button>
     <button class="small-btn" data-action="sch-today">今日</button><span style="flex:1"></span>
@@ -87,7 +91,7 @@ export function schedulePage(ctx, me) {
   if (showDay || leaving) h += `<div class="sch-day${changed && showDay && !wasOpen ? ' enter' : ''}${leaving ? ' leaving' : ''}">${dayPanel(ctx, me, manager, nameOf, staffOf)}</div>`;
   h += '</div>';
   animCal(ctx);
-  if (sheet) h += sheetHtml(ctx, me, manager, nameOf, staffOf, held);
+  if (sheet) h += sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting);
   return h;
 }
 
@@ -196,7 +200,7 @@ function oneDay(ctx, me, manager, nameOf, staffOf, d, first) {
 }
 
 // 下から出る画面（パソコンでは真ん中に出る）
-function sheetHtml(ctx, me, manager, nameOf, staffOf, held) {
+function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
   const { esc } = ctx;
   let title = '', body = '';
   if (sheet.kind === 'lesson') {
@@ -205,16 +209,22 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held) {
     title = `${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)}`;
     body = `<div class="stack" style="margin:0"><div><strong style="font-size:17px">${esc(nameOf[l.studentId] || '')}</strong> ${esc(l.subject)}${l.kind !== '通常' ? '（' + esc(l.kind) + '）' : ''}</div>
       <div>${statusTag(l)}${requestTags(l)}${l.lateStart ? '<span class="tag gray">当日の時間変更</span>' : ''}${l.lostMinutes ? `<span class="tag warn">遅刻 ${l.lostMinutes}分</span>` : ''}</div>
-      <div class="small muted">担当 ${esc(staffOf[l.staffId] || '未定')}・${l.deliveryMode === 'online' ? 'オンライン' : '対面'}${l.meetUrl ? `・<a href="${esc(l.meetUrl)}" target="_blank" rel="noopener">Meet を開く</a>` : ''}${l.note ? '<br>メモ：' + esc(l.note) : ''}</div>`;
+      <div class="small muted">担当 ${esc(staffOf[l.staffId] || '未定')}・${l.deliveryMode === 'online' ? 'オンライン' : '対面'}${l.meetUrl ? `・<a href="${esc(l.meetUrl)}" target="_blank" rel="noopener">Meet を開く</a>` : ''}${l.note ? '<br>メモ：' + esc(l.note) : ''}${['decided', 'done'].includes(l.status) && l.agreement ? '<br>確定のもと：' + esc(l.agreement) : ''}</div>
+      ${manager ? `<p class="small muted" style="margin:0">${STAGE_HELP[l.status === 'proposed' ? (l.asked ? 'asking' : 'adjusting') : l.status] || ''}</p>` : ''}`;
     if (sheet.edit) body += editForm(ctx, l);
+    else if (sheet.decide) body += decideForm(ctx, l);
     else if (sheet.cancel) body += cancelForm(ctx, l);
     else if (sheet.tardy) body += tardyForm(ctx, l);
     else {
       const main = [], sub = [], danger = [];
-      if (manager && ['held', 'proposed'].includes(l.status)) main.push(`<button class="primary" data-action="sch-decide" data-id="${esc(l.id)}"${ctx.dis()}>決定する</button>`);
+      const future = l.date >= data.today;
+      if (manager && future && l.status === 'held') main.push(`<button data-action="sch-show-one" data-id="${esc(l.id)}"${ctx.dis()}>調整中として見せる</button>`);
+      if (manager && future && (l.status === 'held' || (l.status === 'proposed' && !l.asked))) main.push(`<button class="primary" data-action="sch-ask-one" data-id="${esc(l.id)}"${ctx.dis()}>確認をお願いする</button>`);
+      if (manager && ['held', 'proposed'].includes(l.status)) main.push(`<button${l.status === 'proposed' && l.asked ? ' class="primary"' : ''} data-action="sch-decide" data-id="${esc(l.id)}"${ctx.dis()}>確定する</button>`);
       if (l.status === 'decided' && past && mine) main.push(`<button class="primary" data-action="sch-done" data-id="${esc(l.id)}"${ctx.dis()}>実施済みにする</button>`);
       if (['decided', 'done'].includes(l.status) && past && mine) main.push(`<a class="btn" href="#record=${encodeURIComponent(l.id)}">記録を書く</a>`);
       if (manager && ['held', 'proposed', 'decided'].includes(l.status)) sub.push(`<button data-action="sch-edit" data-id="${esc(l.id)}"${ctx.dis()}>日時・内容を直す</button>`);
+      if (manager && l.status === 'proposed') sub.push(`<button data-action="sch-unsend" data-id="${esc(l.id)}"${ctx.dis()}>下書きに戻す</button>`);
       if (manager && ['proposed', 'decided'].includes(l.status)) sub.push(`<button data-action="sch-rest" data-id="${esc(l.id)}"${ctx.dis()}>お休みにする</button>`);
       if (['decided', 'done'].includes(l.status) && mine && rateRule(l) && Date.now() >= Date.parse(l.date + 'T' + l.start + ':00+09:00')) sub.push(`<button data-action="sch-tardy" data-id="${esc(l.id)}"${ctx.dis()}>${l.lostMinutes ? '遅刻を直す' : '遅刻を記録'}</button>`);
       if (manager && l.status === 'decided') danger.push(`<button class="danger" data-action="sch-cancel" data-id="${esc(l.id)}"${ctx.dis()}>キャンセルにする</button>`);
@@ -232,20 +242,42 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held) {
       <div class="small">${esc(r.note || '')}<span class="muted">（${r.fromKind === 'family' ? '保護者' : r.fromKind === 'student' ? '生徒' : 'スタッフ'}・${esc(r.receivedAt.slice(5, 16).replace('T', ' '))}）</span></div>
       <div class="small muted">${r.kind === 'move' ? '授業を開いて「日時・内容を直す」で日時を変えると、済みになります。' : r.kind === 'late' ? (rateRule(r) ? '応じるときは「日時・内容を直す」で開始時刻を変え、「生徒の申し出で開始を遅らせる」に印を付けてください（遅らせた分の取消料）。応じないときは「済みにする」。' : '応じるときは「日時・内容を直す」で開始時刻を変えてください（料金は変わりません）。') : r.kind === 'cancel' ? (rateRule(r) ? 'キャンセル料は連絡の時刻で自動に計算しました（「請求」で確かめられます）。' : 'キャンセル料は「請求」で決めます。') : ''}</div></div>
       <div class="row"><button data-action="sch-goto" data-date="${r.date}" data-id="${esc(r.lessonId || '')}">授業を開く</button><button data-action="sch-resolve" data-id="${esc(r.id)}"${ctx.dis()}>済みにする</button></div></div>`).join('') + '</div>' : '')
-      + (Object.keys(held).length ? `<h2>未送信の授業</h2><p class="small muted" style="margin-top:-4px">送る授業に印を付けてください。印を外した授業は未送信のまま残ります。</p>` + Object.keys(held).map(sid => heldGroup(ctx, sid, nameOf)).join('') : '');
+      + (Object.keys(held).length ? `<h2>下書き</h2><p class="small muted" style="margin-top:-4px">塾だけに見えています。進める授業に印を付けてください（印を外した授業は下書きのまま）。「調整中として見せる」はメールなしで保護者・生徒のページに出します。「確認をお願いする」は締め切りを付けて保護者にメール 1 通です。</p>` + Object.keys(held).map(sid => stageGroup(ctx, sid, nameOf, 'held')).join('') : '')
+      + (Object.keys(adjusting).length ? `<h2>調整中</h2><p class="small muted" style="margin-top:-4px">保護者・生徒に見えていますが、まだ決まっていません（締め切りなし）。日時が固まったら確認をお願いしてください。</p>` + Object.keys(adjusting).map(sid => stageGroup(ctx, sid, nameOf, 'adjusting')).join('') : '');
+  } else if (sheet.kind === 'line') {
+    title = sheet.title || 'LINE に貼る文';
+    body = `<p class="small" style="margin:0 0 6px">保護者にメールを送りました。LINE でも知らせるときは、この文をそのまま貼ってください（リンクを開くと、ログインのあと「日程の確認」の画面になります）。</p>
+      <textarea class="line-copy" readonly>${esc(sheet.text)}</textarea><div class="row" style="margin-top:8px"><button class="primary" data-action="sch-copy">コピーする</button><button data-action="sch-close">閉じる</button></div>`;
   }
   const tabs = (manager && ['create', 'off', 'meeting'].includes(sheet.kind)) ? `<div class="seg">${[['create', '授業'], ['off', '休み'], ['meeting', '面談']].map(([k, lb]) => `<button class="${sheet.kind === k ? 'on' : ''}" data-action="sch-sheet" data-k="${k}">${lb}</button>`).join('')}</div>` : '';
   return `<div class="overlay" data-action="sch-close"></div><section class="bsheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div><div class="bsheet-head"><strong>${esc(title)}</strong><button class="icon" data-action="sch-close" aria-label="閉じる">×</button></div>${tabs}<div class="bsheet-body">${body}</div></section>`;
 }
 
-// 未送信の仮予定（生徒ごと）。授業ごとに印を付けて、印のある授業だけを送る
-function heldGroup(ctx, sid, nameOf) {
-  const { esc } = ctx, mine = heldLessons().filter(l => l.studentId === sid), picked = mine.filter(l => !unpicked.has(l.id));
+// 下書き・調整中（生徒ごと）。授業ごとに印を付けて、印のある授業だけを進める
+const STAGE_HELP = {
+  held: '下書き：塾だけに見えています（保護者・生徒には見えません）。',
+  adjusting: '調整中：保護者・生徒に見えています。締め切りはなく、自動では確定しません。日時を直してもメールは出ません。',
+  asking: '確認待ち：保護者に確認をお願いしています。保護者の「この日程で大丈夫」か、締め切り（あれば）までに連絡がなければ確定します。日時を直すと調整中に戻ります（メールなし）。',
+  decided: '確定：予約です。カレンダーに入っています。日時を直すと保護者にお知らせが届きます。',
+};
+function stageGroup(ctx, sid, nameOf, stage) {
+  const { esc } = ctx, mine = (stage === 'held' ? heldLessons() : adjustingLessons()).filter(l => l.studentId === sid), picked = mine.filter(l => !unpicked.has(l.id));
   const trial = !!(data.students.find(x => x.id === sid) || {}).trial;
   const rows = mine.map(l => `<label class="small" style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" data-hpick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} style="width:auto">
-    <span>${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)} ${esc(l.subject)}${l.kind && l.kind !== '通常' ? ` <span class="tag gray">${esc(l.kind)}</span>` : ''}${/^MCP で保存/.test(l.note || '') ? ' <span class="tag">AI が保存</span>' : ''}</span></label>`).join('');
-  return `<div class="held-group" style="margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px"><div style="display:flex;align-items:center;gap:8px"><strong>${esc(nameOf[sid] || '')}</strong>${trial ? ' <span class="tag gray">体験</span>' : ''}<span class="small muted">未送信 ${mine.length}件</span></div>${rows}
-    <div class="row" style="margin-top:6px"><button class="primary" data-action="sch-send" data-sid="${esc(sid)}"${picked.length ? ctx.dis() : ' disabled'}>${trial ? `選んだ ${picked.length}件を決定にする` : `選んだ ${picked.length}件を予定表として送る`}</button></div></div>`;
+    <span>${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)} ${esc(l.subject)}${l.kind && l.kind !== '通常' ? ` <span class="tag gray">${esc(l.kind)}</span>` : ''}${/^MCP で保存/.test(l.note || '') ? ' <span class="tag">AI が保存</span>' : ''}${soon(l) ? ' <span class="tag warn">5日以内</span>' : ''}</span></label>`).join('');
+  const n = picked.length, dis = n ? ctx.dis() : ' disabled';
+  const buttons = trial ? `<button class="primary" data-action="sch-ask" data-sid="${esc(sid)}" data-stage="${stage}"${dis}>選んだ ${n}件を確定にする</button>`
+    : (stage === 'held' ? `<button data-action="sch-show" data-sid="${esc(sid)}"${dis}>選んだ ${n}件を調整中として見せる</button>` : '')
+      + `<button class="primary" data-action="sch-ask" data-sid="${esc(sid)}" data-stage="${stage}"${dis}>選んだ ${n}件の確認をお願いする</button>`;
+  return `<div class="held-group" style="margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px"><div style="display:flex;align-items:center;gap:8px"><strong>${esc(nameOf[sid] || '')}</strong>${trial ? ' <span class="tag gray">体験</span>' : ''}<span class="small muted">${stage === 'held' ? '下書き' : '調整中'} ${mine.length}件</span></div>${rows}
+    <div class="row" style="margin-top:6px">${buttons}</div></div>`;
+}
+// 確定する: 合意の記録（LINE・電話・面談で合意したとき。規約 r9 第14条1項）
+function decideForm(ctx, l) {
+  return `<form class="stack" data-form="sch-decide" data-id="${ctx.esc(l.id)}" data-version="${l.version}" style="margin:8px 0 0">
+    <label>合意の記録（手段・日時・相手）<input name="agreement" maxlength="200" placeholder="例: LINE 10/16 お母さんと合意"></label>
+    <p class="small muted" style="margin:0">確定するとカレンダーに入り、予約になります（保護者へのメールは送りません）。${l.status === 'proposed' && l.asked ? '確認待ちの授業は、保護者の「この日程で大丈夫」や締め切りでも確定します。' : ''}</p>
+    <div class="row"><button class="primary"${ctx.dis()}>確定する</button><button type="button" data-action="sch-edit-cancel">やめる</button></div></form>`;
 }
 
 const minutesOptions = v => [30, 45, 60, 90, 120, 150, 180, 210, 240, 270, 300, 360, 390, 420, 480].map(m => `<option value="${m}"${m === Number(v) ? ' selected' : ''}>${m >= 120 ? `${m}分（${Math.floor(m / 60)}時間${m % 60 ? m % 60 + '分' : ''}）` : m + '分'}</option>`).join('');
@@ -255,13 +287,13 @@ function createForm(ctx, me) {
   const { esc } = ctx, past = !!sel && sel < data.today;
   return `<form class="stack" data-form="sch-create" style="margin:0">
     <label>生徒<select name="studentId" required>${data.students.map(s => `<option value="${esc(s.id)}"${s.trial ? ' data-trial="1"' : ''}>${esc(s.name)}${s.trial ? '（体験）' : ''}</option>`).join('')}</select></label>
-    <p class="small muted trial-hint">体験生の授業は種類「体験」（無料）で、そのまま決定になります（お知らせは送りません）。</p>
+    <p class="small muted trial-hint">体験生の授業は種類「体験」（無料）で、下書き以外はそのまま確定になります（お知らせは送りません）。</p>
     <div class="row"><label style="flex:1">日付<input type="date" name="date" value="${sel || ''}" required></label><label style="flex:1">開始<input type="time" name="start" value="17:00" step="300" required></label><label style="flex:1">長さ<select name="minutes">${minutesOptions(90)}</select></label></div>
     <div class="row"><label style="flex:1">科目<input name="subject" maxlength="30" required placeholder="数学"></label><label style="flex:1">種類<select name="kind">${kindOptions(ctx, '通常')}</select></label>
       <label style="flex:1">形式<select name="deliveryMode"><option value="in_person">対面</option><option value="online">オンライン</option></select></label></div>
     <div class="row"><label style="flex:1">担当<select name="staffId">${staffOptions(ctx, me.id)}</select></label><label style="flex:1">くり返し<select name="repeat">${[1, 2, 3, 4, 5, 8, 12].map(n => `<option value="${n}">${n === 1 ? 'この日だけ' : '毎週×' + n + '回'}</option>`).join('')}</select></label></div>
-    <label>送り方<select name="send">${past ? '' : '<option value="now">今すぐ送る（締め切りまでに連絡がなければ決定）</option><option value="hold">予定表にまとめて、あとで送る</option>'}<option value="done"${past ? ' selected' : ''}>実施済みとして登録（もう行った授業）</option></select></label>
-    <p class="small muted">${past ? 'もう行った授業を、はじめから実施済みで登録します。お知らせは送りません。授業料は、その月の承認済みの計画（同じ科目・種類）に入ります。記録はあとから「記録」で書けます。' : '締め切りは、送った日の3日後（翌月分だけなら今月25日）。授業の2日前を超えません。明日までの授業は締め切りを置かないので「決定する」で決めてください。'}</p>
+    <label>段階<select name="send">${past ? '' : '<option value="hold">下書き（塾だけ。あとで見せる・確認をお願いする）</option><option value="show">調整中として見せる（保護者・生徒のページに出す。メールなし）</option><option value="ask">確認をお願いする（締め切りを付けて保護者にメール 1 通）</option>'}<option value="done"${past ? ' selected' : ''}>実施済みとして登録（もう行った授業）</option></select></label>
+    <p class="small muted">${past ? 'もう行った授業を、はじめから実施済みで登録します。お知らせは送りません。授業料は、その月の承認済みの計画（同じ科目・種類）に入ります。記録はあとから「記録」で書けます。' : '何件も作るときは下書きにして、「対応すること」からまとめて見せる・確認をお願いすると、メールが 1 通で済みます。確認の締め切りは、お知らせから3日以上あと（翌月分だけなら今月25日）で、授業の2日前まで。それより近い授業は締め切りを置かず、保護者の「この日程で大丈夫」か、合意を記録して確定します。'}</p>
     <div class="row"><button class="primary"${ctx.dis()}>作る</button></div></form>`;
 }
 function editForm(ctx, l) {
@@ -272,6 +304,7 @@ function editForm(ctx, l) {
       <label style="flex:1">形式<select name="deliveryMode"><option value="in_person"${l.deliveryMode === 'in_person' ? ' selected' : ''}>対面</option><option value="online"${l.deliveryMode === 'online' ? ' selected' : ''}>オンライン</option></select></label></div>
     <label>担当<select name="staffId">${staffOptions(ctx, l.staffId)}</select></label>
     <label>メモ（スタッフだけ）<input name="note" maxlength="1000" value="${ctx.esc(l.note || '')}"></label>
+    ${l.status === 'proposed' && l.asked ? '<p class="small muted" style="margin:0">確認待ちの授業です。日時を変えると調整中に戻ります（締め切りを外します。メールは送りません）。</p>' : l.status === 'proposed' ? '<p class="small muted" style="margin:0">調整中の授業です。日時を変えても保護者へのメールは出ません（ページの表示が変わります）。</p>' : l.status === 'decided' ? '<p class="small muted" style="margin:0">確定した授業です。日時を変えると保護者にお知らせが届きます。</p>' : ''}
     ${l.status === 'decided' && after ? (rateRule(l)
       ? `<label class="checks"><label><input type="checkbox" name="lateStart"> 生徒の申し出で開始を遅らせる（遅らせた分の取消料がかかります）</label></label>
         <label>申し出を受けた時刻（空なら「開始を遅らせたい」の連絡の時刻、なければ今）<input type="datetime-local" name="receivedAt"></label>`
@@ -318,21 +351,45 @@ async function after(ctx, r, okMessage) {
   return true;
 }
 
+const askNote = r => (r.confirmBy ? `（締め切り ${Number(r.confirmBy.slice(5, 7))}/${Number(r.confirmBy.slice(8))}）` : '') + (r.near ? `。日が近い ${r.near}件は締め切りなし（保護者の返事か、合意を記録して確定）` : '');
+// 段階を進める: show 調整中として見せる（メールなし）/ ask 確認をお願いする（メール 1 通・LINE に貼る文を出す）。体験生は確定にする
+async function stageMove(ctx, how, sid, ids, rest) {
+  const st = data.students.find(x => x.id === sid) || {}, trial = !!st.trial;
+  const ask = trial ? `${st.name || ''}さんの体験の授業 ${ids.length}件を確定にして、Google カレンダーに入れますか？（メールは送りません）`
+    : how === 'show' ? `${st.name || ''}さんの授業 ${ids.length}件を調整中として、保護者・生徒のページに出しますか？（メールは送りません）`
+    : `${st.name || ''}さんの授業 ${ids.length}件の確認をお願いしますか？ 締め切りを付けて、保護者にメールを 1 通送ります。`;
+  if (!confirm(ask + (rest ? `\n印を外した ${rest}件はそのまま残ります。` : ''))) return true;
+  const r = await ctx.call(how === 'show' ? 'schedule/lessons/show' : 'schedule/lessons/ask', { studentId: sid, lessonIds: ids });
+  if (r.ok) ids.forEach(x => unpicked.delete(x));
+  await after(ctx, r, r.ok ? (r.trial ? `${r.sent}件を確定にしました` : how === 'show' ? `${r.shown}件を調整中として見せました（メールなし）` : `${r.asked}件の確認をお願いしました${askNote(r)}`) + (r.left ? `（下書き ${r.left}件は残っています）` : '') : '');
+  if (r.ok && r.lineText) sheet = { kind: 'line', title: '確認をお願いしました', text: r.lineText };
+  return true;
+}
+
 export async function scheduleSubmit(ctx, kind, el) {
   const v = values(el);
   if (kind === 'sch-create') {
-    const body = { studentId: v.studentId, date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, repeat: v.send === 'done' ? 1 : Number(v.repeat), hold: v.send === 'hold', done: v.send === 'done' };
+    const body = { studentId: v.studentId, date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, repeat: v.send === 'done' ? 1 : Number(v.repeat), send: v.send || 'hold', hold: v.send === 'hold', done: v.send === 'done' };
+    if (v.send === 'ask' && !confirm('締め切りを付けて、保護者に確認のお願いのメールを 1 通送ります。よろしいですか？')) return true;
     let r = await ctx.call('schedule/lessons/create', body);
     if ((await after(ctx, r, '')) === 'force') r = await ctx.call('schedule/lessons/create', { ...body, force: true });
-    if (r.ok) { sheet = null; cache = {}; sel = v.date; ctx.say(r.trial ? `体験の授業を${r.created}件、決定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を予定表に入れました（まだ送っていません）` : `${r.created}件を調整中として送りました${r.confirmBy ? '（締め切り ' + Number(r.confirmBy.slice(5, 7)) + '/' + Number(r.confirmBy.slice(8)) + '）' : ''}`, 'ok'); data = null; loadedFor = ''; }
+    if (r.ok) {
+      sheet = r.lineText ? { kind: 'line', title: '確認をお願いしました', text: r.lineText } : null; cache = {}; sel = v.date;
+      ctx.say(r.trial ? `体験の授業を${r.created}件、確定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を下書きで作りました（保護者・生徒には見えません）` : r.shown ? `${r.created}件を調整中として見せました（メールなし）` : `${r.created}件の確認をお願いしました${askNote(r)}`, 'ok'); data = null; loadedFor = '';
+    }
     return true;
   }
   if (kind === 'sch-update') {
     const body = { id: el.dataset.id, version: Number(el.dataset.version), date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, note: v.note, lateStart: v.lateStart === 'on', receivedAt: v.receivedAt || '' };
     let r = await ctx.call('schedule/lessons/update', body);
-    const saved = x => x.ok && x.fee ? `保存しました（開始を遅らせた分の取消料 ${yen(x.fee.amount)}）` : '保存しました';
+    const saved = x => x.ok && x.fee ? `保存しました（開始を遅らせた分の取消料 ${yen(x.fee.amount)}）` : x.ok && x.backToAdjusting ? '保存しました（日時を変えたので調整中に戻しました。もう一度確認をお願いしてください）' : '保存しました';
     if ((await after(ctx, r, saved(r))) === 'force') { r = await ctx.call('schedule/lessons/update', { ...body, force: true }); await after(ctx, r, saved(r)); }
     if (r.ok) { sel = v.date; sheet = null; }
+    return true;
+  }
+  if (kind === 'sch-decide') {
+    const r = await ctx.call('schedule/lessons/decide', { id: el.dataset.id, version: Number(el.dataset.version), agreement: v.agreement || '' });
+    await after(ctx, r, '確定しました');
     return true;
   }
   if (kind === 'sch-cancel') {
@@ -371,22 +428,25 @@ export async function scheduleClick(ctx, a, b) {
   if (a === 'sch-tardy') { sheet = { kind: 'lesson', id, tardy: true }; return true; }
   if (a === 'sch-cancel' && l && rateRule(l)) { sheet = { kind: 'lesson', id, cancel: true }; return true; } // 新しい決まり: 連絡を受けた時刻を入れる画面
   if (a === 'sch-edit-cancel') { sheet = sheet && sheet.id ? { kind: 'lesson', id: sheet.id } : null; return true; }
-  const simple = { 'sch-decide': ['schedule/lessons/decide', '決定しました'], 'sch-done': ['schedule/lessons/done', '実施済みにしました'], 'sch-rest': ['schedule/lessons/rest', 'お休みにしました'], 'sch-cancel': ['schedule/lessons/cancel', 'キャンセルにしました'], 'sch-delete': ['schedule/lessons/delete', '削除しました'] };
+  if (a === 'sch-decide') { sheet = { kind: 'lesson', id, decide: true }; return true; }
+  if (a === 'sch-copy') { const t = document.querySelector('.line-copy'); try { await navigator.clipboard.writeText(t.value); ctx.say('コピーしました', 'ok'); } catch { t.select(); ctx.say('選んだ文をコピーしてください', ''); } return true; }
+  if (a === 'sch-unsend' && l) {
+    if (!confirm('この授業を下書きに戻しますか？ 保護者・生徒のページから消えます（メールは送りません）。')) return true;
+    await after(ctx, await ctx.call('schedule/lessons/unsend', { id: l.id, version: l.version }), '下書きに戻しました'); return true;
+  }
+  if ((a === 'sch-show-one' || a === 'sch-ask-one') && l) return stageMove(ctx, a === 'sch-show-one' ? 'show' : 'ask', l.studentId, [l.id], 0);
+  const simple = { 'sch-done': ['schedule/lessons/done', '実施済みにしました'], 'sch-rest': ['schedule/lessons/rest', 'お休みにしました'], 'sch-cancel': ['schedule/lessons/cancel', 'キャンセルにしました'], 'sch-delete': ['schedule/lessons/delete', '削除しました'] };
   if (simple[a] && l) {
     if (a === 'sch-delete' && !confirm('この授業を削除しますか？ 入力ミスのときだけ使ってください（記録は残りません）。お休み・キャンセルは別のボタンです。')) return true;
     if (a === 'sch-cancel' && !confirm('この授業をキャンセル（キャンセル料の対象）にしますか？ 前日23時までの連絡なら「お休みにする」を使ってください。')) return true;
     await after(ctx, await ctx.call(simple[a][0], { id: l.id, version: l.version }), simple[a][1]); return true;
   }
   if (a === 'sch-resolve') { await after(ctx, await ctx.call('schedule/requests/resolve', { id }), '済みにしました'); return true; }
-  if (a === 'sch-send') {
-    const sid = b.dataset.sid, mine = heldLessons().filter(l => l.studentId === sid), ids = mine.filter(l => !unpicked.has(l.id)).map(l => l.id), rest = mine.length - ids.length;
-    const st = data.students.find(x => x.id === sid) || {}, trial = !!st.trial;
+  if (a === 'sch-show' || a === 'sch-ask') {
+    const sid = b.dataset.sid, stage = a === 'sch-show' ? 'held' : b.dataset.stage;
+    const mine = (stage === 'adjusting' ? adjustingLessons() : heldLessons()).filter(l => l.studentId === sid), ids = mine.filter(l => !unpicked.has(l.id)).map(l => l.id);
     if (!ids.length) return true;
-    const ask = trial ? `${st.name || ''}さんの体験の授業 ${ids.length}件を決定にして、Google カレンダーに入れますか？（メールは送りません）` : `${st.name || ''}さんの授業 ${ids.length}件を予定表（調整中）として送りますか？ 保護者に1回お知らせします。`;
-    if (!confirm(ask + (rest ? `\n印を外した ${rest}件は未送信のまま残ります。` : ''))) return true;
-    const r = await ctx.call('schedule/lessons/sendHeld', { studentId: sid, lessonIds: ids });
-    if (r.ok) ids.forEach(x => unpicked.delete(x));
-    await after(ctx, r, r.ok ? (r.trial ? `${r.sent}件を決定にしました` : `${r.sent}件の予定表を送りました`) + (r.left ? `（未送信 ${r.left}件は残っています）` : '') : ''); return true;
+    return stageMove(ctx, a === 'sch-show' ? 'show' : 'ask', sid, ids, mine.length - ids.length);
   }
   if (a === 'sch-off-del') { await after(ctx, await ctx.call('schedule/unavailability/delete', { id }), '休みを消しました'); return true; }
   if (a === 'sch-ev-del') {

@@ -16,7 +16,7 @@
 import { fail, audit, newId, iso, sha256Hex } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
-import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker } from './schedule.mjs';
+import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
 
 const MAX_ITEMS = 30;
 const RID = /^[A-Za-z0-9._:-]{8,80}$/, KEY = /^[A-Za-z0-9._:-]{1,40}$/;
@@ -69,7 +69,7 @@ async function readLessons(c, ids) {
   if (!ids.length) return [];
   const rows = (await c.db.prepare(`select l.*, s.familyName, s.givenName, s.trial from lessons l join students s on s.id = l.studentId where l.id in (${ids.map(() => '?').join(', ')}) order by l.date, l.start`).bind(...ids).all()).results;
   const notes = await noticesOf(c, rows.map(r => r.id));
-  return rows.map(l => lessonView(l, { studentName: fullName(l), trial: !!l.trial, end: endOf(l.start, l.minutes), unsent: l.status === 'held', notices: notes.filter(n => n.lessonId === l.id) }));
+  return rows.map(l => lessonView(l, { studentName: fullName(l), trial: !!l.trial, end: endOf(l.start, l.minutes), unsent: l.status === 'held', agreement: l.agreement || '', notices: notes.filter(n => n.lessonId === l.id) }));
 }
 
 // ---- 保存の判定（1 件） ----
@@ -89,7 +89,7 @@ async function judgeItem(c, item, accepted, today) {
   return { status: 'ok', student: s, lesson: cand };
 }
 const itemPreview = (j, item) => j.status === 'ok' ? { student: studentLabel(j.student), date: j.lesson.date, start: j.lesson.start, end: endOf(j.lesson.start, j.lesson.minutes), minutes: j.lesson.minutes, subject: j.lesson.subject, kind: j.lesson.kind, deliveryMode: j.lesson.deliveryMode, staffId: j.lesson.staffId,
-  saveAs: '未送信（held）。保護者にも生徒にも見えない。メール・カレンダーは 0。送るのは notices/send で選んだときだけ' } : { studentId: item.studentId, date: item.date, start: item.start };
+  saveAs: '下書き（held。未送信）。保護者にも生徒にも見えない。メール・カレンダーは 0。確認をお願いするのは notices/send で選んだときだけ' } : { studentId: item.studentId, date: item.date, start: item.start };
 
 // ---- お知らせの計画（プレビューと送信で同じものを作る） ----
 async function noticePlan(c, b) {
@@ -104,7 +104,8 @@ async function noticePlan(c, b) {
     const l = rows.find(r => r.id === id);
     if (!l) { problems.push({ lessonId: id, problem: 'notFound', message: '授業が見つかりません' }); continue; }
     if (!studentIds.includes(l.studentId)) problems.push({ lessonId: id, problem: 'otherStudent', message: '選んだ生徒の授業ではありません' });
-    if (l.status !== 'held') problems.push({ lessonId: id, problem: 'notUnsent', message: l.status === 'proposed' || l.status === 'decided' ? 'もうお知らせした授業です（二重には送りません）' : 'お知らせできない状態の授業です' });
+    // 確認のお願いを出せるのは、下書き（未送信）と調整中だけ。確認待ち・確定は二重に送らない
+    if (!['draft', 'adjusting'].includes(stageOf(l))) problems.push({ lessonId: id, problem: 'notUnsent', message: stageOf(l) === 'asking' || l.status === 'decided' ? 'もう確認をお願いした（または確定した）授業です（二重には送りません）' : 'お知らせできない状態の授業です' });
   }
   const students = {};
   for (const sid of [...new Set(rows.map(r => r.studentId))]) {
@@ -122,13 +123,13 @@ async function noticePlan(c, b) {
       continue;
     }
     const bys = confirmByFor(mine.map(l => l.date), today, '');
-    mine.forEach((l, i) => targets.push({ lessonId: l.id, version: l.version, student: studentLabel(s), date: l.date, start: l.start, end: endOf(l.start, l.minutes), subject: l.subject, kind: l.kind, action: 'propose', becomes: 'proposed', confirmBy: bys[i], effect: bys[i] ? `調整中として保護者ページに出す（${mdw(bys[i])}までに連絡がなければ決定）` : '調整中として保護者ページに出す（締め切りなし。決定は管理画面で）' }));
+    mine.forEach((l, i) => targets.push({ lessonId: l.id, version: l.version, from: l.status, student: studentLabel(s), date: l.date, start: l.start, end: endOf(l.start, l.minutes), subject: l.subject, kind: l.kind, action: 'propose', becomes: 'proposed', stage: 'asking', confirmBy: bys[i],
+      effect: bys[i] ? `確認待ちとして保護者ページに出す（${mdw(bys[i])}までに連絡がなければ確定。保護者の「この日程で大丈夫」でその場で確定）` : '確認待ちとして保護者ページに出す（日が近いので締め切りなし。保護者の「この日程で大丈夫」か、管理画面での確定（合意の記録つき）で決まる）' }));
     const willSend = !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
     const reason = willSend ? '' : !s.familyEmail ? '家族のメールが無い' : s.familyStatus !== 'active' ? '保護者ページの登録がまだ' : 'テスト用の家族（送らない）';
-    const lines = mine.map((l, i) => `・${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)} ${l.subject}${l.kind && l.kind !== '通常' ? '（' + l.kind + '）' : ''}`);
-    const by = bys.filter(Boolean).sort()[0];
-    mails.push({ studentId: sid, student: studentLabel(s), to: maskEmail(s.familyEmail), willSend, reason, subject: '【ステップワイズ】授業の予定（調整中）が届いています',
-      body: `${fullName(s)}さんの授業の予定（調整中）をお送りします。\n${lines.join('\n')}\n${by ? `${mdw(by)}までに連絡がなければ、この日時で決定します。` : '日時のご都合が悪ければご連絡ください。'}`, lessonIds: mine.map(l => l.id) });
+    const body = askText(fullName(s), mine.map((l, i) => ({ ...l, confirmBy: bys[i] })));
+    mails.push({ studentId: sid, student: studentLabel(s), to: maskEmail(s.familyEmail), willSend, reason, subject: '【ステップワイズ】授業の日程の確認のお願い',
+      body, lineText: `【ステップワイズ】${body}\n${FAMILY_URL}#confirm`, lessonIds: mine.map(l => l.id) });
   }
   // 選ばれていない未送信の授業（同じ生徒）。送らないことを見せる
   const left = (await c.db.prepare(`select count(*) n from lessons where status = 'held' and studentId in (${Object.keys(students).map(() => '?').join(', ')}) and id not in (${ids.map(() => '?').join(', ')})`).bind(...Object.keys(students), ...ids).first()).n;
@@ -253,10 +254,10 @@ export const mcpWriteRoutes = {
     // 状態を変える（版と未送信の両方が合うものだけ）。全部が合わなければ何も変えない
     const ups = plan.targets.map(t => t.action === 'decideTrial'
       ? c.db.prepare("update lessons set status = 'decided', decidedAt = ?, decidedBy = ?, updatedAt = ?, version = version + 1 where id = ? and version = ? and status = 'held'").bind(now, 'staff:' + c.actor.id, now, t.lessonId, t.version)
-      : c.db.prepare("update lessons set status = 'proposed', confirmBy = ?, updatedAt = ?, version = version + 1 where id = ? and version = ? and status = 'held'").bind(t.confirmBy || '', now, t.lessonId, t.version));
+      : c.db.prepare("update lessons set status = 'proposed', confirmBy = ?, askedAt = ?, updatedAt = ?, version = version + 1 where id = ? and version = ? and status in ('held', 'proposed') and askedAt = ''").bind(t.confirmBy || '', now, now, t.lessonId, t.version));
     const res = await c.db.batch(ups);
     if (res.some(r => !r.meta || !r.meta.changes)) {
-      await c.db.batch(plan.targets.map((t, i) => res[i] && res[i].meta && res[i].meta.changes ? c.db.prepare("update lessons set status = 'held', confirmBy = '', decidedAt = '', decidedBy = '', updatedAt = ?, version = version + 1 where id = ?").bind(now, t.lessonId) : null).filter(Boolean));
+      await c.db.batch(plan.targets.map((t, i) => res[i] && res[i].meta && res[i].meta.changes ? c.db.prepare("update lessons set status = ?, confirmBy = '', askedAt = '', decidedAt = '', decidedBy = '', updatedAt = ?, version = version + 1 where id = ?").bind(t.from || 'held', now, t.lessonId) : null).filter(Boolean));
       await finishRequest(c, b.requestId, 'failed', { error: 'raced' });
       fail('stale', '送る直前にほかの操作で変わりました。もう一度 notices/preview で確かめてください（何も送っていません）', 409);
     }
@@ -271,10 +272,10 @@ export const mcpWriteRoutes = {
     for (const m of plan.mails) {
       let effectId = null;
       if (m.willSend) {
-        await familyNotice(c, m.studentId, '授業の予定（調整中）が届いています', m.body);
+        await familyNotice(c, m.studentId, '授業の日程の確認のお願い', m.body, 'confirm');
         effectId = (await takeMails(c))[0] || null;
       }
-      mails.push({ student: m.student.name, to: m.to, effectId, status: m.willSend ? (effectId ? 'queued' : 'notQueued') : 'notSent', reason: m.reason, lessonIds: m.lessonIds });
+      mails.push({ student: m.student.name, to: m.to, effectId, status: m.willSend ? (effectId ? 'queued' : 'notQueued') : 'notSent', reason: m.reason, lessonIds: m.lessonIds, lineText: m.lineText });
     }
     const notes = plan.targets.map(t => {
       const m = mails.find(x => x.lessonIds.includes(t.lessonId));
@@ -299,11 +300,17 @@ export const mcpWriteRoutes = {
     const n = lessonFields({ date: b.date, start: b.start, minutes: b.minutes }, l);
     if (n.date < todayJst(c.now)) fail('past', '過去の日付にはできません');
     await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: false, exceptId: l.id });
-    const mail = l.status !== 'held' && !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
-    const preview = { lessonId: l.id, student: studentLabel(s), before: { date: l.date, start: l.start, minutes: l.minutes }, after: { date: n.date, start: n.start, minutes: n.minutes }, status: l.status,
+    // メールは確定した授業だけ。調整中・確認待ちはページの表示が変わるだけ（確認待ちは日時を変えると調整中に戻る）
+    const mail = l.status === 'decided' && !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
+    const moved = n.date !== l.date || n.start !== l.start || n.minutes !== l.minutes;
+    const preview = { lessonId: l.id, student: studentLabel(s), before: { date: l.date, start: l.start, minutes: l.minutes }, after: { date: n.date, start: n.start, minutes: n.minutes }, status: l.status, stage: stageOf(l),
+      becomes: stageOf(l) === 'asking' && moved ? 'adjusting' : stageOf(l),
       effects: { mails: mail ? 1 : 0, to: mail ? maskEmail(s.familyEmail) : '', calendar: l.status === 'decided' ? 'patch' : 'none', cancelFee: 'none' } };
     const confirm = hash({ ...preview, version: l.version }).slice(0, 32);
-    if (b.dryRun === true) return { dryRun: true, ...preview, confirm, note: l.status === 'held' ? '未送信の授業なので、メールもカレンダーも動きません' : '送ったあとの授業なので、保護者に日時の変更のお知らせが届きます。確かめてから confirm を付けて実行してください' };
+    if (b.dryRun === true) return { dryRun: true, ...preview, confirm, note: l.status === 'held' ? '下書き（未送信）の授業なので、メールもカレンダーも動きません'
+      : l.status === 'decided' ? '確定した授業なので、保護者に日時の変更のお知らせが届き、カレンダーも動きます。確かめてから confirm を付けて実行してください'
+      : stageOf(l) === 'asking' ? '確認待ちの授業です。日時を変えると調整中に戻り（締め切りを外す）、保護者ページの表示が変わります（メールなし）。もう一度確認をお願いするときは notices/send。confirm を付けて実行してください'
+      : '調整中の授業です。保護者ページの表示が変わります（メールなし）。confirm を付けて実行してください' };
     if (l.status !== 'held' && String(b.confirm || '') !== confirm) fail('needConfirm', '送ったあとの授業の変更は、先に dryRun で確かめ、その confirm を付けて実行してください（何も変えていません）', 409);
     const req = await beginRequest(c, b.requestId, 'reschedule', { lessonId: l.id, version: l.version, date: n.date, start: n.start, minutes: n.minutes });
     if (req.status === 'done') return { ...parse(req.result), repeated: true };
