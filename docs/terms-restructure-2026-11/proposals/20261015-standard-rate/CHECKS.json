@@ -1,0 +1,697 @@
+{
+  "base_commit": "15bc4f88bb46217678cb511c4769c75d7a3e6bf9",
+  "status": "draft_not_adopted_not_published",
+  "old_article_count": 33,
+  "new_article_count": 33,
+  "old_item_count": 151,
+  "new_item_count": 154,
+  "unchanged_items_with_reference_updates": 131,
+  "edited_old_items": [
+    "2.1",
+    "2.2",
+    "3.1",
+    "5.1",
+    "5.3",
+    "5.4",
+    "6.1",
+    "6.2",
+    "6.3",
+    "6.4",
+    "6.5",
+    "7.1",
+    "7.2",
+    "9.4",
+    "10.3",
+    "12.1",
+    "12.3",
+    "13.3",
+    "22.3",
+    "26.6"
+  ],
+  "anchor_count": 199,
+  "financial_tables_unchanged": 4,
+  "appendices_unchanged": 2,
+  "waiver_substantive_text_unchanged": true,
+  "publicity_substantive_text_unchanged": true,
+  "pending_A_unchanged": true,
+  "pending_B_unchanged": true,
+  "local_artifact_files_written": 0,
+  "mapping": [
+    {
+      "old": "1.1",
+      "new": "1.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "1.2",
+      "new": "1.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "1.3",
+      "new": "1.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "1.4",
+      "new": "1.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "2.3",
+      "new": "2.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "3.2",
+      "new": "3.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "3.3",
+      "new": "3.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "4.1",
+      "new": "4.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "4.2",
+      "new": "4.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "4.3",
+      "new": "4.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "4.4",
+      "new": "4.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "4.5",
+      "new": "4.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "4.6",
+      "new": "4.6",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "4.7",
+      "new": "4.7",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "5.2",
+      "new": "11.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "7.3",
+      "new": "7.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "8.1",
+      "new": "6.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "8.2",
+      "new": "6.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "8.3",
+      "new": "6.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "8.4",
+      "new": "6.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "8.5",
+      "new": "6.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "9.1",
+      "new": "8.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "9.2",
+      "new": "8.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "9.3",
+      "new": "8.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "9.5",
+      "new": "8.6",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "10.1",
+      "new": "9.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "10.2",
+      "new": "9.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "11.1",
+      "new": "10.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "11.2",
+      "new": "10.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "11.3",
+      "new": "10.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "11.4",
+      "new": "10.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "11.5",
+      "new": "10.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "11.6",
+      "new": "10.6",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "12.2",
+      "new": "12.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "12.4",
+      "new": "12.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "13.1",
+      "new": "13.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "13.2",
+      "new": "13.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "13.4",
+      "new": "13.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "13.5",
+      "new": "13.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "14.1",
+      "new": "14.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "14.2",
+      "new": "14.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "14.3",
+      "new": "14.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "14.4",
+      "new": "14.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "14.5",
+      "new": "14.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "15.1",
+      "new": "15.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "15.2",
+      "new": "15.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "15.3",
+      "new": "15.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "16.1",
+      "new": "16.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "16.2",
+      "new": "16.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "16.3",
+      "new": "16.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "16.4",
+      "new": "16.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "16.5",
+      "new": "16.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "17.1",
+      "new": "17.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "17.2",
+      "new": "17.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "17.3",
+      "new": "17.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "17.4",
+      "new": "17.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "17.5",
+      "new": "17.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "18.1",
+      "new": "18.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "18.2",
+      "new": "18.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "18.3",
+      "new": "18.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "18.4",
+      "new": "18.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "18.5",
+      "new": "18.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "18.6",
+      "new": "18.6",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "18.7",
+      "new": "18.7",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "19.1",
+      "new": "19.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "19.2",
+      "new": "19.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "19.3",
+      "new": "19.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "19.4",
+      "new": "19.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "19.5",
+      "new": "19.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "19.6",
+      "new": "19.6",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "20.1",
+      "new": "20.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "20.2",
+      "new": "20.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "20.3",
+      "new": "20.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "21.1",
+      "new": "21.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "21.2",
+      "new": "21.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "21.3",
+      "new": "21.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "21.4",
+      "new": "21.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "21.5",
+      "new": "21.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "22.1",
+      "new": "22.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "22.2",
+      "new": "22.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "22.4",
+      "new": "22.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "22.5",
+      "new": "22.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "23.1",
+      "new": "23.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "23.2",
+      "new": "23.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "23.3",
+      "new": "23.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "23.4",
+      "new": "23.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "23.5",
+      "new": "23.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "23.6",
+      "new": "23.6",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "24.1",
+      "new": "24.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "24.2",
+      "new": "24.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "24.3",
+      "new": "24.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "24.4",
+      "new": "24.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "24.5",
+      "new": "24.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "24.6",
+      "new": "24.6",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "24.7",
+      "new": "24.7",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "24.8",
+      "new": "24.8",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "25.1",
+      "new": "25.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "25.2",
+      "new": "25.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "25.3",
+      "new": "25.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "26.1",
+      "new": "26.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "26.2",
+      "new": "26.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "26.3",
+      "new": "26.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "26.4",
+      "new": "26.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "26.5",
+      "new": "26.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "27.1",
+      "new": "27.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "27.2",
+      "new": "27.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "27.3",
+      "new": "27.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "28.1",
+      "new": "28.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "28.2",
+      "new": "28.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "28.3",
+      "new": "28.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "28.4",
+      "new": "28.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "29.1",
+      "new": "29.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "29.2",
+      "new": "29.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "29.3",
+      "new": "29.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "29.4",
+      "new": "29.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "29.5",
+      "new": "29.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "30.1",
+      "new": "30.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "30.2",
+      "new": "30.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "30.3",
+      "new": "30.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "31.1",
+      "new": "31.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "31.2",
+      "new": "31.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "31.3",
+      "new": "31.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "31.4",
+      "new": "31.4",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "31.5",
+      "new": "31.5",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "31.6",
+      "new": "31.6",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "31.7",
+      "new": "31.7",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "31.8",
+      "new": "31.8",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "32.1",
+      "new": "32.1",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "32.2",
+      "new": "32.2",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "32.3",
+      "new": "32.3",
+      "unchanged_except_references": true
+    },
+    {
+      "old": "33.1",
+      "new": "33.1",
+      "unchanged_except_references": true
+    }
+  ],
+  "errors": []
+}
