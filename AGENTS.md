@@ -30,6 +30,8 @@ Claude / Codex 共通。塾のホームページと予約・管理システム�
 | 講師の雇用契約書（労働条件通知書を兼ねる）の下書き | [EMPLOYMENT_CONTRACT_DRAFT.md](docs/EMPLOYMENT_CONTRACT_DRAFT.md) |
 | 過去の調査根拠 / 旧契約条項案 | [REDESIGN_CURRENT_STATE.md](docs/REDESIGN_CURRENT_STATE.md) / [CONTRACT_CLAUSES_DRAFT.md](docs/CONTRACT_CLAUSES_DRAFT.md) |
 
+本人が決めたこと（条件・方針・数値）をこのリポジトリの文書に書いたら、同じときに Kura の記憶にも残す（MCP の `remember`。誰が・いつ・前の値も。me の `skills/memory-write.md` の「決まったことと状態の書き方」、2026-10-15）。記憶の外で決めたことが記憶に入らず、古い草案から話が進んだことがあるため。
+
 仕様や運用が変わったら該当する正本を更新し、後続作業に影響する未解決事項だけをFUTURE_WORKへ残す。別の引き継ぎ資料やDriveの本文コピーを増やさない。
 
 確認は影響に合わせる。文書だけならリンク・参照・記述の整合、コードなら変更した機能の構文・回帰テスト、公開時は影響する画面/APIの反映を確認する。全テストや本番操作を毎回一律に行わない。
