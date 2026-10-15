@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "family proposal popup preserves form inputs and does not approve",
+    "family approved and archive documents, mobile width",
+    "manager combined output and past-version entry",
+    "saved versions unchanged after edit; long text and unknown legacy evidence rendered"
+  ],
+  "externalRequests": [],
+  "pdfs": [
+    "proposal",
+    "approved",
+    "sample",
+    "long-history"
+  ]
+}
