@@ -1,10 +1,21 @@
-# 受講規約・2026年11月版（2026年10月14日改訂・r7）
+# 受講規約・2026年11月版（2026年10月15日改訂・r8）
+
+<a id="whole-flow-r8"></a>
+
+## 最新の公開資料（r8）
+
+- 正本：[TERMS.md](TERMS.md)。全8章33条151項・別表2つ、適用開始日2026年11月1日。
+- 全体像 → 指導条件・単価 → 月ごとの合意 → 日時の予約 → 欠席等の費用 → 請求・返金 → 契約終了・規約変更 → 安全・情報の順に整理。承認・連絡・記録の重複をまとめ、長い項を分割し、書類の役割と接続不良時の料金を表にした。
+- [Web版](https://www.stepwise-education.jp/terms/2026-11-20261015-r8/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261015-r8/stepwise-terms-2026-11-20261015-r8.pdf)／[関連書類・旧版一覧](https://www.stepwise-education.jp/terms/)。通常・特殊の受講条件書、受講合意書、免除申請案内も新しい参照番号へそろえる。
+- [各項の対応表](MAPPING.md#whole-flow-r8)・[照合データ](FLOW_MOVE_CHECKS_20261015_R8.json)・[生成検証](PUBLICATION_CHECKS_20261015_R8.json)・[PR #76](https://github.com/mugilives-max/stepwise-kobetsu/pull/76)。旧版の公開HTML・PDF32ファイルを保持する。
+- [保留A・B](DECISIONS.md#whole-flow-r8)（予約未成立と通知不備／取消し等の回数算入）は変更しない。既存契約・同意記録、規約適用設定、システムの挙動は変えない。システムでr8を適用する前には、新規発行様式の条番号を別途整合する。
+
 
 <a id="agreement-role-r7"></a>
 
-## 最新の公開資料（r7）
+## 旧版の公開資料（r7・履歴）
 
-- 正本：[TERMS.md](TERMS.md)。第2条第4項で、受講合意書に合意する対象期間・科目・回数・各回の時間・適用単価を具体的に示し、合意した範囲内で回数を上限として授業を実施できることを先に説明する。
+- 当時の正本：[r7固定版](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md)。第2条第4項で、受講合意書に合意する対象期間・科目・回数・各回の時間・適用単価を具体的に示し、合意した範囲内で回数を上限として授業を実施できることを先に説明する。
 - 第9～11条は詳細として維持。他137項・3表・条番号・料金・合意や予約の条件は変えない。8章36条138項、適用開始日2026年11月1日。
 - [Web版](https://www.stepwise-education.jp/terms/2026-11-20261014-r7/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261014-r7/stepwise-terms-2026-11-20261014-r7.pdf)／[新旧版一覧](https://www.stepwise-education.jp/terms/)。空欄3様式と免除申請案内は、条番号・条件が同じr6を引き続き使用する。
 - [変更前後](MAPPING.md#agreement-role-r7)・[検証記録](PUBLICATION_CHECKS_20261014_R7.json)。原稿・生成・検証はGitHub上で実施し、旧版HTML・PDF30ファイルを保持する。
