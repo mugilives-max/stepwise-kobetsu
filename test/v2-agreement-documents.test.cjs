@@ -20,9 +20,10 @@ test('agreement documents require auth, hide drafts from families, and do not ap
 test('approved exact versions survive edits, deletion, and later terms selection',async()=>{
  const {h,auth,parent,plan,approve,row,refs}=await agreementFixture();
  await h.ok('admin/terms/set',{auth,version:'agreement-old',url:'https://example.invalid/old',title:'旧規約'});
- const p=await plan();await approve(p,{approvedCount:3});const approved=row(p.id), req={auth:parent,refs:refs(approved)};
+ await h.ok('family/terms/accept',{auth:parent,version:'agreement-old',agree:true,consenterName:'【テスト】架空 保護者'});
+ const p=await plan();await approve(p,{approvedCount:3,consentedAt:'2026-10-02T12:00:00+09:00'});const approved=row(p.id), req={auth:parent,refs:refs(approved)};
  const before=await h.ok('family/plans/document',req);
- assert.match(before.html,/13,500円/);assert.match(before.html,/【テスト】架空 保護者/);assert.match(before.html,/11:30:00/);assert.match(before.html,/12:00:00/);
+ assert.match(before.html,/13,500円/);assert.match(before.html,/【テスト】架空 保護者/);assert.match(before.html,/12:00:00/);
  assert.match(before.html,/承認回数は提案回数から変更/);assert.match(before.html,/example.invalid\/old/);
  await h.ok('admin/terms/set',{auth,version:'agreement-new',url:'https://example.invalid/new',title:'新規約'});
  await h.ok('billing/plans/save',{auth,id:p.id,version:approved.version,fee:4000});
@@ -67,7 +68,7 @@ test('HTML escapes saved content and unknown historical evidence is never filled
  const d=await h.ok('family/plans/document',{auth:parent,refs:refs(approved)});
  assert.match(d.html,/&lt;script&gt;/);assert.doesNotMatch(d.html,/<script>|<img src=x/);
  await h.ok('admin/terms/set',{auth,version:'later',url:'https://example.invalid/later',title:'後の規約'});
- const draft=await plan();
+ const draft=await plan({subject:'英語'});
  const old=await h.ok('billing/plans/document',{auth,refs:refs(p)});
  assert.match(old.html,/記録なし/);assert.doesNotMatch(old.html,/example.invalid\/later/);
  const {agreementDocHtml}=await import('../cf/v2/agreement-doc-20261016.mjs');
