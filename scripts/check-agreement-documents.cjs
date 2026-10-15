@@ -30,10 +30,11 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
  try {
   const context=await browser.newContext({viewport:{width:390,height:844}});
   await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===origin||['data:','blob:','about:'].includes(u.protocol))return route.continue();report.externalRequests.push(u.origin);return route.abort();});
-  await context.addInitScript(({parent,auth})=>{
+  await context.addInitScript(({parent,auth,origin})=>{
+   if(location.origin!==origin)return;
    localStorage.setItem('sw2_family',parent);localStorage.setItem('sw2_staff',auth);
    const RealDate=Date; window.Date=class extends RealDate {constructor(...args){super(...(args.length?args:['2026-10-16T03:00:00Z']));}static now(){return new RealDate('2026-10-16T03:00:00Z').getTime();}};
-  },{parent,auth});
+  },{parent,auth,origin});
   const page=await context.newPage();context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));page.on('pageerror',e=>errors.push(e.message));
   const savePdf=async(tab,name)=>{
    await tab.evaluate(()=>document.fonts.ready);

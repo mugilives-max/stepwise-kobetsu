@@ -1,6 +1,7 @@
 """Verify every synthetic PDF page and emit PNGs on the isolated GitHub runner."""
 from pathlib import Path
 import json
+import subprocess
 import fitz
 root = Path("agreement-document-output")
 report = {}
@@ -16,7 +17,7 @@ for path in sorted(root.glob("*.pdf")):
             x0,y0,x1,y1 = word[:4]
             assert x0>=25 and y0>=20 and x1<=page.rect.width-25 and y1<=page.rect.height-8, (path.name,i,word)
         texts.append(text)
-        page.get_pixmap(matrix=fitz.Matrix(1.35,1.35)).save(root / f"{path.stem}-{i+1}.png")
+    subprocess.run(["pdftoppm","-r","100","-png",str(path),str(root/path.stem)],check=True)
     combined = "\n".join(texts)
     for required in ["受講合意書", "対象期間", "予定総額", "提案・承認の記録", "ステップワイズ個別指導"]:
         assert required in combined, (path.name, required)

@@ -22,7 +22,7 @@ jobs:
           npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
           npx playwright install --with-deps chromium
           sudo apt-get update
-          sudo apt-get install -y fonts-noto-cjk
+          sudo apt-get install -y fonts-noto-cjk poppler-utils
           node scripts/check-agreement-documents.cjs
           python3 -m venv /tmp/agreement-pdf-check
           /tmp/agreement-pdf-check/bin/pip install PyMuPDF==1.26.4
