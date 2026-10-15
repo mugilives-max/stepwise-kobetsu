@@ -163,7 +163,8 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  th,td { padding:5pt 6pt; }
  a { color:inherit; text-decoration:none; }
  #footer + p { font-size:8pt; }
- .chapter + p, #article-18-item-4 { break-after:avoid; }
+ .chapter + p, .clause:has(+ table) { break-after:avoid; }
+ #article-2 { break-before:page; }
  #appendix-online { break-before:auto; }
 }
 """
@@ -294,6 +295,8 @@ with sync_playwright() as p:
     page.set_viewport_size({"width":390,"height":844})
     page.screenshot(path=str(REVIEW / "mobile.png"))
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Mobile overflow"
+    page.locator("#article-2-item-2").scroll_into_view_if_needed()
+    page.screenshot(path=str(REVIEW / "mobile-documents.png"))
     page.locator("#article-18-item-4").scroll_into_view_if_needed()
     page.screenshot(path=str(REVIEW / "mobile-fees.png"))
     for table in page.locator("table").all():
@@ -417,5 +420,7 @@ REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="
 pdf_waiver_links=[link["uri"] for pg in pdf for link in pg.get_links() if "/waiver/" in link.get("uri","")]
 assert len(pdf_waiver_links)>=1 and set(pdf_waiver_links)=={waiver_url}
 report["waiver_links_verified"]=True
+report["visual_review_images"]=len(list(REVIEW.glob("*.png")))
+report["total_pdf_pages"]=len(pdf)+sum(form["pages"] for form in report["forms"])
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(report,ensure_ascii=False,indent=2))
