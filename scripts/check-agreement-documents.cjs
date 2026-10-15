@@ -74,7 +74,7 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
   await page.getByRole('button',{name:/受講合意書全体を見る/}).first().click();
   const staffPopup=page.waitForEvent('popup');await page.getByRole('button',{name:'印刷・PDF保存',exact:true}).click();
   const staffDoc=await staffPopup;await staffDoc.getByRole('heading',{name:'受講合意書の控え',exact:true}).waitFor();await staffDoc.close();
-  await page.locator('[data-action="pl-close"]').first().click();
+  await page.locator('button[data-action="pl-close"]').first().click();
   await page.getByRole('button',{name:'過去の版・控えを開く'}).click();
   await page.getByRole('button',{name:'この版を印刷・PDF保存'}).first().waitFor();
   await page.screenshot({path:path.join(out,'staff-history.png'),fullPage:true});
