@@ -1,5 +1,164 @@
 # 元公開版の各項と採用版の対応表
 
+<a id="whole-flow-r8"></a>
+
+## 2026-10-15：全体の情報配置を整理（r7 → r8）
+
+本人が「迷いのない部分は反映」と承認した範囲。料金・期限・承認・免除・契約終了の条件は保持し、重複の集約、順序の変更、項の分割、表・箇条書きへの変更と参照修正を行う。8章36条138項・別表3つから、8章33条151項・別表2つへ整理。免除例は第22条へ統合した。長い項の分割のため項数は増えるが、新しい義務を追加しない。
+
+保留A（予約未成立と通知不備）・B（取消し等の回数算入）は[判断記録](DECISIONS.md#whole-flow-r8)に残す。第15条と回数上限の文言は参照番号以外を維持する。
+
+### 各項の移動先（全138項・章冒頭・別表3）
+
+| r7の位置 | r8の位置 |
+|---|---|
+| [第1条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-1-item-1) | [第1条第1項](TERMS.md#article-1-item-1) |
+| [第1条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-1-item-2) | [第1条第2項](TERMS.md#article-1-item-2) |
+| [第1条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-1-item-3) | [第1条第3項](TERMS.md#article-1-item-3) |
+| [第1条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-1-item-4) | [第1条第4項](TERMS.md#article-1-item-4) |
+| [第2条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-2-item-1) | [第2条第1項](TERMS.md#article-2-item-1) |
+| [第2条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-2-item-2) | [第2条第2項](TERMS.md#article-2-item-2) |
+| [第2条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-2-item-3) | [第2条第2項](TERMS.md#article-2-item-2) |
+| [第2条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-2-item-4) | [第2条第2項](TERMS.md#article-2-item-2)・[第9条第3項](TERMS.md#article-9-item-3) |
+| [第2条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-2-item-5) | [第3条第1項](TERMS.md#article-3-item-1)・[第3条第3項](TERMS.md#article-3-item-3)・[第13条第2項](TERMS.md#article-13-item-2) |
+| [第3条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-3-item-1) | [第2条第3項](TERMS.md#article-2-item-3)・[第9条第1項](TERMS.md#article-9-item-1) |
+| [第3条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-3-item-2) | [第2条第3項](TERMS.md#article-2-item-3)・[第9条第2項](TERMS.md#article-9-item-2) |
+| [第4条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-4-item-1) | [第4条第1項](TERMS.md#article-4-item-1) |
+| [第4条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-4-item-2) | [第4条第2項](TERMS.md#article-4-item-2) |
+| [第4条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-4-item-3) | [第4条第3項](TERMS.md#article-4-item-3) |
+| [第4条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-4-item-4) | [第4条第4項](TERMS.md#article-4-item-4) |
+| [第4条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-4-item-5) | [第4条第5項](TERMS.md#article-4-item-5) |
+| [第4条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-4-item-6) | [第4条第6項](TERMS.md#article-4-item-6)・[第12条第1項](TERMS.md#article-12-item-1) |
+| [第4条第7項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-4-item-7) | [第4条第7項](TERMS.md#article-4-item-7) |
+| [第5条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-5-item-1) | [第5条第1項](TERMS.md#article-5-item-1)・[第5条第4項](TERMS.md#article-5-item-4) |
+| [第5条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-5-item-2) | [第5条第2項](TERMS.md#article-5-item-2) |
+| [第5条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-5-item-3) | [第5条第3項](TERMS.md#article-5-item-3) |
+| [第5条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-5-item-4) | [第5条第1項](TERMS.md#article-5-item-1) |
+| [第6条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-6-item-1) | [第6条第2項](TERMS.md#article-6-item-2) |
+| [第6条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-6-item-2) | [第6条第3項](TERMS.md#article-6-item-3) |
+| [第6条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-6-item-3) | [第6条第4項](TERMS.md#article-6-item-4) |
+| [第6条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-6-item-4) | [第12条第3項](TERMS.md#article-12-item-3) |
+| [第7条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-7-item-1) | [第6条第1項](TERMS.md#article-6-item-1)・[第7条第1項](TERMS.md#article-7-item-1) |
+| [第7条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-7-item-2) | [第7条第2項](TERMS.md#article-7-item-2) |
+| [第7条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-7-item-3) | [第7条第3項](TERMS.md#article-7-item-3)・[第12条第1項](TERMS.md#article-12-item-1)・[第12条第4項](TERMS.md#article-12-item-4) |
+| [第7条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-7-item-4) | [第8条第1項](TERMS.md#article-8-item-1)・[第8条第2項](TERMS.md#article-8-item-2) |
+| [第8条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-8-item-1) | [第8条第1項](TERMS.md#article-8-item-1) |
+| [第8条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-8-item-2) | [第8条第2項](TERMS.md#article-8-item-2) |
+| [第8条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-8-item-3) | [第8条第3項](TERMS.md#article-8-item-3)・[第8条第4項](TERMS.md#article-8-item-4) |
+| [第8条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-8-item-4) | [第8条第5項](TERMS.md#article-8-item-5) |
+| [第9条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-9-item-1) | [第9条第3項](TERMS.md#article-9-item-3) |
+| [第9条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-9-item-2) | [第9条第4項](TERMS.md#article-9-item-4) |
+| [第9条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-9-item-3) | [第9条第5項](TERMS.md#article-9-item-5) |
+| [第10条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-10-item-1) | [第11条第2項](TERMS.md#article-11-item-2) |
+| [第10条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-10-item-2) | [第11条第3項](TERMS.md#article-11-item-3)・[第11条第4項](TERMS.md#article-11-item-4) |
+| [第11条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-11-item-1) | [第9条第3項](TERMS.md#article-9-item-3)・[第10条第1項](TERMS.md#article-10-item-1) |
+| [第11条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-11-item-2) | [第6条第5項](TERMS.md#article-6-item-5) |
+| [第11条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-11-item-3) | [第10条第2項](TERMS.md#article-10-item-2) |
+| [第11条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-11-item-4) | [第12条第2項](TERMS.md#article-12-item-2) |
+| [第12条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-12-item-1) | [第2条第2項](TERMS.md#article-2-item-2)・[第13条第1項](TERMS.md#article-13-item-1) |
+| [第12条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-12-item-2) | [第13条第2項](TERMS.md#article-13-item-2) |
+| [第13条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-13-item-1) | [第13条第3項](TERMS.md#article-13-item-3) |
+| [第13条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-13-item-2) | [第10条第3項](TERMS.md#article-10-item-3)・[第13条第4項](TERMS.md#article-13-item-4) |
+| [第13条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-13-item-3) | [第13条第5項](TERMS.md#article-13-item-5) |
+| [第14条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-14-item-1) | [第14条第1項](TERMS.md#article-14-item-1) |
+| [第14条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-14-item-2) | [第14条第2項](TERMS.md#article-14-item-2) |
+| [第14条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-14-item-3) | [第14条第3項](TERMS.md#article-14-item-3)・[第14条第4項](TERMS.md#article-14-item-4)・[第14条第5項](TERMS.md#article-14-item-5) |
+| [第15条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-15-item-1) | [第15条第1項](TERMS.md#article-15-item-1) |
+| [第15条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-15-item-2) | [第15条第2項](TERMS.md#article-15-item-2) |
+| [第15条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-15-item-3) | [第15条第3項](TERMS.md#article-15-item-3) |
+| [第16条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-16-item-1) | [第16条第1項](TERMS.md#article-16-item-1) |
+| [第16条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-16-item-2) | [第16条第2項](TERMS.md#article-16-item-2) |
+| [第17条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-17-item-1) | [第16条第2項](TERMS.md#article-16-item-2)・[第16条第5項](TERMS.md#article-16-item-5) |
+| [第17条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-17-item-2) | [第16条第3項](TERMS.md#article-16-item-3) |
+| [第17条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-17-item-3) | [第17条第1項](TERMS.md#article-17-item-1) |
+| [第17条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-17-item-4) | [第16条第4項](TERMS.md#article-16-item-4) |
+| [第17条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-17-item-5) | [第17条第2項](TERMS.md#article-17-item-2) |
+| [第17条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-17-item-6) | [第17条第5項](TERMS.md#article-17-item-5) |
+| [第18条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-18-item-1) | [第18条第2項](TERMS.md#article-18-item-2) |
+| [第18条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-18-item-2) | [第18条第3項](TERMS.md#article-18-item-3) |
+| [第18条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-18-item-3) | [第18条第4項](TERMS.md#article-18-item-4) |
+| [第18条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-18-item-4) | [第18条第5項](TERMS.md#article-18-item-5) |
+| [第18条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-18-item-5) | [第18条第6項](TERMS.md#article-18-item-6) |
+| [第18条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-18-item-6) | [第18条第7項](TERMS.md#article-18-item-7) |
+| [第19条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-19-item-1) | [第17条第3項](TERMS.md#article-17-item-3) |
+| [第19条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-19-item-2) | [第19条第4項](TERMS.md#article-19-item-4) |
+| [第19条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-19-item-3) | [第17条第4項](TERMS.md#article-17-item-4) |
+| [第19条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-19-item-4) | [第19条第5項](TERMS.md#article-19-item-5) |
+| [第20条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-20-item-1) | [第19条第1項](TERMS.md#article-19-item-1) |
+| [第20条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-20-item-2) | [第19条第2項](TERMS.md#article-19-item-2) |
+| [第20条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-20-item-3) | [第19条第2項](TERMS.md#article-19-item-2) |
+| [第20条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-20-item-4) | [第19条第3項](TERMS.md#article-19-item-3) |
+| [第20条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-20-item-5) | [第19条第6項](TERMS.md#article-19-item-6) |
+| [第21条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-21-item-1) | [第22条第1項](TERMS.md#article-22-item-1)・[第22条第2項](TERMS.md#article-22-item-2) |
+| [第21条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-21-item-2) | [第22条第3項](TERMS.md#article-22-item-3) |
+| [第21条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-21-item-3) | [第22条第4項](TERMS.md#article-22-item-4) |
+| [第21条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-21-item-4) | [第22条第5項](TERMS.md#article-22-item-5) |
+| [第22条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-22-item-1) | [第20条第1項](TERMS.md#article-20-item-1) |
+| [第22条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-22-item-2) | [第20条第2項](TERMS.md#article-20-item-2) |
+| [第22条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-22-item-3) | [第20条第3項](TERMS.md#article-20-item-3) |
+| [第23条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-23-item-1) | [第21条第1項](TERMS.md#article-21-item-1) |
+| [第23条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-23-item-2) | [第21条第2項](TERMS.md#article-21-item-2) |
+| [第23条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-23-item-3) | [第21条第4項](TERMS.md#article-21-item-4) |
+| [第23条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-23-item-4) | [第21条第3項](TERMS.md#article-21-item-3) |
+| [第23条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-23-item-5) | [第21条第5項](TERMS.md#article-21-item-5) |
+| [第24条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-24-item-1) | [第2条第3項](TERMS.md#article-2-item-3)・[第23条第1項](TERMS.md#article-23-item-1) |
+| [第24条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-24-item-2) | [第2条第3項](TERMS.md#article-2-item-3)・[第23条第2項](TERMS.md#article-23-item-2) |
+| [第24条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-24-item-3) | [第23条第3項](TERMS.md#article-23-item-3)・[第23条第4項](TERMS.md#article-23-item-4)・[第23条第5項](TERMS.md#article-23-item-5) |
+| [第24条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-24-item-4) | [第23条第6項](TERMS.md#article-23-item-6) |
+| [第25条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-25-item-1) | [第24条第1項](TERMS.md#article-24-item-1) |
+| [第25条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-25-item-2) | [第24条第2項](TERMS.md#article-24-item-2) |
+| [第25条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-25-item-3) | [第24条第3項](TERMS.md#article-24-item-3) |
+| [第25条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-25-item-4) | [第24条第4項](TERMS.md#article-24-item-4) |
+| [第25条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-25-item-5) | [第24条第5項](TERMS.md#article-24-item-5) |
+| [第25条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-25-item-6) | [第24条第6項](TERMS.md#article-24-item-6) |
+| [第25条第7項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-25-item-7) | [第24条第7項](TERMS.md#article-24-item-7) |
+| [第25条第8項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-25-item-8) | [第24条第8項](TERMS.md#article-24-item-8) |
+| [第26条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-26-item-1) | [第25条第1項](TERMS.md#article-25-item-1)・[第25条第2項](TERMS.md#article-25-item-2)・[第25条第3項](TERMS.md#article-25-item-3) |
+| [第27条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-27-item-1) | [第3条第2項](TERMS.md#article-3-item-2) |
+| [第27条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-27-item-2) | [第11条第5項](TERMS.md#article-11-item-5) |
+| [第27条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-27-item-3) | [第3条第3項](TERMS.md#article-3-item-3) |
+| [第27条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-27-item-4) | [第16条第5項](TERMS.md#article-16-item-5) |
+| [第28条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-28-item-1) | [第30条第1項](TERMS.md#article-30-item-1) |
+| [第28条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-28-item-2) | [第11条第1項](TERMS.md#article-11-item-1) |
+| [第28条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-28-item-3) | [第30条第2項](TERMS.md#article-30-item-2) |
+| [第28条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-28-item-4) | [第30条第3項](TERMS.md#article-30-item-3) |
+| [第29条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-29-item-1) | [第29条第1項](TERMS.md#article-29-item-1) |
+| [第29条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-29-item-2) | [第29条第2項](TERMS.md#article-29-item-2) |
+| [第29条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-29-item-3) | [第29条第3項](TERMS.md#article-29-item-3) |
+| [第29条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-29-item-4) | [第29条第4項](TERMS.md#article-29-item-4) |
+| [第29条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-29-item-5) | [第29条第5項](TERMS.md#article-29-item-5) |
+| [第30条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-30-item-1) | [第31条第4項](TERMS.md#article-31-item-4) |
+| [第30条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-30-item-2) | [第31条第1項](TERMS.md#article-31-item-1) |
+| [第30条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-30-item-3) | [第31条第2項](TERMS.md#article-31-item-2) |
+| [第30条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-30-item-4) | [第31条第3項](TERMS.md#article-31-item-3) |
+| [第30条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-30-item-5) | [第31条第5項](TERMS.md#article-31-item-5) |
+| [第30条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-30-item-6) | [第31条第6項](TERMS.md#article-31-item-6)・[第31条第7項](TERMS.md#article-31-item-7)・[第31条第8項](TERMS.md#article-31-item-8) |
+| [第31条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-31-item-1) | [第32条第1項](TERMS.md#article-32-item-1)・[第32条第2項](TERMS.md#article-32-item-2)・[第32条第3項](TERMS.md#article-32-item-3) |
+| [第32条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-32-item-1) | [第26条第1項](TERMS.md#article-26-item-1) |
+| [第32条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-32-item-2) | [第26条第2項](TERMS.md#article-26-item-2) |
+| [第32条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-32-item-3) | [第26条第3項](TERMS.md#article-26-item-3) |
+| [第32条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-32-item-4) | [第26条第4項](TERMS.md#article-26-item-4) |
+| [第32条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-32-item-5) | [第26条第5項](TERMS.md#article-26-item-5) |
+| [第32条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-32-item-6) | [第26条第6項](TERMS.md#article-26-item-6) |
+| [第33条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-33-item-1) | [第27条第1項](TERMS.md#article-27-item-1) |
+| [第33条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-33-item-2) | [第27条第2項](TERMS.md#article-27-item-2) |
+| [第33条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-33-item-3) | [第27条第3項](TERMS.md#article-27-item-3) |
+| [第34条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-34-item-1) | [第12条第1項](TERMS.md#article-12-item-1) |
+| [第35条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-35-item-1) | [第28条第1項](TERMS.md#article-28-item-1) |
+| [第35条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-35-item-2) | [第11条第6項](TERMS.md#article-11-item-6)・[第31条第7項](TERMS.md#article-31-item-7) |
+| [第35条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-35-item-3) | [第28条第2項](TERMS.md#article-28-item-2) |
+| [第35条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-35-item-4) | [第28条第3項](TERMS.md#article-28-item-3) |
+| [第35条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-35-item-5) | [第28条第4項](TERMS.md#article-28-item-4) |
+| [第36条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#article-36-item-1) | [第33条第1項](TERMS.md#article-33-item-1) |
+| [第5章冒頭の定義](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#cancel-preamble) | [第18条第1項](TERMS.md#article-18-item-1) |
+| [別表3（免除案内）](https://github.com/mugilives-max/stepwise-kobetsu/blob/3c02676f751b64c3018e7b9efce63ab9982566cc/docs/terms-restructure-2026-11/TERMS.md#appendix-waiver) | [第22条第3項](TERMS.md#article-22-item-3)・[第22条第5項](TERMS.md#article-22-item-5) |
+
+### 集約・表現変更の照合
+
+原文・移動先の全文と個別の照合理由は[照合データ](FLOW_MOVE_CHECKS_20261015_R8.json)に記録する。全138項、キャンセル料金の定義、別表3を対応付け、参照・書式を除く文の一致と、表への変更等28箇所の同義性を確認する。旧3つの料金表と別表2の計算例を保持する。既存の公開HTML・PDF32ファイルを保持し、関連3様式と免除案内は条番号・版表示・リンクだけ更新する。
+
+以下は旧改訂の記録。各節の新旧番号は、その改訂時点の番号。
+
 <a id="agreement-role-r7"></a>
 
 ## 2026-10-14：受講合意書の役割を第2条で説明（r6 → r7）
