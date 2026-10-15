@@ -391,6 +391,7 @@ with sync_playwright() as p:
         dest=OUT/slug if slug=="waiver" else OUT/"documents"/slug
         dest.mkdir(parents=True,exist_ok=True)
         form_css=css+"\ntable:has(th:nth-child(2):last-child) th:first-child{width:38%} @media print { body{font-size:8.8pt;line-height:1.5} h1{font-size:15pt} h2{margin:8pt 0 5pt;font-size:11pt} p{margin:4pt 0} table{font-size:8.3pt;line-height:1.5;margin:6pt 0} th,td{padding:4pt 5pt} }"
+        if slug=="agreement": form_css+="\n@media print { th,td { padding:3pt 5pt; } }"
         if slug=="waiver": form_css=css
         form_html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>'+title+'｜ステップワイズ個別指導</title><style>'+form_css+'</style></head><body><nav class="tools"><a href="'+slug+'.pdf">PDFで開く</a><a href="../../">受講規約</a><a href="../../../">書類・旧版一覧</a></nav><main>'+str(form_body)+'</main></body></html>'
         if slug=="waiver":
@@ -402,6 +403,7 @@ with sync_playwright() as p:
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"),slug
         page.screenshot(path=str(REVIEW/(slug+"-mobile.png")))
         doc=fitz.open(dest/(slug+".pdf"))
+        if slug!="waiver": assert len(doc)==1,(slug,"Blank form must fit on one page")
         plain=compact("\n".join(block[4] for pg in doc for block in pg.get_text("blocks") if block[1]>30 and block[3]<pg.rect.height-32))
         for tag in form_body.find_all(["p","h1","h2","th","td"]):
             text=compact(tag.get_text())
