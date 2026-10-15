@@ -1,0 +1,46 @@
+name: Agreement document preview
+on:
+  push:
+    branches: ['codex/agreement-documents-20261016']
+    paths: ['cf/v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'test/v2-agreement-documents.test.cjs', 'test/helpers/agreement-fixture.cjs', 'scripts/check-agreement-documents.cjs', 'scripts/verify-agreement-pdfs.py', '.github/workflows/agreement-document-preview.yml']
+permissions:
+  contents: write
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Agreement authorization and history tests
+        run: node --test test/v2-agreement-documents.test.cjs
+      - name: Browser and PDF checks with synthetic data only
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          node scripts/check-agreement-documents.cjs
+          python3 -m venv /tmp/agreement-pdf-check
+          /tmp/agreement-pdf-check/bin/pip install PyMuPDF==1.26.4
+          /tmp/agreement-pdf-check/bin/python scripts/verify-agreement-pdfs.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agreement-document-preview
+          path: agreement-document-output/
+          retention-days: 14
+      - name: Preserve synthetic review copies on this feature branch
+        # No production credentials or family data; never pushes to main.
+        run: |
+          mkdir -p docs/terms-restructure-2026-11/agreement-document-preview-20261016
+          cp agreement-document-output/* docs/terms-restructure-2026-11/agreement-document-preview-20261016/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/terms-restructure-2026-11/agreement-document-preview-20261016
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Keep synthetic agreement document review copies"
+          git push origin HEAD:codex/agreement-documents-20261016

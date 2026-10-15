@@ -1,3 +1,4 @@
+import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面: 受講合意書（#plans）と請求（#billing、キャンセル料を含む）。5段目。教室管理者だけ。設定の「授業の種類と標準料金」（#kinds）も。
 // 受講合意書は月ごとに生徒の行を並べる。請求は月ごとに家族の行を並べ、開くと内訳。
 import { sheet, rowButton } from '/staff/ui.js?v=20261008-launch1';
@@ -8,9 +9,10 @@ let plans = null, planMonth = '', editing = '', consentFor = '', addFor = '', ki
 const unpicked = new Set(); // お知らせから外した下書き（チェックを外したもの）
 export function billingPick(id, on) { if (on) unpicked.delete(id); else unpicked.add(id); }
 let bill = null, billMonth = '', openFamily = '', detail = null, fees = null, billSettings = null;
+let historyRows = null;
 let previewKey = ''; // 受講合意書全体のプレビュー（生徒 × 期間 × 状態のまとまり）。開くだけで何も保存・送信しない
-export function leaveBilling() { kindOpen = null; lineOpen = editing = consentFor = addFor = openFamily = feeOpen = previewKey = ''; }
-export function resetBilling() { kindOpen = null; lineOpen = feeOpen = previewKey = ''; plans = null; bill = null; detail = null; fees = null; editing = ''; consentFor = ''; addFor = ''; openFamily = ''; }
+export function leaveBilling() { historyRows = null; kindOpen = null; lineOpen = editing = consentFor = addFor = openFamily = feeOpen = previewKey = ''; }
+export function resetBilling() { historyRows = null; kindOpen = null; lineOpen = feeOpen = previewKey = ''; plans = null; bill = null; detail = null; fees = null; editing = ''; consentFor = ''; addFor = ''; openFamily = ''; }
 
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
@@ -53,6 +55,7 @@ export function plansPage(ctx) {
 function studentPlans(ctx, s) {
   const { esc } = ctx;
   let h = `<div class="group"><div class="sub-head"><strong>${esc(s.name)}</strong><small class="muted">通常指導の基準単価 90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}${s.status === 'paused' ? '・休会' : ''}</small><button class="mini-btn" data-action="pl-add" data-id="${esc(s.id)}" aria-label="${esc(s.name)} の受講合意書を足す"${ctx.dis()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
+  h += `<p class="small"><button type="button" data-action="pl-history" data-student="${esc(s.id)}">過去の版・控えを開く</button></p>`;
   if (s.unplanned) h += `<p class="small notice" style="margin:6px 0">受講合意書に入っていない授業が ${s.unplanned}件あります（承認がないと請求できません）。</p>`;
   if (s.lines.length) h += planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('');
   else h += '<p class="small muted" style="padding:6px 0 10px">この月の受講合意書はまだありません。</p>';
@@ -81,6 +84,7 @@ function lineRow(ctx, s, l) {
 function planSheet(ctx) {
   const { esc } = ctx;
   const find = id => { for (const s of plans.students) { const l = s.lines.find(x => x.id === id); if (l) return [s, l]; } return []; };
+  if (historyRows) return sheet(esc, '受講合意書の履歴', '<p class="small muted">過去の各行の版です。書面を開いても現在の計画・承認は変わりません。</p>' + (historyRows.length ? historyRows.map(l=>'<div class="pcard"><b>'+esc(l.subject)+' '+esc(l.kind)+'・第'+l.version+'版</b>'+agreementDocumentButtons([l],{label:'この版を印刷・PDF保存'})+'</div>').join('') : '<p>保存された履歴はありません。</p>'), 'pl-close');
   if (addFor) { const s = plans.students.find(x => x.id === addFor); return s ? sheet(esc, s.name + ' の受講合意書を足す', lineForm(ctx, s, null), 'pl-close') : ''; }
   if (editing) { const [s, l] = find(editing); return l ? sheet(esc, `${s.name} ${l.subject} を直す`, lineForm(ctx, s, l), 'pl-close') : ''; }
   if (consentFor) {
@@ -94,6 +98,7 @@ function planSheet(ctx) {
       const sets = planSets(st.lines), set = sets.find(x => x.key === previewKey); if (!set) continue;
       const others = sets.filter(x => x !== set).map(x => `${periodText(x.startDate, x.endDate)} ${STATUS_LABEL[x.status] || x.status}`).join('・');
       const body = planPreviewHtml(set, esc, { others, schedule: set.lines.map(l => ({ lineId: l.id, assigned: l.assigned, tentative: l.tentative })) })
+        + agreementDocumentButtons(set.lines.map(l=>({...l,studentName:st.name})))
         + `<p class="small muted">${set.status === 'draft' ? '保護者には、お知らせしたあとにこの内容（科目ごとの説明・目的ごとの回数・金額）が届きます。' : '保護者の画面にも、この内容が出ています。'}このプレビューを開いても、保存・お知らせ・承認はしません。</p><div class="row"><button type="button" data-action="pl-close">閉じる</button></div>`;
       return sheet(esc, `${st.name} の受講合意書全体`, body, 'pl-close', { wide: true });
     }
@@ -309,7 +314,7 @@ export async function billingClick(ctx, a, b) {
   let r, msg;
   if (a === 'kind-open') { kindOpen = b.dataset.name; return true; }
   if (a === 'kind-close') { kindOpen = null; return true; }
-  if (a === 'pl-month') { planMonth = shift(planMonth, Number(b.dataset.d)); editing = consentFor = addFor = lineOpen = previewKey = ''; return true; }
+  if (a === 'pl-month') { historyRows = null; planMonth = shift(planMonth, Number(b.dataset.d)); editing = consentFor = addFor = lineOpen = previewKey = ''; return true; }
   if (a === 'pl-line') { lineOpen = b.dataset.id; editing = consentFor = addFor = previewKey = ''; ctx.say(''); return true; }
   if (a === 'fee-open') { feeOpen = b.dataset.id; ctx.say(''); return true; }
   if (a === 'fee-close') { feeOpen = ''; return true; }
@@ -318,7 +323,8 @@ export async function billingClick(ctx, a, b) {
   if (a === 'pl-add') { addFor = b.dataset.id; editing = consentFor = lineOpen = ''; return true; }
   if (a === 'pl-edit') { editing = b.dataset.id; consentFor = addFor = ''; return true; }
   if (a === 'pl-consent') { consentFor = b.dataset.id; editing = addFor = ''; return true; }
-  if (a === 'pl-close') { editing = consentFor = addFor = lineOpen = previewKey = ''; return true; }
+  if (a === 'pl-history') { const result = await ctx.call('billing/plans/history', { studentId: b.dataset.student }); if (result.ok) { historyRows = result.plans; } else if (!ctx.handleAuth(result)) ctx.say(result.error.message, 'error'); return true; }
+  if (a === 'pl-close') { historyRows = null; editing = consentFor = addFor = lineOpen = previewKey = ''; return true; }
   if (a === 'pl-preview') { previewKey = b.dataset.key; editing = consentFor = addFor = lineOpen = ''; return true; }
   if (a === 'bl-open') { openFamily = b.dataset.id; detail = null; ctx.say(''); return true; }
   if (a === 'pl-copy') {

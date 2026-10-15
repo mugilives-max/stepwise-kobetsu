@@ -1,6 +1,7 @@
 // 書類のひな形（設定 → 書類のひな形）。2026-10-12 本人「書類に関するひな形みたいなのをパッと確認できる場所が欲しい」。
 // 台帳に残す書面（受講条件書（通常指導）・受講条件書（特殊指導）・請求書・領収書）を、架空の家族（見本家）で描いて返す。読むだけ。
 // 請求書の振込先・備考だけは本番の設定を使う（今どう載るかを確かめるため）。
+import { agreementDocHtml } from './agreement-doc-20261016.mjs';
 import { fail, iso } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { currentTerms } from './terms.mjs';
@@ -12,6 +13,7 @@ const family = { id: 'fam_sample', name: '見本家', guardianName: '見本 花�
 const student = { id: 'stu_sample', familyName: '見本', givenName: '太郎', grade: '中3' };
 
 export const DOC_TYPES = {
+  agreement: { title: '受講合意書', when: '承認前の案・承認後の控えを開いたとき', who: '保護者と教室管理者', where: '受講合意書・契約と同意の履歴' },
   condition: { title: '受講条件書（通常指導）', when: '生徒ごとに「条件を決めてお知らせ」したとき（案）と、保護者が同意したとき（確定）', who: '保護者はお支払いから。塾は生徒の画面から', where: '家族の画面 → 生徒 → 受講条件書（通常指導）' },
   special: { title: '受講条件書（特殊指導）', when: '特殊指導を提案したとき（案）と、保護者が承認したとき（確定）', who: '保護者はお支払いから。塾は生徒の画面から', where: '家族の画面 → 生徒 → 特殊指導' },
   invoice: { title: '請求書', when: '月の請求を確定したとき', who: '保護者はお支払いの請求から。塾は請求の画面から', where: '請求 → 家族の月。振込先と備考は 設定 → 請求の下の「請求書の設定」' },
@@ -19,6 +21,14 @@ export const DOC_TYPES = {
 };
 
 export async function sampleDocHtml(db, type, now) {
+  if(type==='agreement') return agreementDocHtml({sample:true,documentId:'AG-SAMPLE',records:[
+    {studentName:'【テスト】見本 太郎',capturedAt:'2026-10-16T03:00:00.000Z',terms:{url:'https://www.stepwise-education.jp/terms/2026-11-20261015-r9/'},line:{
+      id:'plan_sample_math',version:3,status:'approved',subject:'数学',kind:'通常',startDate:'2026-11-01',endDate:'2026-11-30',count:4,approvedCount:4,minutes:90,fee:4500,
+      comment:'二次関数の復習と定期テスト対策。学校のワークで理解を確認し、間違えた問題を解き直します。',parts:[{label:'二次関数の復習',count:2},{label:'定期テスト対策',count:2}],
+      instructionType:'regular',conditionId:'condition_sample_v1',termsVersion:'2026-11-20261015-r9',
+      proposedByName:'【テスト】見本 講師',proposedAt:'2026-10-15T03:00:00.000Z',consenterName:'【テスト】見本 花子',consentedAt:'2026-10-16T03:00:00.000Z',approvedVia:'保護者ページ',recordedAt:'2026-10-16T03:00:00.000Z',recordedByName:'【テスト】見本 花子',familyAck:'confirmed'
+    }}
+  ]});
   const terms = await currentTerms(db);
   const at = iso(now);
   if (type === 'condition') {
