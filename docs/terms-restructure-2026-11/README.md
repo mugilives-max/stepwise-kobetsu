@@ -1,10 +1,23 @@
-# 受講規約・2026年11月版（2026年10月15日改訂・r8）
+# 受講規約・2026年11月版（2026年10月15日改訂・r9）
+
+<a id="special-rate-r9"></a>
+
+## 最新の公開資料（r9）
+
+- 正本：[TERMS.md](TERMS.md)。全8章33条151項・別表2つ、適用開始日2026年11月1日。
+- 共通の指導条件と通常の基準単価は「受講条件書」、準備負担による例外の単価は「特別単価合意書」、月ごとの実施範囲・適用単価は「受講合意書」で定める。「通常指導／特殊指導」の二分類から、共通条件と単価の例外として説明を整理した。
+- 原則は通常の基準単価。共通準備の生徒数への分配、継続学習の指導回数への分配、分配後も想定範囲を大きく超える場合に限る基準、事前説明と明示承認、月ごとの合意、準備時間の別途加算禁止を保持する。
+- [Web版](https://www.stepwise-education.jp/terms/2026-11-20261015-r9/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261015-r9/stepwise-terms-2026-11-20261015-r9.pdf)／[関連書類・旧版一覧](https://www.stepwise-education.jp/terms/)。
+- 空欄様式：[受講条件書](TEACHING_CONDITIONS_REGULAR.md)・[特別単価合意書](TEACHING_CONDITIONS_SPECIAL.md)・[受講合意書](TUITION_AGREEMENT.md)。ファイル名は参照互換のため維持し、表題・記入欄・説明をそろえる。[免除申請案内](WAIVER_GUIDE.md)は版表示とリンクのみ更新する。
+- [変更対応](MAPPING.md#special-rate-r9)・[判断記録](DECISIONS.md#special-rate-r9)・[照合データ](RATE_DOCUMENT_CHECKS_20261015_R9.json)。変更対象20項（名称等19項・案内URL1項）と版表示・見出し以外は保持し、他131項・料金と接続不良の4表・計算例を照合する。旧版公開HTML・PDF42ファイルを保持する。
+- 2026-10-15：GitHub上の作業ブランチで生成・検証する。完了結果はこの欄へ追記する。
+- [保留A・B](DECISIONS.md#whole-flow-r8)は維持。既存契約・提案・保存済み書面・同意記録を変更しない。システムへのr9適用前には、表示名・今後発行する様式・参照番号を版に応じて整合させる。今回の公開だけでは規約適用設定や家庭への同意依頼を行わない。
 
 <a id="whole-flow-r8"></a>
 
-## 最新の公開資料（r8）
+## 旧版の公開資料（r8・履歴）
 
-- 正本：[TERMS.md](TERMS.md)。全8章33条151項・別表2つ、適用開始日2026年11月1日。
+- 当時の正本：[r8固定版](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md)。全8章33条151項・別表2つ、適用開始日2026年11月1日。
 - 全体像 → 指導条件・単価 → 月ごとの合意 → 日時の予約 → 欠席等の費用 → 請求・返金 → 契約終了・規約変更 → 安全・情報の順に整理。承認・連絡・記録の重複をまとめ、長い項を分割し、書類の役割と接続不良時の料金を表にした。
 - [Web版](https://www.stepwise-education.jp/terms/2026-11-20261015-r8/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261015-r8/stepwise-terms-2026-11-20261015-r8.pdf)／[関連書類・旧版一覧](https://www.stepwise-education.jp/terms/)。通常・特殊の受講条件書、受講合意書、免除申請案内も新しい参照番号へそろえる。
 - [各項の対応表](MAPPING.md#whole-flow-r8)・[照合データ](FLOW_MOVE_CHECKS_20261015_R8.json)・[生成検証](PUBLICATION_CHECKS_20261015_R8.json)・[PR #76](https://github.com/mugilives-max/stepwise-kobetsu/pull/76)。旧版の公開HTML・PDF32ファイルを保持する。

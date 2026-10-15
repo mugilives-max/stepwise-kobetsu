@@ -1,5 +1,40 @@
 # 元公開版の各項と採用版の対応表
 
+<a id="special-rate-r9"></a>
+
+## 2026-10-15：共通の受講条件と特別単価の合意（r8 → r9）
+
+本人の承認を受け、「受講条件書（通常指導）」を「受講条件書」、「受講条件書（特殊指導）」を「特別単価合意書」へ整理。「受講合意書」は維持する。単価名は「通常の基準単価」「特別の基準単価」、総称は「基準単価」とし、各回の「適用単価」の上限として扱う。
+
+指導方法等の共通条件は受講条件書に集約し、特別単価合意書では準備負担による単価の例外、その対象・理由・期間を合意する。準備の分配方法・対象の判断基準・例示・事前承認・終了時精算は維持する。特別単価への合意だけでは授業を実施できず、月ごとの受講合意書が必要である点も維持。
+
+| r8の位置 | r9の位置 | 変更内容 |
+|---|---|---|
+| [第2条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-2-item-1) | [同じ条項](TERMS.md#article-2-item-1) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第2条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-2-item-2) | [同じ条項](TERMS.md#article-2-item-2) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第3条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-3-item-1) | [同じ条項](TERMS.md#article-3-item-1) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第4条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-4-item-1) | [同じ条項](TERMS.md#article-4-item-1) | 受講条件書の名称を統一 |
+| [第4条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-4-item-2) | [同じ条項](TERMS.md#article-4-item-2) | 受講条件書の名称を統一 |
+| [第4条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-4-item-5) | [同じ条項](TERMS.md#article-4-item-5) | 受講条件書の名称を統一 |
+| [第5条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-5-item-1) | [同じ条項](TERMS.md#article-5-item-1) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第5条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-5-item-3) | [同じ条項](TERMS.md#article-5-item-3) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第5条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-5-item-4) | [同じ条項](TERMS.md#article-5-item-4) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第6条第1項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-6-item-1) | [同じ条項](TERMS.md#article-6-item-1) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第6条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-6-item-2) | [同じ条項](TERMS.md#article-6-item-2) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第6条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-6-item-3) | [同じ条項](TERMS.md#article-6-item-3) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第6条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-6-item-4) | [同じ条項](TERMS.md#article-6-item-4) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第6条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-6-item-5) | [同じ条項](TERMS.md#article-6-item-5) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第7条第2項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-7-item-2) | [同じ条項](TERMS.md#article-7-item-2) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第9条第4項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-9-item-4) | [同じ条項](TERMS.md#article-9-item-4) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第12条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-12-item-3) | [同じ条項](TERMS.md#article-12-item-3) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+| [第16条第5項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-16-item-5) | [同じ条項](TERMS.md#article-16-item-5) | 受講条件書の名称を統一 |
+| [第22条第3項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-22-item-3) | [同じ条項](TERMS.md#article-22-item-3) | 免除案内URLをr9へ更新（本文条件は維持） |
+| [第26条第6項](https://github.com/mugilives-max/stepwise-kobetsu/blob/7724b56155864dbf0be1c3a995e528ae3143b4b5/docs/terms-restructure-2026-11/TERMS.md#article-26-item-6) | [同じ条項](TERMS.md#article-26-item-6) | 書類の役割・共通条件・通常と特別の基準単価に沿って表現を整理 |
+
+条・項の移動や増減はない。他131項は全文一致。第5・6条の見出し、版表示も更新し、料金と接続不良の4表、計算例、保留A・Bを保持する。全変更前後は[照合データ](RATE_DOCUMENT_CHECKS_20261015_R9.json)に固定し、生成時に全文再構成で変更範囲を確認する。
+
+関連3様式の表題・記入欄・説明を対応させる。特別単価合意書に共通条件書の版・ID欄、受講合意書に基準単価の区分と対象指導名の説明を設ける。免除案内は版表示とリンクのみ更新。旧版42ファイルと過去の記録は保持し、[システム適用前の作業](../FUTURE_WORK.md#terms-formal-publication)を区別する。
+
 <a id="whole-flow-r8"></a>
 
 ## 2026-10-15：全体の情報配置を整理（r7 → r8）
