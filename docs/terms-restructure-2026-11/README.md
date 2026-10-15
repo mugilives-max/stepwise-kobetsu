@@ -10,7 +10,7 @@
 - [Web版](https://www.stepwise-education.jp/terms/2026-11-20261015-r9/)／[PDF](https://www.stepwise-education.jp/terms/2026-11-20261015-r9/stepwise-terms-2026-11-20261015-r9.pdf)／[関連書類・旧版一覧](https://www.stepwise-education.jp/terms/)。
 - 空欄様式：[受講条件書](TEACHING_CONDITIONS_REGULAR.md)・[特別単価合意書](TEACHING_CONDITIONS_SPECIAL.md)・[受講合意書](TUITION_AGREEMENT.md)。ファイル名は参照互換のため維持し、表題・記入欄・説明をそろえる。[免除申請案内](WAIVER_GUIDE.md)は版表示とリンクのみ更新する。
 - [変更対応](MAPPING.md#special-rate-r9)・[判断記録](DECISIONS.md#special-rate-r9)・[照合データ](RATE_DOCUMENT_CHECKS_20261015_R9.json)。変更対象20項（名称等19項・案内URL1項）と版表示・見出し以外は保持し、他131項・料金と接続不良の4表・計算例を照合する。旧版公開HTML・PDF42ファイルを保持する。
-- 2026-10-15：GitHub上の作業ブランチで生成・検証する。完了結果はこの欄へ追記する。
+- [PR #77](https://github.com/mugilives-max/stepwise-kobetsu/pull/77)・[生成検証38690613080](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38690613080)成功。[検証記録](PUBLICATION_CHECKS_20261015_R9.json)：MarkdownとHTMLの全文一致、変更範囲20項と他131項の一致、196アンカー、料金等の4表と計算例・準備分配基準・保留A/Bの保持、旧版42ファイルのblob一致を確認。規約PDF13ページ・本文327か所、日本語フォント埋込み、390px・320px幅を検証した。空欄3様式各1ページ・免除案内2ページを含む全18ページとスマホ9点を画像で目視確認。受講合意書の連絡先だけが次ページに出た箇所は、文字サイズを変えず表の余白を調整して修正した。
 - [保留A・B](DECISIONS.md#whole-flow-r8)は維持。既存契約・提案・保存済み書面・同意記録を変更しない。システムへのr9適用前には、表示名・今後発行する様式・参照番号を版に応じて整合させる。今回の公開だけでは規約適用設定や家庭への同意依頼を行わない。
 
 <a id="whole-flow-r8"></a>
