@@ -90,3 +90,18 @@ test('read-only parent preview and synthetic sample can open documents without w
  assert.match(sample.html,/見本・架空の記録/);assert.match(sample.html,/印刷・PDF保存/);
  assert.doesNotMatch(sample.html,/【テスト】架空 一郎/);
 });
+
+test('parent approval keeps the original proposal and a declined plan shows zero approved lessons',async()=>{
+ const {h,auth,parent,kid,plan,refs,row}=await agreementFixture();
+ const p=await plan(), q=await plan({subject:'英語'});
+ await h.ok('billing/plans/send',{auth,familyId:kid.familyId});
+ const original=row(p.id);
+ const proposal=await h.ok('family/plans/document',{auth:parent,refs:refs(original)});
+ await h.ok('family/plans/decide',{auth:parent,id:p.id,version:original.version,approvedCount:2,consenterName:'【テスト】保護者の承認'});
+ await h.ok('family/plans/decide',{auth:parent,id:q.id,version:row(q.id).version,approvedCount:0,consenterName:'【テスト】保護者の承認'});
+ const approved=await h.ok('family/plans/document',{auth:parent,refs:refs(row(p.id))});
+ assert.match(approved.html,/9,000円/);assert.match(approved.html,/保護者ページ/);assert.match(approved.html,/【テスト】保護者の承認/);
+ assert.deepEqual(await h.ok('family/plans/document',{auth:parent,refs:refs(original)}),proposal);
+ const declined=await h.ok('family/plans/document',{auth:parent,refs:refs(row(q.id))});
+ assert.match(declined.html,/受講合意書の記録（見送り）/);assert.match(declined.html,/<th>承認回数<\/th>/);assert.match(declined.html,/<td>0回<\/td>/);
+});

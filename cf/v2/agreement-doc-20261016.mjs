@@ -27,7 +27,7 @@ export function agreementDocHtml({records,documentId,sample=false}) {
   const rows=records.map((r,i)=>{
     const l=r.line;
     return '<section class="lesson"><h3>'+String(i+1)+'. '+value(l.subject)+' <span>'+value(l.kind)+'</span></h3>'+
-      '<table class="numbers"><thead><tr><th>対象期間</th><th>'+ (status==='approved'?'承認回数':'提案回数')+'</th><th>1回の時間</th><th>適用単価（税込）</th><th>予定額（税込）</th></tr></thead><tbody><tr>'+
+      '<table class="numbers"><thead><tr><th>対象期間</th><th>'+ (status==='approved'||status==='declined'?'承認回数':'提案回数')+'</th><th>1回の時間</th><th>適用単価（税込）</th><th>予定額（税込）</th></tr></thead><tbody><tr>'+
       '<td>'+value(l.startDate)+'<br>〜 '+value(l.endDate)+'</td><td>'+value(count(l))+'回</td><td>'+value(l.minutes)+'分</td><td>'+money(numeric(l.fee)?Number(l.fee):NaN)+'</td><td>'+money(amount(l))+'</td></tr></tbody></table>'+
       '<p class="content"><b>具体的な授業内容</b><br>'+value(l.comment)+'</p>'+parts(l)+
       '<p class="small">基準単価の区分：'+(l.instructionType==='regular'?'通常':l.instructionType==='special'?'特別（対象指導名：'+value(l.kind)+'）':'記録なし')+
@@ -52,7 +52,7 @@ export function agreementDocHtml({records,documentId,sample=false}) {
     (sample?'<div class="sample">見本・架空の記録です。実際の契約ではありません。</div>':'')+
     '<div class="brand">ステップワイズ個別指導</div><h1>'+title+'</h1><div class="meta"><div><b>対象生徒</b><br>'+value(first.studentName)+'</div><div><b>対象期間</b><br>'+value(l0.startDate)+' 〜 '+value(l0.endDate)+'</div><div class="status">'+state(status)+'</div></div>'+
     '<p class="small">書面番号：'+esc(documentId)+'／書類様式：'+AGREEMENT_LAYOUT+'</p>'+
-    (status==='approved'?'<p>以下は、保存されている承認済みの内容です。承認者・日時・経路は次ページの各行の記録をご確認ください。</p>':'<p>この書面は承認済みの合意を示すものではありません。授業の実施には、具体的な内容について事前の承認が必要です。</p>')+
+    (status==='approved'?'<p>以下は、保存されている承認済みの内容です。承認者・日時・経路は、後半の「提案・承認の記録」をご確認ください。</p>':'<p>この書面は承認済みの合意を示すものではありません。授業の実施には、具体的な内容について事前の承認が必要です。</p>')+
     '<h2>授業の内容と料金</h2>'+rows+'<div class="total"><span>予定総額（税込）</span><span>'+money(total)+'</span></div>'+
     '<div class="notes small"><p>予定総額は、上記の回数を実施した場合の金額であり、請求額の確定や授業の事前購入を示すものではありません。実際の授業料・キャンセル料金は、合意した条件と適用される受講規約に基づき精算します。</p><p>合意した回数は実施可能な上限です。全回数の受講義務、その回数分の受講保証、未実施分の繰越権を意味しません。具体的な日時は日程調整カレンダー等で別途調整します。</p></div>'+
     '<section class="evidence"><h2>提案・承認の記録と参照書類</h2><p class="small">選択した各行の版をまとめて表示しています。各行の承認日時は同一とは限りません。後の変更・追加分は含みません。「記録なし」は、当時の保存内容から確認できない項目です。入力日時と実際の承認日時は区別しています。</p>'+evidence+
