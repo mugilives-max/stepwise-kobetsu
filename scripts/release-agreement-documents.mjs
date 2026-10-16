@@ -70,7 +70,21 @@ try {
   for(const name of names){
    const entries=remote.filter(([k,v])=>k===name||v.name===name);check(entries.length===1,'Worker module name mismatch.');
    const part=entries[0][1],actual=typeof part==='string'?Buffer.from(part):Buffer.from(await part.arrayBuffer());
-   check(compareModule(actual,await readFile(join(out,name)),!name.endsWith('.wasm'))!=='different','Worker modules differ from '+label+'; review concurrent changes.');
+   const expected=await readFile(join(out,name));
+   let comparison=compareModule(actual,expected,!name.endsWith('.wasm'));
+   if(comparison==='different'&&!name.endsWith('.wasm')){
+    const esbuild=await import(resolve(source,'node_modules/esbuild/lib/main.js'));
+    const options={loader:'js',minifyWhitespace:true,legalComments:'none',sourcefile:'worker.js'};
+    const a=(await esbuild.transform(actual.toString('utf8'),options)).code;
+    const e=(await esbuild.transform(expected.toString('utf8'),options)).code;
+    if(a===e) comparison='formatting-only';
+    else {
+      let start=0;while(start<Math.min(a.length,e.length)&&a[start]===e[start])start++;
+      console.log(JSON.stringify({module:name,comparison:'different',actualBytes:actual.length,expectedBytes:expected.length,firstDifference:start,expectedContext:e.slice(Math.max(0,start-100),start+180)}));
+    }
+   }
+   console.log(JSON.stringify({module:name,comparison}));
+   check(comparison!=='different','Worker modules differ from '+label+'; review concurrent changes.');
   }
  }
  stage='read-only production preflight';
@@ -88,6 +102,7 @@ try {
   before=manifest.before;
  }else{
   before=await deployment();raw=await rawWorker();
+  console.log(JSON.stringify({activeWorkerVersion:before.versionId,operation}));
   await modulesMatch(raw,baseline,'reviewed-baseline');
   data=await snapshot();
   settings=await cf('/workers/scripts/'+worker+'/settings');
@@ -123,7 +138,7 @@ try {
  const healthPaths=['billing/plans/document','family/plans/document','billing/plans/history'];
  for(const path of healthPaths){
   const r=await fetch('https://stepwise-api.stepwise-edu.workers.dev/v2/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(60000)});
-  const b=await r.json();check(!b.ok && !b.html && (r.status===401||r.status===403||/auth|login|unauthorized/i.test(String(b.code||b.error||''))),'Document route must reject unauthenticated access.');
+  const b=await r.json();check(!b.ok && !b.html && (r.status===401||r.status===403||/auth|login|unauthorized/i.test(String(b.error?.code||b.code||''))),'Document route must reject unauthenticated access.');
  }
  const schedules=await cf('/workers/scripts/'+worker+'/schedules');
  check(JSON.stringify(schedules.schedules.map(s=>s.cron).sort())===JSON.stringify(['10 15 * * *']),'Production schedule changed.');
