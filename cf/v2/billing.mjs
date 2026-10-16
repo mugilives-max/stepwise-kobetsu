@@ -168,8 +168,8 @@ export async function confirmInvoice(c, familyId, month, by, expectedTotal, due 
   if(due.date && (!validDate(dueDate)||dueDate<=today||!dueNote)) fail('needDueAgreement','保護者と合意した支払期限と、合意の日時・方法を記録してください');
   if(today>=normal && !due.date) fail('needDueAgreement','15日以降の確定です。保護者と合意した支払期限を入力してください');
   if(by!=='system:auto' && !due.reviewed) fail('needDueReview','期限までに支払える期間があるか確認し、難しい場合は保護者と具体的な期日を合意してください');
-  const id = newId('iv'), now = iso(c.now), db = c.db;
-  const stmts = [db.prepare("insert into invoices (id, familyId, month, status, total, confirmedAt, confirmedBy, createdAt, updatedAt, dueDate, dueNote) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?)").bind(id, familyId, month, p.total, now, by, now, now, dueDate, dueNote)];
+  const id = newId('iv'), now = iso(c.now), db = c.db, bank=(await billingSettings(db)).bank;
+  const stmts = [db.prepare("insert into invoices (id, familyId, month, status, total, confirmedAt, confirmedBy, createdAt, updatedAt, dueDate, dueNote, bankSnapshot) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, familyId, month, p.total, now, by, now, now, dueDate, dueNote, bank)];
   let order = 0;
   for (const s of p.students) for (const i of s.items) {
     stmts.push(db.prepare('insert into invoiceItems (id, invoiceId, studentId, kind, lessonId, feeId, planLineId, date, start, minutes, subject, lessonKind, label, amount, sortOrder) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -509,8 +509,8 @@ export const billingRoutes = {
     for (const l of lines) plans.push(lineView(l, { studentName: names[l.studentId], minCount: l.status === 'proposed' ? await minCountFor(c, l) : 0 }));
     const fees = (await staffFees(c, `f.studentId in ${q} and f.decision <> 'pending' and (f.invoiceId = '' or l.date >= ?)`, ...ids, since)).map(f => ({ ...feeView(f), studentName: names[f.studentId] }));
     const invs = (await c.db.prepare("select * from invoices where familyId = ? order by month desc limit 48").bind(me.id).all()).results;
-    const invoices = [], paySettings = await billingSettings(c.db);
-    for (const v of invs) invoices.push({ ...invoiceView(v), bank:paySettings.bank, ...(await billingDocIds(c.db, v.id)), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
+    const invoices = [];
+    for (const v of invs) invoices.push({ ...invoiceView(v), bank:v.bankSnapshot || '', ...(await billingDocIds(c.db, v.id)), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
     return { plans, fees, invoices, terms, conditions, specials };
   },
   // 承認（回数を減らして承認・0回で見送り）

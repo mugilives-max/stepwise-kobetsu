@@ -7,7 +7,7 @@ import { deliverEffects, recordEffects } from './effects.mjs';
 const LABEL = { mail: 'メール', calendarCreate: 'カレンダーに予定を作る', calendarUpdate: 'カレンダーの予定を直す', calendarDelete: 'カレンダーの予定を消す', calendarMeet: 'Meet のリンク' };
 const parse = s => { try { return JSON.parse(s) || {}; } catch { return {}; } };
 const view = r => { const p = parse(r.payload); const body = p.body && typeof p.body === 'object' ? p.body : {};
-  return { id: r.id, createdAt: r.createdAt, kind: r.kind, label: LABEL[r.kind] || r.kind, status: r.status, deliveryState: r.error === '送っている途中' ? 'unknown' : r.deliveryState, canRetry: r.error !== '送っている途中' && !['unknown','sending'].includes(r.deliveryState), scheduleNotice: p.notice?.type === 'schedule', attempts: r.attempts, error: r.error, sentAt: r.sentAt,
+  return { id: r.id, createdAt: r.createdAt, kind: r.kind, label: LABEL[r.kind] || r.kind, status: r.status, deliveryState: r.error === '送っている途中' ? 'unknown' : r.deliveryState, canRetry: p.notice?.type !== 'schedule' && r.error !== '送っている途中' && !['unknown','sending'].includes(r.deliveryState), scheduleNotice: p.notice?.type === 'schedule', attempts: r.attempts, error: r.error, sentAt: r.sentAt,
     to: p.to || '', subject: p.subject || body.summary || '', audience: p.audience || '', held: !!p.held, testOnly: !!p.testOnly }; };
 const STALE_MS = 10 * 60e3;
 
@@ -46,7 +46,7 @@ export const effectsAdminRoutes = {
     const r = await deliverEffects(c.env, c.db, rows.map(x => ({ id: x.id, item: parse(x.payload) })),fetch,c.now);
     await audit(c, 'effectsRetry', '', { ids: rows.map(x => x.id), sent: r.sent, error: r.error || r.skipped || '' });
     if (r.skipped) fail('unavailable', '送る先（Apps Script）の設定がありません', 503);
-    return { sent: r.sent, failed: r.failed, unknown: r.unknown, dismissed: r.dismissed, error: r.error || '' };
+    return { sent: r.sent, failed: r.failed, unknown: r.unknown, dismissed: r.dismissed, blocked:r.blocked, error: r.error || '' };
   },
   // テスト送信: 代表あてに 1 通送る（送る先の Apps Script を差し替えたときの確かめ）
   'admin/effects/test': async (c, b) => {

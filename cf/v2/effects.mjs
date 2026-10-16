@@ -15,8 +15,13 @@ export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now())
     for (const q of queued) await scheduleDelivery(db,q.item,'hold',new Date(now).toISOString());
     return {sent:0,failed:0,skipped:'GAS_URL / SYNC_KEY が未設定'};
   }
-  const mine=[]; let dismissed=0;
+  const mine=[]; let dismissed=0,blocked=0;
   for (const q of queued) {
+    if(q.item.notice?.type==='schedule') {
+      let hold=false;
+      for(const t of q.item.notice.targets||[]) if(await db.prepare("select 1 from lessons where id = ? and askedAt = ? and noticeState = 'hold'").bind(t.id,t.askedAt).first())hold=true;
+      if(hold){blocked++;continue;}
+    }
     if (!(await currentNotice(db,q.item,now))) {
       await db.prepare("update effects set status = 'dismissed', error = '対象が変更・完了・取消し済み、または送信対象外' where id = ? and status in ('pending','failed') and deliveryState not in ('unknown','sending')").bind(q.id).run();
       dismissed++; continue;
@@ -58,5 +63,5 @@ export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now())
       if(err)error=err;
     }
   }
-  return {sent,failed,unknown,dismissed,error};
+  return {sent,failed,unknown,dismissed,blocked,error};
 }

@@ -41,7 +41,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
  try {
   const context=await browser.newContext({viewport:{width:390,height:844}});
   await context.route('**/*',r=>{const u=new URL(r.request().url());if(u.origin===origin||u.protocol==='data:')return r.continue();report.externalRequests.push(u.origin);return r.abort();});
-  await context.addInitScript(({parent,auth,clock,kid})=>{localStorage.setItem('sw2_family',parent);localStorage.setItem('sw2_staff',auth);sessionStorage.setItem('sw2_family_kid',kid);Date.now=()=>clock;},{parent,auth,clock:h.clock,kid:kid.id});
+  await context.addInitScript(({parent,auth,clock,kid})=>{if(!localStorage.getItem('sw2_family'))localStorage.setItem('sw2_family',parent);localStorage.setItem('sw2_staff',auth);sessionStorage.setItem('sw2_family_kid',kid);Date.now=()=>clock;},{parent,auth,clock:h.clock,kid:kid.id});
   const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));page.on('dialog',d=>d.accept());
   await page.goto(origin+'/family/#confirm?student='+sis.id+'&month=2026-10');
   await page.locator('[data-action="agree-all"]').first().waitFor();
@@ -122,11 +122,38 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await page.screenshot({path:path.join(out,'06-invoice-payment.png'),fullPage:true});
   report.checks.push('invoice due date, bank and void state with no payment button');
 
+  // Exercise remaining real templates in a separate synthetic family.
+  const extra=await agreementFixture(),h2=extra.h,au=extra.auth,pa=extra.parent,ki=extra.kid;
+  h2.clock=Date.parse('2026-09-01T12:00:00+09:00');
+  await extra.approve(await extra.plan({startDate:'2026-09-01',endDate:'2026-09-30'}),{consentedAt:'2026-09-01T11:00:00+09:00'});
+  await h2.ok('schedule/lessons/create',{auth:au,studentId:ki.id,date:'2026-09-10',start:'17:00',minutes:90,subject:'数学',deliveryMode:'in_person',send:'ask'});
+  let lr=()=>h2.rows('select * from lessons')[0];
+  h2.db2._sqlite.prepare("update lessons set noticeState='external',noticeAt=askedAt").run();
+  const {autoConfirm}=await import('../cf/v2/schedule.mjs');
+  await autoConfirm({db:h2.db2,env:h2.env,now:Date.parse('2026-09-05T00:10:00+09:00'),effects:[],actor:{kind:'system',id:'test'}});
+  // Capture auto-confirm effects without delivering them.
+  await h2.ok('schedule/lessons/create',{auth:au,studentId:ki.id,date:'2026-09-12',start:'17:00',minutes:90,subject:'数学',deliveryMode:'in_person',send:'ask'});
+  h2.db2._sqlite.prepare("update lessons set noticeState='external',noticeAt=askedAt where status='proposed'").run();
+  const cx={db:h2.db2,env:h2.env,now:Date.parse('2026-09-05T00:10:00+09:00'),effects:[],actor:{kind:'system',id:'test'}};
+  await autoConfirm(cx);
+  const {recordEffects}=await import('../cf/v2/effects.mjs');await recordEffects(h2.db2,cx.effects,h2.clock);
+  await h2.ok('schedule/lessons/update',{auth:au,id:lr().id,version:lr().version,date:'2026-09-10',start:'18:00',minutes:90,subject:'数学',kind:'通常',deliveryMode:'in_person',staffId:''});
+  h2.clock=Date.parse('2026-09-10T19:00:00+09:00');
+  await h2.ok('schedule/lessons/cancel',{auth:au,id:lr().id,version:lr().version});
+  const fr=()=>h2.rows('select * from cancellationFees')[0];
+  await h2.ok('billing/fees/decide',{auth:au,id:fr().id,version:fr().version,decision:'charge'});
+  await h2.ok('family/fees/relief',{auth:pa,id:fr().id,version:fr().version,reason:'【テスト】事情の確認をお願いします'});
+  await h2.ok('billing/fees/relief',{auth:au,id:fr().id,version:fr().version,result:'reduced',amount:1500,response:'【テスト】ご連絡の状況を確認し、減額しました'});
+  h2.clock=Date.parse('2026-10-16T12:00:00+09:00');
+  const inv=(await h2.ok('billing/confirm',{auth:au,familyId:extra.fam.id,month:'2026-09',dueReviewed:true,dueDate:'2026-10-23',dueNote:'【テスト】LINEで合意'})).invoice;
+  await h2.ok('billing/void',{auth:au,id:inv.id,version:inv.version,reason:'【テスト】明細の訂正'});
   // Review copies contain only synthetic data; redact invitation/reset bearer strings.
-  const emails=h.mails().filter(m=>m.audience==='family').map(m=>({subject:m.subject,body:m.body.replace(/#(invite|reset)=[^\s]+/g,'#$1=TEST-LINK'),status:m.status}));
+  const emails=h.mails().concat(h2.mails()).filter(m=>m.audience==='family').map(m=>({subject:m.subject,body:m.body.replace(/#(invite|reset)=[^\s]+/g,'#$1=TEST-LINK'),status:m.status}));
   const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   fs.writeFileSync(path.join(out,'emails.html'),'<!doctype html><html lang="ja"><meta charset="utf-8"><title>保護者通知の見本（未公開・架空データ）</title><style>body{font:16px system-ui;max-width:800px;margin:32px auto;padding:20px}article{border:1px solid #ddd;padding:20px;margin:20px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}</style><h1>保護者通知の見本</h1><p>未公開の確認用です。架空データで生成し、実メールは送信していません。</p>'+emails.map(m=>'<article><h2>'+escape(m.subject)+'</h2><pre>'+escape(m.body)+'</pre></article>').join('')+'</html>');
   fs.writeFileSync(path.join(out,'emails.json'),JSON.stringify(emails,null,2));
+  assert.ok(new Set(emails.map(m=>m.subject)).size>=14,'13 existing template types plus invoice void');
+  report.checks.push('all 13 existing notification templates and invoice-void template generated without sending');
   assert.deepEqual(report.errors,[]);assert.deepEqual(report.externalRequests,[]);
   console.log(JSON.stringify(report));fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(report,null,2));
  } finally {await browser.close();await new Promise(r=>server.close(r));}

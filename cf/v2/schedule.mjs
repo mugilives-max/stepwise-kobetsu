@@ -108,10 +108,11 @@ export async function familyNotice(c, studentId, subject, text, page = 'money', 
 export async function notifySchedule(c,studentId,text,ids) {
   const rows=[];
   for(const id of ids) {const l=await c.db.prepare('select * from lessons where id = ?').bind(id).first();if(l)rows.push(l);}
-  await c.db.batch(rows.map(l=>c.db.prepare("update lessons set noticeState = 'pending', noticeAt = '' where id = ? and askedAt = ?").bind(l.id,l.askedAt)));
+  const noticeId=newId('notice');
+  await c.db.batch(rows.map(l=>c.db.prepare("update lessons set noticeState = 'pending', noticeAt = '', noticeId = ? where id = ? and askedAt = ?").bind(noticeId,l.id,l.askedAt)));
   const sent=await familyNotice(c,studentId,'授業の日程の確認のお願い',text,
     familyTarget('confirm',{student:studentId,month:rows[0]?.date.slice(0,7)}),
-    {type:'schedule',targets:rows.map(l=>({id:l.id,askedAt:l.askedAt}))});
+    {type:'schedule',targets:rows.map(l=>({id:l.id,askedAt:l.askedAt,noticeId}))});
   if(!sent) await c.db.batch(rows.map(l=>c.db.prepare("update lessons set noticeState = 'hold' where id = ? and askedAt = ?").bind(l.id,l.askedAt)));
 }
 // 授業の 1 行（お知らせの本文・LINE に貼る文）
@@ -204,14 +205,17 @@ export async function autoConfirm(c) {
   const byStudent = {};
   for (const l of due) {
     if (!['sent','external'].includes(l.noticeState) || !l.noticeAt || l.confirmBy < addDays(todayJst(Date.parse(l.noticeAt)),3)) continue;
-    const marker = await calendarEffect(c, 'create', l, fullName(l));
-    await c.db.prepare("update lessons set status = 'decided', decidedAt = ?, decidedBy = 'system:auto', agreement = ?, calendarEventId = ?, updatedAt = ?, version = version + 1 where id = ? and status = 'proposed'").bind(iso(c.now), '締め切り（' + l.confirmBy + '）までに連絡なし', marker, iso(c.now), l.id).run();
+    const saved=await c.db.prepare("update lessons set status = 'decided', decidedAt = ?, decidedBy = 'system:auto', agreement = ?, updatedAt = ?, version = version + 1 where id = ? and version = ? and status = 'proposed' and noticeState in ('sent','external') and not exists (select 1 from lessonRequests where lessonId = lessons.id and status = 'open')")
+      .bind(iso(c.now),'締め切り（'+l.confirmBy+'）までに連絡なし',iso(c.now),l.id,l.version).run();
+    if(!saved.meta?.changes)continue;
+    const marker=await calendarEffect(c,'create',l,fullName(l));
+    await c.db.prepare('update lessons set calendarEventId = ? where id = ?').bind(marker,l.id).run();
     (byStudent[l.studentId] = byStudent[l.studentId] || []).push(l);
   }
   for (const [sid, list] of Object.entries(byStudent)) {
     await familyNotice(c, sid, '授業の日時が確定しました', `${fullName(list[0])}さんの次の授業の日時が確定しました（締め切りまでにご連絡がなかったため）。\n${list.map(lessonLine).join('\n')}\n変更・お休みは、授業の前日23時までにご連絡ください。`, familyTarget('schedule',{student:sid,month:list[0].date.slice(0,7)}),{type:'lesson',targets:list.map(l=>({id:l.id,version:l.version+1}))});
   }
-  if (due.length) { c.actor = { kind: 'system', id: 'autoConfirm' }; await audit(c, 'autoConfirm', '', { lessons: due.length }); }
+  if (Object.keys(byStudent).length) { c.actor = { kind: 'system', id: 'autoConfirm' }; await audit(c, 'autoConfirm', '', { lessons: Object.values(byStudent).reduce((n,ls)=>n+ls.length,0) }); }
   return { confirmed: Object.values(byStudent).reduce((n,ls)=>n+ls.length,0), students: Object.keys(byStudent).length };
 }
 

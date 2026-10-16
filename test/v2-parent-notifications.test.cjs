@@ -56,7 +56,7 @@ test('failed schedule mail holds automatic confirmation until a new notice with 
  await h.ok('schedule/lessons/create',{auth,studentId:kid.id,date:'2026-10-20',start:'17:00',minutes:60,subject:'数学',deliveryMode:'in_person',send:'ask'});
  const row=()=>h.rows('select * from lessons')[0];
  const {autoConfirm}=await import('../cf/v2/schedule.mjs'),{scheduleDelivery}=await import('../cf/v2/notice-policy.mjs');
- const n={notice:{type:'schedule',targets:[{id:row().id,askedAt:row().askedAt}]}};
+ const n={notice:{type:'schedule',targets:[{id:row().id,askedAt:row().askedAt,noticeId:row().noticeId}]}};
  await scheduleDelivery(h.db2,n,'failed',new Date(h.clock).toISOString());
  await scheduleDelivery(h.db2,n,'sent',new Date(h.clock).toISOString());
  assert.equal(row().noticeState,'hold','retry success does not restore the old deadline');
@@ -96,7 +96,7 @@ test('migration preserves every existing column and row, including issued docume
  const old=createD1({migrate:false});
  for(const m of migrationFiles('migrations-v2').filter(x=>!x.name.startsWith('0027_')))old._sqlite.exec(m.sql);
  old._sqlite.exec('pragma foreign_keys = off');
- for(const t of tables(old)){const cols=columns(old,t);for(const row of h.rows('select '+cols.map(x=>'"'+x+'"').join(',')+' from "'+t+'"'))old._sqlite.prepare('insert or replace into "'+t+'" ('+cols.map(x=>'"'+x+'"').join(',')+') values ('+cols.map(()=>'?').join(',')+')').run(...cols.map(x=>row[x]));}
+ for(const t of tables(old).sort((a,b)=>{const rank=x=>['families','students','staff'].includes(x)?['families','students','staff'].indexOf(x):-1;return (rank(a)<0?10:rank(a))-(rank(b)<0?10:rank(b));})){const cols=columns(old,t);for(const row of h.rows('select '+cols.map(x=>'"'+x+'"').join(',')+' from "'+t+'"'))old._sqlite.prepare('insert or replace into "'+t+'" ('+cols.map(x=>'"'+x+'"').join(',')+') values ('+cols.map(()=>'?').join(',')+')').run(...cols.map(x=>row[x]));}
  const snapshot=()=>Object.fromEntries(tables(old).map(t=>[t,old._sqlite.prepare('select '+kept[t].map(x=>'"'+x+'"').join(',')+' from "'+t+'" order by rowid').all()]));
  const kept=Object.fromEntries(tables(old).map(t=>[t,columns(old,t)])),before=snapshot();
  old._sqlite.exec(migrationFiles('migrations-v2').find(x=>x.name.startsWith('0027_')).sql);

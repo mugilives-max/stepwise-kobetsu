@@ -13,7 +13,6 @@ const jst = t => { if (!t) return ''; const d = new Date(Date.parse(t) + 9 * 360
 const ymd = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? `${Number(v.slice(0, 4))}年${Number(v.slice(5, 7))}月${Number(v.slice(8))}日` : jst(v);
 const md = d => d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8))}` : '';
 const monthJa = m => `${Number(m.slice(0, 4))}年${Number(m.slice(5, 7))}月`;
-const dueOf = month => { const [y, m] = month.split('-').map(Number); const d = new Date(Date.UTC(y, m, 15)); return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月15日`; }; // 翌月15日
 const KIND = { lesson: '授業', cancelFee: 'キャンセル料', legacy: '' };
 
 const STYLE = `
@@ -95,7 +94,7 @@ async function familyAndItems(c, inv) {
 export async function storeInvoiceDoc(c, invoiceId) {
   const inv = await c.db.prepare('select * from invoices where id = ?').bind(invoiceId).first();
   const { family, items } = await familyAndItems(c, inv);
-  const html = invoiceDocHtml({ inv, items, family, settings: await billingSettings(c.db) });
+  const html = invoiceDocHtml({ inv, items, family, settings: { ...(await billingSettings(c.db)), ...(inv.dueDate ? {bank:inv.bankSnapshot||''} : {}) } });
   return putGenerated(c, { category: 'invoice', familyId: family.id, refType: 'invoice', refId: inv.id, name: `請求書_${inv.month}_${family.name}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: `${inv.month} 分` });
 }
 export async function storeReceiptDoc(c, invoiceId) {
