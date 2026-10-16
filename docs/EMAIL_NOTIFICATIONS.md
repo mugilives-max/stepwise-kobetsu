@@ -8,9 +8,9 @@
 
 
 <a id="parent-notification-implementation-20261016"></a>
-## 改修したv2通知（2026-10-16、PR #82・未公開）
+## 改修したv2通知（2026-10-16、PR #82・本番反映）
 
-[画面・採用判断](UI_UX_REVIEW.md#parent-notification-implementation-20261016)。以下は今回の実装であり、現在本番で送信している版とは区別する。旧調査・旧システムの一覧は後段に保持する。
+[画面・採用判断](UI_UX_REVIEW.md#parent-notification-implementation-20261016)。以下は本人の公開指示で本番へ反映したv2の実装。旧調査・旧システムの一覧は後段に保持する。
 
 | 通知 | 入口・操作 |
 |---|---|
@@ -34,16 +34,18 @@
 - 旧代行応答で個別の成否を確定できなければ不明として残す。従来の「送信中」のまま止まった記録も自動再送しない。
 - 新しい通知記録がない既存の確認待ち予定も、自動確定の根拠を推測しない。公開前に教室側で対象を確認し、必要に応じて再案内する。既存の明示的な合意・予約は書き換えない。
 
-### 公開する際の順序と復旧
+### 本番反映と復旧
 
-今回はどれも本番で実行していない。許可後に、まず本番のバックアップと未確定通知・請求を確認する。追加のみの0027を適用し、GAS代行を個別結果対応版へ、Workerを同じ版へ、画面を同じ版へ反映する。確認用受信先で実受信を確認してから運用を始める。旧GASと新Workerの一時的な組合せは、不明を成功にせず保留する。
+本人の「では反映しましょう」を受け、既存GASの `gas/Sync.gs` と `gas/Code.gs` をv116へ更新。続いて非公開R2へ旧Worker・設定・DB全量・既存行の控えを保存して読み戻し、追加のみの0027、Worker、画面の順に反映した。既存41表の従来列・全行は保持を確認。[本番反映の検証](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38872677456)。`gas-effects/Code.gs` は将来の独立代行用で、今回の稼働先ではない。実受信・迷惑メール判定・メールアプリの往復は未確認。公開のための実メール・一斉再送は行っていない。
+
+[公開結果・対象18件の扱い](UI_UX_REVIEW.md#parent-notification-production-20261016)を参照する。
 
 旧コードへ戻す必要がある場合も、新しいDB列と履歴は削除しない。旧Workerは通知保留を理解しないため、そのまま自動実行を再開しない。通知・日程・請求の自動処理を止めてから状態を照合する。保存済みの書面や同意を旧版で上書きしない。
 
 <a id="parent-notification-samples-20261016"></a>
-### 14種類の通知文面の見本（未公開・架空データ）
+### 14種類の通知文面の見本（架空データ）
 
-[実装 `ecf15c1` の確認](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38861348582)で生成した文面。各見出しを開いて読める。生徒・授業・料金は確認用の架空データで、URLも実在の契約を開く体験用リンクではない。登録・再設定の秘密は `TEST-LINK` に置き換えている。[生成した全見本](parent-notification-preview-20261016/emails.json) と [画面の見本](UI_UX_REVIEW.md#parent-notification-review-20261016) も参照。
+[実装 `71ba752` の確認](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38870756831)で生成した文面。各見出しを開いて読める。生徒・授業・料金は確認用の架空データで、URLも実在の契約を開く体験用リンクではない。登録・再設定の秘密は `TEST-LINK` に置き換えている。[生成した全見本](parent-notification-preview-20261016/emails.json) と [画面の見本](UI_UX_REVIEW.md#parent-notification-review-20261016) も参照。
 
 <details>
 <summary>1. 【ステップワイズ】保護者ページの登録</summary>
