@@ -51,7 +51,7 @@ GitHub Actions「Parent notification review (no deployment)」が、架空デー
 <a id="parent-notification-review-20261016"></a>
 ### 確認用の見本・完了した検証（2026-10-16）
 
-確認済みの実装は `2b187dc39197e58e71c693b996e62a4297a26d79`。 [通知・画面の検証](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38860065925) と [契約履歴の回帰確認](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38860071280) は成功。以下はすべて架空データであり、公開中の画面ではない。
+確認済みの実装は `ecf15c1d5126e7c18cb912c87d83155323a31a11`。 [通知・画面の検証](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38861348582) と [契約履歴の回帰確認](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38861354057) は成功。以下はすべて架空データであり、公開中の画面ではない。
 
 | 確認するもの | 見本 |
 |---|---|
@@ -63,9 +63,9 @@ GitHub Actions「Parent notification review (no deployment)」が、架空デー
 | 支払期限・振込先・振込後の連絡 | [請求の詳細](parent-notification-preview-20261016/06-invoice-payment.png) |
 | 通知文を読む | [14種類の文面見本](EMAIL_NOTIFICATIONS.md#parent-notification-samples-20261016) |
 
-- v2回帰テスト **147件成功・失敗0件**。[結果全文](parent-notification-preview-20261016/regression.txt)。
+- v2回帰テスト **148件成功・失敗0件**。[結果全文](parent-notification-preview-20261016/regression.txt)。
 - 追加のみの0027を、GitHub内の隔離したD1に適用して成功。既存列・全行の比較に加え、規約同意・通常条件・特殊条件・計画履歴・発行書面のある架空台帳で保持を確認した。本番DBやR2には触れていない。
-- ブラウザーで、兄弟の選択、異なる回答期限、表示したID・版だけの確定、古い提案、承認済みの控え、別ブラウザーでの再設定後の復帰、先行同意、ホームへの戻り、支払いと取消済みの表示を確認。[操作確認の記録](parent-notification-preview-20261016/checks.json)。アプリ外通信とJavaScriptエラーは0件。
+- ブラウザーで、兄弟の選択、異なる回答期限、表示したID・版だけの確定、古い提案、承認済みの控え、別ブラウザーでの再設定後の復帰、先行同意、ホームへの戻り、支払いと取消済みの表示を確認。通常・特殊の条件書の番号を照合し、変更授業・料金回答・請求取消しの実際に生成した通知リンクでも該当詳細を開くことを確認。[操作確認の記録](parent-notification-preview-20261016/checks.json)。アプリ外通信とJavaScriptエラーは0件。
 - 既存13種類＋請求取消しの **14種類**を実処理から生成。複数の状況を含む21通の架空見本を保存し、招待・再設定の秘密を除去した。実メールは送っていない。
 - 6画像すべてを目視で確認。書類ボタンの巨大なアイコンを修正し、画像の撮影時だけ動きを抑えて表示内容を読める状態で保存した。通常のスマートフォン幅で承認操作も確認している。
 - GitHubの作業ブランチとDraft PRだけを更新。mainの基準は `d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36` のまま。本番公開・本番移行・実メール・実在家庭の同意操作は未実施。

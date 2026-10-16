@@ -43,7 +43,7 @@
 <a id="parent-notification-samples-20261016"></a>
 ### 14種類の通知文面の見本（未公開・架空データ）
 
-[実装 `2b187dc` の確認](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38860065925)で生成した文面。各見出しを開いて読める。生徒・授業・料金は確認用の架空データで、URLも実在の契約を開く体験用リンクではない。登録・再設定の秘密は `TEST-LINK` に置き換えている。[生成した全見本](parent-notification-preview-20261016/emails.json) と [画面の見本](UI_UX_REVIEW.md#parent-notification-review-20261016) も参照。
+[実装 `ecf15c1` の確認](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38861348582)で生成した文面。各見出しを開いて読める。生徒・授業・料金は確認用の架空データで、URLも実在の契約を開く体験用リンクではない。登録・再設定の秘密は `TEST-LINK` に置き換えている。[生成した全見本](parent-notification-preview-20261016/emails.json) と [画面の見本](UI_UX_REVIEW.md#parent-notification-review-20261016) も参照。
 
 <details>
 <summary>1. 【ステップワイズ】保護者ページの登録</summary>
@@ -85,7 +85,7 @@ https://www.stepwise-education.jp/family/#reset=TEST-LINK
 未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#money?kind=condition&refs=cd_491e8e977b8fbac208d8553b.1
+https://www.stepwise-education.jp/family/#money?kind=condition&refs=cd_88c5d70eaa753f2458cfdf75.1
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -102,7 +102,7 @@ https://www.stepwise-education.jp/family/#money?kind=condition&refs=cd_491e8e977
 未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#money?kind=special&refs=sp_7398a84d59d3520837840dbf.1
+https://www.stepwise-education.jp/family/#money?kind=special&refs=sp_17a6096d5d056fd2ecdc05fe.1
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -121,7 +121,7 @@ https://www.stepwise-education.jp/family/#money?kind=special&refs=sp_7398a84d59d
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#money?kind=plan&refs=pl_e741ec29270861e503d8bc96.2
+https://www.stepwise-education.jp/family/#money?kind=plan&refs=pl_d71e347d55028732c2936e01.2
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -141,7 +141,7 @@ https://www.stepwise-education.jp/family/#money?kind=plan&refs=pl_e741ec29270861
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#money?kind=plan&refs=pl_e741ec29270861e503d8bc96.2%2Cpl_3272787358a5fedfadb6dd66.2
+https://www.stepwise-education.jp/family/#money?kind=plan&refs=pl_d71e347d55028732c2936e01.2%2Cpl_61a5fd8c91d29d669ea2116d.2
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -159,7 +159,7 @@ https://www.stepwise-education.jp/family/#money?kind=plan&refs=pl_e741ec29270861
 保護者ページの「この日程で大丈夫」を押すか、ご都合の悪い授業をお知らせください。
 
 確認する：
-https://www.stepwise-education.jp/family/#confirm?student=su_190c6833d0e3912018645e3d&month=2026-10
+https://www.stepwise-education.jp/family/#confirm?student=su_0788c3e84bc0f6dd943d8ffb&month=2026-10
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -176,7 +176,7 @@ https://www.stepwise-education.jp/family/#confirm?student=su_190c6833d0e39120186
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e7291f52b&month=2026-09
+https://www.stepwise-education.jp/family/#schedule?student=su_2c5001aeea8f4984b9fe60d2&month=2026-09
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -193,7 +193,7 @@ https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e72
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e7291f52b&month=2026-09&kind=lesson&refs=ls_e02bc82e38e2570b47b8ba40.4
+https://www.stepwise-education.jp/family/#schedule?student=su_2c5001aeea8f4984b9fe60d2&month=2026-09&kind=lesson&refs=ls_bb52fd854af16b028474efd0.4
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -209,7 +209,7 @@ https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e72
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e7291f52b&month=2026-09&kind=lesson&refs=ls_e02bc82e38e2570b47b8ba40.5
+https://www.stepwise-education.jp/family/#schedule?student=su_2c5001aeea8f4984b9fe60d2&month=2026-09&kind=lesson&refs=ls_bb52fd854af16b028474efd0.5
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -225,7 +225,7 @@ https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e72
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#money?kind=fee&refs=cf_7d889971f655ac83224c5f93.2
+https://www.stepwise-education.jp/family/#money?kind=fee&refs=cf_f0ed7b554a188ce86ee69d15.2
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -243,7 +243,7 @@ https://www.stepwise-education.jp/family/#money?kind=fee&refs=cf_7d889971f655ac8
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#money?kind=fee&refs=cf_7d889971f655ac83224c5f93.4
+https://www.stepwise-education.jp/family/#money?kind=fee&refs=cf_f0ed7b554a188ce86ee69d15.4
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -261,7 +261,7 @@ https://www.stepwise-education.jp/family/#money?kind=fee&refs=cf_7d889971f655ac8
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a11c3ee164c3a7a861cbde73.1
+https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a8c60f18fdb1aaa1bf0bfe13.1
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
@@ -279,7 +279,7 @@ https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a11c3ee164c
 保護者ページでご確認ください。
 
 確認する：
-https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a11c3ee164c3a7a861cbde73.2
+https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a8c60f18fdb1aaa1bf0bfe13.2
 
 ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
 ```
