@@ -1,5 +1,8 @@
 {
-  "operation": "inspect",
+  "operation": "publish",
   "source": "c936eaf2856378b65a1cf270dcef13b92b7c79d9",
-  "authorization": "User requested production deployment of agreement PDF saving on 2026-10-16. Preflight only in this commit."
+  "authorization": "2026-10-16: user explicitly requested production publication of agreement PDF saving while preserving existing contracts and consents.",
+  "preflightRun": 38849491566,
+  "regressionRun": 38848876957,
+  "pdfRun": 38848873676
 }
