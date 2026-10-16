@@ -8,7 +8,7 @@
 
 
 <a id="parent-notification-implementation-20261016"></a>
-## 改修中のv2通知（2026-10-16、PR #82・未公開）
+## 改修したv2通知（2026-10-16、PR #82・未公開）
 
 [画面・採用判断](UI_UX_REVIEW.md#parent-notification-implementation-20261016)。以下は今回の実装であり、現在本番で送信している版とは区別する。旧調査・旧システムの一覧は後段に保持する。
 
@@ -39,6 +39,252 @@
 今回はどれも本番で実行していない。許可後に、まず本番のバックアップと未確定通知・請求を確認する。追加のみの0027を適用し、GAS代行を個別結果対応版へ、Workerを同じ版へ、画面を同じ版へ反映する。確認用受信先で実受信を確認してから運用を始める。旧GASと新Workerの一時的な組合せは、不明を成功にせず保留する。
 
 旧コードへ戻す必要がある場合も、新しいDB列と履歴は削除しない。旧Workerは通知保留を理解しないため、そのまま自動実行を再開しない。通知・日程・請求の自動処理を止めてから状態を照合する。保存済みの書面や同意を旧版で上書きしない。
+
+<a id="parent-notification-samples-20261016"></a>
+### 14種類の通知文面の見本（未公開・架空データ）
+
+[実装 `2b187dc` の確認](https://github.com/mugilives-max/stepwise-kobetsu/actions/runs/38860065925)で生成した文面。各見出しを開いて読める。生徒・授業・料金は確認用の架空データで、URLも実在の契約を開く体験用リンクではない。登録・再設定の秘密は `TEST-LINK` に置き換えている。[生成した全見本](parent-notification-preview-20261016/emails.json) と [画面の見本](UI_UX_REVIEW.md#parent-notification-review-20261016) も参照。
+
+<details>
+<summary>1. 【ステップワイズ】保護者ページの登録</summary>
+
+```text
+ステップワイズの保護者ページの登録のご案内です。7日以内に次のリンクを開き、パスワードを決めてください。授業の予定・記録・受講合意書・請求をご確認いただけます。
+
+https://www.stepwise-education.jp/family/#invite=TEST-LINK
+
+登録は授業内容への同意とは別です。登録後に表示される案内をご確認ください。
+期限切れの場合は、いつものLINEまたは mugilives@gmail.com へ登録リンクの再案内を依頼してください。
+心当たりがない場合は、このメールを破棄してください。
+```
+
+</details>
+
+<details>
+<summary>2. 【ステップワイズ】パスワードの再設定</summary>
+
+```text
+パスワードの再設定を受け付けました。30分以内に次のリンクを開き、新しいパスワードを設定してください。
+
+https://www.stepwise-education.jp/family/#reset=TEST-LINK
+
+心当たりがない場合は、このメールを破棄してください。パスワードは変わりません。
+再設定できない場合は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>3. 【ステップワイズ】受講条件書（通常指導）のお知らせ</summary>
+
+```text
+【テスト】架空 一郎さんの受講条件書（通常指導）（第1版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書（通常指導））を確かめて、同意をお願いします。
+・基本の授業：1回90分 4,500円（税込）
+・形式：教室
+・適用開始：2026年11月
+未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#money?kind=condition&refs=cd_491e8e977b8fbac208d8553b.1
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>4. 【ステップワイズ】特殊指導のご提案</summary>
+
+```text
+【テスト】架空 一郎さんの特殊指導「【テスト】個別問題解説」をご提案します。保護者ページの「お支払い」で内容（受講条件書（特殊指導））を確かめて、承認をお願いします。
+・1回90分 6,000円（税込）
+・期間：2026-11-01〜2026-12-31
+未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#money?kind=special&refs=sp_7398a84d59d3520837840dbf.1
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>5. 【ステップワイズ】2026-11 の授業内容・回数・料金をご確認ください（受講合意書）</summary>
+
+```text
+次の授業内容・回数・時間・料金をご確認ください（受講合意書）。
+・【テスト】架空 一郎さん 数学 2026-11-01〜2026-11-30 4回・1回90分 4,500円（税込）
+予定総額：18,000円（請求額ではありません）
+内容がよければ「承認する」を押してください。変更のご希望は教室へご連絡ください。
+未回答・既読だけで承認にはなりません。承認後は控えをPDF保存できます。
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#money?kind=plan&refs=pl_e741ec29270861e503d8bc96.2
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>6. 【ステップワイズ】2026-11 受講合意書の確認のお願い（再案内）</summary>
+
+```text
+次の授業内容・回数・時間・料金をご確認ください（受講合意書）。
+・【テスト】架空 一郎さん 数学 2026-11-01〜2026-11-30 4回・1回90分 4,500円（税込）
+・【テスト】架空 一郎さん 英語 2026-11-01〜2026-11-30 4回・1回90分 4,500円（税込）
+予定総額：36,000円（請求額ではありません）
+内容がよければ「承認する」を押してください。変更のご希望は教室へご連絡ください。
+未回答・既読だけで承認にはなりません。承認後は控えをPDF保存できます。
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#money?kind=plan&refs=pl_e741ec29270861e503d8bc96.2%2Cpl_3272787358a5fedfadb6dd66.2
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>7. 【ステップワイズ】授業の日程の確認のお願い</summary>
+
+```text
+【テスト】架空 一郎さんの授業の日程の確認をお願いします。
+・10/20(火) 17:00〜18:00 数学
+10/5(月)までにご連絡がなければ、この日時で確定します。
+これは授業日時の確認です。科目・回数・料金の承認（受講合意書）とは別です。
+保護者ページの「この日程で大丈夫」を押すか、ご都合の悪い授業をお知らせください。
+
+確認する：
+https://www.stepwise-education.jp/family/#confirm?student=su_190c6833d0e3912018645e3d&month=2026-10
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>8. 【ステップワイズ】授業の日時が確定しました</summary>
+
+```text
+【テスト】架空 一郎さんの次の授業の日時が確定しました（締め切りまでにご連絡がなかったため）。
+・9/12(土) 17:00〜18:30 数学
+変更・お休みは、授業の前日23時までにご連絡ください。
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e7291f52b&month=2026-09
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>9. 【ステップワイズ】授業の日時を変更しました</summary>
+
+```text
+【テスト】架空 一郎さん 数学の授業の日時を変更しました。
+変更前: 2026-09-10 17:00（90分）
+変更後: 2026-09-10 18:00（90分）
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e7291f52b&month=2026-09&kind=lesson&refs=ls_e02bc82e38e2570b47b8ba40.4
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>10. 【ステップワイズ】授業をキャンセルしました</summary>
+
+```text
+【テスト】架空 一郎さんの9/10(木) 18:00〜 数学の授業をキャンセルしました。
+この通知だけでのお振込みは不要です。料金がある場合は請求の案内をご確認ください。
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#schedule?student=su_22926267654bfb5e7291f52b&month=2026-09&kind=lesson&refs=ls_e02bc82e38e2570b47b8ba40.5
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>11. 【ステップワイズ】キャンセル料のお知らせ</summary>
+
+```text
+【テスト】架空 一郎さん 09/10 18:00〜（数学）のキャンセル料は 4,500円 です。
+この通知だけで振り込む必要はありません。請求確定後の案内で金額・支払期限をご確認ください。
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#money?kind=fee&refs=cf_7d889971f655ac83224c5f93.2
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>12. 【ステップワイズ】キャンセル料の申請への回答</summary>
+
+```text
+【テスト】架空 一郎さん 2026-09-10 18:00 数学
+キャンセル料の減額・免除の申請にお答えしました。キャンセル料は 1,500円 です。
+【テスト】ご連絡の状況を確認し、減額しました
+請求・支払期限は請求の案内でご確認ください。内容に疑問がある場合は教室へご連絡ください。
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#money?kind=fee&refs=cf_7d889971f655ac83224c5f93.4
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>13. 【ステップワイズ】9月分の授業料のお知らせ</summary>
+
+```text
+2026年9月分の授業料が確定しました。
+合計 6,000円
+支払期限：2026-10-23（個別に合意した期限）
+下のリンクで請求内容・振込先をご確認ください。お振込み後は「振り込みました」でお知らせください。
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a11c3ee164c3a7a861cbde73.1
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
+
+<details>
+<summary>14. 【ステップワイズ】請求取消しのお知らせ</summary>
+
+```text
+2026-09月分の請求（6,000円）を取り消しました。
+この請求でのお支払いは不要です。
+理由：【テスト】明細の訂正
+すでに振り込まれた場合は教室へご連絡ください。訂正後の請求は改めてお知らせします。
+保護者ページでご確認ください。
+
+確認する：
+https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a11c3ee164c3a7a861cbde73.2
+
+ご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。
+```
+
+</details>
 
 <a id="parent-notification-copy-plan-20261016"></a>
 ## 通知文面とリンクを整える作業案（2026-10-16・実装前の記録）
