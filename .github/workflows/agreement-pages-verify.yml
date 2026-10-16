@@ -1,0 +1,26 @@
+name: Verify agreement Pages publication
+on:
+  push:
+    branches: ['codex/agreement-release-20261016']
+    paths: ['scripts/verify-agreement-pages.mjs', '.github/workflows/agreement-pages-verify.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: release-control
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: c936eaf2856378b65a1cf270dcef13b92b7c79d9
+          path: release-source
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - name: Verify public assets and Worker health without production writes
+        run: node release-control/scripts/verify-agreement-pages.mjs

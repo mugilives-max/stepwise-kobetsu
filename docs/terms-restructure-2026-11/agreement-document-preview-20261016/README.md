@@ -1,6 +1,6 @@
 # 受講合意書の印刷・PDF保存の見本
 
-2026-10-16、[PR #79](https://github.com/mugilives-max/stepwise-kobetsu/pull/79)の確認用。すべて架空の生徒・承認記録です。正式規約の差し替えや本番公開をするものではありません。
+2026-10-16、[PR #79](https://github.com/mugilives-max/stepwise-kobetsu/pull/79)の確認用。すべて架空の生徒・承認記録です。実在する契約・同意の資料ではありません。PDF保存機能は本人の指示で本番反映済みです。[公開記録と確認範囲](../../REBUILD_DESIGN.md#agreement-documents-20261016)を参照してください。
 
 - [書類のひな形に表示する見本](sample.pdf)：通常指導1科目、規約の参照と承認記録を記載。
 - [承認前の案](proposal.pdf)：2科目の提案。画面で変更途中の回数は含めません。
