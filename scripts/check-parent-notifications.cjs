@@ -107,7 +107,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await cp.goto(origin+'/family/#invite=invalid');
   await cp.getByRole('link',{name:'mugilives@gmail.com',exact:true}).waitFor();
   await cp.locator('.notice.error').waitFor();
-  assert.match(await cp.locator('.notice.error').innerText(),/期限|無効|使え|見つかり/);
+  assert.equal(await cp.locator('.notice.error').innerText(),'リンクが正しくありません。メールのリンクを開き直してください');
   await cp.screenshot({path:path.join(out,'04-expired-link-help.png'),fullPage:true,animations:'disabled'});
   report.checks.push('invalid/expired invitation recovery');
   await clean.close();
