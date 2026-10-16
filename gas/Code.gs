@@ -46,7 +46,7 @@ function doGet(e) {
     var p = (e && e.parameter) || {};
     if (p.action === 'state') return json_(studentState_(p.k || ''));
     if (p.action === 'authmode') return json_({ mode: authMode_() });
-    return json_({ ok: true, service: 'stepwise-yoyaku', release: '2026-10-02-parent-past-proposals' });
+    return json_({ ok: true, service: 'stepwise-yoyaku', release: '2026-10-16-parent-notifications' });
   } catch (err) {
     return json_({ error: String(err) });
   }

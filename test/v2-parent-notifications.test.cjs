@@ -192,3 +192,30 @@ test('condition and special notifications use each document number, including re
   assert.equal(await currentNotice(h.db2,item,h.clock),false);
  }
 });
+
+test('active legacy GAS adapter preserves the existing lock, individual receipts and compatibility',()=>{
+ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+ const props=new Map([['WORKER_SYNC_KEY','x'.repeat(30)],['WORKER_OWNS_LEDGER','1']]);
+ let sent=0,fail=false,quota=10,locked=false,reply='',acquired=0;
+ const context={PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k),setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k),getProperties:()=>Object.fromEntries(props)})},
+  LockService:{getScriptLock:()=>({waitLock(){assert.equal(locked,false);locked=true;acquired++;},releaseLock(){locked=false;}})},Date,JSON,
+  ContentService:{MimeType:{JSON:'json'},createTextOutput:s=>({setMimeType:()=>JSON.parse(s)})},
+  Utilities:{sleep(){}},Session:{getEffectiveUser:()=>({getEmail:()=> 'test@example.invalid'})},Calendar:{},
+  MailApp:{getRemainingDailyQuota:()=>quota,sendEmail(x){assert.equal(locked,true);sent++;reply=x.replyTo;if(fail)throw Error('after dispatch unknown');}}};
+ vm.createContext(context);
+ for(const p of ['Code.gs','Sync.gs'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../gas',p),'utf8'),context);
+ context.memoClear_=()=>{};context.ensureSchema_=()=>{};context.studentPermissionGate_=()=>null;
+ const run=items=>context.doPost({postData:{contents:JSON.stringify({action:'effects',key:'x'.repeat(30),items})}});
+ const item=id=>({deliveryId:id,kind:'mail',to:'test@example.invalid',replyTo:'reply@example.invalid',body:'synthetic'});
+ let result=run([item('first')]);assert.equal(result.results[0].status,'sent');assert.equal(result.done,1);assert.equal(reply,'reply@example.invalid');
+ assert.equal(run([item('first')]).results[0].status,'sent');assert.equal(sent,1);
+ fail=true;assert.equal(run([item('second')]).results[0].status,'unknown');assert.equal(run([item('second')]).results[0].status,'unknown');assert.equal(sent,2);
+ fail=false;quota=0;assert.equal(run([item('quota')]).results[0].status,'failed');assert.equal(sent,2);
+ quota=10;assert.equal(run([item('quota')]).results[0].status,'sent');assert.equal(sent,3);
+ assert.equal(run([item('')]).done,1);assert.equal(sent,4);
+ assert.equal(locked,false);assert.equal(acquired,7);
+ const request=extra=>context.doPost({postData:{contents:JSON.stringify({action:'effects',key:'x'.repeat(30),...extra})}});
+ context.effectsEnsureEvents_=x=>({preserved:x.length});assert.equal(request({ensure:[]}).events.preserved,0);
+ context.studentDocumentDrive_=x=>({preserved:x.op});assert.equal(request({document:{op:'read'}}).preserved,'read');
+ assert.equal(context.doPost({postData:{contents:JSON.stringify({action:'effects',key:'wrong',items:[item('bad')]})}}).badAuth,true);assert.equal(sent,4);
+});
