@@ -39,7 +39,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
  const out=path.join(root,'parent-notification-output');fs.mkdirSync(out,{recursive:true});
  const report={checks:[],externalRequests:[],errors:[]};
  try {
-  const context=await browser.newContext({viewport:{width:390,height:844}});
+  const context=await browser.newContext({reducedMotion:'reduce',viewport:{width:390,height:844}});
   await context.route('**/*',r=>{const u=new URL(r.request().url());if(u.origin===origin||u.protocol==='data:')return r.continue();report.externalRequests.push(u.origin);return r.abort();});
   await context.addInitScript(({parent,auth,clock,kid})=>{if(!localStorage.getItem('sw2_family'))localStorage.setItem('sw2_family',parent);localStorage.setItem('sw2_staff',auth);sessionStorage.setItem('sw2_family_kid',kid);Date.now=()=>clock;},{parent,auth,clock:h.clock,kid:kid.id});
   const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));page.on('dialog',d=>d.accept());
@@ -61,7 +61,9 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   const form=page.locator('[data-form="plan-approve"]');
   assert.deepEqual(JSON.parse(await form.getAttribute('data-refs')),[{id:p.id,version:original.version}],'link excludes a later different proposal in the same month');
   await form.locator('input[data-consenter]').fill('【テスト】架空 保護者');
-  await page.screenshot({path:path.join(out,'02-agreement-mobile.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:1200});
+  await page.screenshot({path:path.join(out,'02-agreement-mobile.png'),fullPage:true,animations:'disabled'});
+  await page.setViewportSize({width:390,height:844});
   await form.getByRole('button',{name:'この内容で承認する',exact:true}).click();
   await page.getByRole('status').filter({hasText:'PDF保存できます'}).waitFor();
   assert.equal(row(p.id).status,'approved');assert.equal(row(p2.id).status,'proposed');
@@ -80,7 +82,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   report.checks.push('changed proposal is explicitly stale');
 
   // New browser: reset token carries destination server-side; auth remains required.
-  const clean=await browser.newContext({viewport:{width:390,height:844}});
+  const clean=await browser.newContext({reducedMotion:'reduce',viewport:{width:390,height:844}});
   await clean.route('**/*',r=>new URL(r.request().url()).origin===origin?r.continue():r.abort());
   const cp=await clean.newPage();cp.on('pageerror',e=>report.errors.push(e.message));
   await cp.goto(origin+'/family/#'+target);
@@ -117,7 +119,9 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await page.getByText('受講合意書の承認には、先に上の受講規約・受講条件書への同意が必要です。',{exact:true}).waitFor();
   assert.equal(await page.locator('[data-form="plan-approve"] button.primary:enabled').count(),0);
   await page.setViewportSize({width:1280,height:900});
-  await page.screenshot({path:path.join(out,'05-prerequisites-desktop.png'),fullPage:true});
+  const documentIcons=await page.locator('button.btn svg').evaluateAll(es=>es.map(x=>x.getBoundingClientRect().width));
+  assert.ok(documentIcons.length>=2 && documentIcons.every(w=>w<=24),'document buttons keep small icons');
+  await page.screenshot({path:path.join(out,'05-prerequisites-desktop.png'),fullPage:true,animations:'disabled'});
   report.checks.push('prerequisites explained next to disabled approval');
   await page.goto(origin+'/family/#home');await page.getByText('やること',{exact:true}).waitFor();
   report.checks.push('home overview remains usable after notification-target navigation');
@@ -128,7 +132,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   const dueHtml=await page.evaluate(async v=>(await import('/assets/v2/portal-ui.js?v=20261016-notices')).invoiceSheet(v,{multi:false}),{...sampleInv,status:'confirmed',bank:'【テスト】架空銀行'});
   assert.match(dueHtml,/2026-10-23/);assert.match(dueHtml,/架空銀行/);
   await page.setContent('<meta name="viewport" content="width=device-width"><link rel="stylesheet" href="'+origin+'/assets/v2/base.css">'+dueHtml);
-  await page.screenshot({path:path.join(out,'06-invoice-payment.png'),fullPage:true});
+  await page.screenshot({path:path.join(out,'06-invoice-payment.png'),fullPage:true,animations:'disabled'});
   report.checks.push('invoice due date, bank and void state with no payment button');
 
   // Exercise remaining real templates in a separate synthetic family.
