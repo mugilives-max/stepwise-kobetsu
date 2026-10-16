@@ -1,4 +1,6 @@
 {
-  "operation": "inspect",
-  "source": "71ba752ce0a0516c299a51fd2956070b10ac8228"
+  "operation": "publish",
+  "source": "71ba752ce0a0516c299a51fd2956070b10ac8228",
+  "gasVersion": 116,
+  "authorizedBy": "User: では反映しましょう"
 }

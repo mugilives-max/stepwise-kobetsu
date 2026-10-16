@@ -132,6 +132,8 @@ try {
   console.log(JSON.stringify({activeWorkerVersion:before.versionId,operation}));
   await modulesMatch(raw,baseline,'reviewed-baseline');
   stage='read-only contract snapshot';data=await snapshot();
+  const legacyPending=(await query("SELECT count(*) n FROM lessons WHERE status = 'proposed' AND askedAt <> '' AND date >= date('now','+9 hours')"))[0].results[0].n;
+  console.log(JSON.stringify({existingFutureNoticesRequiringVerifiedDelivery:legacyPending}));
   stage='read-only Worker settings';settings=await cf('/workers/scripts/'+worker+'/settings');
   if(operation==='inspect'){
    check(JSON.stringify(before)===JSON.stringify(await deployment()),'Concurrent deployment during preflight.');
@@ -171,7 +173,7 @@ try {
  await modulesMatch(await rawWorker(),source,'published-source');
  const health=await fetch('https://stepwise-api.stepwise-edu.workers.dev/',{signal:AbortSignal.timeout(60000)});
  const healthBody=await health.json();check(health.ok && healthBody.ok===true && healthBody.release===expectedRelease,'Public health verification failed.');
- const healthPaths=['billing/plans/document','family/plans/document','billing/plans/history','admin/effects/list','schedule/lessons/renotify','family/money','family/confirm'];
+ const healthPaths=['billing/plans/document','family/plans/document','billing/plans/history','admin/effects/list','schedule/lessons/renotify','family/money','family/lessons/agree'];
  for(const path of healthPaths){
   const r=await fetch('https://stepwise-api.stepwise-edu.workers.dev/v2/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(60000)});
   const b=await r.json();check(!b.ok && !b.html && (r.status===401||r.status===403||/auth|login|unauthorized/i.test(String(b.error?.code||b.code||''))),'Document route must reject unauthenticated access.');
