@@ -1,0 +1,26 @@
+{
+  "approved.pdf": {
+    "pages": 2,
+    "characters": 1589,
+    "a4": true,
+    "text_bounds": true
+  },
+  "long-history.pdf": {
+    "pages": 3,
+    "characters": 3212,
+    "a4": true,
+    "text_bounds": true
+  },
+  "proposal.pdf": {
+    "pages": 2,
+    "characters": 1445,
+    "a4": true,
+    "text_bounds": true
+  },
+  "sample.pdf": {
+    "pages": 2,
+    "characters": 1181,
+    "a4": true,
+    "text_bounds": true
+  }
+}

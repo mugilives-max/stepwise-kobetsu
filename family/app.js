@@ -1,11 +1,12 @@
+import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
-import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261016-stages';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261016-stages';
+import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261008-launch1';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261016-agreement';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -324,6 +325,7 @@ app.addEventListener('click', ev => {
   if (a === 'invoice') { sheetState = { kind: 'invoice', id: b.dataset.id }; return render(); }
   if (a === 'fee') { sheetState = { kind: 'fee', id: b.dataset.id, note: '' }; return render(); }
   if (a === 'plan-inquiry') { sheetState = { kind: 'inquiry', month: b.dataset.month, note: '' }; return render(); }
+  if (a === 'agreement-doc') { openAgreementDocument(() => call('family/plans/document', { refs: JSON.parse(b.dataset.refs) }, store.get()), message => { say(message, 'error'); render(); }); return; }
   if (a === 'gr-open') { const win = window.open('', '_blank'); run(async () => { const r = await openFile(() => call('files/link', { id: b.dataset.id }, store.get()), win); if (!r.ok) say(r.error.message, 'error'); }); return; }
   captureSheetInputs();
   run(async () => {

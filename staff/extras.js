@@ -16,7 +16,7 @@ const DOCS = [
   { type: 'terms', title: '受講規約', when: '塾が版を決めて公開する。保護者は初めて計画を承認する前に同意する', who: '誰でも（公開ページ）。同意の状態は 設定 → 受講規約', where: '設定 → 受講規約' },
   { type: 'condition', title: '受講条件書（通常指導）', when: '生徒ごとに条件を決めてお知らせしたとき（案）、保護者が同意したとき（確定）', who: '保護者はお支払い。塾は生徒の画面', where: '家族と生徒 → 生徒 → 受講条件書（通常指導）' },
   { type: 'special', title: '受講条件書（特殊指導）', when: '特殊指導を提案したとき（案）、保護者が承認したとき（確定）', who: '保護者はお支払い。塾は生徒の画面', where: '家族と生徒 → 生徒 → 特殊指導' },
-  { type: 'plan', title: '受講合意書', when: '案を送ると保護者ページに表示。双方が合意した期間・科目・回数・単価の記録を残す', who: '保護者は受講合意書。塾は受講合意書の画面', where: '受講合意書' },
+  { type: 'agreement', title: '受講合意書', when: '案・承認後の控えを印刷・PDF保存できる。過去の版も履歴から開ける', who: '保護者は受講合意書。塾は受講合意書の画面', where: '受講合意書' },
   { type: 'invoice', title: '請求書', when: '月の請求を確定したとき', who: '保護者はお支払いの請求。塾は請求の画面', where: '請求 → 家族の月。振込先と備考は 設定 → 請求の下の「請求書の設定」' },
   { type: 'receipt', title: '領収書', when: '入金を記録したとき', who: '保護者はお支払いの請求。塾は請求の画面', where: '請求 → 家族の月 → 入金を記録' },
 ];
@@ -29,7 +29,7 @@ export function docsPage(ctx) {
   for (const d of DOCS) {
     let act = '';
     if (d.type === 'terms') act = t && t.url ? `<a class="btn" href="${esc(t.url)}" target="_blank" rel="noopener">全文を開く${t.version ? `（${esc(t.version)}）` : ''}</a>` : '<span class="small muted">版がまだ決まっていません（設定 → 受講規約）</span>';
-    else if (d.type === 'plan') act = '<a class="btn" href="#plans">受講合意書を開く</a>';
+    else if (d.type === 'agreement') act = '<button data-action="doc-sample" data-type="agreement">見本を開く</button><a class="btn" href="#plans">受講合意書を開く</a>';
     else act = `<button data-action="doc-sample" data-type="${d.type}">見本を開く</button>`;
     h += `<div class="pcard" style="margin-top:10px"><div class="pc-head"><strong>${esc(d.title)}</strong></div>
       <dl class="cond-dl"><dt>いつ</dt><dd>${esc(d.when)}</dd><dt>誰が開ける</dt><dd>${esc(d.who)}</dd><dt>どこから</dt><dd>${esc(d.where)}</dd></dl>
