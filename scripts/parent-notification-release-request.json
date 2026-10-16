@@ -1,6 +1,5 @@
 {
-  "operation": "publish",
+  "operation": "verify",
   "source": "71ba752ce0a0516c299a51fd2956070b10ac8228",
-  "gasVersion": 116,
-  "authorizedBy": "User: では反映しましょう"
+  "backupPrefix": "release-backups/parent-notifications-20261016/38871846414-1"
 }

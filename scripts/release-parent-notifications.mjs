@@ -172,7 +172,7 @@ try {
  stage='verify public code and existing records';
  await modulesMatch(await rawWorker(),source,'published-source');
  const health=await fetch('https://stepwise-api.stepwise-edu.workers.dev/',{signal:AbortSignal.timeout(60000)});
- const healthBody=await health.json();check(health.ok && healthBody.ok===true && healthBody.release===expectedRelease,'Public health verification failed.');
+ const healthBody=await health.json();console.log(JSON.stringify({publicHealthStatus:health.status,publicRelease:healthBody.release,publicHealthOK:healthBody.ok}));check(health.ok && healthBody.ok===true && healthBody.release===expectedRelease,'Public health verification failed.');
  const healthPaths=['billing/plans/document','family/plans/document','billing/plans/history','admin/effects/list','schedule/lessons/renotify','family/money','family/lessons/agree'];
  for(const path of healthPaths){
   const r=await fetch('https://stepwise-api.stepwise-edu.workers.dev/v2/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(60000)});
