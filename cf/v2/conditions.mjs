@@ -102,7 +102,7 @@ export const conditionRoutes = {
         .bind(Math.round(f.fee * 30 / f.minutes), Math.round(f.fee * 90 / f.minutes), f.deliveryMode === 'both' ? s.deliveryMode : f.deliveryMode, JSON.stringify(perms), now, s.id),
     ]);
     await storeDoc(c, id);
-    await familyNotice(c, s.id, '受講条件書（通常指導）のお知らせ', `${fullName(s)}さんの受講条件書（通常指導）（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書（通常指導））を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.1'}),{type:'condition',targets:[{id,version:1}]});
+    await familyNotice(c, s.id, '受講条件書（通常指導）のお知らせ', `${fullName(s)}さんの受講条件書（通常指導）（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書（通常指導））を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.'+no}),{type:'condition',targets:[{id,version:no}]});
     await audit(c, 'conditionPropose', id, { studentId: s.id, no, minutes: f.minutes, fee: f.fee, fromMonth: f.fromMonth });
     return { condition: await withDoc(c.db, conditionView(await c.db.prepare('select * from conditions where id = ?').bind(id).first())) };
   },

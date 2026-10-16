@@ -113,7 +113,14 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   const fresh=(await h.ok('family/login',{email:fam.email,password:'changed synthetic password'})).auth;
   await page.evaluate(x=>localStorage.setItem('sw2_family',x),fresh);
   const condition=(await h.ok('admin/conditions/propose',{auth,studentId:kid.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'})).condition;
-  await h.ok('admin/specials/propose',{auth,studentId:kid.id,title:'【テスト】個別問題解説',purpose:'試験の復習',content:'専用問題の解説',reason:'専用準備',prep:'問題を解く',minutes:90,fee:6000,fromDate:'2026-11-01',toDate:'2026-12-31'});
+  const specialResult=await h.ok('admin/specials/propose',{auth,studentId:kid.id,title:'【テスト】個別問題解説',purpose:'試験の復習',content:'専用問題の解説',reason:'専用準備',prep:'問題を解く',minutes:90,fee:6000,fromDate:'2026-11-01',toDate:'2026-12-31'});
+  await page.goto(origin+'/family/#money?kind=condition&refs='+condition.id+'.'+condition.no);
+  await page.locator('[data-action="cond-agree"]').waitFor();
+  assert.equal(await page.getByText('この条件書は同意済み、または更新・取り下げ済みです。',{exact:false}).count(),0);
+  await page.goto(origin+'/family/#money?kind=special&refs='+specialResult.special.id+'.'+specialResult.special.no);
+  await page.locator('[data-action="special-agree"]').waitFor();
+  assert.equal(await page.getByText('この提案は対応済み、または変更されています。',{exact:false}).count(),0);
+  report.checks.push('condition and special-condition links show the exact proposed document number');
   await h.ok('admin/terms/set',{auth,version:'synthetic-new',title:'【テスト】規約',url:'https://example.invalid/terms'});
   await page.goto(origin+'/family/#money');
   await page.getByText('受講合意書の承認には、先に上の受講規約・受講条件書への同意が必要です。',{exact:true}).waitFor();

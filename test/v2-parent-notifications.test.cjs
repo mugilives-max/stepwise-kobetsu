@@ -174,3 +174,21 @@ test('notice deadline presentation suppresses implicit confirmation for held or 
  assert.equal(automaticDeadline(l),'2026-10-05');
  for(const change of [{noticeState:'hold'},{noticeState:''},{noticeAt:''},{noticeAt:'bad'},{confirmBy:'2026-10-04'}])assert.equal(automaticDeadline({...l,...change}),'');
 });
+
+test('condition and special notifications use each document number, including replacement proposals',async()=>{
+ const {h,auth,parent,kid}=await agreementFixture(),{currentNotice}=await import('../cf/v2/notice-policy.mjs');
+ const approveName='【テスト】保護者';
+ for(const type of ['condition','special']) {
+  const route=type==='condition'?'admin/conditions/propose':'admin/specials/propose';
+  const fields=type==='condition'?{studentId:kid.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'}:{studentId:kid.id,title:'【テスト】問題解説',purpose:'復習',content:'問題の解説',reason:'専用準備',prep:'事前に解く',minutes:90,fee:6000,fromDate:'2026-11-01',toDate:'2026-11-30'};
+  await h.ok(route,{auth,...fields});const old=h.mails().at(-1);delete old.testOnly;delete old.held;
+  assert.equal(await currentNotice(h.db2,old,h.clock),true);
+  const v=await h.ok(route,{auth,...fields});const doc=v[type],item=h.mails().at(-1);delete item.testOnly;delete item.held;
+  assert.equal(doc.no,2);assert.deepEqual(item.notice.targets,[{id:doc.id,version:doc.no}]);
+  assert.ok(item.body.includes('refs='+doc.id+'.2'));
+  assert.equal(await currentNotice(h.db2,old,h.clock),false);
+  assert.equal(await currentNotice(h.db2,item,h.clock),true);
+  await h.ok(type==='condition'?'family/conditions/agree':'family/specials/agree',{auth:parent,id:doc.id,agree:true,consenterName:approveName});
+  assert.equal(await currentNotice(h.db2,item,h.clock),false);
+ }
+});

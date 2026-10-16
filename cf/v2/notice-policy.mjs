@@ -25,7 +25,7 @@ export async function currentNotice(db, item, now = Date.now()) {
     if (n.type === 'schedule') {
       if (r.status !== 'proposed' || r.askedAt !== t.askedAt || (t.noticeId && r.noticeId!==t.noticeId) || Date.parse(r.date+'T'+r.start+':00+09:00') <= now) return false;
     } else if (['plan','condition','special'].includes(n.type)) {
-      if (r.status !== 'proposed' || Number(r.version) !== Number(t.version)) return false;
+      if (r.status !== 'proposed' || Number(n.type==='plan'?r.version:r.no) !== Number(t.version)) return false;
     } else if (n.type === 'invoice' && !['confirmed','reported'].includes(r.status)) return false;
     else if (n.type === 'invoiceVoid' && r.status !== 'void') return false;
     else if (t.version && Number(r.version) !== Number(t.version)) return false;

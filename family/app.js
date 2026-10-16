@@ -224,7 +224,7 @@ function learningPage(sub) {
   return h + (st ? gradesView(st, { who: 'family', dis: dis() }) : '<p class="muted">まだ成績はありません。</p>');
 }
 function moneySelection() {
-  const t=targetParts(route().target||''), match=x=>t.refs.some(r=>r.id===x.id), exact=x=>t.refs.some(r=>r.id===x.id && r.version===x.version);
+  const t=targetParts(route().target||''), match=x=>t.refs.some(r=>r.id===x.id), exact=x=>t.refs.some(r=>r.id===x.id && r.version===(x.version ?? x.no));
   let header='', plans=money.plans, invoices=money.invoices.filter(x=>x.status!=='void'), fees=money.fees, conds=money.conditions?.items||[], specials=money.specials?.items||[];
   if(!t.kind || !t.refs.length)return {header,plans,invoices,fees,conds,specials};
   header='<p class="notice">メールでお知らせした対象を表示しています。<a href="#money">現在のすべての書類・料金を見る</a></p>';

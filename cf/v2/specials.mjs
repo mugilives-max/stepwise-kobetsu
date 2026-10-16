@@ -98,7 +98,7 @@ export const specialRoutes = {
       .bind(f.title, f.minutes, f.fee, now, now));
     await c.db.batch(stmts);
     await storeDoc(c, id);
-    await familyNotice(c, s.id, '特殊指導のご提案', `${fullName(s)}さんの特殊指導「${f.title}」をご提案します。保護者ページの「お支払い」で内容（受講条件書（特殊指導））を確かめて、承認をお願いします。\n・1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・期間：${f.fromDate}〜${f.toDate}\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'special',refs:id+'.1'}),{type:'special',targets:[{id,version:1}]});
+    await familyNotice(c, s.id, '特殊指導のご提案', `${fullName(s)}さんの特殊指導「${f.title}」をご提案します。保護者ページの「お支払い」で内容（受講条件書（特殊指導））を確かめて、承認をお願いします。\n・1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・期間：${f.fromDate}〜${f.toDate}\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'special',refs:id+'.'+no}),{type:'special',targets:[{id,version:no}]});
     await audit(c, 'specialPropose', id, { studentId: s.id, no, title: f.title, fee: f.fee, minutes: f.minutes });
     return { special: await withDoc(c.db, specialView(await c.db.prepare('select * from specials where id = ?').bind(id).first())) };
   },
