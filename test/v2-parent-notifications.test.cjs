@@ -144,3 +144,22 @@ test('fresh attempt cannot be resolved using the age of its old queued record',a
  const r=await h.call('admin/effects/resolve',{auth,id:qs[0].id,result:'notSent',note:'【テスト】確認の記録'});
  assert.equal(r.error.code,'busy');unlock();await sending;
 });
+
+test('challenge retry checks current address and stopped account, and re-notice rejects stale displayed versions',async()=>{
+ const {h,auth,fam,kid}=await agreementFixture(),{currentNotice,scheduleDelivery}=await import('../cf/v2/notice-policy.mjs');
+ await h.ok('family/reset/request',{email:fam.email});
+ const m=h.mails().at(-1);delete m.testOnly;delete m.held;
+ assert.equal(await currentNotice(h.db2,m,h.clock),true);
+ h.db2._sqlite.prepare('update families set email = ? where id = ?').run('changed@example.invalid',fam.id);
+ assert.equal(await currentNotice(h.db2,m,h.clock),false);
+ h.db2._sqlite.prepare('update families set email = ?, status = ? where id = ?').run(fam.email,'stopped',fam.id);
+ assert.equal(await currentNotice(h.db2,m,h.clock),false);
+ h.db2._sqlite.prepare("update families set status = 'active' where id = ?").run(fam.id);
+ await h.ok('schedule/lessons/create',{auth,studentId:kid.id,date:'2026-10-20',start:'17:00',minutes:60,subject:'数学',deliveryMode:'in_person',send:'ask'});
+ const row=()=>h.rows('select * from lessons')[0],before=row();
+ const r=await h.call('schedule/lessons/renotify',{auth,studentId:kid.id,lessonIds:[before.id],refs:[{id:before.id,version:before.version-1}],via:'LINE',note:'【テスト】案内済み'});
+ assert.equal(r.error.code,'conflict');assert.deepEqual(row(),before);
+ await h.ok('schedule/lessons/renotify',{auth,studentId:kid.id,lessonIds:[before.id],refs:[{id:before.id,version:before.version}],via:'LINE',note:'【テスト】新しい期限を案内済み'});
+ await scheduleDelivery(h.db2,{notice:{type:'schedule',targets:[{id:before.id,askedAt:before.askedAt,noticeId:before.noticeId}]}},'failed',new Date(h.clock).toISOString());
+ assert.equal(row().noticeState,'external','same-millisecond old delivery cannot hold a newer notice');
+});

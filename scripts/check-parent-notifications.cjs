@@ -90,8 +90,12 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await cp.goto(origin+'/family/#reset='+encodeURIComponent(resetToken));
   await cp.locator('[name="password"]').fill('changed synthetic password');
   await cp.locator('[name="confirm"]').fill('changed synthetic password');
+  const resetResponse=cp.waitForResponse(r=>r.url().endsWith('/v2/family/reset/confirm'));
   await cp.getByRole('button',{name:'パスワードを変える',exact:true}).click();
-  await cp.waitForURL('**/#'+target);
+  const resetBody=await (await resetResponse).json();
+  assert.equal(resetBody.ok,true,JSON.stringify(resetBody.error));
+  assert.equal(resetBody.returnTo,target);
+  await cp.waitForFunction(t=>location.hash==='#'+t,target);
   await cp.getByText('メールでお知らせした対象を表示しています。',{exact:false}).waitFor();
   report.checks.push('login context and cross-browser password-reset return');
   await cp.goto(origin+'/family/#invite=invalid');
@@ -112,6 +116,8 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await page.setViewportSize({width:1280,height:900});
   await page.screenshot({path:path.join(out,'05-prerequisites-desktop.png'),fullPage:true});
   report.checks.push('prerequisites explained next to disabled approval');
+  await page.goto(origin+'/family/#home');await page.getByText('確かめていただきたいこと',{exact:false}).first().waitFor();
+  report.checks.push('home overview remains usable after notification-target navigation');
 
   const sampleInv={id:'iv_synthetic',month:'2026-09',status:'void',total:4500,version:2,voidReason:'【テスト】内訳訂正',items:[],dueDate:'2026-10-23',dueNote:'LINEで合意'};
   const voidHtml=await page.evaluate(async v=>(await import('/assets/v2/portal-ui.js?v=20261016-notices')).invoiceSheet(v,{multi:false}),sampleInv);
@@ -153,7 +159,9 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   fs.writeFileSync(path.join(out,'emails.html'),'<!doctype html><html lang="ja"><meta charset="utf-8"><title>保護者通知の見本（未公開・架空データ）</title><style>body{font:16px system-ui;max-width:800px;margin:32px auto;padding:20px}article{border:1px solid #ddd;padding:20px;margin:20px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}</style><h1>保護者通知の見本</h1><p>未公開の確認用です。架空データで生成し、実メールは送信していません。</p>'+emails.map(m=>'<article><h2>'+escape(m.subject)+'</h2><pre>'+escape(m.body)+'</pre></article>').join('')+'</html>');
   fs.writeFileSync(path.join(out,'emails.json'),JSON.stringify(emails,null,2));
-  assert.ok(new Set(emails.map(m=>m.subject)).size>=14,'13 existing template types plus invoice void');
+  const expectedSubjects=[/保護者ページの登録/,/パスワードの再設定/,/受講条件書（通常指導）のお知らせ/,/特殊指導のご提案/,/受講合意書のお知らせ/,/受講合意書の承認のお願い/,/授業の日程の確認のお願い/,/授業の日時が確定しました/,/授業の日時を変更しました/,/授業をキャンセルしました/,/キャンセル料のお知らせ/,/キャンセル料の申請への回答/,/月分の授業料のお知らせ/,/請求取消し/];
+  for(const re of expectedSubjects)assert.ok(emails.some(m=>re.test(m.subject)),'missing actual template: '+re);
+  report.templateSubjects=expectedSubjects.map(re=>emails.find(m=>re.test(m.subject)).subject);
   report.checks.push('all 13 existing notification templates and invoice-void template generated without sending');
   assert.deepEqual(report.errors,[]);assert.deepEqual(report.externalRequests,[]);
   console.log(JSON.stringify(report));fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(report,null,2));

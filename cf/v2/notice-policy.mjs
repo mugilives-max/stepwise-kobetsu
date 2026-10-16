@@ -5,7 +5,12 @@ export async function currentNotice(db, item, now = Date.now()) {
   const n = item.notice;
   if (!n) return true; // Legacy records are retained; never bulk-replay old sent records.
   if (n.type === 'challenge') {
-    return !!(await db.prepare("select 1 from authChallenges where id = ? and usedAt = '' and expiresAt > ?").bind(n.id,iso(now)).first());
+    const ch=await db.prepare("select * from authChallenges where id = ? and usedAt = '' and expiresAt > ?").bind(n.id,iso(now)).first();
+    if(!ch || ch.email!==item.to)return false;
+    const table=/^family(Invite|Reset)$/.test(ch.purpose)?'families':/^staff(Invite|Reset)$/.test(ch.purpose)?'staff':'';
+    if(!table)return false;
+    const who=await db.prepare('select email,status from '+table+' where id = ?').bind(ch.subjectId).first();
+    return !!who && who.status!=='stopped' && who.email===ch.email;
   }
   const tables = {plan:'planLines',condition:'conditions',special:'specials',invoice:'invoices',fee:'cancellationFees',schedule:'lessons',lesson:'lessons',invoiceVoid:'invoices'};
   const table = tables[n.type]; if (!table) return false;

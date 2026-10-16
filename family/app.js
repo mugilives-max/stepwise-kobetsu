@@ -125,7 +125,7 @@ function homePage() {
   if (money.terms && money.terms.needs) todo.push(['#money', 'file', '#c98a00', '受講規約への同意', (money.terms.current.title || '受講規約') + '・全文を読んで同意してください', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs) : [];
   if (needConds.length) todo.push(['#money', 'file', '#c98a00', '受講条件書（通常指導）への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
-  const needSpecials = selected.specials.filter(x=>x.status==='proposed');
+  const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
   if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特殊指導の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・') + '・内容と料金を確かめて承認してください', needSpecials.length]);
   if (asks.length) todo.push(['#money', 'plan', '#5b6672', '受講合意書の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
   if (acks.length) todo.push(['#money', 'check', '#138a8a', '受講合意書の確認', acks.map(([m]) => monthLabel(m)).join('・') + '・先生が記録した承諾の内容を確かめてください', acks.length]);
@@ -264,7 +264,7 @@ function moneyPage() {
   const selected=moneySelection(); h+=selected.header;
   const { asks, acks, others } = planGroups(selected.plans), needTerms = !!(money.terms && money.terms.needs);
   const needConds = selected.conds.filter(x => x.needs), blocked = needTerms || (money.conditions?.items||[]).some(x=>x.needs);
-  const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
+  const needSpecials = selected.specials.filter(x=>x.status==='proposed');
   if (asks.length || acks.length || blocked || needSpecials.length) {
     h += secTitle('確かめていただきたいこと');
     if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });

@@ -165,7 +165,7 @@ export async function confirmInvoice(c, familyId, month, by, expectedTotal, due 
   if (expectedTotal !== undefined && expectedTotal !== null && Number(expectedTotal) !== p.total) fail('changed', '金額が変わりました。画面を更新して確かめてください', 409);
   const today=todayJst(c.now), normal=today.slice(0,8)+'15';
   const dueDate=String(due.date||normal), dueNote=String(due.note||'').trim();
-  if(due.date && (!validDate(dueDate)||dueDate<=today||!dueNote)) fail('needDueAgreement','保護者と合意した支払期限と、合意の日時・方法を記録してください');
+  if(due.date && (!validDate(dueDate)||new Date(dueDate+'T00:00:00Z').toISOString().slice(0,10)!==dueDate||dueDate<=today||!dueNote)) fail('needDueAgreement','保護者と合意した支払期限と、合意の日時・方法を記録してください');
   if(today>=normal && !due.date) fail('needDueAgreement','15日以降の確定です。保護者と合意した支払期限を入力してください');
   if(by!=='system:auto' && !due.reviewed) fail('needDueReview','期限までに支払える期間があるか確認し、難しい場合は保護者と具体的な期日を合意してください');
   const id = newId('iv'), now = iso(c.now), db = c.db, bank=(await billingSettings(db)).bank;
@@ -186,7 +186,7 @@ export async function confirmInvoice(c, familyId, month, by, expectedTotal, due 
   return { invoice: invoiceView(await db.prepare('select * from invoices where id = ?').bind(id).first()) };
 }
 
-// 毎日0時10分（切り替えたあと）: 3日以降は前月分を確定する。確かめることがある家族は残し、3日だけ教室管理者に知らせる
+// 毎日0時10分: 通常の自動確定は3日。残った請求は期限の余裕を管理者が確認する。
 export async function autoCloseInvoices(c) {
   if (!(await isLive(c))) return { skipped: 'notLive' };
   const today = todayJst(c.now); if (Number(today.slice(8)) < 3) return { skipped: 'beforeClose' };
