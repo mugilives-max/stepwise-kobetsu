@@ -181,9 +181,9 @@ test('condition and special notifications use each document number, including re
  for(const type of ['condition','special']) {
   const route=type==='condition'?'admin/conditions/propose':'admin/specials/propose';
   const fields=type==='condition'?{studentId:kid.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'}:{studentId:kid.id,title:'【テスト】問題解説',purpose:'復習',content:'問題の解説',reason:'専用準備',prep:'事前に解く',minutes:90,fee:6000,fromDate:'2026-11-01',toDate:'2026-11-30'};
-  await h.ok(route,{auth,...fields});const old=h.mails().at(-1);delete old.testOnly;delete old.held;
+  const first=await h.ok(route,{auth,...fields});const old=h.mails().at(-1);delete old.testOnly;delete old.held;
   assert.equal(await currentNotice(h.db2,old,h.clock),true);
-  const v=await h.ok(route,{auth,...fields});const doc=v[type],item=h.mails().at(-1);delete item.testOnly;delete item.held;
+  const v=await h.ok(route,{auth,...fields,...(type==='special'?{replaceId:first.special.id}:{})});const doc=v[type],item=h.mails().at(-1);delete item.testOnly;delete item.held;
   assert.equal(doc.no,2);assert.deepEqual(item.notice.targets,[{id:doc.id,version:doc.no}]);
   assert.ok(item.body.includes('refs='+doc.id+'.2'));
   assert.equal(await currentNotice(h.db2,old,h.clock),false);

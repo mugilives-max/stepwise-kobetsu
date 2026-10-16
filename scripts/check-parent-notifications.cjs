@@ -18,12 +18,13 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
  await h.ok('family/reset/request',{email:fam.email,returnTo:target});
  const resetToken=h.linkFrom(h.mails().at(-1));
  const root=path.resolve(__dirname,'..');
+ let served=h;
  const server=http.createServer(async(req,res)=>{
   try {
    const url=new URL(req.url,'http://localhost');
    if(url.pathname.startsWith('/v2/')){
     const chunks=[];for await(const chunk of req)chunks.push(chunk);
-    const r=await h.call(url.pathname.slice(4),JSON.parse(Buffer.concat(chunks).toString()||'{}'));
+    const r=await served.call(url.pathname.slice(4),JSON.parse(Buffer.concat(chunks).toString()||'{}'));
     res.setHeader('content-type','application/json');res.end(JSON.stringify(r));return;
    }
    const p=path.resolve(root,'.'+decodeURIComponent(url.pathname));
@@ -171,6 +172,25 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   for(const l of h2.rows("select * from lessons where status='decided'"))await h2.ok('schedule/lessons/done',{auth:au,id:l.id,version:l.version});
   const inv=(await h2.ok('billing/confirm',{auth:au,familyId:extra.fam.id,month:'2026-09',dueReviewed:true,dueDate:'2026-10-23',dueNote:'【テスト】LINEで合意'})).invoice;
   await h2.ok('billing/void',{auth:au,id:inv.id,version:inv.version,reason:'【テスト】明細の訂正'});
+  // Follow the real generated business links against the second isolated family.
+  served=h2;
+  const linksContext=await browser.newContext({reducedMotion:'reduce',viewport:{width:390,height:844}});
+  await linksContext.route('**/*',r=>{const u=new URL(r.request().url());if(u.origin===origin||u.protocol==='data:')return r.continue();report.externalRequests.push(u.origin);return r.abort();});
+  await linksContext.addInitScript(auth=>localStorage.setItem('sw2_family',auth),pa);
+  const lp=await linksContext.newPage();lp.on('pageerror',e=>report.errors.push(e.message));
+  const mailHash=m=>new URL(m.body.match(/https:\/\/www\.stepwise-education\.jp\/family\/[^\s]+/)[0]).hash;
+  await lp.goto(origin+'/family/'+mailHash(changedNotice));
+  await lp.locator('.bsheet').waitFor();
+  assert.match(await lp.locator('.sch-month').innerText(),/2026年9月/);
+  assert.match(await lp.locator('.bsheet').innerText(),/キャンセル/);
+  await lp.goto(origin+'/family/'+mailHash(h2.mails().find(m=>m.subject.includes('キャンセル料の申請への回答'))));
+  await lp.locator('.bsheet').waitFor();
+  assert.match(await lp.locator('.bsheet').innerText(),/1,500/);
+  await lp.goto(origin+'/family/'+mailHash(h2.mails().find(m=>m.subject.includes('請求取消し'))));
+  await lp.getByText('この請求は取り消されています。お支払いは不要です。',{exact:false}).waitFor();
+  assert.equal(await lp.locator('[data-action="inv-report"]').count(),0);
+  report.checks.push('actual generated lesson, fee-response and void-invoice links open authenticated current details');
+  await linksContext.close();served=h;
   // Review copies contain only synthetic data; redact invitation/reset bearer strings.
   const emails=h.mails().concat(h2.mails()).filter(m=>m.audience==='family').map(m=>({subject:m.subject,body:m.body.replace(/#(invite|reset)=[^\s]+/g,'#$1=TEST-LINK'),status:m.status}));
   for(const m of emails)assert.doesNotMatch(m.body,/undefined|NaN/,'notice has no missing identifiers or values');
