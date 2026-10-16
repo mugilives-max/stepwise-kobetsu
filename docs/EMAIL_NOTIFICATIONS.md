@@ -3,7 +3,57 @@
 システムが送るメールの正本。誰に・いつ・どんな件名で送るか、どうすれば止まるかをまとめる。
 メールを足す・減らす・文面を変えるときは、コードと一緒にこの文書も更新する。
 
-調べた日: 2026-10-01（コード `gas/*.gs` と `cf/worker/*.mjs` から洗い出し）。
+旧システムの調査日: 2026-10-01。v2 の保護者通知は下の2026-10-16調査を参照。
+
+<a id="parent-notification-audit-20261016"></a>
+## 保護者通知の現行一覧と事前調査（2026-10-16）
+
+**調査であり、文面・画面・送信動作を変更したものではない。** 対象は main `d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36` の v2。下段の旧システムの一覧は保存するが、現在の保護者通知の根拠にはこの節を用いる。改善の優先順位・再現結果は [UI・UX調査](UI_UX_REVIEW.md#parent-notification-audit-20261016)。
+
+### 送るメールと開く場所
+
+件名の先頭はすべて「【ステップワイズ】」。表の「ホーム」は `https://www.stepwise-education.jp/family/`。「日程の確認」「予定」はそれぞれ `#confirm`、`#schedule`。これらはログイン必須で、リンクを開くだけでは承認されない。
+
+| 件名（共通の先頭を省略） | きっかけ・本文の要点 | 現在のリンク先 | 根拠 |
+|---|---|---|---|
+| 保護者ページの登録 | 管理者が招待。7日以内にパスワードを設定。予定・記録・「授業計画」・請求を見られると案内 | 登録専用リンク | [people](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/people.mjs#L62)、[accounts](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/accounts.mjs#L87-L98) |
+| パスワードの再設定 | 本人の申込み。30分以内に設定。心当たりがなければ破棄と案内 | 再設定専用リンク | [accounts](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/accounts.mjs#L109-L121) |
+| 受講条件書（通常指導）のお知らせ | 条件書発行。生徒・版・時間・単価・形式・適用開始を示し「お支払い」で同意を依頼 | ホーム | [conditions](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/conditions.mjs#L104) |
+| 特殊指導のご提案 | 条件発行。生徒・指導名・時間・単価・期間を示し「お支払い」で承認を依頼 | ホーム | [specials](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/specials.mjs#L100) |
+| 受講合意書のお知らせ | 選択した下書きを家族に1通。生徒・科目・期間・回数を列挙。初回本文に単価・各回時間・予定総額はない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L260-L274) |
+| 受講合意書の承認のお願い | 管理者による再案内。同じ家族に1日1回まで。単価を含む。決定済み・実施済みの授業数を添える場合あり | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L276-L299) |
+| 授業の日程の確認のお願い | 選択した授業を生徒ごとにまとめる。生徒・日時・科目・回答期限、直近の授業は返事のあと確定、と案内 | 日程の確認 | [schedule](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/schedule.mjs#L110-L116)、[MCP](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/mcp-writes.mjs#L275) |
+| 授業の日時が確定しました | 期限経過による自動確定時、生徒ごとに1通。対象の日時・科目、前日23時までの変更・休みの案内 | 予定（対象月・授業の指定なし） | [schedule](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/schedule.mjs#L185-L201) |
+| 授業の日時を変更しました | 確定した授業の編集。変更前後の日時・長さ。生徒名・科目は本文にない。条件により料金も記載 | ホーム | [schedule](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/schedule.mjs#L529) |
+| 授業をキャンセルしました | 管理者が取消しを記録。生徒・日時・科目とキャンセル料金の説明 | ホーム | [schedule](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/schedule.mjs#L565) |
+| キャンセル料のお知らせ | 管理者が料金を設定。日時・科目・金額と任意の説明 | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L387) |
+| キャンセル料の申請への回答 | 管理者が免除・減額等を回答。金額・回答文。対象生徒・授業日時は自動では入らない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L392-L407) |
+| M月分の授業料のお知らせ | 手動・自動の請求確定。対象年月・合計金額。支払期限や振込手順は本文にない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L155-L191) |
+
+### 現在の送信・受信の扱い
+
+- 業務通知は、生徒に紐づく家族の登録メール1件に送り、家族が active でない・アドレスがないと通知を作らず戻る。宛先不在の理由を通知側の戻り値では示さない。[familyNotice](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/schedule.mjs#L99-L103)
+- 差出人名は「ステップワイズ個別指導」。本文末尾は保護者ページのURL。共通の問い合わせ案内・返信先の説明はない。メール代行側は `name` を渡すが `replyTo` は指定しない。実際の From / Reply-To ヘッダーは今回未確認。[代行](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/gas-effects/Code.gs#L48-L54)
+- 控えは v2 の `effects` 表。テスト用・切替前の保護者通知は dismissed として送信しない。失敗等の再試行は48時間以内・試行回数3未満、停止中の pending の回収もある。旧節の「自動では送り直さない」「通知種類を本人が停止できる」を v2 の仕様として使わない。[記録・送信](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/effects.mjs#L1-L39)、[再試行](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/effects-admin.mjs#L60-L87)
+- **個別のメール失敗を sent と記録する再現あり**（調査 PN-03）。「送信済み」の記録だけでは、送信処理の成功・受信箱への到達を保証できない。実メールの未着事例は今回調べていない。
+- 日程の案内は依頼ごとのURLではなく、家庭の現在の確認待ち一覧を開く。既存の設計判断を踏襲する場合も、対象生徒・対象授業・回答期限を画面上で識別できる必要がある。
+- 登録・再設定メールを出し直すと、同じ用途の古いリンクは無効になる。期限切れ・使用済みのエラーはあるが、登録エラー画面に問い合わせ・ログインへのリンクがない。[accounts](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/accounts.mjs#L87-L105)、[family](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/family/app.js#L54-L58)
+
+### メールがない操作（追加の要否は未決）
+
+規約の版の設定、LINE等の承諾を管理者が記録、保護者の承認・日程確定への保護者宛て完了通知、請求取消し、入金確認、授業記録公開・宿題更新には、この調査対象の v2 経路で保護者宛てメール生成を確認していない。画面上の状態更新や、管理者宛て通知とは分ける。
+
+特に旧システムと違い、**v2の自動請求確定は通知を作る一方、請求取消しは保護者メールを作らない**。何でもメールを増やす方針は採らず、「金額・約束が変わる重要連絡」「操作完了」「日常の学習記録」を分けて要否を決める。
+
+### 文面を整えるときの共通案（未採用）
+
+1. 件名で「何の用事か」「対象年月」を示す。生徒名を件名にも入れるかは、通知プレビューに出る情報量との兼ね合いで決める。
+2. 本文は「対象 → 依頼する操作／お知らせのみ → 期限・無回答時の扱い → 目的のリンク → 困った場合の連絡先」の順とする。
+3. 受講合意書は「科目・回数・時間・料金の確認」、日程確認は「授業日時の確認」と一言添える。回答しないときの扱いを両者で混同させない。
+4. 通常のリンクはログイン必須を維持。メールに認証を迂回する鍵や生徒専用リンクを入れない。承認は書面を開いただけでは成立させない。
+5. システムの r5 名称と正式規約 r9 名称の差は既存の残件。メールだけを先に別名称へ変えず、表示・書面・規約の適用版とそろえる。
+
+
 
 ## 作り直し（v2）の予定のお知らせ（2026-10-16〜）
 
@@ -17,6 +67,10 @@
 | 先生 | [ステップワイズ] 【日程の確認】（生徒名）さん | 保護者が「この日程で大丈夫」を押したとき | 確定した授業の一覧 |
 
 下書き・調整中で見せたとき、調整中・確認待ちの日時を直したとき、先生が確定したとき、下書きに戻したときはメールを送らない。
+
+## 旧システムの記録（2026-10-01時点）
+
+以下の共通事項・各一覧・見直し候補は旧システムの調査記録。v2 の送信仕様と混同しないこと。
 
 ## 共通のしくみ
 
