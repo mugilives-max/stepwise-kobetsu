@@ -16,7 +16,7 @@ async function world() {
 // 送る先（Apps Script）のふり。reply が関数なら呼ぶたびに決める
 function withFetch(reply, fn) {
   const original = globalThis.fetch, asked = [];
-  globalThis.fetch = async (url, init) => { asked.push(JSON.parse(init.body)); const r = typeof reply === 'function' ? reply(asked.length) : reply; return { ok: !r.fail, status: r.fail ? 500 : 200, json: async () => (r.fail ? { error: 'GAS error' } : { writebacks: [] }) }; };
+  globalThis.fetch = async (url, init) => { asked.push(JSON.parse(init.body)); const r = typeof reply === 'function' ? reply(asked.length) : reply; return { ok: true, status: 200, json: async () => ({writebacks:[],results:asked.at(-1).items.map(it=>({id:it.deliveryId,status:r.fail?'failed':'sent',error:r.fail?'GAS error (not sent)':''}))}) }; };
   return fn().finally(() => { globalThis.fetch = original; }).then(() => asked);
 }
 
@@ -120,10 +120,10 @@ test('effects: a delivery that was cut off after the response is picked up by th
   assert.deepEqual(asked[0].items.map(i => i.subject), ['古い'], '3 分より前のものだけ');
   const mine = () => h.mails().filter(m => m.subject === '古い' || m.subject === '新しい');
   assert.deepEqual(mine().map(m => [m.subject, m.status]), [['古い', 'sent'], ['新しい', 'pending']]);
-  // 送る途中で切れて「送っている途中」の印のまま 10 分たったものは、夜の送り直しが拾う
+  // Legacy in-flight delivery cannot be classified as unsent: operator confirmation required.
   h.db2._sqlite.prepare("update effects set error = '送っている途中' where status = 'pending'").run();
-  await withFetch({ fail: false }, async () => { const r = await retryFailedEffects(h.env, h.env.DB2, h.clock + 15 * 60e3); assert.equal(r.retried, 1); });
-  assert.deepEqual(mine().map(m => m.status), ['sent', 'sent']);
+  await withFetch({ fail: false }, async () => { const r = await retryFailedEffects(h.env, h.env.DB2, h.clock + 15 * 60e3); assert.equal(r.retried, 0); });
+  assert.deepEqual(mine().map(m => m.status), ['sent', 'pending'],'legacy in-flight outcome is not automatically replayed');
   delete h.env.GAS_URL; delete h.env.SYNC_KEY;
   void auth;
 });

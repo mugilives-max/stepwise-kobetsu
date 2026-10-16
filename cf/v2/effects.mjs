@@ -9,20 +9,20 @@ export async function recordEffects(db,items,now) {
     .bind(at,e.kind,JSON.stringify(e),skipReason(e)?'dismissed':'pending',skipReason(e),newId('delivery'))));
   return rows.map((r,i)=>({id:Number(r.meta?.last_row_id)||0,item:items[i]})).filter(x=>!skipReason(x.item));
 }
-export async function deliverEffects(env,db,queued,fetcher=fetch) {
+export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now()) {
   if (!queued.length) return {sent:0,failed:0,unknown:0};
   if (!env.GAS_URL || !env.SYNC_KEY) {
-    for (const q of queued) await scheduleDelivery(db,q.item,'hold',new Date().toISOString());
+    for (const q of queued) await scheduleDelivery(db,q.item,'hold',new Date(now).toISOString());
     return {sent:0,failed:0,skipped:'GAS_URL / SYNC_KEY が未設定'};
   }
   const mine=[]; let dismissed=0;
   for (const q of queued) {
-    if (!(await currentNotice(db,q.item))) {
+    if (!(await currentNotice(db,q.item,now))) {
       await db.prepare("update effects set status = 'dismissed', error = '対象が変更・完了・取消し済み、または送信対象外' where id = ? and status in ('pending','failed') and deliveryState not in ('unknown','sending')").bind(q.id).run();
       dismissed++; continue;
     }
     const key=newId('delivery');
-    const r=await db.prepare("update effects set deliveryState = 'sending', deliveryKey = case when deliveryKey = '' then ? else deliveryKey end, attempts = attempts + 1 where id = ? and status in ('pending','failed') and deliveryState not in ('unknown','sending')")
+    const r=await db.prepare("update effects set deliveryState = 'sending', deliveryKey = case when deliveryKey = '' then ? else deliveryKey end, attempts = attempts + 1 where id = ? and status in ('pending','failed') and deliveryState not in ('unknown','sending') and error <> '送っている途中'")
       .bind(key,q.id).run();
     if (r.meta?.changes) { const row=await db.prepare('select deliveryKey from effects where id = ?').bind(q.id).first(); mine.push({...q,key:row.deliveryKey}); }
   }
@@ -50,7 +50,7 @@ export async function deliverEffects(env,db,queued,fetcher=fetch) {
         else if (batch.length===1 && fs.length===1 && fs[0].kind===q.item.kind) {state='failed';err=fs[0].error||'送信に失敗しました';}
       }
       if (q.item.kind==='calendarCreate' && state==='sent' && !backs.some(w=>w.marker===q.item.marker)) {state='failed';err='カレンダーの予定 ID が返りませんでした';}
-      const at=new Date().toISOString();
+      const at=new Date(now).toISOString();
       await db.prepare("update effects set status = ?, deliveryState = ?, error = ?, sentAt = ? where id = ? and deliveryState = 'sending'")
         .bind(state==='sent'?'sent':'failed',state,err.slice(0,300),state==='sent'?at:'',q.id).run();
       await scheduleDelivery(db,q.item,state,at);

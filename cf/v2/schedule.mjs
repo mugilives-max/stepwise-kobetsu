@@ -212,7 +212,7 @@ export async function autoConfirm(c) {
     await familyNotice(c, sid, '授業の日時が確定しました', `${fullName(list[0])}さんの次の授業の日時が確定しました（締め切りまでにご連絡がなかったため）。\n${list.map(lessonLine).join('\n')}\n変更・お休みは、授業の前日23時までにご連絡ください。`, familyTarget('schedule',{student:sid,month:list[0].date.slice(0,7)}));
   }
   if (due.length) { c.actor = { kind: 'system', id: 'autoConfirm' }; await audit(c, 'autoConfirm', '', { lessons: due.length }); }
-  return { confirmed: due.length, students: Object.keys(byStudent).length };
+  return { confirmed: Object.values(byStudent).reduce((n,ls)=>n+ls.length,0), students: Object.keys(byStudent).length };
 }
 
 // ---- 生徒・保護者からの「変更・お休みの連絡」 ----
@@ -410,8 +410,9 @@ export const scheduleRoutes = {
     const {s,rows,today}=await pickedLessons(c,b,['asking']);
     const via=String(b.via||'email'), note=String(b.note||'').trim();
     if(!['email','LINE','電話','対面'].includes(via)) fail('badVia','連絡方法を選んでください');
-    if(via!=='email' && !note) fail('needEvidence','実際に案内した日時と内容が分かる記録を書いてください');
+    if(b.preview!==true && via!=='email' && !note) fail('needEvidence','実際に案内した日時と内容が分かる記録を書いてください');
     const bys=confirmByFor(rows.map(l=>l.date),today,b.confirmBy||''), now=iso(c.now);
+    if(b.preview===true)return {lineText:lineForLine(askText(fullName(s),rows.map((l,i)=>({...l,confirmBy:bys[i]})))),confirmBy:bys.find(Boolean)||''};
     await c.db.batch(rows.map((l,i)=>c.db.prepare("update lessons set askedAt = ?, confirmBy = ?, noticeState = ?, noticeAt = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
       .bind(now,bys[i],via==='email'?'pending':'external',via==='email'?'':now,now,l.id,l.version)));
     const text=askText(fullName(s),rows.map((l,i)=>({...l,confirmBy:bys[i]})));

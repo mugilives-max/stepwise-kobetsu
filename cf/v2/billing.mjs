@@ -414,7 +414,7 @@ export const billingRoutes = {
     if (result === 'reduced') { amount = Number(b.amount); if (!Number.isInteger(amount) || amount < 0 || amount >= f.amount) fail('badAmount', `減額した金額は0〜${f.amount - 1}円にしてください`); }
     await c.db.prepare('update cancellationFees set reliefStatus = ?, amount = ?, reliefResponse = ?, reliefDecidedAt = ?, decidedBy = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?')
       .bind(result, amount, response, iso(c.now), 'staff:' + me.id, iso(c.now), f.id, f.version).run();
-    await familyNotice(c, f.studentId, 'キャンセル料の申請への回答', `${fullName(await getStudent(c,f.studentId))}さん ${(await c.db.prepare('select date || " " || start || " " || subject as label from lessons where id = ?').bind(f.lessonId).first()).label}\nキャンセル料の減額・免除の申請にお答えしました。キャンセル料は ${yen(amount)} です。\n${response}\n請求・支払期限は請求の案内でご確認ください。内容に疑問がある場合は教室へご連絡ください。`,familyTarget('money',{kind:'fee',refs:f.id+'.'+(f.version+1)}),{type:'fee',targets:[{id:f.id,version:f.version+1}]});
+    await familyNotice(c, f.studentId, 'キャンセル料の申請への回答', `${fullName(await getStudent(c,f.studentId))}さん ${(await c.db.prepare("select date || ' ' || start || ' ' || subject as label from lessons where id = ?").bind(f.lessonId).first()).label}\nキャンセル料の減額・免除の申請にお答えしました。キャンセル料は ${yen(amount)} です。\n${response}\n請求・支払期限は請求の案内でご確認ください。内容に疑問がある場合は教室へご連絡ください。`,familyTarget('money',{kind:'fee',refs:f.id+'.'+(f.version+1)}),{type:'fee',targets:[{id:f.id,version:f.version+1}]});
     await audit(c, 'cancelFeeRelief', f.id, { result, amount });
     return {};
   },

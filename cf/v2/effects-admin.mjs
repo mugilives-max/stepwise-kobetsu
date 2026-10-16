@@ -7,7 +7,7 @@ import { deliverEffects, recordEffects } from './effects.mjs';
 const LABEL = { mail: 'メール', calendarCreate: 'カレンダーに予定を作る', calendarUpdate: 'カレンダーの予定を直す', calendarDelete: 'カレンダーの予定を消す', calendarMeet: 'Meet のリンク' };
 const parse = s => { try { return JSON.parse(s) || {}; } catch { return {}; } };
 const view = r => { const p = parse(r.payload); const body = p.body && typeof p.body === 'object' ? p.body : {};
-  return { id: r.id, createdAt: r.createdAt, kind: r.kind, label: LABEL[r.kind] || r.kind, status: r.status, deliveryState: r.deliveryState, canRetry: !['unknown','sending'].includes(r.deliveryState), scheduleNotice: p.notice?.type === 'schedule', attempts: r.attempts, error: r.error, sentAt: r.sentAt,
+  return { id: r.id, createdAt: r.createdAt, kind: r.kind, label: LABEL[r.kind] || r.kind, status: r.status, deliveryState: r.error === '送っている途中' ? 'unknown' : r.deliveryState, canRetry: r.error !== '送っている途中' && !['unknown','sending'].includes(r.deliveryState), scheduleNotice: p.notice?.type === 'schedule', attempts: r.attempts, error: r.error, sentAt: r.sentAt,
     to: p.to || '', subject: p.subject || body.summary || '', audience: p.audience || '', held: !!p.held, testOnly: !!p.testOnly }; };
 const STALE_MS = 10 * 60e3;
 
@@ -16,7 +16,7 @@ export const effectsAdminRoutes = {
     await requireStaff(c,b,'manager');
     const note=String(b.note||'').trim();
     if(!['sent','notSent'].includes(b.result)||note.length<5) fail('needEvidence','送信先を確認した結果と、その根拠を書いてください');
-    const row=await c.db.prepare("select * from effects where id = ? and deliveryState in ('unknown','sending')").bind(Number(b.id)).first();
+    const row=await c.db.prepare("select * from effects where id = ? and (deliveryState in ('unknown','sending') or error = '送っている途中')").bind(Number(b.id)).first();
     if(!row) fail('notFound','確認が必要な送信記録がありません',404);
     if(row.deliveryState==='sending' && Date.parse(row.createdAt)>c.now-10*60e3) fail('busy','送信の応答を待っています。10分後に確認してください',409);
     await c.db.prepare("update effects set status = ?, deliveryState = ?, deliveryKey = case when ? = 'notSent' then '' else deliveryKey end, error = ?, sentAt = ? where id = ?")
@@ -41,9 +41,9 @@ export const effectsAdminRoutes = {
     await requireStaff(c, b, 'manager');
     const ids = (Array.isArray(b.ids) ? b.ids : [b.id]).map(Number).filter(n => Number.isInteger(n) && n > 0).slice(0, 50);
     if (!ids.length) fail('needIds', '送り直すものを選んでください');
-    const rows = (await c.db.prepare(`select * from effects where id in (${ids.map(() => '?').join(',')}) and status in ('failed', 'pending') and deliveryState not in ('unknown','sending') order by id`).bind(...ids).all()).results;
+    const rows = (await c.db.prepare(`select * from effects where id in (${ids.map(() => '?').join(',')}) and status in ('failed', 'pending') and deliveryState not in ('unknown','sending') and error <> '送っている途中' order by id`).bind(...ids).all()).results;
     if (!rows.length) fail('nothing', '送り直せるものがありません（もう送ったか、取り下げたものです）');
-    const r = await deliverEffects(c.env, c.db, rows.map(x => ({ id: x.id, item: parse(x.payload) })));
+    const r = await deliverEffects(c.env, c.db, rows.map(x => ({ id: x.id, item: parse(x.payload) })),fetch,c.now);
     await audit(c, 'effectsRetry', '', { ids: rows.map(x => x.id), sent: r.sent, error: r.error || r.skipped || '' });
     if (r.skipped) fail('unavailable', '送る先（Apps Script）の設定がありません', 503);
     return { sent: r.sent, failed: r.failed, unknown: r.unknown, dismissed: r.dismissed, error: r.error || '' };
@@ -53,7 +53,7 @@ export const effectsAdminRoutes = {
     const me = await requireStaff(c, b, 'manager');
     const item = { kind: 'mail', to: 'TEACHER', subject: '[ステップワイズ] 送信の確認', body: `${me.name} さんがスタッフ画面から送った確認のメールです。届いていれば、メールとカレンダーの送る先は生きています。\n送った時刻: ${new Date(c.now + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}`, audience: 'staff' };
     const queued = await recordEffects(c.db, [item], c.now);
-    const r = await deliverEffects(c.env, c.db, queued);
+    const r = await deliverEffects(c.env, c.db, queued,fetch,c.now);
     await audit(c, 'effectsTest', '', { sent: r.sent, error: r.error || r.skipped || '' });
     if (r.skipped) fail('unavailable', '送る先（Apps Script）の設定がありません', 503);
     if (!r.sent) fail('failed', '送れませんでした: ' + r.error, 502);
@@ -74,9 +74,9 @@ export const effectsAdminRoutes = {
 export async function retryFailedEffects(env, db, now) {
   const since = new Date(now - 48 * 3600e3).toISOString(), stale = new Date(now - STALE_MS).toISOString();
   // 失敗したものと、送る途中で止まったもの（応答のあとの送信が切れた・Apps Script が遅かった）。2026-10-11 に 10 分より前の pending を足した
-  const rows = (await db.prepare("select * from effects where attempts < 3 and deliveryState not in ('unknown','sending') and createdAt >= ? and (status = 'failed' or (status = 'pending' and createdAt < ?)) order by id limit 50").bind(since, stale).all()).results;
+  const rows = (await db.prepare("select * from effects where attempts < 3 and deliveryState not in ('unknown','sending') and error <> '送っている途中' and createdAt >= ? and (status = 'failed' or (status = 'pending' and createdAt < ?)) order by id limit 50").bind(since, stale).all()).results;
   if (!rows.length) return { retried: 0, sent: 0 };
-  const r = await deliverEffects(env, db, rows.map(x => ({ id: x.id, item: parse(x.payload) })));
+  const r = await deliverEffects(env, db, rows.map(x => ({ id: x.id, item: parse(x.payload) })),fetch,now);
   return { retried: rows.length, sent: r.sent };
 }
 // 止まったままの送信を、次の誰かの操作のついでに送る（応答のあとの送信は、deploy や Apps Script の遅さで切れることがある。2026-10-11）
@@ -86,11 +86,10 @@ export const SWEEP_AFTER_MS = 3 * 60e3, SWEEPING = '送っている途中';
 export async function sweepStaleEffects(env, db, now) {
   if (!env.GAS_URL || !env.SYNC_KEY) return { swept: 0 };
   const before = new Date(now - SWEEP_AFTER_MS).toISOString();
-  const rows = (await db.prepare("select * from effects where status = 'pending' and error = '' and deliveryState not in ('unknown','sending') and attempts < 3 and createdAt < ? order by id limit 5").bind(before).all()).results;
-  const mine = [];
-  for (const x of rows) { const r = await db.prepare("update effects set error = ? where id = ? and status = 'pending' and error = ''").bind(SWEEPING, x.id).run(); if (r.meta && r.meta.changes) mine.push({ id: x.id, item: parse(x.payload) }); }
+  const rows = (await db.prepare("select * from effects where status = 'pending' and error = '' and deliveryState not in ('unknown','sending') and error <> '送っている途中' and attempts < 3 and createdAt < ? order by id limit 5").bind(before).all()).results;
+  const mine=rows.map(x=>({id:x.id,item:parse(x.payload)}));
   if (!mine.length) return { swept: 0 };
-  const r = await deliverEffects(env, db, mine);
+  const r = await deliverEffects(env, db, mine,fetch,now);
   return { swept: mine.length, sent: r.sent, error: r.error || '' };
 }
 // 送れなかったものの数（「今日」の対応することに出す）

@@ -50,7 +50,7 @@ export async function runV2Scheduled(env, now = Date.now()) {
   result.invoices = await autoCloseInvoices(c);
   result.tests = await remindTestResults(c);
   result.files = await cleanupFiles(c);
-  if (c.effects.length) await deliverEffects(env, c.db, await recordEffects(c.db, c.effects, c.now));
+  if (c.effects.length) await deliverEffects(env, c.db, await recordEffects(c.db, c.effects, c.now),fetch,c.now);
   result.effects = await retryFailedEffects(env, c.db, c.now); // 送れなかったメール・カレンダーを送り直す（3 回まで）
   return result;
 }
@@ -96,7 +96,7 @@ export async function handleV2(request, env, ctx, head = {}) {
     const result = await handler(c, body);
     if (c.effects.length || (c.queued && c.queued.length)) {
       const queued = (c.queued || []).concat(c.effects.length ? await recordEffects(c.db, c.effects, c.now) : []); // c.queued: 道の中で先に記録したメール（mcp/notices/send など）
-      const finish = deliverEffects(env, c.db, queued).catch(() => {});
+      const finish = deliverEffects(env, c.db, queued,fetch,c.now).catch(() => {});
       if (ctx && ctx.waitUntil) ctx.waitUntil(finish); else await finish;
     } else if (ctx && ctx.waitUntil && c.actor) {
       // 止まったままの送信があれば、この操作のついでに送る（応答は待たせない）

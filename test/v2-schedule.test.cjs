@@ -64,7 +64,7 @@ test('確認をお願いする（古い名前 sendHeld）: 選んだ下書きだ
   assert.match(fm[0].subject, /授業の日程の確認のお願い/);
   assert.match(fm[0].body, /11\/4\(水\) 17:00〜18:00 数学\n・11\/11/, '選んだ授業を並べる');
   assert.doesNotMatch(fm[0].body, /12\/2/, '選ばなかった授業は書かない');
-  assert.match(fm[0].body, /#confirm$/, '保護者ページの「日程の確認」を開く');
+  assert.match(fm[0].body, /#confirm\?student=[^\s]+/, '保護者ページの「日程の確認」を開く');
   assert.match(r.lineText, /^【ステップワイズ】[\s\S]*family\/#confirm$/, 'LINE に貼る文');
   // 送ったあとの授業をもう一度選ぶと断る
   assert.equal((await h.call('schedule/lessons/sendHeld', { auth, studentId: kid.id, lessonIds: [a.id] })).error.code, 'badTargets');
@@ -127,6 +127,7 @@ test('the nightly run decides 仮予定 past their deadline once, but not ones w
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-09' }); await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-08' });
   const second = lessonsOf(h).find(l => l.date === '2026-10-09');
   await h.ok('family/lessons/request', { auth: parent, lessonId: second.id, kind: 'move', note: '別の日に' });
+  h.db2._sqlite.prepare("update lessons set noticeState = 'external', noticeAt = askedAt where askedAt <> ''").run(); // synthetic delivered notice
   const { runV2Scheduled } = await import('../cf/v2/index.mjs');
   assert.equal((await runV2Scheduled(h.env, Date.parse('2026-10-05T00:10:00+09:00'))).confirmed, 0, '締め切りの日のうちは決めない');
   const r = await runV2Scheduled(h.env, Date.parse('2026-10-06T00:10:00+09:00'));
