@@ -1,0 +1,8 @@
+-- Additive only: existing contracts, consents, invoices and effects are retained.
+ALTER TABLE effects ADD COLUMN deliveryState TEXT NOT NULL DEFAULT '';
+ALTER TABLE effects ADD COLUMN deliveryKey TEXT NOT NULL DEFAULT '';
+ALTER TABLE lessons ADD COLUMN noticeState TEXT NOT NULL DEFAULT '';
+ALTER TABLE lessons ADD COLUMN noticeAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE invoices ADD COLUMN dueDate TEXT NOT NULL DEFAULT '';
+ALTER TABLE invoices ADD COLUMN dueNote TEXT NOT NULL DEFAULT '';
+ALTER TABLE authChallenges ADD COLUMN returnTo TEXT NOT NULL DEFAULT '';

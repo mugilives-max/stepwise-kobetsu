@@ -343,7 +343,12 @@ export async function billingClick(ctx, a, b) {
     r = await ctx.call('billing/plans/delete', { id: b.dataset.id, version: Number(b.dataset.version) }); msg = '消しました'; if (r.ok) { plans = null; lineOpen = ''; }
   } else if (a === 'bl-confirm') {
     if (!confirm('この内容で請求を確定しますか？ 保護者ページに出て、メールでお知らせします。')) return true;
-    r = await ctx.call('billing/confirm', { familyId: openFamily, month: billMonth, expectedTotal: Number(b.dataset.total) }); msg = '請求を確定しました'; if (r.ok) { bill = null; detail = null; fees = null; }
+    const dueDate=prompt('通常の支払期限は請求確定月の15日（土日祝は翌営業日）です。\n期限までの期間が短い場合や15日以降は、保護者と合意した期日を YYYY-MM-DD で入力してください。通常の期限なら空欄。');
+    if(dueDate===null)return true;
+    const dueNote=dueDate ? prompt('支払期限について保護者と合意した日時・方法を入力してください') : '';
+    if(dueDate&&!dueNote)return true;
+    if(!confirm('支払期限までに無理なく支払える期間があることを確認しましたか？'))return true;
+    r = await ctx.call('billing/confirm', { familyId: openFamily, month: billMonth, expectedTotal: Number(b.dataset.total),dueDate,dueNote,dueReviewed:true }); msg = '請求を確定しました'; if (r.ok) { bill = null; detail = null; fees = null; }
   } else return false;
   if (r.ok) ctx.say(msg, 'ok'); else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;

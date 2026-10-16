@@ -69,17 +69,17 @@ export function effectsPage(ctx) {
   let h = ctx.notice();
   if (effects.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
   if (effects.error) return h + `<p class="notice error">${esc(effects.error)}</p>`;
-  const row = x => `<button type="button" class="irow" data-action="eff-open" data-id="${x.id}"><span class="b"><b>${esc(x.subject || x.label)}</b><small>${esc(x.label)}${x.to ? '・' + esc(x.to) : ''}・${jst(x.createdAt)}${x.status === 'failed' ? `・<span class="tag danger">送れなかった</span>` : x.status === 'pending' ? '・<span class="tag warn">止まっている</span>' : ''}</small></span><span class="go">›</span></button>`;
+  const row = x => `<button type="button" class="irow" data-action="eff-open" data-id="${x.id}"><span class="b"><b>${esc(x.subject || x.label)}</b><small>${esc(x.label)}${x.to ? '・' + esc(x.to) : ''}・${jst(x.createdAt)}${['unknown','sending'].includes(x.deliveryState) ? '・<span class="tag warn">送信結果の確認が必要</span>' : x.status === 'failed' ? `・<span class="tag danger">送れなかった</span>` : x.status === 'pending' ? '・<span class="tag warn">止まっている</span>' : ''}</small></span><span class="go">›</span></button>`;
   h += `<div class="sec-title">送れなかったもの${effects.failed.length ? ` <span class="count">${effects.failed.length}</span>` : ''}${effects.failed.length ? `<button class="small-btn primary" style="margin-left:auto" data-action="eff-retry-all"${ctx.dis()}>全部送り直す</button>` : ''}</div>`;
   h += effects.failed.length ? '<div class="group">' + effects.failed.map(row).join('') + '</div>' : '<p class="muted small">ありません。</p>';
   h += '<div class="sec-title">最近送ったもの</div>' + (effects.recent.length ? '<div class="group">' + effects.recent.map(row).join('') + '</div>' : '<p class="muted small">直近 30 日に送ったものはありません。</p>');
-  h += `<p class="small muted">メールとカレンダーは Apps Script に頼んで送ります。失敗したものは、毎日の定期実行で 3 回まで自動で送り直します。${effects.dismissed ? `切り替え前・テスト用・取り下げで送らなかったもの ${effects.dismissed}件。` : ''}</p>`;
+  h += `<p class="small muted">メールとカレンダーは Apps Script に頼んで送ります。未送信と確認できた失敗だけ、3回まで自動で再試行します。結果不明は自動で送り直しません。日程通知の失敗は、予定画面で再案内と回答期間の確認が必要です。${effects.dismissed ? `切り替え前・テスト用・取り下げで送らなかったもの ${effects.dismissed}件。` : ''}</p>`;
   h += `<p><button class="small-btn" data-action="eff-test"${ctx.dis()}>テスト送信（代表あてに 1 通）</button></p>`;
   h += backupHtml(ctx);
   const x = effOpen && [...effects.failed, ...effects.recent].find(e => e.id === effOpen);
   if (x) h += sheet(esc, x.subject || x.label, `<p class="small muted" style="margin-top:0">${esc(x.label)}${x.to ? '・' + esc(x.to) : ''}<br>作成 ${jst(x.createdAt)}${x.sentAt ? '・送信 ' + jst(x.sentAt) : ''}・試行 ${x.attempts}回</p>
     ${x.error ? `<p class="notice error small">${esc(x.error)}</p>` : ''}
-    ${x.status === 'sent' ? '<p class="small">送りました。</p>' : `<div class="row"><button class="primary" data-action="eff-retry" data-id="${x.id}"${ctx.dis()}>送り直す</button><button data-action="eff-dismiss" data-id="${x.id}"${ctx.dis()}>取り下げる（送らない）</button></div>`}`, 'eff-close');
+    ${!x.canRetry && x.status !== 'sent' ? '<p class="notice">送信先の受信状況を確認し、根拠を記録してください。自動再送は停止しています。</p><button data-action="eff-resolve-sent">送れたと確認</button><button data-action="eff-resolve-notSent">未送信と確認</button>' : x.status === 'sent' ? '<p class="small">送りました（既読を示すものではありません）。</p>' : `<div class="row"><button class="primary" data-action="eff-retry" data-id="${x.id}"${ctx.dis()}>送り直す</button><button data-action="eff-dismiss" data-id="${x.id}"${ctx.dis()}>取り下げる（送らない）</button></div>`}`, 'eff-close');
   return h;
 }
 
@@ -114,6 +114,14 @@ export async function extrasClick(ctx, a, b) {
     }
     return true;
   }
+  if (a.startsWith('eff-resolve-')) {
+    const note=prompt('受信状況を確認した方法・日時・結果を記録してください');
+    if(!note)return true;
+    r=await ctx.call('admin/effects/resolve',{id:effOpen,result:a.slice('eff-resolve-'.length),note});
+    if(r.ok){effects=null;effOpen=0;ctx.say('確認結果を記録しました。日程の再案内は予定画面から行ってください','ok');}
+    else ctx.say(r.error.message,'error');
+    return true;
+  }
   if (a === 'eff-open') { effOpen = Number(b.dataset.id); ctx.say(''); return true; }
   if (a === 'eff-close') { effOpen = 0; return true; }
   if (a === 'eff-test') {
@@ -127,9 +135,9 @@ export async function extrasClick(ctx, a, b) {
     return true;
   }
   if (a === 'eff-retry' || a === 'eff-retry-all') {
-    const ids = a === 'eff-retry' ? [Number(b.dataset.id)] : effects.failed.map(x => x.id);
+    const ids = a === 'eff-retry' ? [Number(b.dataset.id)] : effects.failed.filter(x=>x.canRetry).map(x => x.id);
     r = await ctx.call('admin/effects/retry', { ids });
-    if (r.ok) { effects = null; effOpen = 0; ctx.say(r.failed ? `${r.sent}件を送り、${r.failed}件は送れませんでした: ${r.error}` : `${r.sent}件を送りました`, r.failed ? 'error' : 'ok'); }
+    if (r.ok) { effects = null; effOpen = 0; ctx.say((r.failed||r.unknown) ? `${r.sent}件送信、${r.failed||0}件失敗、${r.unknown||0}件は結果不明です。${r.error}` : `${r.sent}件を送りました${r.dismissed ? '。変更・完了した対象は送信を取り下げました' : ''}`, (r.failed||r.unknown) ? 'error' : 'ok'); }
   } else if (a === 'eff-dismiss') {
     if (!confirm('この送信を取り下げますか？（送りません）')) return true;
     r = await ctx.call('admin/effects/dismiss', { ids: [Number(b.dataset.id)] });

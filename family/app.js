@@ -1,3 +1,4 @@
+import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261016-notices';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
@@ -33,7 +34,8 @@ function route() {
   const h = location.hash;
   if (h.startsWith('#invite=')) return { page: 'invite', token: decodeURIComponent(h.slice(8)) };
   if (h.startsWith('#reset=')) return { page: 'reset', token: decodeURIComponent(h.slice(7)) };
-  return { page: h.slice(1) || 'home' };
+  const target=safeFamilyTarget(h.slice(1));
+  return { page: h==='#forgot' ? 'forgot' : targetParts(target).path, target };
 }
 const say = (m, k = '') => { notice = m ? { m, k } : null; };
 const noticeHtml = () => notice ? `<p class="notice ${notice.k}" role="${notice.k === 'error' ? 'alert' : 'status'}">${esc(notice.m)}</p>` : '';
@@ -47,14 +49,27 @@ function newPasswordForm(kind, label) {
   return `<form class="stack" data-form="${kind}"><label>新しいパスワード（12文字以上）<input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
     <label>もう一度<input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="128" required></label><button class="primary"${dis()}>${label}</button></form>`;
 }
+const helpLinks = '<p class="small">リンクの期限切れ・登録にお困りの場合は、いつものLINEまたは <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> に登録リンクの再案内を依頼してください。</p><p><a href="#home">ログインへ</a> · <a href="#forgot">パスワードを再設定する</a></p>';
+function savedTarget(){try{return safeFamilyTarget(sessionStorage.getItem(NEXT_KEY)||'');}catch{return '';}}
+let appliedTarget='', openedTarget='';
+function applyTarget() {
+  const r=route(); if(!me || !r.target || appliedTarget===r.target)return;
+  const t=targetParts(r.target);
+  if(['schedule','confirm'].includes(t.path)) {
+    if(need('sched'))return;
+    kid=t.student && kids().some(x=>x.id===t.student) ? t.student : '';
+    if(t.month){cal=monthCalendar({today:sched.today,onChange:()=>render()});cal.month=t.month;cal.sel=t.month+'-01';}
+  }
+  appliedTarget=r.target;
+}
 function loginPage() {
-  return `${prep()}<h1>保護者ページ</h1>${noticeHtml()}<form class="stack" data-form="login"><label>メールアドレス<input type="email" name="email" autocomplete="username" required></label>
+  return `${prep()}<h1>保護者ページ</h1><p>${esc(targetPurpose(route().target || savedTarget()))}ためにログインしてください。ログイン後、元の案内に戻ります。</p>${noticeHtml()}<form class="stack" data-form="login"><label>メールアドレス<input type="email" name="email" autocomplete="username" required></label>
     <label>パスワード<input type="password" name="password" autocomplete="current-password" required></label><button class="primary"${dis()}>${busy ? 'ログインしています…' : 'ログイン'}</button></form><p><a href="#forgot">パスワードを忘れたとき</a></p>`;
 }
 function invitePage(token) {
   if (!inviteInfo || inviteInfo.token !== token) { inviteInfo = { token, loading: true }; call('family/invite/info', { token }).then(r => { inviteInfo = { token, ...(r.ok ? r : { error: r.error.message }) }; render(); }); }
   if (inviteInfo.loading) return '<p class="muted">確かめています…</p>';
-  if (inviteInfo.error) return `<h1>保護者ページの登録</h1><p class="notice error">${esc(inviteInfo.error)}</p>`;
+  if (inviteInfo.error) return `<h1>保護者ページの登録</h1><p class="notice error">${esc(inviteInfo.error)}</p>${helpLinks}`;
   return `<h1>保護者ページの登録</h1><p>${esc(inviteInfo.name)}（${esc(inviteInfo.email)}）のパスワードを決めてください。</p>${noticeHtml()}<input type="email" value="${esc(inviteInfo.email)}" autocomplete="username" hidden>${newPasswordForm('invite', '登録してはじめる')}`;
 }
 // ---- 入口（docs/UX_STRUCTURE.md 4）: ホーム・予定・学習・お支払い。スマホでは画面の下。アカウントは右上 ----
@@ -109,7 +124,7 @@ function homePage() {
   if (money.terms && money.terms.needs) todo.push(['#money', 'file', '#c98a00', '受講規約への同意', (money.terms.current.title || '受講規約') + '・全文を読んで同意してください', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs) : [];
   if (needConds.length) todo.push(['#money', 'file', '#c98a00', '受講条件書（通常指導）への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
-  const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
+  const needSpecials = selected.specials.filter(x=>x.status==='proposed');
   if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特殊指導の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・') + '・内容と料金を確かめて承認してください', needSpecials.length]);
   if (asks.length) todo.push(['#money', 'plan', '#5b6672', '受講合意書の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
   if (acks.length) todo.push(['#money', 'check', '#138a8a', '受講合意書の確認', acks.map(([m]) => monthLabel(m)).join('・') + '・先生が記録した承諾の内容を確かめてください', acks.length]);
@@ -160,18 +175,27 @@ function schedulePage() {
   return h;
 }
 // 確認待ち（今日以降・始まっていない・連絡を出していない）
-function askingLessons(lessons) { return lessons.filter(l => l.status === 'proposed' && l.asked && l.date >= sched.today); }
+function askingLessons(lessons) { return lessons.filter(l => l.status === 'proposed' && l.asked && Date.parse(l.date+'T'+l.start+':00+09:00') > Date.now()); }
 const hasOpen = l => (l.requests || []).some(r => r.status === 'open');
 // 日程の確認（メール・LINE のリンク #confirm）: 確認待ちの授業を並べて「この日程で大丈夫」（規約 r9 第14条1項）。都合の悪い授業は押して連絡
 function confirmPage() {
-  if (need('sched')) return loading;
-  const all = askingLessons(forKid(sched.lessons)), ok = all.filter(l => !hasOpen(l)), multi = multiKids() && !kid;
-  let h = `${kidPicker(false)}${noticeHtml()}`;
-  if (!all.length) return h + '<p class="muted">いま確認をお願いしている授業はありません。</p><p><a href="#schedule">予定を見る ›</a></p>';
-  const by = ok.map(l => l.confirmBy).filter(Boolean).sort()[0];
-  h += `<p class="small" style="margin:4px 0 8px">先生から授業の日程の確認のお願いです。${by ? `${md(by)}までにご連絡がなければ、この日時で確定します。` : ''}${ok.some(l => !l.confirmBy) ? '日が近い授業は、ご返事をいただいてから確定します。' : ''}都合の悪い授業は、その授業を押して連絡してください。</p>`;
-  h += lessonRows(all, { names: multi ? names() : {}, today: sched.today });
-  if (ok.length) h += `<div style="margin:14px 0 6px"><button class="primary wide" data-action="agree-all"${dis()}>この日程で大丈夫（${ok.length}件を確定）</button><p class="small muted" style="margin:4px 0 0">押すと、上の${ok.length < all.length ? '（連絡を出していない）' : ''}授業がこの日時で確定します（予約になります）。</p></div>`;
+  if(need('sched'))return loading;
+  let h=kidPicker(true)+noticeHtml()+'<p>これは授業日時の確認です。科目・回数・料金の承認（受講合意書）とは別です。</p><p class="small muted">現在の確認待ちを表示しています。メール送信後に変更・追加された予定も含みます。都合の悪い授業は、その授業を押して連絡してください。</p>';
+  const all=askingLessons(forKid(sched.lessons)), groups=new Map();
+  if(!all.length)return h+'<p>現在、このお子さまへの確認待ちはありません。確定・変更・取消し後の状態は予定で確認できます。</p><p><a href="#schedule">予定を見る</a></p>';
+  for(const l of all) {
+    const eligible=['sent','external'].includes(l.noticeState) && l.noticeAt && l.confirmBy >= new Date(Date.parse(l.noticeAt)+9*3600e3+3*86400e3).toISOString().slice(0,10);
+    const key=l.studentId+'|'+(eligible?l.confirmBy:'');
+    if(!groups.has(key))groups.set(key,{student:l.studentId,by:eligible?l.confirmBy:'',rows:[]});
+    groups.get(key).rows.push(l);
+  }
+  for(const g of groups.values()) {
+    const ok=g.rows.filter(l=>!hasOpen(l)), refs=ok.map(l=>({id:l.id,version:l.version}));
+    h+='<h2>'+esc(names()[g.student]||'')+' · '+(g.by?esc(md(g.by))+'まで':'ご返事が必要です')+'</h2>';
+    h+=g.by?'<p class="small">このまとまりは、'+esc(md(g.by))+'までにご連絡がなければ確定します。</p>':'<p class="small">このまとまりは、無回答では確定しません。日程をご確認のうえ、ご返事をお願いします。</p>';
+    h+=lessonRows(g.rows,{names:names(),today:sched.today});
+    if(ok.length)h+='<button class="primary wide" data-action="agree-all" data-refs="'+esc(JSON.stringify(refs))+'"'+dis()+'>この日程で大丈夫（'+ok.length+'件を確定）</button>';
+  }
   return h;
 }
 // 学習: 子どもを選んで「記録と宿題」「成績」
@@ -190,24 +214,60 @@ function learningPage(sub) {
   const st = grades.students.find(s => s.id === kid) || grades.students[0];
   return h + (st ? gradesView(st, { who: 'family', dis: dis() }) : '<p class="muted">まだ成績はありません。</p>');
 }
+function moneySelection() {
+  const t=targetParts(route().target||''), match=x=>t.refs.some(r=>r.id===x.id), exact=x=>t.refs.some(r=>r.id===x.id && r.version===x.version);
+  let header='', plans=money.plans, invoices=money.invoices.filter(x=>x.status!=='void'), fees=money.fees, conds=money.conditions?.items||[], specials=money.specials?.items||[];
+  if(!t.kind || !t.refs.length)return {header,plans,invoices,fees,conds,specials};
+  header='<p class="notice">メールでお知らせした対象を表示しています。<a href="#money">現在のすべての書類・料金を見る</a></p>';
+  if(t.kind==='plan') {
+    plans=money.plans.filter(match);
+    const stale=plans.some(l=>l.status==='proposed'&&!exact(l)) || plans.length!==t.refs.length;
+    if(stale)header+='<p class="notice">お知らせ後に内容が変更されたか、取り下げられています。古い案からは承認できません。現在の案と過去の控えをご確認ください。</p>';
+    plans=plans.filter(l=>l.status!=='proposed'||exact(l));
+    invoices=[];fees=[];
+  } else if(t.kind==='invoice') {
+    invoices=money.invoices.filter(match);plans=[];fees=[];
+    if(invoices.length && openedTarget!==route().target){openedTarget=route().target;sheetState={kind:'invoice',id:invoices[0].id};}
+    if(!invoices.length)header+='<p>この請求を表示できません。現在の請求一覧を確認するか、教室へお問い合わせください。</p>';
+  } else if(t.kind==='fee') {
+    fees=money.fees.filter(match);plans=[];invoices=[];
+    if(fees.length && openedTarget!==route().target){openedTarget=route().target;sheetState={kind:'fee',id:fees[0].id,note:''};}
+    if(!fees.length)header+='<p>この料金を表示できません。現在の一覧を確認するか、教室へお問い合わせください。</p>';
+  } else if(t.kind==='condition') {
+    const hit=conds.flatMap(x=>x.history||[]).find(match);
+    if(!hit || hit.status!=='proposed' || !exact(hit)) {
+      header+='<p class="notice">この条件書は同意済み、または更新・取り下げ済みです。現在の条件と過去の控えをご確認ください。</p>';
+      conds=[];
+    } else conds=conds.filter(x=>x.latest && match(x.latest));
+    plans=[];invoices=[];fees=[];specials=[];
+  } else if(t.kind==='special') {
+    const hit=specials.find(match);
+    if(!hit||hit.status!=='proposed'||!exact(hit))header+='<p class="notice">この提案は対応済み、または変更されています。現在の条件と過去の控えをご確認ください。</p>';
+    specials=specials.filter(x=>match(x)&&(x.status!=='proposed'||exact(x)));
+    plans=[];invoices=[];fees=[];
+  }
+  return {header,plans,invoices,fees,conds,specials};
+}
 // お支払い: 受講合意書（月ごとに 1 枚）・授業料・キャンセル料
 function moneyPage() {
   if (need('money')) return loading;
   const multi = new Set(money.plans.map(l => l.studentId).concat(money.fees.map(f => f.studentId))).size > 1;
   let h = noticeHtml();
-  const { asks, acks, others } = planGroups(money.plans), needTerms = !!(money.terms && money.terms.needs);
-  const needConds = money.conditions ? money.conditions.items.filter(x => x.needs) : [], blocked = needTerms || needConds.length > 0;
+  const selected=moneySelection(); h+=selected.header;
+  const { asks, acks, others } = planGroups(selected.plans), needTerms = !!(money.terms && money.terms.needs);
+  const needConds = selected.conds.filter(x => x.needs), blocked = needTerms || (money.conditions?.items||[]).some(x=>x.needs);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
   if (asks.length || acks.length || blocked || needSpecials.length) {
     h += secTitle('確かめていただきたいこと');
     if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
     h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id], consenterName: consentNames[x.latest.id] || me.guardianName || '' })).join('');
     h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id], consenterName: consentNames[x.id] || me.guardianName || '' })).join('');
+    if(blocked && asks.length) h += '<p class="notice">受講合意書の承認には、先に上の受講規約・受講条件書への同意が必要です。</p>';
     h += asks.map(([m, ls]) => planApprovalCard(m, ls, { multi, counts: planCounts, consenterName: consentNames[m] || me.guardianName || '', dis: dis() || (blocked ? ' disabled' : '') })).join('');
     h += acks.map(([m, ls]) => planAckCard(m, ls, { multi, dis: dis() })).join('');
   }
-  h += secTitle('授業料') + invoiceRows(money.invoices);
-  if (money.fees.length) h += secTitle('キャンセル料・取消料') + feeRows(money.fees, { multi });
+  h += secTitle('授業料') + invoiceRows(selected.invoices);
+  if (selected.fees.length) h += secTitle('キャンセル料・取消料') + feeRows(selected.fees, { multi });
   if (others.length) h += secTitle('受講合意書') + planHistory(others, { multi });
   if (money.terms && !needTerms) h += termsLine(money.terms);
   if (money.conditions) h += conditionLine(money.conditions.items);
@@ -241,14 +301,15 @@ function renderBar(page) {
   document.body.classList.toggle('has-bar', !!title);
 }
 function render() {
+  applyTarget();
   const r = route(), page = pageOf(r.page.split('/')[0]), sub = r.page.split('/')[1];
   nav.innerHTML = me ? TABS.map(([k, l]) => `<a href="#${k}" class="${page === k ? 'on' : ''}"${page === k ? ' aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg><span>${l}</span></a>`).join('') : '';
   document.body.classList.toggle('has-tabs', !!me);
   const acct = document.getElementById('acct'); if (acct) acct.hidden = !me;
-  if (!me && r.page !== 'home' && PAGES.includes(r.page.split('/')[0])) { try { sessionStorage.setItem(NEXT_KEY, r.page); } catch {} } // ログインのあとで戻る
+  if (!me && r.page !== 'home' && PAGES.includes(r.page.split('/')[0])) { try { sessionStorage.setItem(NEXT_KEY, r.target || r.page); } catch {} } // ログインのあとで戻る
   let h;
   if (r.page === 'invite') h = invitePage(r.token);
-  else if (r.page === 'reset') h = `<h1>新しいパスワード</h1>${noticeHtml()}${newPasswordForm('reset', 'パスワードを変える')}`;
+  else if (r.page === 'reset') h = `<h1>新しいパスワード</h1>${noticeHtml()}${newPasswordForm('reset', 'パスワードを変える')}${helpLinks}`;
   else if (!me) h = r.page === 'forgot' ? `<h1>パスワードの再設定</h1>${noticeHtml()}<form class="stack" data-form="forgot"><label>メールアドレス<input type="email" name="email" required></label><button class="primary"${dis()}>再設定のメールを送る</button></form><p><a href="#">ログインに戻る</a></p>` : loginPage();
   else h = page === 'schedule' ? schedulePage() : page === 'confirm' ? confirmPage() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'account' ? accountPage() : homePage();
   app.className = !me ? 'narrow' : '';
@@ -261,7 +322,7 @@ function render() {
 function signedIn(r) {
   store.set(r.auth); me = r.me; sched = null; calData = {}; cal = null; learning = null; money = null; contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; grades = null; say('');
   let next = ''; try { next = sessionStorage.getItem(NEXT_KEY) || ''; sessionStorage.removeItem(NEXT_KEY); } catch {}
-  location.hash = '#' + (PAGES.includes(next.split('/')[0]) ? next : 'home');
+  location.hash = '#' + (safeFamilyTarget(r.returnTo) || safeFamilyTarget(next) || 'home');
 }
 const closeSheet = () => { sheetState = null; };
 // 下から出る画面の入力は、描き直す前に読んでおく（描き直すと入力欄が作り直される）
@@ -281,7 +342,7 @@ app.addEventListener('submit', ev => {
   run(async () => {
     let r;
     if (kind === 'login') { r = await call('family/login', v); if (r.ok) return signedIn(r); }
-    else if (kind === 'forgot') { r = await call('family/reset/request', v); if (r.ok) return say(r.message, 'ok'); }
+    else if (kind === 'forgot') { r = await call('family/reset/request', {...v,returnTo:savedTarget()}); if (r.ok) return say(r.message, 'ok'); }
     else if (kind === 'invite') { r = await call('family/invite/accept', { token: route().token, password: v.password }); if (r.ok) return signedIn(r); }
     else if (kind === 'reset') { r = await call('family/reset/confirm', { token: route().token, password: v.password }); if (r.ok) return signedIn(r); }
     else if (kind === 'password') { r = await call('family/password', { current: v.current, next: v.next }, store.get()); if (r.ok) { el.reset(); return say('パスワードを変えました', 'ok'); } }
@@ -292,8 +353,10 @@ app.addEventListener('submit', ev => {
       if (r.error && !r.error.code) r.error.code = 'client';
     } else if (kind === 'plan-approve') {
       // 月の計画をまとめて承認する（行ごとの回数は画面で選んだ値）。途中で失敗したら、そこまでの承認は済んでいる
-      const [, lines] = planGroups(money.plans).asks.find(([m]) => m === el.dataset.month) || [];
-      if (!lines) return;
+      const refs=JSON.parse(el.dataset.refs || '[]');
+      const lines=refs.map(ref=>money.plans.find(l=>l.id===ref.id && l.version===ref.version)).filter(Boolean);
+      if(lines.length!==refs.length){money=null;return say('表示後に内容が変わりました。もう一度ご確認ください','error');}
+      if (!lines?.length) return;
       const zero = lines.filter(l => (planCounts[l.id] === undefined ? l.count : planCounts[l.id]) === 0);
       if (zero.length && !confirm(`${zero.map(l => l.subject).join('・')}を見送りにします。よろしいですか？`)) return;
       let okCount = 0;
@@ -303,7 +366,7 @@ app.addEventListener('submit', ev => {
         if (!r.ok) break; okCount++; delete planCounts[l.id];
       }
       money = null;
-      if (r.ok) return say(`${monthLabel(el.dataset.month)}の計画を承認しました。ありがとうございます`, 'ok');
+      if (r.ok) return say(`${monthLabel(el.dataset.month)}の受講合意書を承認しました。下の控えから印刷・PDF保存できます`, 'ok');
       if (okCount) say(`${okCount}件は承認できましたが、途中で止まりました: ${r.error.message}`, 'error');
     } else if (kind === 'event') { r = await call('family/events/add', v, store.get()); if (r.ok) { sched = null; calData = {}; closeSheet(); return say('先生に知らせました', 'ok'); } }
     if (!r) return;
@@ -332,7 +395,7 @@ app.addEventListener('click', ev => {
     let r;
     if (a === 'agree' || a === 'agree-all') {
       // 画面で見ている確認待ち（id と版）をそのまま送る。見ていたものと違えば、サーバーは何も確定しない
-      const list = a === 'agree' ? [findLesson(b.dataset.id)].filter(Boolean) : askingLessons(forKid(sched.lessons)).filter(l => !hasOpen(l));
+      const list = a === 'agree' ? [findLesson(b.dataset.id)].filter(Boolean).map(l=>({id:l.id,version:l.version})) : JSON.parse(b.dataset.refs || '[]');
       if (!list.length) return;
       if (!confirm(`${list.length === 1 ? 'この授業' : list.length + '件の授業'}をこの日時で確定しますか？（予約になります。前日23時まではお休みにできます）`)) return;
       r = await call('family/lessons/agree', { lessons: list.map(l => ({ id: l.id, version: l.version })) }, store.get());
@@ -369,7 +432,7 @@ app.addEventListener('click', ev => {
 wireSheets(app);
 // 画面の移り変わり: ふわっと入れ替える（対応しているブラウザだけ。「視差効果を減らす」では付けない）
 window.addEventListener('hashchange', () => {
-  say(''); closeSheet();
+  say(''); closeSheet(); appliedTarget='';openedTarget='';
   if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return render();
   document.documentElement.dataset.nav = 'tab';
   document.startViewTransition(() => render()).finished.finally(() => { delete document.documentElement.dataset.nav; });

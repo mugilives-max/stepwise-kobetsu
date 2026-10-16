@@ -1,3 +1,4 @@
+import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261016-notices';
 import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // 保護者・生徒の画面で共通に使う部品（作り直し v2）。
 // 考え方（docs/UX_STRUCTURE.md 1）: 一覧は白い枠に 1 件 1 行、操作は押すと下から出る画面で。文字より印で分かるように。
@@ -155,9 +156,9 @@ export function planApprovalCard(month, lines, { multi, counts = {}, dis = '', c
   const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span>
       <span class="n"><select name="count-${esc(l.id)}" data-plan-count="${esc(l.id)}" aria-label="回数">${Array.from({ length: l.count - l.minCount + 1 }, (_, i) => l.count - i).map(k => `<option value="${k}"${n(l) === k ? ' selected' : ''}>${k}回</option>`).join('')}${l.minCount === 0 ? `<option value="0"${n(l) === 0 ? ' selected' : ''}>見送る</option>` : ''}</select><small>1回 ${esc(l.minutes)}分・${yen(l.fee)}</small></span>
       <span class="amt">${yen(n(l) * l.fee)}</span></div>${l.minCount ? `<div class="small muted pl-note">すでに決まっている授業が${l.minCount}回あるため、${l.minCount}回より少なくはできません。</div>` : ''}`);
-  return `<form class="pcard ask" data-form="plan-approve" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書（案）</strong><span class="tag warn">承認をお願いします</span></div>
+  return `<form class="pcard ask" data-form="plan-approve" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書（案）</strong><span class="tag warn">承認をお願いします</span></div>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
-    <p class="small muted">回数を減らしたいときは、各行の回数を変えてから承認してください。承認すると、この回数で授業を進めます。</p>
+    <p class="small muted">回数を減らしたいときは、各行の回数を変えてから承認してください。承認は、表示した科目・回数・時間・料金の範囲で授業を実施できるようにするものです。予約や授業料の事前購入ではありません。授業日時は別に確認します。</p>
     ${agreementDocumentButtons(lines,{label:'提示された案を印刷・PDF保存'})}<p class="small muted">書面には提示された回数を表示します。画面で変更中の回数は、承認後の控えに反映されます。</p>
     ${consenterField(month, consenterName)}<button class="primary wide"${dis}>この内容で承認する</button></form>`;
 }
@@ -234,6 +235,8 @@ export function invoiceSheet(v, { multi, busy = false }) {
   const [label, cls] = INV[v.status] || [v.status, ''], by = {};
   for (const i of v.items) (by[i.studentName] = by[i.studentName] || []).push(i);
   let body = `<div class="inv-total"><span class="tag ${cls}">${label}</span><strong>${yen(v.total)}</strong></div>`;
+  if(v.status==='void')body+='<p class="notice">この請求は取り消されています。お支払いは不要です。理由：'+esc(v.voidReason||'')+'<br>お振込み済みの場合は教室へご連絡ください。</p>';
+  else if(v.status!=='paid')body+='<p><b>支払期限：'+esc(v.dueText||invoiceDueText(v))+'</b></p><p>振込先：'+esc(v.bank||'請求書をご確認ください。未記載の場合は教室から別途ご案内します。')+'</p><p class="small">振込手数料は保護者のご負担となります。</p>';
   body += Object.entries(by).map(([name, items]) => `${multi ? `<h3>${esc(name)}</h3>` : ''}<table class="itbl">${items.map(i => `<tr><td>${i.date ? md(i.date) : ''}</td><td>${esc(i.subject)}${i.label ? `<small class="muted"> ${esc(i.label)}</small>` : ''}</td><td class="r">${i.kind === 'lesson' && i.minutes ? i.minutes + '分' : ''}</td><td class="r">${yen(i.amount)}</td></tr>`).join('')}</table>`).join('');
   if (v.invoiceDocId || v.receiptDocId) body += `<div class="row" style="margin:8px 0">${v.invoiceDocId ? `<button type="button" class="btn" data-action="gr-open" data-id="${esc(v.invoiceDocId)}">${picon('file')} 請求書を開く</button>` : ''}${v.receiptDocId ? `<button type="button" class="btn" data-action="gr-open" data-id="${esc(v.receiptDocId)}">${picon('file')} 領収書を開く</button>` : ''}</div>`;
   if (v.status === 'confirmed') body += `<p class="small muted">お振込のあと、下のボタンで知らせてください。先生が入金を確かめます。</p><button class="primary wide" data-action="inv-report" data-id="${esc(v.id)}" data-version="${v.version}"${busy ? ' disabled' : ''}>振り込みました</button>`;

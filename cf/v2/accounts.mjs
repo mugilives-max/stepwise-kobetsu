@@ -1,3 +1,4 @@
+import { safeFamilyTarget } from '../../assets/v2/family-target.js';
 // スタッフと家族（保護者）のログイン。作りは両方で同じにする（今は先生だけが弱い方式だった）。
 // - パスワードは PBKDF2（util.mjs）。端末ごとにログインを保つ（sessions）。
 // - 5 回続けて間違えると 15 分ロック。メールアドレスがあるかどうかは答え方で分からないようにする。
@@ -84,17 +85,17 @@ export async function changePassword(c, kind, me, { current, next }) {
 }
 
 // 招待・再設定のリンクを作ってメールを積む。返すのはリンク（招待はコピーして渡せるように画面にも出す）
-export async function issueChallenge(c, kind, purpose, who, mail) {
+export async function issueChallenge(c, kind, purpose, who, mail, returnTo = '') {
   const k = KINDS[kind], token = newToken(purpose === k.invite ? 'iv' : 'rs');
   const ms = purpose === k.invite ? INVITE_MS : RESET_MS;
   // 同じ目的の古いリンクは使えなくする
   await c.db.prepare("update authChallenges set usedAt = ? where purpose = ? and subjectId = ? and usedAt = ''").bind(iso(c.now), purpose, who.id).run();
-  await c.db.prepare('insert into authChallenges (id, purpose, subjectId, email, tokenHash, expiresAt, createdAt) values (?, ?, ?, ?, ?, ?, ?)')
-    .bind(sha256Hex(token).slice(0, 24), purpose, who.id, who.email, sha256Hex(token), iso(c.now + ms), iso(c.now)).run();
+  await c.db.prepare('insert into authChallenges (id, purpose, subjectId, email, tokenHash, expiresAt, createdAt, returnTo) values (?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(sha256Hex(token).slice(0, 24), purpose, who.id, who.email, sha256Hex(token), iso(c.now + ms), iso(c.now), kind==='family' ? safeFamilyTarget(returnTo) : '').run();
   const url = SITE + k.page + '#' + (purpose === k.invite ? 'invite' : 'reset') + '=' + encodeURIComponent(token);
   // 切り替え（settings の live = '1'）より前は、保護者あてのメールは実際には送らない（写した本番のデータで試している間に、本物の保護者へ届かないように）
   const held = kind === 'family' && !(await isLive(c));
-  if (mail) c.effects.push({ kind: 'mail', to: who.email, name: 'ステップワイズ個別指導', subject: mail.subject, body: mail.body(url), testOnly: !!who.testOnly, audience: kind, held });
+  if (mail) c.effects.push({ kind: 'mail', to: who.email, name: 'ステップワイズ個別指導', subject: mail.subject, body: mail.body(url), testOnly: !!who.testOnly, audience: kind, held, replyTo:'mugilives@gmail.com', notice:{type:'challenge',id:sha256Hex(token).slice(0,24)} });
   return url;
 }
 
@@ -106,7 +107,7 @@ async function readChallenge(c, purpose, token) {
   return ch;
 }
 
-export async function requestReset(c, kind, { email }) {
+export async function requestReset(c, kind, { email, returnTo }) {
   const k = KINDS[kind], mail = normEmail(email);
   const who = mail ? await c.db.prepare(`select * from ${k.table} where email = ? and status = 'active'`).bind(mail).first() : null;
   if (who) {
@@ -114,7 +115,7 @@ export async function requestReset(c, kind, { email }) {
     const recent = await c.db.prepare('select createdAt from authChallenges where purpose = ? and subjectId = ? and createdAt > ?').bind(k.reset, who.id, iso(c.now - 3600e3)).all();
     const tooSoon = recent.results.some(r => r.createdAt > iso(c.now - 60e3)) || recent.results.length >= 5;
     if (!tooSoon) {
-      await issueChallenge(c, kind, k.reset, who, { subject: '【ステップワイズ】パスワードの再設定', body: url => 'パスワードの再設定を受け付けました。30分以内に次のリンクを開き、新しいパスワードを設定してください。\n\n' + url + '\n\n心当たりがない場合は、このメールを破棄してください。パスワードは変わりません。' });
+      await issueChallenge(c, kind, k.reset, who, { subject: '【ステップワイズ】パスワードの再設定', body: url => 'パスワードの再設定を受け付けました。30分以内に次のリンクを開き、新しいパスワードを設定してください。\n\n' + url + '\n\n心当たりがない場合は、このメールを破棄してください。パスワードは変わりません。\n再設定できない場合は、いつものLINEまたは mugilives@gmail.com へご連絡ください。' },returnTo);
       c.actor = { kind, id: who.id }; await audit(c, 'resetRequested', who.id);
     }
   }
@@ -135,7 +136,7 @@ async function acceptWithPassword(c, kind, purpose, { token, password }) {
   ]);
   c.actor = { kind, id: who.id };
   await audit(c, purpose === k.invite ? 'inviteAccepted' : 'passwordReset', who.id);
-  return { token: await issueSession(c, kind, who.id), who: { ...who, status: 'active' } };
+  return { token: await issueSession(c, kind, who.id), returnTo:kind==='family'?safeFamilyTarget(ch.returnTo||''):'', who: { ...who, status: 'active' } };
 }
 export const confirmReset = (c, kind, body) => acceptWithPassword(c, kind, KINDS[kind].reset, body);
 export const acceptInvite = (c, kind, body) => acceptWithPassword(c, kind, KINDS[kind].invite, body);

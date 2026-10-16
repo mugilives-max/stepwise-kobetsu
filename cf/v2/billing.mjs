@@ -1,3 +1,5 @@
+import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
+import { invoiceDueText } from '../../assets/v2/invoice-due.js';
 // 受講合意書・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
 // - 教室管理者: 計画を作る・お知らせする・LINE などの承諾を記録する・先月と同じ内容で下書き、授業の種類と標準料金、
 //              キャンセル料の判断・減額や免除の申請への回答、月ごとの請求（確かめる・確定・取消・入金）
@@ -11,7 +13,7 @@ import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
 import { familyTerms } from './terms.mjs';
 import { familyConditions, familyNeedsConditions } from './conditions.mjs';
-import { storeInvoiceDoc, storeReceiptDoc, billingDocIds } from './billing-doc.mjs';
+import { storeInvoiceDoc, storeReceiptDoc, billingDocIds, billingSettings } from './billing-doc.mjs';
 import { agreedSpecialFor, familySpecials } from './specials.mjs';
 import { todayJst, addDays, familyNotice, staffNotice } from './schedule.mjs';
 import { validMonth, monthEnd, shiftMonth, lineCap, lessonAmount, lineMatches, studentBilling, estimateFor, assignLines, parseParts, PART_LABEL, base90 } from './plan-calc.mjs';
@@ -24,6 +26,10 @@ const md = d => d.slice(5).replace('-', '/');
 const sameVersion = (row, b) => { if (Number(b.version) !== Number(row.version)) fail('conflict', 'ほかの操作で変わりました。画面を更新してください', 409); };
 const DAY = 86400e3;
 
+export function planNoticeText(lines,names) {
+  return '次の授業内容・回数・時間・料金をご確認ください（受講合意書）。\n'+lines.map(l=>'・'+names[l.studentId]+'さん '+l.subject+' '+l.startDate+'〜'+l.endDate+' '+l.count+'回・1回'+l.minutes+'分 '+yen(l.fee)+'（税込）').join('\n')+
+    '\n予定総額：'+yen(lines.reduce((n,l)=>n+l.count*l.fee,0))+'（請求額ではありません）\n内容がよければ「承認する」を押してください。変更のご希望は教室へご連絡ください。\n未回答・既読だけで承認にはなりません。承認後は控えをPDF保存できます。';
+}
 // ---- 見せ方 ----
 export function lineView(l, extra = {}) {
   return { ...evidenceView(l), conditionId: l.conditionId || '', specialId: l.specialId || '', instructionType: l.instructionType || '', id: l.id, studentId: l.studentId, parentId: l.parentId, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, count: l.count, minutes: l.minutes, fee: l.fee,
@@ -37,7 +43,7 @@ const feeView = f => ({ id: f.id, lessonId: f.lessonId, studentId: f.studentId, 
 const feeLabel = f => { const parts = f.rule === 'rate' ? parseParts(f) : [];
   const base = parts.length && !parts.some(p => p.reason === 'cancel') ? '取消料（' + parts.map(p => `${PART_LABEL[p.reason] || p.reason} ${p.minutes}分`).join('・') + '）' : 'キャンセル料';
   return base + (f.decision === 'adjust' || f.reliefStatus === 'reduced' ? '（減額）' : ''); };
-const invoiceView = v => ({ id: v.id, familyId: v.familyId, month: v.month, status: v.status, total: v.total, confirmedAt: v.confirmedAt, confirmedBy: v.confirmedBy === 'system:auto' ? 'auto' : v.confirmedBy === 'legacy' ? 'legacy' : 'staff',
+const invoiceView = v => ({ dueDate:v.dueDate || '', dueNote:v.dueNote || '', dueText:invoiceDueText(v), id: v.id, familyId: v.familyId, month: v.month, status: v.status, total: v.total, confirmedAt: v.confirmedAt, confirmedBy: v.confirmedBy === 'system:auto' ? 'auto' : v.confirmedBy === 'legacy' ? 'legacy' : 'staff',
   reportedAt: v.reportedAt, paidOn: v.paidOn, paidMethod: v.paidMethod, voidedAt: v.voidedAt, voidReason: v.voidReason, version: v.version });
 const itemView = i => ({ id: i.id, studentId: i.studentId, kind: i.kind, lessonId: i.lessonId, date: i.date, start: i.start, minutes: i.minutes, subject: i.subject, lessonKind: i.lessonKind, label: i.label, amount: i.amount });
 
@@ -152,13 +158,18 @@ export async function monthPreview(c, familyId, month, { ignoreInvoiceId = '' } 
 async function activeInvoice(c, familyId, month) {
   return c.db.prepare("select * from invoices where familyId = ? and month = ? and status <> 'void'").bind(familyId, month).first();
 }
-export async function confirmInvoice(c, familyId, month, by, expectedTotal) {
+export async function confirmInvoice(c, familyId, month, by, expectedTotal, due = {}) {
   if (await activeInvoice(c, familyId, month)) fail('already', 'この月の請求はもう確定しています', 409);
   const p = await monthPreview(c, familyId, month);
   if (!p.canConfirm) fail('notReady', p.issues.length ? '確かめることがあります: ' + p.issues.join(' / ') : '請求するものがありません', 409);
   if (expectedTotal !== undefined && expectedTotal !== null && Number(expectedTotal) !== p.total) fail('changed', '金額が変わりました。画面を更新して確かめてください', 409);
+  const today=todayJst(c.now), normal=today.slice(0,8)+'15';
+  const dueDate=String(due.date||normal), dueNote=String(due.note||'').trim();
+  if(due.date && (!validDate(dueDate)||dueDate<=today||!dueNote)) fail('needDueAgreement','保護者と合意した支払期限と、合意の日時・方法を記録してください');
+  if(today>=normal && !due.date) fail('needDueAgreement','15日以降の確定です。保護者と合意した支払期限を入力してください');
+  if(by!=='system:auto' && !due.reviewed) fail('needDueReview','期限までに支払える期間があるか確認し、難しい場合は保護者と具体的な期日を合意してください');
   const id = newId('iv'), now = iso(c.now), db = c.db;
-  const stmts = [db.prepare("insert into invoices (id, familyId, month, status, total, confirmedAt, confirmedBy, createdAt, updatedAt) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?)").bind(id, familyId, month, p.total, now, by, now, now)];
+  const stmts = [db.prepare("insert into invoices (id, familyId, month, status, total, confirmedAt, confirmedBy, createdAt, updatedAt, dueDate, dueNote) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?)").bind(id, familyId, month, p.total, now, by, now, now, dueDate, dueNote)];
   let order = 0;
   for (const s of p.students) for (const i of s.items) {
     stmts.push(db.prepare('insert into invoiceItems (id, invoiceId, studentId, kind, lessonId, feeId, planLineId, date, start, minutes, subject, lessonKind, label, amount, sortOrder) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -170,7 +181,7 @@ export async function confirmInvoice(c, familyId, month, by, expectedTotal) {
   await storeInvoiceDoc(c, id); // 請求書の書面（保護者ページから開ける）
   const [y, m] = month.split('-');
   const first = p.students[0];
-  if (first) await familyNotice(c, first.studentId, `${Number(m)}月分の授業料のお知らせ`, `${y}年${Number(m)}月分の授業料が確定しました。\n合計 ${yen(p.total)}`);
+  if (first) await familyNotice(c, first.studentId, `${Number(m)}月分の授業料のお知らせ`, `${y}年${Number(m)}月分の授業料が確定しました。\n合計 ${yen(p.total)}\n支払期限：${invoiceDueText({month,dueDate,dueNote})}\n下のリンクで請求内容・振込先をご確認ください。お振込み後は「振り込みました」でお知らせください。`, familyTarget('money',{kind:'invoice',refs:id+'.1'}),{type:'invoice',targets:[{id}]});
   await audit(c, 'invoiceConfirm', id, { familyId, month, total: p.total, by });
   return { invoice: invoiceView(await db.prepare('select * from invoices where id = ?').bind(id).first()) };
 }
@@ -185,8 +196,8 @@ export async function autoCloseInvoices(c) {
   for (const f of (await c.db.prepare("select id, name from families where status <> 'stopped'").all()).results) {
     if (await activeInvoice(c, f.id, month)) continue;
     const p = await monthPreview(c, f.id, month);
-    if (p.auto) { await confirmInvoice(c, f.id, month, 'system:auto'); confirmed++; }
-    else if (p.students.length) held.push(`${f.name}: ${p.issues.concat(p.pendingCount ? [`計画の承認がない授業 ${p.pendingCount}件`] : []).join(' / ') || '請求するものがありません'}`);
+    if (p.auto && Number(today.slice(8)) === 3) { await confirmInvoice(c, f.id, month, 'system:auto'); confirmed++; }
+    else if (p.students.length) held.push(`${f.name}: ${p.issues.concat(Number(today.slice(8)) !== 3 ? ['支払期限と回答・支払期間を確認して手動確定してください'] : []).concat(p.pendingCount ? [`計画の承認がない授業 ${p.pendingCount}件`] : []).join(' / ') || '請求するものがありません'}`);
   }
   if (held.length && today.slice(8) === '03') await staffNotice(c, `${Number(month.slice(5))}月分の請求で確かめることがあります`, held.join('\n'));
   return { month, confirmed, held: held.length };
@@ -269,7 +280,9 @@ export const billingRoutes = {
     const now = iso(c.now);
     await c.db.batch(drafts.map(l => c.db.prepare("update planLines set status = 'proposed', proposedAt = ?, updatedAt = ?, version = version + 1 where id = ? and status = 'draft'").bind(now, now, l.id)));
     const names = Object.fromEntries((await c.db.prepare(`select * from students where id in (${ids.map(() => '?').join(', ')})`).bind(...ids).all()).results.map(s => [s.id, fullName(s)]));
-    await familyNotice(c, drafts[0].studentId, '受講合意書のお知らせ', '受講合意書をお送りしました。内容を確かめて、承認をお願いします。\n' + drafts.map(l => `・${names[l.studentId]}さん ${l.subject}${l.kind !== '通常' ? '（' + l.kind + '）' : ''} ${md(l.startDate)}〜${md(l.endDate)} ${l.count}回`).join('\n'));
+    const sentLines=drafts.map(l=>({...l,version:l.version+1}));
+    await familyNotice(c,drafts[0].studentId,'授業内容・回数・料金をご確認ください（受講合意書）',planNoticeText(sentLines,names),
+      familyTarget('money',{kind:'plan',refs:targetRefs(sentLines)}),{type:'plan',targets:sentLines.map(l=>({id:l.id,version:l.version}))});
     await audit(c, 'planSend', '', { lines: drafts.length });
     return { sent: drafts.length };
   },
@@ -290,9 +303,8 @@ export const billingRoutes = {
       const sb = await studentBilling(c.db, sid);
       waiting += sb.lessons.filter(ls => !sb.line[ls.id] && !ls.invoiceId && lines.some(l => lineMatches(l, ls))).length;
     }
-    await familyNotice(c, lines[0].studentId, '受講合意書の承認のお願い', 'まだ承認をいただいていない受講合意書があります。内容をご確認のうえ、保護者ページから承認をお願いします。\n'
-      + lines.map(l => `・${names[l.studentId]}さん ${l.subject}${l.kind !== '通常' ? '（' + l.kind + '）' : ''} ${md(l.startDate)}〜${md(l.endDate)} ${l.count}回・1回 ${yen(l.fee)}`).join('\n')
-      + (waiting ? `\nこの計画に当たる授業が、すでに${waiting}回決まっています（実施済みを含みます）。` : ''));
+    await familyNotice(c,lines[0].studentId,'受講合意書の確認のお願い（再案内）',planNoticeText(lines,names)+(waiting ? '\nこの計画に当たる授業が'+waiting+'回あります。日時の確定と、科目・回数・料金への承認は別です。' : ''),
+      familyTarget('money',{kind:'plan',refs:targetRefs(lines)}),{type:'plan',targets:lines.map(l=>({id:l.id,version:l.version}))});
     const now = iso(c.now);
     await c.db.batch(lines.map(l => c.db.prepare('update planLines set remindedAt = ? where id = ?').bind(now, l.id)));
     await audit(c, 'planRemind', String(b.familyId), { lines: lines.length, waiting });
@@ -384,7 +396,7 @@ export const billingRoutes = {
     await c.db.prepare('update cancellationFees set decision = ?, amount = ?, note = ?, decidedAt = ?, decidedBy = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?')
       .bind(decision, amount, note, iso(c.now), 'staff:' + me.id, iso(c.now), f.id, f.version).run();
     const l = await c.db.prepare('select * from lessons where id = ?').bind(f.lessonId).first();
-    await familyNotice(c, f.studentId, 'キャンセル料のお知らせ', `${md(l.date)} ${l.start}〜（${l.subject}）のキャンセル料は ${yen(amount)} です。${note ? '\n' + note : ''}`);
+    await familyNotice(c, f.studentId, 'キャンセル料のお知らせ', `${fullName(await getStudent(c,f.studentId))}さん ${md(l.date)} ${l.start}〜（${l.subject}）のキャンセル料は ${yen(amount)} です。${note ? '\n' + note : ''}\nこの通知だけで振り込む必要はありません。請求確定後の案内で金額・支払期限をご確認ください。`,familyTarget('money',{kind:'fee',refs:f.id+'.'+(f.version+1)}),{type:'fee',targets:[{id:f.id,version:f.version+1}]});
     await audit(c, 'cancelFeeDecide', f.id, { decision, amount });
     return {};
   },
@@ -402,7 +414,7 @@ export const billingRoutes = {
     if (result === 'reduced') { amount = Number(b.amount); if (!Number.isInteger(amount) || amount < 0 || amount >= f.amount) fail('badAmount', `減額した金額は0〜${f.amount - 1}円にしてください`); }
     await c.db.prepare('update cancellationFees set reliefStatus = ?, amount = ?, reliefResponse = ?, reliefDecidedAt = ?, decidedBy = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?')
       .bind(result, amount, response, iso(c.now), 'staff:' + me.id, iso(c.now), f.id, f.version).run();
-    await familyNotice(c, f.studentId, 'キャンセル料の申請への回答', `キャンセル料の減額・免除の申請にお答えしました。キャンセル料は ${yen(amount)} です。\n${response}`);
+    await familyNotice(c, f.studentId, 'キャンセル料の申請への回答', `${fullName(await getStudent(c,f.studentId))}さん ${(await c.db.prepare('select date || " " || start || " " || subject as label from lessons where id = ?').bind(f.lessonId).first()).label}\nキャンセル料の減額・免除の申請にお答えしました。キャンセル料は ${yen(amount)} です。\n${response}\n請求・支払期限は請求の案内でご確認ください。内容に疑問がある場合は教室へご連絡ください。`,familyTarget('money',{kind:'fee',refs:f.id+'.'+(f.version+1)}),{type:'fee',targets:[{id:f.id,version:f.version+1}]});
     await audit(c, 'cancelFeeRelief', f.id, { result, amount });
     return {};
   },
@@ -440,7 +452,7 @@ export const billingRoutes = {
     const me = await requireStaff(c, b, 'manager');
     if (!validMonth(b.month)) fail('badMonth', '月を選んでください');
     if (b.month >= todayJst(c.now).slice(0, 7)) fail('tooEarly', '月が終わってから確定してください');
-    return confirmInvoice(c, String(b.familyId || ''), b.month, 'staff:' + me.id, b.expectedTotal);
+    return confirmInvoice(c, String(b.familyId || ''), b.month, 'staff:' + me.id, b.expectedTotal,{date:b.dueDate,note:b.dueNote,reviewed:b.dueReviewed===true});
   },
   // 取消: 入金済みは取り消せない。授業とキャンセル料は請求前に戻る（直してから、もう一度確定する）
   'billing/void': async (c, b) => {
@@ -455,6 +467,9 @@ export const billingRoutes = {
       c.db.prepare("update lessons set invoiceId = '', updatedAt = ?, version = version + 1 where invoiceId = ?").bind(now, v.id),
       c.db.prepare("update cancellationFees set invoiceId = '', updatedAt = ?, version = version + 1 where invoiceId = ?").bind(now, v.id),
     ]);
+    const st=await c.db.prepare('select id from students where familyId = ? order by createdAt limit 1').bind(v.familyId).first();
+    if(st) await familyNotice(c,st.id,'請求取消しのお知らせ',v.month+'月分の請求（'+yen(v.total)+'）を取り消しました。\nこの請求でのお支払いは不要です。\n理由：'+reason+'\nすでに振り込まれた場合は教室へご連絡ください。訂正後の請求は改めてお知らせします。',
+      familyTarget('money',{kind:'invoice',refs:v.id+'.'+(v.version+1)}),{type:'invoiceVoid',targets:[{id:v.id}]});
     await audit(c, 'invoiceVoid', v.id, { reason });
     return {};
   },
@@ -493,9 +508,9 @@ export const billingRoutes = {
     const plans = [];
     for (const l of lines) plans.push(lineView(l, { studentName: names[l.studentId], minCount: l.status === 'proposed' ? await minCountFor(c, l) : 0 }));
     const fees = (await staffFees(c, `f.studentId in ${q} and f.decision <> 'pending' and (f.invoiceId = '' or l.date >= ?)`, ...ids, since)).map(f => ({ ...feeView(f), studentName: names[f.studentId] }));
-    const invs = (await c.db.prepare("select * from invoices where familyId = ? and status <> 'void' order by month desc limit 24").bind(me.id).all()).results;
-    const invoices = [];
-    for (const v of invs) invoices.push({ ...invoiceView(v), ...(await billingDocIds(c.db, v.id)), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
+    const invs = (await c.db.prepare("select * from invoices where familyId = ? order by month desc limit 48").bind(me.id).all()).results;
+    const invoices = [], paySettings = await billingSettings(c.db);
+    for (const v of invs) invoices.push({ ...invoiceView(v), bank:paySettings.bank, ...(await billingDocIds(c.db, v.id)), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
     return { plans, fees, invoices, terms, conditions, specials };
   },
   // 承認（回数を減らして承認・0回で見送り）
