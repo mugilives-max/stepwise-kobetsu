@@ -147,6 +147,9 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await autoConfirm(cx);
   const {recordEffects}=await import('../cf/v2/effects.mjs');await recordEffects(h2.db2,cx.effects,h2.clock);
   await h2.ok('schedule/lessons/update',{auth:au,id:lr().id,version:lr().version,date:'2026-09-10',start:'18:00',minutes:90,subject:'数学',kind:'通常',deliveryMode:'in_person',staffId:''});
+  const changedNotice=h2.mails().at(-1);
+  assert.deepEqual(changedNotice.notice.targets,[{id:lr().id,version:lr().version}],'changed lesson notice uses saved record ID and version');
+  assert.ok(changedNotice.body.includes('kind=lesson&refs='+lr().id+'.'+lr().version));
   h2.clock=Date.parse('2026-09-10T19:00:00+09:00');
   await h2.ok('schedule/lessons/cancel',{auth:au,id:lr().id,version:lr().version});
   const fr=()=>h2.rows('select * from cancellationFees')[0];
@@ -159,6 +162,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await h2.ok('billing/void',{auth:au,id:inv.id,version:inv.version,reason:'【テスト】明細の訂正'});
   // Review copies contain only synthetic data; redact invitation/reset bearer strings.
   const emails=h.mails().concat(h2.mails()).filter(m=>m.audience==='family').map(m=>({subject:m.subject,body:m.body.replace(/#(invite|reset)=[^\s]+/g,'#$1=TEST-LINK'),status:m.status}));
+  for(const m of emails)assert.doesNotMatch(m.body,/undefined|NaN/,'notice has no missing identifiers or values');
   const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   fs.writeFileSync(path.join(out,'emails.html'),'<!doctype html><html lang="ja"><meta charset="utf-8"><title>保護者通知の見本（未公開・架空データ）</title><style>body{font:16px system-ui;max-width:800px;margin:32px auto;padding:20px}article{border:1px solid #ddd;padding:20px;margin:20px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}</style><h1>保護者通知の見本</h1><p>未公開の確認用です。架空データで生成し、実メールは送信していません。</p>'+emails.map(m=>'<article><h2>'+escape(m.subject)+'</h2><pre>'+escape(m.body)+'</pre></article>').join('')+'</html>');
   fs.writeFileSync(path.join(out,'emails.json'),JSON.stringify(emails,null,2));

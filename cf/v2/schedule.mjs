@@ -573,7 +573,7 @@ export const scheduleRoutes = {
     if (moved) {
       await closeRequests(c, l.id, ['move', 'late'], 'staff:' + c.actor.id);
       // メールは確定した授業だけ（調整中・確認待ちはページの表示が変わるだけ）
-      if (l.status === 'decided') await familyNotice(c, l.studentId, '授業の日時を変更しました', `${fullName(await studentRow(c,l.studentId))}さん ${l.subject}の授業の日時を変更しました。\n変更前: ${l.date} ${l.start}（${l.minutes}分）\n変更後: ${n.date} ${n.start}（${n.minutes}分）${delay ? feeText(delay.fee, '開始を遅らせた分の取消料') : ''}`,familyTarget('schedule',{student:l.studentId,month:n.date.slice(0,7),kind:'lesson',refs:n.id+'.'+n.version}),{type:'lesson',targets:[{id:n.id,version:n.version}]});
+      if (l.status === 'decided') await familyNotice(c, l.studentId, '授業の日時を変更しました', `${fullName(await studentRow(c,l.studentId))}さん ${l.subject}の授業の日時を変更しました。\n変更前: ${l.date} ${l.start}（${l.minutes}分）\n変更後: ${n.date} ${n.start}（${n.minutes}分）${delay ? feeText(delay.fee, '開始を遅らせた分の取消料') : ''}`,familyTarget('schedule',{student:l.studentId,month:n.date.slice(0,7),kind:'lesson',refs:next.id+'.'+next.version}),{type:'lesson',targets:[{id:next.id,version:next.version}]});
     }
     await audit(c, 'lessonUpdate', l.id, { moved, lateStart: !!patch.lateStart, ...(delay ? { delayMinutes: delay.mins } : {}) });
     return { lesson: lessonView(next), backToAdjusting, ...(delay && delay.fee ? { fee: { amount: delay.fee.amount } } : {}) };

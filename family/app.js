@@ -404,7 +404,7 @@ app.addEventListener('click', ev => {
     let r;
     if (a === 'agree' || a === 'agree-all') {
       // 画面で見ている確認待ち（id と版）をそのまま送る。見ていたものと違えば、サーバーは何も確定しない
-      const list = a === 'agree' ? [findLesson(b.dataset.id)].filter(Boolean).map(l=>({id:l.id,version:l.version})) : JSON.parse(b.dataset.refs || '[]');
+      const list = a === 'agree' ? [{id:b.dataset.id,version:Number(b.dataset.version)}] : JSON.parse(b.dataset.refs || '[]');
       if (!list.length) return;
       if (!confirm(`${list.length === 1 ? 'この授業' : list.length + '件の授業'}をこの日時で確定しますか？（予約になります。前日23時まではお休みにできます）`)) return;
       r = await call('family/lessons/agree', { lessons: list.map(l => ({ id: l.id, version: l.version })) }, store.get());
@@ -443,7 +443,7 @@ app.addEventListener('click', ev => {
 wireSheets(app);
 // 画面の移り変わり: ふわっと入れ替える（対応しているブラウザだけ。「視差効果を減らす」では付けない）
 window.addEventListener('hashchange', () => {
-  if(targetParts(route().target||'').refs.length){ money=null; contracts=null; }
+  if(route().page==='money' || targetParts(route().target||'').refs.length){ money=null; contracts=null; }
   say(''); closeSheet(); appliedTarget='';openedTarget='';
   if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return render();
   document.documentElement.dataset.nav = 'tab';

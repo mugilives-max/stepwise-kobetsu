@@ -89,9 +89,13 @@ test('password reset retains a validated task across browsers without exposing a
  assert.equal(missing.message,existing.message);
 });
 test('migration preserves every existing column and row, including issued documents and consents',async()=>{
- const {h,auth,parent,plan,approve}=await agreementFixture();
+ const {h,auth,parent,kid,plan,approve}=await agreementFixture();
  await h.ok('admin/terms/set',{auth,version:'synthetic-previous',title:'旧規約',url:'https://example.invalid/old'});
  await h.ok('family/terms/accept',{auth:parent,version:'synthetic-previous',agree:true,consenterName:'【テスト】保護者'});
+ const co=(await h.ok('admin/conditions/propose',{auth,studentId:kid.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'})).condition;
+ await h.ok('family/conditions/agree',{auth:parent,id:co.id,agree:true,consenterName:'【テスト】保護者'});
+ const sp=(await h.ok('admin/specials/propose',{auth,studentId:kid.id,title:'【テスト】問題解説',purpose:'専用問題の復習',content:'個別の問題解説',reason:'専用準備',prep:'事前に解く',minutes:90,fee:6000,fromDate:'2026-11-01',toDate:'2026-11-30'})).special;
+ await h.ok('family/specials/agree',{auth:parent,id:sp.id,agree:true,consenterName:'【テスト】保護者'});
  await approve(await plan());
  const old=createD1({migrate:false});
  for(const m of migrationFiles('migrations-v2').filter(x=>!x.name.startsWith('0027_')))old._sqlite.exec(m.sql);
@@ -100,7 +104,7 @@ test('migration preserves every existing column and row, including issued docume
  const snapshot=()=>Object.fromEntries(tables(old).map(t=>[t,old._sqlite.prepare('select '+kept[t].map(x=>'"'+x+'"').join(',')+' from "'+t+'" order by rowid').all()]));
  const kept=Object.fromEntries(tables(old).map(t=>[t,columns(old,t)])),before=snapshot();
  old._sqlite.exec(migrationFiles('migrations-v2').find(x=>x.name.startsWith('0027_')).sql);
- assert.deepEqual(snapshot(),before);assert.ok(before.termsConsents.length);assert.ok(before.planRevisions.length);
+ assert.deepEqual(snapshot(),before);assert.ok(before.termsConsents.length);assert.ok(before.planRevisions.length);assert.ok(before.conditions.length);assert.ok(before.specials.length);assert.ok(before.files.length);
 });
 
 test('delayed invoice requires an agreed date; void notice and original records remain visible only to its family',async()=>{
