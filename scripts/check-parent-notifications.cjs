@@ -88,8 +88,9 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   assert.match(await cp.locator('#app').innerText(),/書類・料金を確認するためにログイン/);
   await cp.screenshot({path:path.join(out,'03-login-context.png'),fullPage:true});
   await cp.goto(origin+'/family/#reset='+encodeURIComponent(resetToken));
-  await cp.locator('[name="password"]').fill('changed synthetic password');
-  await cp.locator('[name="confirm"]').fill('changed synthetic password');
+  await cp.locator('[data-form="reset"]').waitFor();
+  await cp.locator('[data-form="reset"] [name="password"]').fill('changed synthetic password');
+  await cp.locator('[data-form="reset"] [name="confirm"]').fill('changed synthetic password');
   assert.equal(await cp.locator('[name="password"]').inputValue(),'changed synthetic password','password entry survived rendering');
   assert.equal(await cp.locator('[name="confirm"]').inputValue(),'changed synthetic password','confirmation entry survived rendering');
   const resetResponse=cp.waitForResponse(r=>r.url().endsWith('/v2/family/reset/confirm'),{timeout:10000}).catch(async()=>{throw Error('Reset form did not submit: '+JSON.stringify({text:await cp.locator('#app').innerText(),errors:report.errors,validity:await cp.locator('form').evaluate(f=>Array.from(f.elements).map(x=>({name:x.name,length:x.value?.length,valid:x.validity?.valid}))) }));});
