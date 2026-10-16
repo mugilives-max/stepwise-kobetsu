@@ -18,7 +18,7 @@ const fakeGas = () => async (url, init) => {
     if (!GOOGLE_ID.test(String((it.body && it.body.id) || ''))) { failed.push({ kind: it.kind, error: 'Invalid resource id value.' }); continue; }
     writebacks.push({ marker: it.marker, eventId: it.body.id + '@google.com', meetUrl: '' });
   }
-  return { ok: true, json: async () => ({ ok: true, done: req.items.length - failed.length, writebacks, failed }) };
+  return { ok: true, json: async () => ({ ok: true, done: req.items.length - failed.length, writebacks, failed, results:req.items.map(it=>({id:it.deliveryId,status:it.kind==='calendarCreate'&&!GOOGLE_ID.test(String(it.body?.id||''))?'failed':'sent',error:it.kind==='calendarCreate'&&!GOOGLE_ID.test(String(it.body?.id||''))?'Invalid resource id value.':''})) }) };
 };
 async function world() {
   const h = await createV2(); const auth = await h.owner();
@@ -55,14 +55,14 @@ test('作成を断られた（書き戻しが無い）予定は「失敗」に�
   assert.deepEqual([r.sent, r.failed], [1, 1]);
   const rows = h.rows('select kind, status, error from effects order by id').slice(base);
   assert.deepEqual(rows.map(x => [x.kind, x.status]), [['calendarCreate', 'failed'], ['mail', 'sent']]);
-  assert.match(rows[0].error, /カレンダーに予定ができませんでした（Invalid resource id value\.）/);
+  assert.match(rows[0].error, /Invalid resource id value\./);
   // 設定が off などで、失敗の知らせも書き戻しも無いとき
   const id = 'v2m' + 'a'.repeat(40);
   const q2 = await recordEffects(h.env.DB2, [{ kind: 'calendarCreate', marker: id, body: { id }, audience: 'calendar' }], Date.now());
   await deliverEffects(GAS, h.env.DB2, q2, async () => ({ ok: true, json: async () => ({ ok: true, done: 1, writebacks: [], failed: [] }) }));
   const last = h.rows('select status, error from effects order by id desc limit 1')[0];
   assert.equal(last.status, 'failed');
-  assert.match(last.error, /予定の ID が返ってきませんでした/);
+  assert.match(last.error, /予定 ID が返りませんでした/);
 });
 
 test('作り直し: 今日以降で予定が仮の目印のままの授業だけを、新しい目印で作り直す（dryRun は何も変えない・メールなし）', async () => {

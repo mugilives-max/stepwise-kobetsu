@@ -1,3 +1,4 @@
+import { familyTarget } from '../../assets/v2/family-target.js';
 // 特殊指導の承認（規約 第6条。migrations-v2/0019_specials.sql）
 // - 教室管理者が「特殊指導を提案」する（admin/specials/propose）：名称、内容と範囲、通常指導との違い、準備、1回の時間と税込料金、対象期間。
 //   提案すると、その名称で「授業の種類」（lessonKinds）ができ、保護者にメールが届く。書面（受講条件書（特殊指導）・案）も残す
@@ -97,7 +98,7 @@ export const specialRoutes = {
       .bind(f.title, f.minutes, f.fee, now, now));
     await c.db.batch(stmts);
     await storeDoc(c, id);
-    await familyNotice(c, s.id, '特殊指導のご提案', `${fullName(s)}さんの特殊指導「${f.title}」をご提案します。保護者ページの「お支払い」で内容（受講条件書（特殊指導））を確かめて、承認をお願いします。\n・1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・期間：${f.fromDate}〜${f.toDate}`);
+    await familyNotice(c, s.id, '特殊指導のご提案', `${fullName(s)}さんの特殊指導「${f.title}」をご提案します。保護者ページの「お支払い」で内容（受講条件書（特殊指導））を確かめて、承認をお願いします。\n・1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・期間：${f.fromDate}〜${f.toDate}\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'special',refs:id+'.'+no}),{type:'special',targets:[{id,version:no}]});
     await audit(c, 'specialPropose', id, { studentId: s.id, no, title: f.title, fee: f.fee, minutes: f.minutes });
     return { special: await withDoc(c.db, specialView(await c.db.prepare('select * from specials where id = ?').bind(id).first())) };
   },

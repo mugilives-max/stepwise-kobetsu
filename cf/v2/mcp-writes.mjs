@@ -16,7 +16,7 @@
 import { fail, audit, newId, iso, sha256Hex } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
-import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
+import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
 
 const MAX_ITEMS = 30;
 const RID = /^[A-Za-z0-9._:-]{8,80}$/, KEY = /^[A-Za-z0-9._:-]{1,40}$/;
@@ -272,7 +272,7 @@ export const mcpWriteRoutes = {
     for (const m of plan.mails) {
       let effectId = null;
       if (m.willSend) {
-        await familyNotice(c, m.studentId, '授業の日程の確認のお願い', m.body, 'confirm');
+        await notifySchedule(c, m.studentId, m.body, m.lessonIds);
         effectId = (await takeMails(c))[0] || null;
       }
       mails.push({ student: m.student.name, to: m.to, effectId, status: m.willSend ? (effectId ? 'queued' : 'notQueued') : 'notSent', reason: m.reason, lessonIds: m.lessonIds, lineText: m.lineText });

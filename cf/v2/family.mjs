@@ -15,12 +15,12 @@ export async function requireFamily(c, body) {
 }
 
 export const familyRoutes = {
-  'family/login': async (c, b) => { const r = await login(c, 'family', b); return { auth: r.token, me: familyView(r.who) }; },
+  'family/login': async (c, b) => { const r = await login(c, 'family', b); return { auth: r.token, me: familyView(r.who), returnTo:r.returnTo||'' }; },
   'family/logout': (c, b) => logout(c, 'family', b.auth),
   'family/me': async (c, b) => ({ me: familyView(await requireFamily(c, b)) }),
   'family/password': async (c, b) => changePassword(c, 'family', await requireFamily(c, b), b),
   'family/reset/request': (c, b) => requestReset(c, 'family', b),
-  'family/reset/confirm': async (c, b) => { const r = await confirmReset(c, 'family', b); return { auth: r.token, me: familyView(r.who) }; },
+  'family/reset/confirm': async (c, b) => { const r = await confirmReset(c, 'family', b); return { auth: r.token, me: familyView(r.who), returnTo:r.returnTo||'' }; },
   'family/invite/info': (c, b) => inviteInfo(c, 'family', b),
-  'family/invite/accept': async (c, b) => { const r = await acceptInvite(c, 'family', b); return { auth: r.token, me: familyView(r.who) }; },
+  'family/invite/accept': async (c, b) => { const r = await acceptInvite(c, 'family', b); return { auth: r.token, me: familyView(r.who), returnTo:r.returnTo||'' }; },
 };

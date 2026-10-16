@@ -1,0 +1,33 @@
+{
+  "checks": [
+    "second child deep link, distinct deadlines, exact displayed IDs/versions, no other-child approval",
+    "agreement link excludes new proposal; completion, return visit and PDF copy",
+    "changed proposal is explicitly stale",
+    "login context and cross-browser password-reset return",
+    "invalid/expired invitation recovery",
+    "condition and special-condition links show the exact proposed document number",
+    "prerequisites explained next to disabled approval",
+    "home overview remains usable after notification-target navigation",
+    "invoice due date, bank and void state with no payment button",
+    "actual generated lesson, fee-response and void-invoice links open authenticated current details",
+    "all 13 existing notification templates and invoice-void template generated without sending"
+  ],
+  "externalRequests": [],
+  "errors": [],
+  "templateSubjects": [
+    "【ステップワイズ】保護者ページの登録",
+    "【ステップワイズ】パスワードの再設定",
+    "【ステップワイズ】受講条件書（通常指導）のお知らせ",
+    "【ステップワイズ】特殊指導のご提案",
+    "【ステップワイズ】2026-11 の授業内容・回数・料金をご確認ください（受講合意書）",
+    "【ステップワイズ】2026-11 受講合意書の確認のお願い（再案内）",
+    "【ステップワイズ】授業の日程の確認のお願い",
+    "【ステップワイズ】授業の日時が確定しました",
+    "【ステップワイズ】授業の日時を変更しました",
+    "【ステップワイズ】授業をキャンセルしました",
+    "【ステップワイズ】キャンセル料のお知らせ",
+    "【ステップワイズ】キャンセル料の申請への回答",
+    "【ステップワイズ】9月分の授業料のお知らせ",
+    "【ステップワイズ】請求取消しのお知らせ"
+  ]
+}

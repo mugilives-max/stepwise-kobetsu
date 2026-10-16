@@ -75,10 +75,10 @@ test('the month bill: approved lessons at the plan fee, unapproved ones wait, op
   assert.equal(kidRow.pending.length, 1, '計画の回数を超えた授業は承認待ち');
   assert.equal(p.students.find(s => s.studentId === sis.id).pending[0].estimate, 3500, '計画のない授業の見込みは基本単価');
   assert.deepEqual([p.total, p.canConfirm, p.auto], [8000, true, false], '承認のない授業があると自動では確定しない');
-  assert.equal((await h.call('billing/confirm', { auth, familyId: kid.familyId, month: '2026-09', expectedTotal: 7999 })).error.code, 'changed');
-  const inv = (await h.ok('billing/confirm', { auth, familyId: kid.familyId, month: '2026-09', expectedTotal: 8000 })).invoice;
+  assert.equal((await h.call('billing/confirm', { auth, dueReviewed:true, familyId: kid.familyId, month: '2026-09', expectedTotal: 7999 })).error.code, 'changed');
+  const inv = (await h.ok('billing/confirm', { auth, dueReviewed:true, familyId: kid.familyId, month: '2026-09', expectedTotal: 8000 })).invoice;
   assert.equal(inv.total, 8000);
-  assert.equal((await h.call('billing/confirm', { auth, familyId: kid.familyId, month: '2026-09' })).error.code, 'already');
+  assert.equal((await h.call('billing/confirm', { auth, dueReviewed:true, familyId: kid.familyId, month: '2026-09' })).error.code, 'already');
   assert.deepEqual(h.rows('select invoiceId from lessons where id in (?, ?)', l1.id, l2.id).map(r => r.invoiceId), [inv.id, inv.id]);
   assert.equal((await h.call('billing/plans/save', { auth, id: a.id, version: line(a.id).version, fee: 1 })).error.code, 'locked', '請求に入った計画は直せない');
   // 保護者: 請求を見る・振込の連絡。教室管理者: 入金を記録
@@ -98,7 +98,7 @@ test('the month bill: approved lessons at the plan fee, unapproved ones wait, op
   await h.ok('billing/plans/save', { auth, studentId: sis.id, subject: '英語', kind: '通常', startDate: '2026-09-01', endDate: '2026-09-30', count: 1, minutes: 60, fee: 2800 });
   const ln = h.rows("select * from planLines where studentId = ? and subject = '英語'", sis.id)[0];
   await h.ok('billing/plans/consent', { auth, id: ln.id, version: ln.version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: 'LINE', note: '9/1 に口頭で承諾' });
-  const again = await h.ok('billing/confirm', { auth, familyId: kid.familyId, month: '2026-09' });
+  const again = await h.ok('billing/confirm', { auth, dueReviewed:true, familyId: kid.familyId, month: '2026-09' });
   assert.equal(again.invoice.total, 3200 + 4800 + 2800);
 });
 
@@ -137,7 +137,7 @@ test('cancellation fees: late notice is 1,000 yen, a no-show costs the lesson, d
   p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
   assert.deepEqual([p.total, p.canConfirm, p.students[0].items.map(i => i.label)], [1500, true, ['キャンセル料（減額）']]);
   const cur = h.rows('select * from lessons where id = ?', l2.id)[0];
-  await h.ok('billing/confirm', { auth, familyId: kid.familyId, month: '2026-09' });
+  await h.ok('billing/confirm', { auth, dueReviewed:true, familyId: kid.familyId, month: '2026-09' });
   assert.equal((await h.call('schedule/lessons/delete', { auth, id: l2.id, version: cur.version })).error.code, 'invoiced');
 });
 
@@ -217,7 +217,7 @@ test('staff can send a reminder for plans still waiting for approval, once a day
   const r = await h.ok('billing/plans/remind', { auth, familyId: kid.familyId });
   assert.deepEqual([r.reminded, r.waiting], [1, 2]);
   const mail = h.mails().at(-1);
-  assert.match(mail.subject, /受講合意書の承認のお願い/); assert.match(mail.body, /すでに2回決まっています/);
+  assert.match(mail.subject, /受講合意書の確認のお願い/); assert.match(mail.body, /この計画に当たる授業が2回/);
   assert.equal(mail.status, 'dismissed', '切り替え前は送らない');
   assert.equal((await h.call('billing/plans/remind', { auth, familyId: kid.familyId })).error.code, 'tooSoon');
   h.clock += 86400e3;
@@ -265,7 +265,7 @@ test('an invoice document is stored when the month is confirmed and a receipt wh
   await h.ok('family/plans/decide', { consenterName:'架空 保護者', auth: parent, id: line.id, version: line.version + 1, approvedCount: 2 });
   h.clock = at('2026-10-02T12:00:00');
   await h.ok('schedule/lessons/create', { auth, studentId: kid.id, date: '2026-09-10', start: '17:00', minutes: 90, subject: '数学', deliveryMode: 'in_person', done: true });
-  const inv = (await h.ok('billing/confirm', { auth, familyId: fam.id, month: '2026-09' })).invoice;
+  const inv = (await h.ok('billing/confirm', { auth, dueReviewed:true, familyId: fam.id, month: '2026-09' })).invoice;
   const fam1 = await h.ok('billing/family', { auth, familyId: fam.id, month: '2026-09' });
   assert.ok(fam1.invoice.invoiceDocId, '請求書の書面'); assert.equal(fam1.invoice.receiptDocId, '');
   const money = await h.ok('family/money', { auth: parent });

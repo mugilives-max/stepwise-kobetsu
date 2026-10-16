@@ -111,6 +111,7 @@ test('夜の自動確定: 確認待ちだけ、締め切りの翌日に 1 通。
   await h.ok('schedule/lessons/create', { ...L, date: '2026-10-22', send: 'show' });
   const [near, x, y, adj] = ids();
   await h.ok('schedule/lessons/ask', { auth, studentId: kid.id, lessonIds: [near, x, y] });
+  h.db2._sqlite.prepare("update lessons set noticeState = 'external', noticeAt = askedAt where askedAt <> ''").run(); // synthetic LINE notice with the same deadline
   const n0 = familyMails().length;
   assert.equal((await night('2026-10-05')).confirmed, 0, '締め切りの日のうちは決めない');
   const r = await night('2026-10-06');

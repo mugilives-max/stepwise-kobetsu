@@ -1,3 +1,5 @@
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
+import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261016-notices';
 import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // 保護者・生徒の画面で共通に使う部品（作り直し v2）。
 // 考え方（docs/UX_STRUCTURE.md 1）: 一覧は白い枠に 1 件 1 行、操作は押すと下から出る画面で。文字より印で分かるように。
@@ -7,7 +9,7 @@ import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=202
 // - 受講合意書（月ごとに 1 枚。承認は月に 1 回）、請求、キャンセル料
 // - テスト・行事
 import { esc } from '/assets/v2/api.js';
-import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261016-stages';
+import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261016-notices';
 import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261008-launch1';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
@@ -48,7 +50,7 @@ const statusText = l => {
   const [cls, label] = STATUS[l.status] || ['gray', l.status];
   const t = [];
   // 調整中（相談中・締め切りなし）と確認待ち（「この日程で大丈夫」か締め切りで確定）
-  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">確認待ち${l.confirmBy ? '・' + md(l.confirmBy) + 'まで' : ''}</span>` : '<span class="tag warn">調整中</span>');
+  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">確認待ち${automaticDeadline(l) ? '・' + md(l.confirmBy) + 'まで' : '・ご返事が必要'}</span>` : '<span class="tag warn">調整中</span>');
   else if (l.status !== 'decided') t.push(`<span class="tag ${cls}">${label}</span>`);
   return t;
 };
@@ -84,7 +86,7 @@ export function lessonSheet(l, state, { names = {}, canRequest = true, canAgree 
   const title = `${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)}`;
   const req = openRequest(l);
   let body = `<div class="ls-head"><strong>${names[l.studentId] ? esc(names[l.studentId]) + '　' : ''}${esc(l.subject)}${l.kind && l.kind !== '通常' ? `（${esc(l.kind)}）` : ''}</strong><span class="small muted">${l.deliveryMode === 'online' ? 'オンライン' : '教室で'}${l.minutes ? `・${l.minutes}分` : ''}</span><span class="tags">${statusText(l).join('') || '<span class="tag">確定</span>'}</span></div>`;
-  if (l.status === 'proposed') body += `<p class="small muted" style="margin:0 0 8px">${l.asked ? (l.confirmBy ? `先生から日程の確認のお願いです。${md(l.confirmBy)}までにご連絡がなければ、この日時で確定します。` : '先生から日程の確認のお願いです。日が近いため、ご返事をいただいてから確定します。') : '先生と日時を相談している段階です。まだ確定していません（自動では確定しません）。'}</p>`;
+  if (l.status === 'proposed') body += `<p class="small muted" style="margin:0 0 8px">${l.asked ? (automaticDeadline(l) ? `先生から日程の確認のお願いです。${md(l.confirmBy)}までにご連絡がなければ、この日時で確定します。` : '先生から日程の確認のお願いです。この授業は無回答では確定しません。ご返事をいただいてから確定します。') : '先生と日時を相談している段階です。まだ確定していません（自動では確定しません）。'}</p>`;
   if (l.meetUrl && l.status === 'decided') body += `<a class="btn wide" href="${esc(l.meetUrl)}" target="_blank" rel="noopener">${picon('video')} Meet に参加する</a>`;
   if (req) {
     body += `<div class="ls-req"><div><b>${REQUEST[req.kind]}</b>を連絡済みです${req.note ? `<div class="small muted">${esc(req.note)}</div>` : ''}<div class="small muted">先生の返事をお待ちください。</div></div>${canRequest ? `<button data-action="withdraw" data-id="${esc(req.id)}"${busy ? ' disabled' : ''}>連絡を取り下げる</button>` : ''}</div>`;
@@ -155,9 +157,9 @@ export function planApprovalCard(month, lines, { multi, counts = {}, dis = '', c
   const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span>
       <span class="n"><select name="count-${esc(l.id)}" data-plan-count="${esc(l.id)}" aria-label="回数">${Array.from({ length: l.count - l.minCount + 1 }, (_, i) => l.count - i).map(k => `<option value="${k}"${n(l) === k ? ' selected' : ''}>${k}回</option>`).join('')}${l.minCount === 0 ? `<option value="0"${n(l) === 0 ? ' selected' : ''}>見送る</option>` : ''}</select><small>1回 ${esc(l.minutes)}分・${yen(l.fee)}</small></span>
       <span class="amt">${yen(n(l) * l.fee)}</span></div>${l.minCount ? `<div class="small muted pl-note">すでに決まっている授業が${l.minCount}回あるため、${l.minCount}回より少なくはできません。</div>` : ''}`);
-  return `<form class="pcard ask" data-form="plan-approve" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書（案）</strong><span class="tag warn">承認をお願いします</span></div>
+  return `<form class="pcard ask" data-form="plan-approve" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書（案）</strong><span class="tag warn">承認をお願いします</span></div>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
-    <p class="small muted">回数を減らしたいときは、各行の回数を変えてから承認してください。承認すると、この回数で授業を進めます。</p>
+    <p class="small muted">回数を減らしたいときは、各行の回数を変えてから承認してください。承認は、表示した科目・回数・時間・料金の範囲で授業を実施できるようにするものです。予約や授業料の事前購入ではありません。授業日時は別に確認します。</p>
     ${agreementDocumentButtons(lines,{label:'提示された案を印刷・PDF保存'})}<p class="small muted">書面には提示された回数を表示します。画面で変更中の回数は、承認後の控えに反映されます。</p>
     ${consenterField(month, consenterName)}<button class="primary wide"${dis}>この内容で承認する</button></form>`;
 }
@@ -169,7 +171,7 @@ export function planAckCard(month, lines, { multi, dis = '' }) {
   return `<div class="pcard ack" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書</strong><span class="tag">確かめてください</span></div>
     <p class="small muted">${esc(via)}で承諾いただいた内容を、先生が記録しました（${esc(date)}）。</p>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
-    ${agreementDocumentButtons(lines)}<div class="row"><button class="primary" data-action="plan-ack-month" data-month="${esc(month)}"${dis}>この内容で合っています</button><button data-action="plan-inquiry" data-month="${esc(month)}"${dis}>違うところがある</button></div></div>`;
+    ${agreementDocumentButtons(lines)}<div class="row"><button class="primary" data-action="plan-ack-month" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"${dis}>この内容で合っています</button><button data-action="plan-inquiry" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"${dis}>違うところがある</button></div></div>`;
 }
 // 決まった計画の一覧（月ごと）
 export function planHistory(lines, { multi }) {
@@ -224,7 +226,7 @@ export const specialLine = items => (items || []).filter(x => x.status === 'agre
 export const termsLine = terms => terms && terms.agreed.version ? `<p class="small muted">受講規約 ${esc(terms.agreed.version)} に同意済み（${esc(String(terms.agreed.at).slice(0, 10))}）${terms.agreed.url ? `・<a href="${esc(terms.agreed.url)}" target="_blank" rel="noopener">同意した版の全文</a>` : ''}</p>` : '';
 
 // ---- 請求 ----
-const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['入金の確認待ち', ''], paid: ['お支払い済み', 'ok'] };
+const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['入金の確認待ち', ''], paid: ['お支払い済み', 'ok'], void: ['取り消し済み', ''] };
 export function invoiceRows(invoices) {
   if (!invoices.length) return '<p class="muted small">まだ請求はありません。実施した授業の分を、翌月3日に確定してお知らせします。</p>';
   return '<div class="group">' + invoices.map(v => { const [label, cls] = INV[v.status] || [v.status, ''];
@@ -234,6 +236,8 @@ export function invoiceSheet(v, { multi, busy = false }) {
   const [label, cls] = INV[v.status] || [v.status, ''], by = {};
   for (const i of v.items) (by[i.studentName] = by[i.studentName] || []).push(i);
   let body = `<div class="inv-total"><span class="tag ${cls}">${label}</span><strong>${yen(v.total)}</strong></div>`;
+  if(v.status==='void')body+='<p class="notice">この請求は取り消されています。お支払いは不要です。理由：'+esc(v.voidReason||'')+'<br>お振込み済みの場合は教室へご連絡ください。</p>';
+  else if(v.status!=='paid')body+='<p><b>支払期限：'+esc(v.dueText||invoiceDueText(v))+'</b></p><p>振込先：'+esc(v.bank||'請求書をご確認ください。未記載の場合は教室から別途ご案内します。')+'</p><p class="small">振込手数料は保護者のご負担となります。</p>';
   body += Object.entries(by).map(([name, items]) => `${multi ? `<h3>${esc(name)}</h3>` : ''}<table class="itbl">${items.map(i => `<tr><td>${i.date ? md(i.date) : ''}</td><td>${esc(i.subject)}${i.label ? `<small class="muted"> ${esc(i.label)}</small>` : ''}</td><td class="r">${i.kind === 'lesson' && i.minutes ? i.minutes + '分' : ''}</td><td class="r">${yen(i.amount)}</td></tr>`).join('')}</table>`).join('');
   if (v.invoiceDocId || v.receiptDocId) body += `<div class="row" style="margin:8px 0">${v.invoiceDocId ? `<button type="button" class="btn" data-action="gr-open" data-id="${esc(v.invoiceDocId)}">${picon('file')} 請求書を開く</button>` : ''}${v.receiptDocId ? `<button type="button" class="btn" data-action="gr-open" data-id="${esc(v.receiptDocId)}">${picon('file')} 領収書を開く</button>` : ''}</div>`;
   if (v.status === 'confirmed') body += `<p class="small muted">お振込のあと、下のボタンで知らせてください。先生が入金を確かめます。</p><button class="primary wide" data-action="inv-report" data-id="${esc(v.id)}" data-version="${v.version}"${busy ? ' disabled' : ''}>振り込みました</button>`;

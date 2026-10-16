@@ -26,20 +26,24 @@ function doPost(e) {
   var key = String(PropertiesService.getScriptProperties().getProperty('WORKER_SYNC_KEY') || '').trim();
   if (key.length < 24 || String(req.key || '') !== key) { Utilities.sleep(300); return json_({ error: '鍵が正しくありません', badAuth: true }); }
   var items = Array.isArray(req.items) ? req.items : [];
-  var writebacks = [], done = 0, failed = [];
+  var writebacks = [], done = 0, failed = [], results = [];
   for (var i = 0; i < items.length && i < 50; i++) {
     var item = items[i] || {};
     try {
       var handler = KIND_HANDLERS_[String(item.kind || '')];
       if (!handler) throw new Error('知らない種類: ' + item.kind);
-      var w = handler(item);
+      var outcome = deliverOnce_(item, handler);
+      results.push(outcome);
+      if (outcome.status !== 'sent') { failed.push({kind: String(item.kind || ''), error: outcome.error, id: outcome.id}); continue; }
+      var w = outcome.writeback;
       if (w) writebacks.push(w);
       done++;
     } catch (err) {
+      results.push({ id: String(item.deliveryId || ''), status: 'unknown', error: String(err.message || err) });
       failed.push({ kind: String(item.kind || ''), error: String((err && err.message) || err).slice(0, 200) });
     }
   }
-  return json_({ ok: true, done: done, writebacks: writebacks, failed: failed });
+  return json_({ ok: true, done: done, writebacks: writebacks, failed: failed, results: results });
 }
 
 function json_(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
@@ -48,9 +52,10 @@ function calendarOn_() { return String(PropertiesService.getScriptProperties().g
 // 宛先 'TEACHER' は代表自身のアドレス（Worker には実アドレスを置かない）
 function sendMail_(item) {
   var to = String(item.to || '') === 'TEACHER' ? Session.getEffectiveUser().getEmail() : String(item.to || '');
-  if (!to) return;
+  if (!to) throw new Error('宛先がありません');
   var options = { to: to, subject: String(item.subject || ''), body: String(item.body || '') };
   if (item.name) options.name = String(item.name);
+  if (item.replyTo) options.replyTo = String(item.replyTo);
   MailApp.sendEmail(options);
 }
 
@@ -117,4 +122,34 @@ function authorize() {
   MailApp.getRemainingDailyQuota();
   Calendar.CalendarList.list({ maxResults: 1 });
   return 'ok: ' + Session.getEffectiveUser().getEmail();
+}
+
+
+// Record before dispatch. A crash after dispatch remains unknown, never silently sent twice.
+// Entries contain opaque IDs/results only (no recipients/body/credentials).
+function deliverOnce_(item, handler) {
+  var id = String(item.deliveryId || '');
+  if (!id) return { id: '', status: 'sent', writeback: handler(item) };
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(id)) return {id:id,status:'failed',error:'送信 ID が正しくありません'};
+  var lock=LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return {id:id,status:'failed',error:'送信処理が混み合っています（未送信）'};
+  try {
+    var props=PropertiesService.getScriptProperties(), key='delivery:'+id, old=props.getProperty(key);
+    if (old) {
+      var prev=JSON.parse(old);
+      if(prev.status==='sending') return {id:id,status:'unknown',error:'前の送信結果を確認してください'};
+      return prev;
+    }
+    var all=props.getProperties(), keys=Object.keys(all).filter(function(k){return k.indexOf('delivery:')===0;});
+    // Retain unknown/in-flight records. Safe successes expire after 30 days; Worker never retries sent IDs.
+    keys.forEach(function(k){try{var r=JSON.parse(all[k]);if(r.status==='sent' && r.at < Date.now()-30*86400000)props.deleteProperty(k);}catch(e){}});
+    if(keys.length>=1500) return {id:id,status:'failed',error:'送信控えの保管容量を確認してください（未送信）'};
+    if(item.kind==='mail' && MailApp.getRemainingDailyQuota()<1) return {id:id,status:'failed',error:'メール送信上限です（未送信）'};
+    props.setProperty(key,JSON.stringify({id:id,status:'sending',at:Date.now()}));
+    var result;
+    try { result={id:id,status:'sent',at:Date.now(),writeback:handler(item)}; }
+    catch(e) { result={id:id,status:'unknown',at:Date.now(),error:String(e.message||e).slice(0,200)}; }
+    props.setProperty(key,JSON.stringify(result));
+    return result;
+  } finally { lock.releaseLock(); }
 }

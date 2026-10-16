@@ -1,40 +1,67 @@
-// メール・カレンダーの控え（v2 の effects 表）。応答を返したあとで Apps Script に頼む。
-// 頼み方（action=effects、items の形）は今の仕組み（cf/worker/write.mjs の deliverEffects）と同じ。
-// 次のものは実際には送らず、送らなかったことと理由を記録する。
-// - テスト用の家族・スタッフあて（testOnly）
-// - 切り替え前の保護者あて（held）
+// Durable per-item delivery. Unknown results never enter automatic retry.
+import { newId } from './util.mjs';
+import { currentNotice, scheduleDelivery } from './notice-policy.mjs';
 const skipReason = e => e.testOnly ? 'テスト用のため送らない' : e.held ? 'まだ切り替え前のため送らない' : '';
-export async function recordEffects(db, items, now) {
+export async function recordEffects(db,items,now) {
   if (!items.length) return [];
-  const at = new Date(now).toISOString();
-  const rows = await db.batch(items.map(e => db.prepare('insert into effects (createdAt, kind, payload, status, error) values (?, ?, ?, ?, ?)')
-    .bind(at, e.kind, JSON.stringify(e), skipReason(e) ? 'dismissed' : 'pending', skipReason(e))));
-  return rows.map((r, i) => ({ id: Number(r.meta && r.meta.last_row_id) || 0, item: items[i] })).filter(x => !skipReason(x.item));
+  const at=new Date(now).toISOString();
+  const rows=await db.batch(items.map(e=>db.prepare('insert into effects (createdAt,kind,payload,status,error,deliveryKey) values (?,?,?,?,?,?)')
+    .bind(at,e.kind,JSON.stringify(e),skipReason(e)?'dismissed':'pending',skipReason(e),newId('delivery'))));
+  return rows.map((r,i)=>({id:Number(r.meta?.last_row_id)||0,item:items[i]})).filter(x=>!skipReason(x.item));
 }
-
-export async function deliverEffects(env, db, queued, fetcher = fetch) {
-  if (!queued.length) return { sent: 0 };
-  if (!env.GAS_URL || !env.SYNC_KEY) return { sent: 0, skipped: 'GAS_URL / SYNC_KEY が未設定' };
-  let error = '', payload = null;
-  try {
-    const res = await fetcher(env.GAS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, redirect: 'follow',
-      body: JSON.stringify({ action: 'effects', key: env.SYNC_KEY, items: queued.map(q => { const { testOnly, audience, held, ...item } = q.item; return item; }) }) });
-    payload = await res.json().catch(() => null);
-    if (!res.ok || !payload || payload.error) error = (payload && payload.error) || ('HTTP ' + res.status);
-  } catch (e) { error = String((e && e.message) || e); }
-  // カレンダーの仮の目印 → 本物の予定 ID と Meet の URL を、授業・面談に書き戻す（Meet は取れたときだけ）
-  const writebacks = payload && Array.isArray(payload.writebacks) ? payload.writebacks : [];
-  for (const table of ['lessons', 'meetings']) if (writebacks.length) await db.batch(writebacks.map(w => db.prepare(`update ${table} set calendarEventId = ?, meetUrl = case when ? <> '' then ? else meetUrl end where calendarEventId = ? or calendarEventId = ? || '@google.com'`)
-    .bind(String(w.eventId || ''), String(w.meetUrl || ''), String(w.meetUrl || ''), String(w.marker || ''), String(w.marker || ''))));
-  // 予定を作る頼みは、その目印の書き戻しが返ってきたときだけ「送れた」。返ってこなければ（作成を断られた・設定が off など）失敗として残す。
-  // Apps Script は項目ごとの失敗を failed に入れて、全体は ok を返す（gas/Sync.gs effectsOp_）。どの項目かは分からないので、カレンダーの失敗の文を添える
-  const backs = new Set(writebacks.map(w => String(w.marker || '')));
-  const calFailed = (payload && Array.isArray(payload.failed) ? payload.failed : []).filter(f => /^calendar/.test(String(f && f.kind || ''))).map(f => String(f.error || '')).filter(Boolean);
-  const itemError = q => error || (q.item.kind === 'calendarCreate' && !backs.has(String(q.item.marker || ''))
-    ? 'カレンダーに予定ができませんでした（' + (calFailed[0] || '予定の ID が返ってきませんでした') + '）' : '');
-  const at = new Date().toISOString();
-  await db.batch(queued.map(q => { const e = itemError(q); return db.prepare('update effects set status = ?, attempts = attempts + 1, error = ?, sentAt = ? where id = ?')
-    .bind(e ? 'failed' : 'sent', e.slice(0, 300), e ? '' : at, q.id); }));
-  const failed = queued.filter(q => itemError(q)).length;
-  return { sent: queued.length - failed, failed, error };
+export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now()) {
+  if (!queued.length) return {sent:0,failed:0,unknown:0};
+  if (!env.GAS_URL || !env.SYNC_KEY) {
+    for (const q of queued) await scheduleDelivery(db,q.item,'hold',new Date(now).toISOString());
+    return {sent:0,failed:0,skipped:'GAS_URL / SYNC_KEY が未設定'};
+  }
+  const mine=[]; let dismissed=0,blocked=0;
+  for (const q of queued) {
+    if(q.item.notice?.type==='schedule') {
+      let hold=false;
+      for(const t of q.item.notice.targets||[]) if(await db.prepare("select 1 from lessons where id = ? and askedAt = ? and noticeState = 'hold'").bind(t.id,t.askedAt).first())hold=true;
+      if(hold){blocked++;continue;}
+    }
+    if (!(await currentNotice(db,q.item,now))) {
+      await db.prepare("update effects set status = 'dismissed', error = '対象が変更・完了・取消し済み、または送信対象外' where id = ? and status in ('pending','failed') and deliveryState not in ('unknown','sending')").bind(q.id).run();
+      dismissed++; continue;
+    }
+    const key=newId('delivery');
+    const r=await db.prepare("update effects set deliveryState = 'sending', deliveryKey = case when deliveryKey = '' then ? else deliveryKey end, attempts = attempts + 1, attemptAt = ? where id = ? and status in ('pending','failed') and deliveryState not in ('unknown','sending') and error <> '送っている途中'")
+      .bind(key,new Date(now).toISOString(),q.id).run();
+    if (r.meta?.changes) { const row=await db.prepare('select deliveryKey from effects where id = ?').bind(q.id).first(); mine.push({...q,key:row.deliveryKey}); }
+  }
+  let sent=0,failed=0,unknown=0,error='';
+  // Relay limit is 50. Every item keeps the same durable key across safe retries.
+  for (let start=0;start<mine.length;start+=50) {
+    const batch=mine.slice(start,start+50); let payload=null,transport='';
+    try {
+      const res=await fetcher(env.GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},redirect:'follow',
+        body:JSON.stringify({action:'effects',key:env.SYNC_KEY,items:batch.map(q=>{const {testOnly,audience,held,notice,...item}=q.item;return {...item,deliveryId:q.key};})})});
+      payload=await res.json().catch(()=>null);
+      if (!res.ok || !payload || payload.error) transport=payload?.error||'HTTP '+res.status;
+    } catch(err) { transport=String(err?.message||err); }
+    const backs=payload?.writebacks||[];
+    for (const table of ['lessons','meetings']) for (const w of backs) if (w.marker && w.eventId) await db.prepare('update '+table+" set calendarEventId = ?, meetUrl = case when ? <> '' then ? else meetUrl end where calendarEventId = ? or calendarEventId = ? || '@google.com'")
+      .bind(String(w.eventId),String(w.meetUrl||''),String(w.meetUrl||''),String(w.marker),String(w.marker)).run();
+    for (const q of batch) {
+      const matches=(payload?.results||[]).filter(r=>r.id===q.key);
+      let state='unknown',err=transport||'通知単位の送信結果を確認できません。再送前に送信先を確認してください';
+      if (!transport && matches.length===1 && ['sent','failed','unknown'].includes(matches[0].status)) {state=matches[0].status;err=matches[0].error||'';}
+      // Legacy relay: only an unambiguous complete success or a single identified failure is usable.
+      else if (!transport && !Array.isArray(payload?.results)) {
+        const fs=payload?.failed||[];
+        if (!fs.length && payload?.done===batch.length) {state='sent';err='';}
+        else if (batch.length===1 && fs.length===1 && fs[0].kind===q.item.kind) {state=q.item.kind==='mail'?'unknown':'failed';err=fs[0].error||'送信に失敗しました';}
+      }
+      if (q.item.kind==='calendarCreate' && state==='sent' && !backs.some(w=>w.marker===q.item.marker)) {state='failed';err='カレンダーの予定 ID が返りませんでした';}
+      const at=new Date(now).toISOString();
+      await db.prepare("update effects set status = ?, deliveryState = ?, error = ?, sentAt = ? where id = ? and deliveryState = 'sending'")
+        .bind(state==='sent'?'sent':'failed',state,err.slice(0,300),state==='sent'?at:'',q.id).run();
+      await scheduleDelivery(db,q.item,state,at);
+      if(state==='sent')sent++;else if(state==='unknown')unknown++;else failed++;
+      if(err)error=err;
+    }
+  }
+  return {sent,failed,unknown,dismissed,blocked,error};
 }

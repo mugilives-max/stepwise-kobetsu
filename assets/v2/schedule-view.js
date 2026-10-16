@@ -1,3 +1,4 @@
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
 // 作り直し（v2）の予定の部品。スタッフ・保護者・生徒の画面で共通に使う（言葉と色をそろえる）。
 import { esc } from '/assets/v2/api.js';
 import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
@@ -8,7 +9,7 @@ export const STATUS = {
 };
 export const ASKING = ['ask', '確認待ち'];
 export const stageLabel = l => l.status === 'proposed' && l.asked ? ASKING[1] : (STATUS[l.status] || ['', l.status])[1];
-const byText = l => l.confirmBy ? ' ' + Number(l.confirmBy.slice(5, 7)) + '/' + Number(l.confirmBy.slice(8)) + 'まで' : '';
+const byText = l => automaticDeadline(l) ? ' ' + Number(l.confirmBy.slice(5, 7)) + '/' + Number(l.confirmBy.slice(8)) + 'まで' : '';
 export const REQUEST = { move: '日時の変更のお願い', rest: 'お休みの連絡', late: '開始を遅らせたい', cancel: 'キャンセル' };
 export const CHOICE = {
   move: ['日時の変更をお願いする', '無料', '先生が別の日時を相談します。決まるまでは今の日時のままです。', '希望の日時など（必須）'],

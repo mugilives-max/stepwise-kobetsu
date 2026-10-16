@@ -1,0 +1,57 @@
+name: Parent notification review (no deployment)
+on:
+  push:
+    branches: ['codex/parent-notification-audit-20261016']
+    paths: ['cf/v2/**','cf/migrations-v2/**','gas-effects/**','gas/**','cf/worker/health.mjs','assets/v2/**','family/**','staff/**','student/**','test/**','scripts/check-parent-notifications.cjs','.github/workflows/parent-notification-preview.yml']
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Syntax
+        run: |
+          npm run check
+          for f in cf/v2/*.mjs; do node --check "$f"; done
+          for f in staff/*.js family/*.js student/*.js assets/v2/*.js; do node --check --input-type=module < "$f"; done
+          node --check < gas-effects/Code.gs
+          node --check < gas/Sync.gs
+          node --check < gas/Code.gs
+      - name: Regression tests with isolated databases
+        run: |
+          mkdir -p parent-notification-output
+          node --test test/v2-*.test.cjs > parent-notification-output/regression.txt || { tail -n 100 parent-notification-output/regression.txt; exit 1; }
+          tail -n 10 parent-notification-output/regression.txt
+      - name: Additive migration in isolated runner
+        run: npx wrangler d1 migrations apply DB2 --config cf/wrangler.jsonc --env local --local --persist-to /tmp/stepwise-notices-d1
+      - name: Browser checks with synthetic data
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/check-contract-ui.cjs
+          if test -f scripts/check-parent-notifications.cjs; then node scripts/check-parent-notifications.cjs; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parent-notification-review
+          path: |
+            parent-notification-output/
+            contract-ui-output/
+          retention-days: 30
+      - name: Preserve synthetic review copies on this branch only
+        if: success()
+        run: |
+          mkdir -p docs/parent-notification-preview-20261016
+          cp parent-notification-output/* docs/parent-notification-preview-20261016/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/parent-notification-preview-20261016
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Keep synthetic parent notification review copies (unpublished)"
+          git push origin HEAD:codex/parent-notification-audit-20261016

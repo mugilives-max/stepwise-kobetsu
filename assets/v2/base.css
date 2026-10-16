@@ -507,7 +507,7 @@ body.has-bar .brand { display: none; }
 .choice.danger.on { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger) inset; background: var(--danger-soft); }
 .choice:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 button.wide, a.btn.wide { width: 100%; display: flex; justify-content: center; align-items: center; gap: 6px; padding: 11px 14px; font-weight: 700; text-align: center; }
-a.btn.wide svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+a.btn.wide svg, button.btn svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 /* 宿題: 左の丸を押して「できた」 */
 .hw { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .group > .hw:last-child { border-bottom: 0; }
