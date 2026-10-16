@@ -1,7 +1,8 @@
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
 // スタッフの画面: 予定（3段目）。月の予定表・選んだ日の授業・連絡への対応・授業を作る・休み・面談。
 // 授業の段階（2026-10-14 本人決定）: 下書き → 調整中（見せるだけ・メールなし）→ 確認待ち（締め切りとメール 1 通・LINE に貼る文）→ 確定
 // 教室管理者はすべて、講師は自分の担当の授業と自分の休みだけ。
-import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261016-stages';
+import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261016-notices';
 import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 
 let month = null, data = null, sel = null, sheet = null, families = null, loadedFor = '';
@@ -219,7 +220,7 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
       const main = [], sub = [], danger = [];
       const future = l.date >= data.today;
       if (manager && future && l.status === 'held') main.push(`<button data-action="sch-show-one" data-id="${esc(l.id)}"${ctx.dis()}>調整中として見せる</button>`);
-      if(manager && future && l.status==='proposed' && l.asked && !['sent','external'].includes(l.noticeState)) main.push('<p class="notice">通知の確認が済むまで自動確定を保留しています。</p><button data-action="sch-renotify" data-id="'+esc(l.id)+'">再案内・回答期間を確認</button>');
+      if(manager && future && l.status==='proposed' && l.asked && (!['sent','external'].includes(l.noticeState) || (l.confirmBy && !automaticDeadline(l)))) main.push('<p class="notice">通知の確認が済むまで自動確定を保留しています。</p><button data-action="sch-renotify" data-id="'+esc(l.id)+'">再案内・回答期間を確認</button>');
       if (manager && future && (l.status === 'held' || (l.status === 'proposed' && !l.asked))) main.push(`<button class="primary" data-action="sch-ask-one" data-id="${esc(l.id)}"${ctx.dis()}>確認をお願いする</button>`);
       if (manager && ['held', 'proposed'].includes(l.status)) main.push(`<button${l.status === 'proposed' && l.asked ? ' class="primary"' : ''} data-action="sch-decide" data-id="${esc(l.id)}"${ctx.dis()}>確定する</button>`);
       if (l.status === 'decided' && past && mine) main.push(`<button class="primary" data-action="sch-done" data-id="${esc(l.id)}"${ctx.dis()}>実施済みにする</button>`);

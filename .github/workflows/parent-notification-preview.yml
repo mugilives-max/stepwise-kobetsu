@@ -2,7 +2,7 @@ name: Parent notification review (no deployment)
 on:
   push:
     branches: ['codex/parent-notification-audit-20261016']
-    paths: ['cf/v2/**','cf/migrations-v2/**','gas-effects/**','assets/v2/**','family/**','staff/**','test/**','scripts/check-parent-notifications.cjs','.github/workflows/parent-notification-preview.yml']
+    paths: ['cf/v2/**','cf/migrations-v2/**','gas-effects/**','assets/v2/**','family/**','staff/**','student/**','test/**','scripts/check-parent-notifications.cjs','.github/workflows/parent-notification-preview.yml']
 permissions:
   contents: write
 jobs:
@@ -19,7 +19,7 @@ jobs:
         run: |
           npm run check
           for f in cf/v2/*.mjs; do node --check "$f"; done
-          for f in staff/*.js family/*.js assets/v2/*.js; do node --check --input-type=module < "$f"; done
+          for f in staff/*.js family/*.js student/*.js assets/v2/*.js; do node --check --input-type=module < "$f"; done
           node --check < gas-effects/Code.gs
       - name: Regression tests with isolated databases
         run: node --test test/v2-*.test.cjs

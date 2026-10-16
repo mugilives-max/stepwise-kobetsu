@@ -1,3 +1,4 @@
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
 import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261016-notices';
 import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // 保護者・生徒の画面で共通に使う部品（作り直し v2）。
@@ -8,7 +9,7 @@ import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=202
 // - 受講合意書（月ごとに 1 枚。承認は月に 1 回）、請求、キャンセル料
 // - テスト・行事
 import { esc } from '/assets/v2/api.js';
-import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261016-stages';
+import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261016-notices';
 import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261008-launch1';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
@@ -49,7 +50,7 @@ const statusText = l => {
   const [cls, label] = STATUS[l.status] || ['gray', l.status];
   const t = [];
   // 調整中（相談中・締め切りなし）と確認待ち（「この日程で大丈夫」か締め切りで確定）
-  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">確認待ち${l.confirmBy ? '・' + md(l.confirmBy) + 'まで' : ''}</span>` : '<span class="tag warn">調整中</span>');
+  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">確認待ち${automaticDeadline(l) ? '・' + md(l.confirmBy) + 'まで' : '・ご返事が必要'}</span>` : '<span class="tag warn">調整中</span>');
   else if (l.status !== 'decided') t.push(`<span class="tag ${cls}">${label}</span>`);
   return t;
 };
@@ -85,7 +86,7 @@ export function lessonSheet(l, state, { names = {}, canRequest = true, canAgree 
   const title = `${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)}`;
   const req = openRequest(l);
   let body = `<div class="ls-head"><strong>${names[l.studentId] ? esc(names[l.studentId]) + '　' : ''}${esc(l.subject)}${l.kind && l.kind !== '通常' ? `（${esc(l.kind)}）` : ''}</strong><span class="small muted">${l.deliveryMode === 'online' ? 'オンライン' : '教室で'}${l.minutes ? `・${l.minutes}分` : ''}</span><span class="tags">${statusText(l).join('') || '<span class="tag">確定</span>'}</span></div>`;
-  if (l.status === 'proposed') body += `<p class="small muted" style="margin:0 0 8px">${l.asked ? (l.confirmBy ? `先生から日程の確認のお願いです。${md(l.confirmBy)}までにご連絡がなければ、この日時で確定します。` : '先生から日程の確認のお願いです。日が近いため、ご返事をいただいてから確定します。') : '先生と日時を相談している段階です。まだ確定していません（自動では確定しません）。'}</p>`;
+  if (l.status === 'proposed') body += `<p class="small muted" style="margin:0 0 8px">${l.asked ? (automaticDeadline(l) ? `先生から日程の確認のお願いです。${md(l.confirmBy)}までにご連絡がなければ、この日時で確定します。` : '先生から日程の確認のお願いです。この授業は無回答では確定しません。ご返事をいただいてから確定します。') : '先生と日時を相談している段階です。まだ確定していません（自動では確定しません）。'}</p>`;
   if (l.meetUrl && l.status === 'decided') body += `<a class="btn wide" href="${esc(l.meetUrl)}" target="_blank" rel="noopener">${picon('video')} Meet に参加する</a>`;
   if (req) {
     body += `<div class="ls-req"><div><b>${REQUEST[req.kind]}</b>を連絡済みです${req.note ? `<div class="small muted">${esc(req.note)}</div>` : ''}<div class="small muted">先生の返事をお待ちください。</div></div>${canRequest ? `<button data-action="withdraw" data-id="${esc(req.id)}"${busy ? ' disabled' : ''}>連絡を取り下げる</button>` : ''}</div>`;

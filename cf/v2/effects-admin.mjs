@@ -1,5 +1,5 @@
 // 送れなかったメール・カレンダーを見て、送り直す・取り下げる（教室管理者）。effects 表（effects.mjs）。
-// 毎日の定期実行でも、失敗したものを 3 回まで送り直す（retryFailedEffects）。
+// 毎日の定期実行では、未送信と確認できたものだけ 3 回まで試す（retryFailedEffects）。
 import { fail, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { deliverEffects, recordEffects } from './effects.mjs';
@@ -70,10 +70,10 @@ export const effectsAdminRoutes = {
   },
 };
 
-// 定期実行: 48 時間以内に失敗したものを、3 回まで送り直す
+// 定期実行: 48 時間以内の明確な未送信だけ、3 回まで試す
 export async function retryFailedEffects(env, db, now) {
   const since = new Date(now - 48 * 3600e3).toISOString(), stale = new Date(now - STALE_MS).toISOString();
-  // 失敗したものと、送る途中で止まったもの（応答のあとの送信が切れた・Apps Script が遅かった）。2026-10-11 に 10 分より前の pending を足した
+  // 未送信の失敗と、10分以上着手されなかったもの。送信中・結果不明は含めない。
   const rows = (await db.prepare("select * from effects where attempts < 3 and deliveryState not in ('unknown','sending') and error <> '送っている途中' and createdAt >= ? and (status = 'failed' or (status = 'pending' and createdAt < ?)) order by id limit 50").bind(since, stale).all()).results;
   if (!rows.length) return { retried: 0, sent: 0 };
   const r = await deliverEffects(env, db, rows.map(x => ({ id: x.id, item: parse(x.payload) })),fetch,now);

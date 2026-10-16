@@ -163,3 +163,10 @@ test('challenge retry checks current address and stopped account, and re-notice 
  await scheduleDelivery(h.db2,{notice:{type:'schedule',targets:[{id:before.id,askedAt:before.askedAt,noticeId:before.noticeId}]}},'failed',new Date(h.clock).toISOString());
  assert.equal(row().noticeState,'external','same-millisecond old delivery cannot hold a newer notice');
 });
+
+test('notice deadline presentation suppresses implicit confirmation for held or short-window notices',async()=>{
+ const {automaticDeadline}=await import('../assets/v2/notice-view.js');
+ const l={confirmBy:'2026-10-05',noticeAt:'2026-10-02T03:00:00Z',noticeState:'sent'};
+ assert.equal(automaticDeadline(l),'2026-10-05');
+ for(const change of [{noticeState:'hold'},{noticeState:''},{noticeAt:''},{noticeAt:'bad'},{confirmBy:'2026-10-04'}])assert.equal(automaticDeadline({...l,...change}),'');
+});

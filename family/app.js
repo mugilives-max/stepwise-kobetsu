@@ -1,3 +1,4 @@
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261016-notices';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
@@ -6,7 +7,7 @@ import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=202610
 import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
-import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261008-launch1';
+import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261016-notices';
 import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261016-notices';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
@@ -130,7 +131,7 @@ function homePage() {
   if (asks.length) todo.push(['#money', 'plan', '#5b6672', '受講合意書の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
   if (acks.length) todo.push(['#money', 'check', '#138a8a', '受講合意書の確認', acks.map(([m]) => monthLabel(m)).join('・') + '・先生が記録した承諾の内容を確かめてください', acks.length]);
   const asking = askingLessons(sched.lessons);
-  if (asking.length) { const by = asking.map(l => l.confirmBy).filter(Boolean).sort()[0]; todo.push(['#confirm', 'calendar', '#e0a100', '日程の確認', by ? `「この日程で大丈夫」を押すか、${md(by)}までに都合の悪い授業をお知らせください` : '「この日程で大丈夫」を押すか、都合の悪い授業をお知らせください', asking.length]); }
+  if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '日程の確認', 'お子さまごとに日程と回答期限を確認し、都合の悪い授業をお知らせください', asking.length]);
   const due = money.invoices.filter(v => v.status === 'confirmed');
   if (due.length) todo.push(['#money', 'yen', '#c0392b', 'お支払い', due.map(v => `${monthLabel(v.month)}分 ${yen(v.total)}`).join('・'), due.length]);
   const hw = learning.homework.filter(w => w.status === 'open');
@@ -192,7 +193,7 @@ function confirmPage() {
   const all=askingLessons(forKid(sched.lessons)), groups=new Map();
   if(!all.length)return h+'<p>現在、このお子さまへの確認待ちはありません。確定・変更・取消し後の状態は予定で確認できます。</p><p><a href="#schedule">予定を見る</a></p>';
   for(const l of all) {
-    const eligible=['sent','external'].includes(l.noticeState) && l.noticeAt && l.confirmBy >= new Date(Date.parse(l.noticeAt)+9*3600e3+3*86400e3).toISOString().slice(0,10);
+    const eligible=!!automaticDeadline(l);
     const key=l.studentId+'|'+(eligible?l.confirmBy:'');
     if(!groups.has(key))groups.set(key,{student:l.studentId,by:eligible?l.confirmBy:'',rows:[]});
     groups.get(key).rows.push(l);
