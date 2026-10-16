@@ -1,0 +1,49 @@
+name: Release parent notification improvements
+on:
+  push:
+    branches: ['codex/parent-notification-release-20261016']
+    paths: ['scripts/parent-notification-release-request.json', 'scripts/release-parent-notifications.mjs', '.github/workflows/parent-notification-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: stepwise-production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'mugilives-max/stepwise-kobetsu'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: release-control
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 71ba752ce0a0516c299a51fd2956070b10ac8228
+          path: release-source
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: release-source
+      - run: npm ci
+        working-directory: baseline
+      - name: Validate the pinned release and release controls
+        run: |
+          node --check release-control/scripts/release-parent-notifications.mjs
+          cd release-source
+          node --test test/v2-*.test.cjs
+      - name: Preserve records and publish only when explicitly requested
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: node release-control/scripts/release-parent-notifications.mjs
