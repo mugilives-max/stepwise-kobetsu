@@ -48,14 +48,20 @@ try {
   check(hash(bytes)===hash(await readFile(copy)),'Private backup read-back mismatch.');
  }
  let tables=[];
- const schema=(await cf('/d1/database/91ea045c-94a4-413f-91c1-1e29ebe6eb24/query',{sql:"SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"}))[0];
+ const schema=(await cf('/d1/database/91ea045c-94a4-413f-91c1-1e29ebe6eb24/query',{sql:"SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name"}))[0];
  check(schema?.success && Array.isArray(schema.results),'Could not inspect production schema.');
  tables=schema.results.map(r=>r.name);
+ console.log(JSON.stringify({productionTables:tables.length}));
  check(['conditions','specials','termsConsents','termsVersions','planLines','planRevisions','files','families','students','settings'].every(t=>tables.includes(t)),'Required contract tables missing.');
  const lessonSchema=schema.results.find(r=>r.name==='lessons')?.sql||'';
  check(lessonSchema.includes('askedAt')&&lessonSchema.includes('agreement'),'The published lesson-stage migration is missing; do not run migrations here.');
  async function snapshot(){
-  const results=await cf('/d1/database/91ea045c-94a4-413f-91c1-1e29ebe6eb24/query',{sql:tables.map(t=>'SELECT * FROM '+q(t)).join(';')});
+  const results=[];
+  for(let i=0;i<tables.length;i+=8){
+   const batch=tables.slice(i,i+8);
+   const rows=await cf('/d1/database/91ea045c-94a4-413f-91c1-1e29ebe6eb24/query',{sql:batch.map(t=>'SELECT * FROM '+q(t)).join(';')});
+   results.push(...rows);
+  }
   check(results.length===tables.length && results.every(x=>x.success===true && Array.isArray(x.results)),'Incomplete contract snapshot.');
   return Object.fromEntries(tables.map((t,i)=>[t,results[i].results.map(x=>JSON.stringify(x,Object.keys(x).sort())).sort()]));
  }
@@ -104,8 +110,8 @@ try {
   before=await deployment();raw=await rawWorker();
   console.log(JSON.stringify({activeWorkerVersion:before.versionId,operation}));
   await modulesMatch(raw,baseline,'reviewed-baseline');
-  data=await snapshot();
-  settings=await cf('/workers/scripts/'+worker+'/settings');
+  stage='read-only contract snapshot';data=await snapshot();
+  stage='read-only Worker settings';settings=await cf('/workers/scripts/'+worker+'/settings');
   if(operation==='inspect'){
    check(JSON.stringify(before)===JSON.stringify(await deployment()),'Concurrent deployment during preflight.');
    console.log(JSON.stringify({source:reviewedSource,baseline:base,workerVersion:before.versionId,baselineModulesMatch:true,tablesChecked:tables.length,privateBucket:true,lessonStageSchemaPresent:true,productionWrites:false}));
