@@ -5,9 +5,11 @@
     "changed proposal is explicitly stale",
     "login context and cross-browser password-reset return",
     "invalid/expired invitation recovery",
+    "condition and special-condition links show the exact proposed document number",
     "prerequisites explained next to disabled approval",
     "home overview remains usable after notification-target navigation",
     "invoice due date, bank and void state with no payment button",
+    "actual generated lesson, fee-response and void-invoice links open authenticated current details",
     "all 13 existing notification templates and invoice-void template generated without sending"
   ],
   "externalRequests": [],
