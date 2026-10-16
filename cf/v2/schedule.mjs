@@ -209,7 +209,7 @@ export async function autoConfirm(c) {
     (byStudent[l.studentId] = byStudent[l.studentId] || []).push(l);
   }
   for (const [sid, list] of Object.entries(byStudent)) {
-    await familyNotice(c, sid, '授業の日時が確定しました', `${fullName(list[0])}さんの次の授業の日時が確定しました（締め切りまでにご連絡がなかったため）。\n${list.map(lessonLine).join('\n')}\n変更・お休みは、授業の前日23時までにご連絡ください。`, familyTarget('schedule',{student:sid,month:list[0].date.slice(0,7)}));
+    await familyNotice(c, sid, '授業の日時が確定しました', `${fullName(list[0])}さんの次の授業の日時が確定しました（締め切りまでにご連絡がなかったため）。\n${list.map(lessonLine).join('\n')}\n変更・お休みは、授業の前日23時までにご連絡ください。`, familyTarget('schedule',{student:sid,month:list[0].date.slice(0,7)}),{type:'lesson',targets:list.map(l=>({id:l.id,version:l.version+1}))});
   }
   if (due.length) { c.actor = { kind: 'system', id: 'autoConfirm' }; await audit(c, 'autoConfirm', '', { lessons: due.length }); }
   return { confirmed: Object.values(byStudent).reduce((n,ls)=>n+ls.length,0), students: Object.keys(byStudent).length };
@@ -565,7 +565,7 @@ export const scheduleRoutes = {
     if (moved) {
       await closeRequests(c, l.id, ['move', 'late'], 'staff:' + c.actor.id);
       // メールは確定した授業だけ（調整中・確認待ちはページの表示が変わるだけ）
-      if (l.status === 'decided') await familyNotice(c, l.studentId, '授業の日時を変更しました', `${fullName(await studentRow(c,l.studentId))}さん ${l.subject}の授業の日時を変更しました。\n変更前: ${l.date} ${l.start}（${l.minutes}分）\n変更後: ${n.date} ${n.start}（${n.minutes}分）${delay ? feeText(delay.fee, '開始を遅らせた分の取消料') : ''}`,familyTarget('schedule',{student:l.studentId,month:n.date.slice(0,7),kind:'lesson',refs:n.id+'.'+n.version}));
+      if (l.status === 'decided') await familyNotice(c, l.studentId, '授業の日時を変更しました', `${fullName(await studentRow(c,l.studentId))}さん ${l.subject}の授業の日時を変更しました。\n変更前: ${l.date} ${l.start}（${l.minutes}分）\n変更後: ${n.date} ${n.start}（${n.minutes}分）${delay ? feeText(delay.fee, '開始を遅らせた分の取消料') : ''}`,familyTarget('schedule',{student:l.studentId,month:n.date.slice(0,7),kind:'lesson',refs:n.id+'.'+n.version}),{type:'lesson',targets:[{id:n.id,version:n.version}]});
     }
     await audit(c, 'lessonUpdate', l.id, { moved, lateStart: !!patch.lateStart, ...(delay ? { delayMinutes: delay.mins } : {}) });
     return { lesson: lessonView(next), backToAdjusting, ...(delay && delay.fee ? { fee: { amount: delay.fee.amount } } : {}) };
@@ -601,7 +601,7 @@ export const scheduleRoutes = {
     // 保護者へのお知らせ（切り替え前は送らずに残す）
     const st = await c.db.prepare('select familyName, givenName from students where id = ?').bind(l.studentId).first();
     const wd = '日月火水木金土'[new Date(l.date + 'T00:00:00Z').getUTCDay()];
-    await familyNotice(c, l.studentId, '授業をキャンセルしました', `${st ? [st.familyName, st.givenName].filter(Boolean).join(' ') + 'さんの' : ''}${Number(l.date.slice(5, 7))}/${Number(l.date.slice(8))}(${wd}) ${l.start}〜 ${l.subject}の授業をキャンセルしました。${feeText(fee, 'キャンセル料')}\nこの通知だけでのお振込みは不要です。料金がある場合は請求の案内をご確認ください。`,familyTarget('schedule',{student:l.studentId,month:l.date.slice(0,7),kind:'lesson',refs:l.id+'.'+(l.version+1)}));
+    await familyNotice(c, l.studentId, '授業をキャンセルしました', `${st ? [st.familyName, st.givenName].filter(Boolean).join(' ') + 'さんの' : ''}${Number(l.date.slice(5, 7))}/${Number(l.date.slice(8))}(${wd}) ${l.start}〜 ${l.subject}の授業をキャンセルしました。${feeText(fee, 'キャンセル料')}\nこの通知だけでのお振込みは不要です。料金がある場合は請求の案内をご確認ください。`,familyTarget('schedule',{student:l.studentId,month:l.date.slice(0,7),kind:'lesson',refs:l.id+'.'+(l.version+1)}),{type:'lesson',targets:[{id:l.id,version:l.version+1}]});
     await calendarEffect(c, 'delete', l, '');
     await closeRequests(c, l.id, ['move', 'late', 'cancel', 'rest'], 'staff:' + c.actor.id);
     await audit(c, 'lessonCancel', l.id, fee ? { amount: fee.amount } : {});

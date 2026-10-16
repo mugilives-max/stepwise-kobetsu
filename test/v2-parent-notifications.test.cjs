@@ -96,7 +96,7 @@ test('migration preserves every existing column and row, including issued docume
  const old=createD1({migrate:false});
  for(const m of migrationFiles('migrations-v2').filter(x=>!x.name.startsWith('0027_')))old._sqlite.exec(m.sql);
  old._sqlite.exec('pragma foreign_keys = off');
- for(const t of tables(old)){const cols=columns(old,t);for(const row of h.rows('select '+cols.map(x=>'"'+x+'"').join(',')+' from "'+t+'"'))old._sqlite.prepare('insert into "'+t+'" ('+cols.map(x=>'"'+x+'"').join(',')+') values ('+cols.map(()=>'?').join(',')+')').run(...cols.map(x=>row[x]));}
+ for(const t of tables(old)){const cols=columns(old,t);for(const row of h.rows('select '+cols.map(x=>'"'+x+'"').join(',')+' from "'+t+'"'))old._sqlite.prepare('insert or replace into "'+t+'" ('+cols.map(x=>'"'+x+'"').join(',')+') values ('+cols.map(()=>'?').join(',')+')').run(...cols.map(x=>row[x]));}
  const snapshot=()=>Object.fromEntries(tables(old).map(t=>[t,old._sqlite.prepare('select '+kept[t].map(x=>'"'+x+'"').join(',')+' from "'+t+'" order by rowid').all()]));
  const kept=Object.fromEntries(tables(old).map(t=>[t,columns(old,t)])),before=snapshot();
  old._sqlite.exec(migrationFiles('migrations-v2').find(x=>x.name.startsWith('0027_')).sql);

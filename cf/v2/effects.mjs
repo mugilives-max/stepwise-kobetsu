@@ -47,7 +47,7 @@ export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now())
       else if (!transport && !Array.isArray(payload?.results)) {
         const fs=payload?.failed||[];
         if (!fs.length && payload?.done===batch.length) {state='sent';err='';}
-        else if (batch.length===1 && fs.length===1 && fs[0].kind===q.item.kind) {state='failed';err=fs[0].error||'送信に失敗しました';}
+        else if (batch.length===1 && fs.length===1 && fs[0].kind===q.item.kind) {state=q.item.kind==='mail'?'unknown':'failed';err=fs[0].error||'送信に失敗しました';}
       }
       if (q.item.kind==='calendarCreate' && state==='sent' && !backs.some(w=>w.marker===q.item.marker)) {state='failed';err='カレンダーの予定 ID が返りませんでした';}
       const at=new Date(now).toISOString();

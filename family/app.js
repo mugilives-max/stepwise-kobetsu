@@ -7,7 +7,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261008-launch1';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261016-agreement';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261016-notices';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -157,6 +157,13 @@ function schedulePage() {
   if (!cal) cal = monthCalendar({ today: sched.today, onChange: () => render() });
   let h = `${kidPicker(true)}${cal.bar(esc, `<button class="ibtn" data-action="add-event" aria-label="テスト・行事を知らせる" title="テスト・行事を知らせる">${picon('plus')}</button>`)}${noticeHtml()}`;
   if (needCal(cal.month)) return h + loading;
+  const t=targetParts(route().target||'');
+  if(t.kind==='lesson' && t.refs.length && openedTarget!==route().target) {
+    openedTarget=route().target;
+    const found=calData[cal.month].lessons.find(l=>l.id===t.refs[0].id);
+    if(found){cal.sel=found.date;sheetState={kind:'lesson',id:found.id,pick:'',note:''};}
+    else h+='<p class="notice">この授業は変更・取り下げ済み、または表示範囲外です。現在の予定をご確認ください。</p>';
+  }
   const d = calData[cal.month], multi = multiKids() && !kid, nm = names();
   const lessons = forKid(d.lessons).filter(l => l.status !== 'held'), events = forKid(d.events);
   const asking = askingLessons(lessons), adjusting = lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= d.today);
