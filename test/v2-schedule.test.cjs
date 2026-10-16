@@ -35,7 +35,7 @@ test('a manager sends 仮予定 with a deadline; held ones stay hidden until the
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-16', force: true });
 });
 
-test('予定表を送る: 選んだ未送信の授業だけを送り、ほかは未送信のまま。送れないものが入っていれば何も送らない。体験生は決定にする', async () => {
+test('確認をお願いする（古い名前 sendHeld）: 選んだ下書きだけを確認待ちにし、ほかは下書きのまま。送れないものが入っていれば何も送らない。体験生は確定にする', async () => {
   const { h, auth, kid, parent, lesson } = await world();
   for (const d of ['2026-11-04', '2026-11-11', '2026-12-02']) await h.ok('schedule/lessons/create', { ...lesson, date: d, hold: true });
   const held = () => h.rows("select id, date, status from lessons where studentId = ? order by date", kid.id);
@@ -61,8 +61,11 @@ test('予定表を送る: 選んだ未送信の授業だけを送り、ほかは
   assert.deepEqual(held().map(l => l.status), ['proposed', 'proposed', 'held']);
   const fm = h.mails().slice(mails0).filter(m => m.audience === 'family');
   assert.equal(fm.length, 1, '保護者に 1 回');
-  assert.match(fm[0].subject, /11月の授業予定表/);
-  assert.doesNotMatch(fm[0].subject, /12月/, '選ばなかった月は書かない');
+  assert.match(fm[0].subject, /授業の日程の確認のお願い/);
+  assert.match(fm[0].body, /11\/4\(水\) 17:00〜18:00 数学\n・11\/11/, '選んだ授業を並べる');
+  assert.doesNotMatch(fm[0].body, /12\/2/, '選ばなかった授業は書かない');
+  assert.match(fm[0].body, /#confirm$/, '保護者ページの「日程の確認」を開く');
+  assert.match(r.lineText, /^【ステップワイズ】[\s\S]*family\/#confirm$/, 'LINE に貼る文');
   // 送ったあとの授業をもう一度選ぶと断る
   assert.equal((await h.call('schedule/lessons/sendHeld', { auth, studentId: kid.id, lessonIds: [a.id] })).error.code, 'badTargets');
   const fl = await h.ok('family/schedule', { auth: parent, to: '2026-12-31' });
@@ -130,7 +133,10 @@ test('the nightly run decides 仮予定 past their deadline once, but not ones w
   assert.deepEqual([r.confirmed, r.students], [1, 1]);
   assert.deepEqual(lessonsOf(h).map(l => [l.date, l.status, l.decidedBy]), [['2026-10-08', 'decided', 'system:auto'], ['2026-10-09', 'proposed', '']]);
   assert.equal((await runV2Scheduled(h.env, Date.parse('2026-10-07T00:10:00+09:00'))).confirmed, 0);
-  assert.ok(h.mails().some(m => m.subject.includes('授業予定日が決定しました') && m.status === 'dismissed'));
+  const done = h.mails().filter(m => m.subject.includes('授業の日時が確定しました'));
+  assert.equal(done.length, 1);
+  assert.match(done[0].body, /10\/8\(木\) 17:00〜18:00 数学/, '何が確定したかを書く');
+  assert.equal(lessonsOf(h).find(l => l.date === '2026-10-08').agreement, '締め切り（2026-10-05）までに連絡なし');
 });
 
 test('teachers see only their own lessons; students use their link; parents can switch off the student’s own changes', async () => {

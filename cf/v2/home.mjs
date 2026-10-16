@@ -11,18 +11,21 @@ export const homeRoutes = {
   'home/today': async (c, b) => {
     const me = await requireStaff(c, b, 'manager', 'teacher'), manager = rolesOf(me).includes('manager');
     const today = todayJst(c.now), tomorrow = addDays(today, 1);
-    const [range, pending, reported, grades, fees, plans] = await Promise.all([
+    const [range, pending, reported, grades, fees, plans, near] = await Promise.all([
       scheduleRoutes['schedule/staff/range'](c, { ...b, from: today, to: tomorrow }),
       recordRoutes['records/pending'](c, b),
       recordRoutes['homework/reported'](c, b),
       gradesRoutes['grades/overview'](c, b),
       manager ? billingRoutes['billing/fees/list'](c, b) : null,
       manager ? c.db.prepare("select count(*) n from planLines where status = 'proposed'").first() : null,
+      // 調整中のまま 5 日以内に来る授業（確認をお願いするか、合意を記録して確定する。規約 r9 第15条）
+      manager ? c.db.prepare("select count(*) n from lessons where status = 'proposed' and askedAt = '' and date between ? and ?").bind(today, addDays(today, 5)).first() : null,
     ]);
     const failedEffects = manager ? await failedEffectsCount(c.db, c.now) : 0;
     const todo = [];
     const add = (key, label, count, link, note = '') => { if (count) todo.push({ key, label, count, link, note }); };
     if (manager) add('requests', '生徒・保護者からの連絡', range.openRequests.length, '#schedule', '変更・お休み・キャンセル');
+    if (manager && near) add('adjusting', '調整中のまま近づいている授業', near.n, '#schedule', '5日以内。確認をお願いするか、合意を記録して確定');
     add('records', '記録待ちの授業', pending.lessons.length, '#records', pending.lessons.some(l => l.draft) ? '下書きを含む' : '');
     add('handover', '読んでいない引き継ぎメモ', pending.unreadHandover, '#records');
     add('homework', '宿題の確認待ち', reported.homework.length, '#records', '生徒・保護者が「できた」と知らせた');
@@ -34,7 +37,7 @@ export const homeRoutes = {
     const pendingIds = new Set(pending.lessons.map(l => l.id));
     const name = Object.fromEntries(range.students.map(s => [s.id, s.name])), staff = Object.fromEntries(range.staff.map(s => [s.id, s.name]));
     const lessons = range.lessons.filter(l => ['held', 'proposed', 'decided', 'done'].includes(l.status)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start))
-      .map(l => ({ id: l.id, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, status: l.status, deliveryMode: l.deliveryMode, meetUrl: l.meetUrl, version: l.version,
+      .map(l => ({ id: l.id, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, status: l.status, asked: l.asked, confirmBy: l.confirmBy, deliveryMode: l.deliveryMode, meetUrl: l.meetUrl, version: l.version,
         studentId: l.studentId, studentName: name[l.studentId] || '', staffName: staff[l.staffId] || '', needsRecord: pendingIds.has(l.id) }));
     return { today, tomorrow, nowMs: c.now, todo, lessons, live: range.live };
   },

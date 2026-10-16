@@ -4,12 +4,12 @@ import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=202610
 import { call, session, esc } from '/assets/v2/api.js';
 import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261014-names';
 import { migratePage, migrateClick, migrateSubmit, resetMigrate } from '/staff/migrate.js?v=20261008-launch1';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261008-launch1';
-import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261008-launch1';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261016-stages';
+import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261016-stages';
 import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261016-agreement';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261014-names';
-import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261008-launch1';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261014-names';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261016-stages';
+import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261016-stages';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261016-stages';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261008-launch1';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261016-agreement';

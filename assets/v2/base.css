@@ -45,6 +45,8 @@ button:disabled { opacity: .55; cursor: default; }
 .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--soft); color: var(--primary); margin-right: 4px; }
 .tag.gray { background: #eef1f4; color: var(--muted); }
 .tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.ask { background: var(--warn); color: var(--white); } /* 確認待ち（返事をお願いしている） */
+.line-copy { width: 100%; min-height: 180px; font-size: 13px; line-height: 1.5; }
 .copy { word-break: break-all; font-size: 12.5px; background: var(--white); border: 1px dashed var(--line); padding: 8px; border-radius: 8px; }
 @media (max-width: 520px) { .list > div { grid-template-columns: 1fr; } }
 /* 予定（3段目） */

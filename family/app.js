@@ -26,6 +26,9 @@ let termsChecked = false; // 規約の「同意します」の印（描き直し
 const condChecked = {}; // 受講条件書（通常指導）の「同意します」の印（条件の id ごと）
 const specialChecked = {}; // 特殊指導の「承認します」の印
 
+// ログインしていないときに開いた画面（メール・LINE のリンク。例 #confirm）。ログインや再設定のあと、その画面へ戻す
+const NEXT_KEY = 'sw2_family_next';
+const PAGES = ['home', 'schedule', 'confirm', 'learning', 'money', 'account', 'events', 'grades'];
 function route() {
   const h = location.hash;
   if (h.startsWith('#invite=')) return { page: 'invite', token: decodeURIComponent(h.slice(8)) };
@@ -62,7 +65,7 @@ const ICON = {
   money: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
 };
 const TABS = [['home', 'ホーム'], ['schedule', '予定'], ['learning', '学習'], ['money', 'お支払い']];
-const TITLE = { home: 'ホーム', schedule: '予定', learning: '学習', money: 'お支払い', account: 'アカウント' };
+const TITLE = { home: 'ホーム', schedule: '予定', confirm: '日程の確認', learning: '学習', money: 'お支払い', account: 'アカウント' };
 // 前の URL（#events・#grades）も開けるように
 const pageOf = p => p === 'events' ? 'schedule' : p === 'grades' ? 'learning' : p;
 
@@ -110,8 +113,8 @@ function homePage() {
   if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特殊指導の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・') + '・内容と料金を確かめて承認してください', needSpecials.length]);
   if (asks.length) todo.push(['#money', 'plan', '#5b6672', '受講合意書の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
   if (acks.length) todo.push(['#money', 'check', '#138a8a', '受講合意書の確認', acks.map(([m]) => monthLabel(m)).join('・') + '・先生が記録した承諾の内容を確かめてください', acks.length]);
-  const kari = sched.lessons.filter(l => l.status === 'proposed' && l.confirmBy);
-  if (kari.length) { const by = kari.map(l => l.confirmBy).sort()[0]; todo.push(['#schedule', 'calendar', '#e0a100', '調整中の授業の確認', `${md(by)}までに連絡がなければ、この日時で決まります`, kari.length]); }
+  const asking = askingLessons(sched.lessons);
+  if (asking.length) { const by = asking.map(l => l.confirmBy).filter(Boolean).sort()[0]; todo.push(['#confirm', 'calendar', '#e0a100', '日程の確認', by ? `「この日程で大丈夫」を押すか、${md(by)}までに都合の悪い授業をお知らせください` : '「この日程で大丈夫」を押すか、都合の悪い授業をお知らせください', asking.length]); }
   const due = money.invoices.filter(v => v.status === 'confirmed');
   if (due.length) todo.push(['#money', 'yen', '#c0392b', 'お支払い', due.map(v => `${monthLabel(v.month)}分 ${yen(v.total)}`).join('・'), due.length]);
   const hw = learning.homework.filter(w => w.status === 'open');
@@ -141,8 +144,9 @@ function schedulePage() {
   if (needCal(cal.month)) return h + loading;
   const d = calData[cal.month], multi = multiKids() && !kid, nm = names();
   const lessons = forKid(d.lessons).filter(l => l.status !== 'held'), events = forKid(d.events);
-  const kari = lessons.filter(l => l.status === 'proposed' && l.confirmBy);
-  if (kari.length) h += `<p class="notice small" style="margin:0 0 6px">調整中（オレンジ）${kari.length}件：都合の悪い授業だけ押して連絡してください。連絡がなければ締め切りで決まります。</p>`;
+  const asking = askingLessons(lessons), adjusting = lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= d.today);
+  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px">確認待ち ${asking.length}件：<a href="#confirm">日程の確認</a>で「この日程で大丈夫」を押すか、都合の悪い授業を押して連絡してください。</p>`;
+  if (adjusting.length) h += `<p class="small muted" style="margin:0 0 6px">調整中（オレンジ）${adjusting.length}件：先生と相談中の日時です。まだ確定していません。</p>`;
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
     const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`);
@@ -153,6 +157,21 @@ function schedulePage() {
   };
   const day = (date, first) => cal.dayHead(date, first, `<span class="muted small">授業 ${lessons.filter(l => l.date === date && l.status in RANK).length}件</span>`) + dayRows(date, lessons, events, { names: multi ? nm : {}, canDelete: e => e.createdByKind === 'family' });
   h += cal.html(esc, { cell, day });
+  return h;
+}
+// 確認待ち（今日以降・始まっていない・連絡を出していない）
+function askingLessons(lessons) { return lessons.filter(l => l.status === 'proposed' && l.asked && l.date >= sched.today); }
+const hasOpen = l => (l.requests || []).some(r => r.status === 'open');
+// 日程の確認（メール・LINE のリンク #confirm）: 確認待ちの授業を並べて「この日程で大丈夫」（規約 r9 第14条1項）。都合の悪い授業は押して連絡
+function confirmPage() {
+  if (need('sched')) return loading;
+  const all = askingLessons(forKid(sched.lessons)), ok = all.filter(l => !hasOpen(l)), multi = multiKids() && !kid;
+  let h = `${kidPicker(false)}${noticeHtml()}`;
+  if (!all.length) return h + '<p class="muted">いま確認をお願いしている授業はありません。</p><p><a href="#schedule">予定を見る ›</a></p>';
+  const by = ok.map(l => l.confirmBy).filter(Boolean).sort()[0];
+  h += `<p class="small" style="margin:4px 0 8px">先生から授業の日程の確認のお願いです。${by ? `${md(by)}までにご連絡がなければ、この日時で確定します。` : ''}${ok.some(l => !l.confirmBy) ? '日が近い授業は、ご返事をいただいてから確定します。' : ''}都合の悪い授業は、その授業を押して連絡してください。</p>`;
+  h += lessonRows(all, { names: multi ? names() : {}, today: sched.today });
+  if (ok.length) h += `<div style="margin:14px 0 6px"><button class="primary wide" data-action="agree-all"${dis()}>この日程で大丈夫（${ok.length}件を確定）</button><p class="small muted" style="margin:4px 0 0">押すと、上の${ok.length < all.length ? '（連絡を出していない）' : ''}授業がこの日時で確定します（予約になります）。</p></div>`;
   return h;
 }
 // 学習: 子どもを選んで「記録と宿題」「成績」
@@ -206,7 +225,7 @@ const findLesson = id => { for (const src of [sched].concat(Object.values(calDat
 // 下から出る画面
 function sheetHtml() {
   const s = sheetState; if (!s || !me) return '';
-  if (s.kind === 'lesson') { const l = findLesson(s.id); return l ? lessonSheet(l, s, { names: multiKids() ? names() : {}, busy }) : ''; }
+  if (s.kind === 'lesson') { const l = findLesson(s.id); return l ? lessonSheet(l, s, { names: multiKids() ? names() : {}, canAgree: !previewToken, busy }) : ''; }
   if (s.kind === 'event') return eventSheet(kid ? kids().filter(x => x.id === kid) : kids());
   if (s.kind === 'invoice') { const v = money && money.invoices && money.invoices.find(x => x.id === s.id); return v ? invoiceSheet(v, { multi: multiKids(), busy }) : ''; }
   if (s.kind === 'fee') { const f = money && money.fees && money.fees.find(x => x.id === s.id); return f ? feeSheet(f, { busy, note: s.note }) : ''; }
@@ -226,11 +245,12 @@ function render() {
   nav.innerHTML = me ? TABS.map(([k, l]) => `<a href="#${k}" class="${page === k ? 'on' : ''}"${page === k ? ' aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg><span>${l}</span></a>`).join('') : '';
   document.body.classList.toggle('has-tabs', !!me);
   const acct = document.getElementById('acct'); if (acct) acct.hidden = !me;
+  if (!me && r.page !== 'home' && PAGES.includes(r.page.split('/')[0])) { try { sessionStorage.setItem(NEXT_KEY, r.page); } catch {} } // ログインのあとで戻る
   let h;
   if (r.page === 'invite') h = invitePage(r.token);
   else if (r.page === 'reset') h = `<h1>新しいパスワード</h1>${noticeHtml()}${newPasswordForm('reset', 'パスワードを変える')}`;
   else if (!me) h = r.page === 'forgot' ? `<h1>パスワードの再設定</h1>${noticeHtml()}<form class="stack" data-form="forgot"><label>メールアドレス<input type="email" name="email" required></label><button class="primary"${dis()}>再設定のメールを送る</button></form><p><a href="#">ログインに戻る</a></p>` : loginPage();
-  else h = page === 'schedule' ? schedulePage() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'account' ? accountPage() : homePage();
+  else h = page === 'schedule' ? schedulePage() : page === 'confirm' ? confirmPage() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'account' ? accountPage() : homePage();
   app.className = !me ? 'narrow' : '';
   renderBar(me ? page : '');
   keepSheet(app, () => { app.innerHTML = previewBar() + h + sheetHtml(); });
@@ -238,7 +258,11 @@ function render() {
   const box = app.querySelector('.bsheet');
   if (box && notice && notice.k === 'error') box.querySelector('.bsheet-body').insertAdjacentHTML('afterbegin', noticeHtml()); // 下から出る画面の中でも見えるように
 }
-function signedIn(r) { store.set(r.auth); me = r.me; sched = null; calData = {}; cal = null; learning = null; money = null; contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; grades = null; say(''); location.hash = '#home'; }
+function signedIn(r) {
+  store.set(r.auth); me = r.me; sched = null; calData = {}; cal = null; learning = null; money = null; contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; grades = null; say('');
+  let next = ''; try { next = sessionStorage.getItem(NEXT_KEY) || ''; sessionStorage.removeItem(NEXT_KEY); } catch {}
+  location.hash = '#' + (PAGES.includes(next.split('/')[0]) ? next : 'home');
+}
 const closeSheet = () => { sheetState = null; };
 // 下から出る画面の入力は、描き直す前に読んでおく（描き直すと入力欄が作り直される）
 function captureSheetInputs() {
@@ -306,7 +330,14 @@ app.addEventListener('click', ev => {
   captureSheetInputs();
   run(async () => {
     let r;
-    if (a === 'send-change') {
+    if (a === 'agree' || a === 'agree-all') {
+      // 画面で見ている確認待ち（id と版）をそのまま送る。見ていたものと違えば、サーバーは何も確定しない
+      const list = a === 'agree' ? [findLesson(b.dataset.id)].filter(Boolean) : askingLessons(forKid(sched.lessons)).filter(l => !hasOpen(l));
+      if (!list.length) return;
+      if (!confirm(`${list.length === 1 ? 'この授業' : list.length + '件の授業'}をこの日時で確定しますか？（予約になります。前日23時まではお休みにできます）`)) return;
+      r = await call('family/lessons/agree', { lessons: list.map(l => ({ id: l.id, version: l.version })) }, store.get());
+      if (r.ok) { closeSheet(); sched = null; calData = {}; return say(`${r.decided}件を確定しました。ありがとうございます`, 'ok'); }
+    } else if (a === 'send-change') {
       const s = sheetState; if (!s || s.kind !== 'lesson' || !s.pick) return;
       r = await call('family/lessons/request', { lessonId: s.id, kind: s.pick, note: (s.note || '').trim() }, store.get());
       if (r.ok) { closeSheet(); sched = null; calData = {}; return say({ move: '日時の変更をお願いしました。先生から連絡があります', rest: 'お休みにしました', late: '先生に連絡しました', cancel: 'キャンセルの連絡を受け付けました' + (r.fee ? `（キャンセル料 ${yen(r.fee.amount)}）` : '') }[r.request ? r.request.kind : 'move'], 'ok'); }

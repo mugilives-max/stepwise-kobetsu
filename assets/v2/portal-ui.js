@@ -7,7 +7,7 @@ import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=202
 // - 受講合意書（月ごとに 1 枚。承認は月に 1 回）、請求、キャンセル料
 // - テスト・行事
 import { esc } from '/assets/v2/api.js';
-import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261008-launch1';
+import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261016-stages';
 import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261008-launch1';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
@@ -47,7 +47,8 @@ const statusText = l => {
   if (r) return [`<span class="tag ${r.kind === 'cancel' ? 'danger' : 'warn'}">${REQUEST[r.kind]}・先生の返事待ち</span>`];
   const [cls, label] = STATUS[l.status] || ['gray', l.status];
   const t = [];
-  if (l.status === 'proposed') t.push(`<span class="tag warn">調整中${l.confirmBy ? '・' + md(l.confirmBy) + 'まで' : ''}</span>`);
+  // 調整中（相談中・締め切りなし）と確認待ち（「この日程で大丈夫」か締め切りで確定）
+  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">確認待ち${l.confirmBy ? '・' + md(l.confirmBy) + 'まで' : ''}</span>` : '<span class="tag warn">調整中</span>');
   else if (l.status !== 'decided') t.push(`<span class="tag ${cls}">${label}</span>`);
   return t;
 };
@@ -76,18 +77,20 @@ export function nextLessonHero(l, { names = {}, today = '' } = {}) {
   const when = daysText(l.date, today);
   return `<button type="button" class="hero" data-action="lesson" data-id="${esc(l.id)}"><span class="k">次の授業${when ? `<b>${when}</b>` : ''}</span>
     <strong>${md(l.date)}<small>（${wd(l.date)}）</small> ${l.start}<small>〜${endOf(l.start, l.minutes)}</small></strong>
-    <span class="s">${names[l.studentId] ? esc(given(names[l.studentId])) + '　' : ''}${esc(l.subject)}${l.deliveryMode === 'online' ? '・オンライン' : '・教室'}${l.status === 'proposed' ? '<span class="tag warn">調整中</span>' : ''}</span></button>`;
+    <span class="s">${names[l.studentId] ? esc(given(names[l.studentId])) + '　' : ''}${esc(l.subject)}${l.deliveryMode === 'online' ? '・オンライン' : '・教室'}${l.status === 'proposed' ? (l.asked ? '<span class="tag ask">確認待ち</span>' : '<span class="tag warn">調整中</span>') : ''}</span></button>`;
 }
-// 授業を押したときの画面。state: { id, pick, note }。canRequest=false なら見るだけ
-export function lessonSheet(l, state, { names = {}, canRequest = true, busy = false, sendLabel = '連絡する' } = {}) {
+// 授業を押したときの画面。state: { id, pick, note }。canRequest=false なら見るだけ。canAgree: 確認待ちに「この日程で大丈夫」を出す（保護者だけ）
+export function lessonSheet(l, state, { names = {}, canRequest = true, canAgree = false, busy = false, sendLabel = '連絡する' } = {}) {
   const title = `${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)}`;
   const req = openRequest(l);
-  let body = `<div class="ls-head"><strong>${names[l.studentId] ? esc(names[l.studentId]) + '　' : ''}${esc(l.subject)}${l.kind && l.kind !== '通常' ? `（${esc(l.kind)}）` : ''}</strong><span class="small muted">${l.deliveryMode === 'online' ? 'オンライン' : '教室で'}${l.minutes ? `・${l.minutes}分` : ''}</span><span class="tags">${statusText(l).join('') || '<span class="tag">決定</span>'}</span></div>`;
+  let body = `<div class="ls-head"><strong>${names[l.studentId] ? esc(names[l.studentId]) + '　' : ''}${esc(l.subject)}${l.kind && l.kind !== '通常' ? `（${esc(l.kind)}）` : ''}</strong><span class="small muted">${l.deliveryMode === 'online' ? 'オンライン' : '教室で'}${l.minutes ? `・${l.minutes}分` : ''}</span><span class="tags">${statusText(l).join('') || '<span class="tag">確定</span>'}</span></div>`;
+  if (l.status === 'proposed') body += `<p class="small muted" style="margin:0 0 8px">${l.asked ? (l.confirmBy ? `先生から日程の確認のお願いです。${md(l.confirmBy)}までにご連絡がなければ、この日時で確定します。` : '先生から日程の確認のお願いです。日が近いため、ご返事をいただいてから確定します。') : '先生と日時を相談している段階です。まだ確定していません（自動では確定しません）。'}</p>`;
   if (l.meetUrl && l.status === 'decided') body += `<a class="btn wide" href="${esc(l.meetUrl)}" target="_blank" rel="noopener">${picon('video')} Meet に参加する</a>`;
   if (req) {
     body += `<div class="ls-req"><div><b>${REQUEST[req.kind]}</b>を連絡済みです${req.note ? `<div class="small muted">${esc(req.note)}</div>` : ''}<div class="small muted">先生の返事をお待ちください。</div></div>${canRequest ? `<button data-action="withdraw" data-id="${esc(req.id)}"${busy ? ' disabled' : ''}>連絡を取り下げる</button>` : ''}</div>`;
     return sheet(esc, title, body, 'close-sheet');
   }
+  if (canAgree && canRequest && l.status === 'proposed' && l.asked) body += `<div style="margin:0 0 10px"><button class="primary wide" data-action="agree" data-id="${esc(l.id)}" data-version="${l.version}"${busy ? ' disabled' : ''}>この日程で大丈夫</button><p class="small muted" style="margin:4px 0 0">押すと、この日時で確定します（予約になります）。</p></div>`;
   const choices = canRequest ? (l.choices || []) : [];
   if (!choices.length) {
     body += `<p class="small muted">${!canRequest ? '予定の変更・お休みの連絡は、保護者の方からお願いします。' : ['rested', 'cancelled', 'done'].includes(l.status) ? 'この授業は' + (STATUS[l.status] || [])[1] + 'です。' : '授業が始まっているため、ここからは連絡できません。先生に直接お知らせください。'}</p>`;
@@ -97,7 +100,7 @@ export function lessonSheet(l, state, { names = {}, canRequest = true, busy = fa
     return `<button type="button" class="choice${on ? ' on' : ''}${c === 'cancel' ? ' danger' : ''}" data-action="pick" data-c="${c}" aria-pressed="${on}"><span class="b"><b>${esc(label)}</b>${on ? `<small>${esc(how)}</small>` : ''}</span><span class="cost">${esc(cost)}</span></button>`; }).join('') + '</div>';
   if (state.pick) {
     const offerRest = state.pick === 'rest' && l.status === 'proposed';
-    body += offerRest ? '<p class="small muted">この授業（調整中）をお休みにします。料金はかかりません。</p>' : `<input id="change-note" maxlength="500" value="${esc(state.note || '')}" placeholder="${esc(choiceOf(l, state.pick)[3])}" autocomplete="off">`;
+    body += offerRest ? '<p class="small muted">この授業（まだ確定していません）をお休みにします。料金はかかりません。</p>' : `<input id="change-note" maxlength="500" value="${esc(state.note || '')}" placeholder="${esc(choiceOf(l, state.pick)[3])}" autocomplete="off">`;
     body += `<div class="row" style="margin-top:10px"><button class="${state.pick === 'cancel' ? 'danger' : 'primary'} wide" data-action="send-change"${busy ? ' disabled' : ''}>${busy ? '送っています…' : sendLabel}</button></div>`;
   }
   return sheet(esc, title, body, 'close-sheet');

@@ -41,7 +41,7 @@ export const studentHubRoutes = {
     if (!manager && !(await teacherStudents(c, me.id)).has(s.id)) fail('forbidden', '担当の生徒だけ見られます', 403);
     const staff = Object.fromEntries((await c.db.prepare('select id, name from staff').all()).results.map(x => [x.id, x.name]));
     const all = (await c.db.prepare('select * from lessons where studentId = ? order by date, start').bind(s.id).all()).results;
-    const lessonView = l => ({ id: l.id, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, status: l.status, deliveryMode: l.deliveryMode, staffName: staff[l.staffId] || '', confirmBy: l.confirmBy });
+    const lessonView = l => ({ id: l.id, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, status: l.status, asked: !!l.askedAt, deliveryMode: l.deliveryMode, staffName: staff[l.staffId] || '', confirmBy: l.confirmBy });
     const upcoming = all.filter(l => l.date >= today && ['held', 'proposed', 'decided'].includes(l.status)).slice(0, 20).map(lessonView);
     const past = all.filter(l => l.date < today || ['done', 'rested', 'cancelled'].includes(l.status)).slice(-30).reverse().map(lessonView);
     const recs = (await c.db.prepare("select r.*, l.date, l.start, l.subject from lessonRecords r join lessons l on l.id = r.lessonId where r.studentId = ? and r.status <> 'void' order by l.date desc, l.start desc limit 30").bind(s.id).all()).results

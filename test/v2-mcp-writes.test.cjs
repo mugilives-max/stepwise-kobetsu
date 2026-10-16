@@ -24,7 +24,7 @@ async function world({ scope = '' } = {}) {
   const trial = await h.ok('admin/trials/create', { auth, familyName: '【テスト】高田', givenName: '体験', grade: '中3' });
   const w = (route, body = {}) => h.call(route, { ...body, serviceWriteKey: WKEY });
   const wok = async (route, body = {}) => { const r = await w(route, body); assert.equal(r.ok, true, route + ' ' + JSON.stringify(r)); return r; };
-  const familyMails = to => h.mails().filter(m => m.to === to && /調整中|日時を変更/.test(m.subject));
+  const familyMails = to => h.mails().filter(m => m.to === to && /日程の確認|日時を変更/.test(m.subject));
   const count = sql => h.rows(sql)[0].n;
   return { h, auth, A, B, a, b: bb, trialId: trial.studentId, w, wok, familyMails, count };
 }
@@ -189,15 +189,19 @@ test('reschedule: unsent lessons move silently; sent lessons need a previewed co
   const sentBefore = familyMails('sakai@example.invalid').length;
   let l2 = (await wok('mcp/lessons/get', { lessonIds: [b2] })).lessons[0];
   const dry = await wok('mcp/lessons/reschedule', { lessonId: b2, version: l2.version, date: '2026-10-23', start: '18:00', dryRun: true });
-  assert.deepEqual([dry.effects.mails, dry.effects.to, dry.effects.cancelFee], [1, 'sa***@example.invalid', 'none']);
+  // 確認待ちの日時を変えると調整中に戻る（締め切りを外す）。メールは出さない（確定した授業だけ）
+  assert.deepEqual([dry.effects.mails, dry.effects.to, dry.effects.cancelFee, dry.stage, dry.becomes], [0, '', 'none', 'asking', 'adjusting']);
   assert.equal((await w('mcp/lessons/reschedule', { requestId: 'req-move-0004', lessonId: b2, version: l2.version, date: '2026-10-23', start: '18:00' })).error.code, 'needConfirm');
   assert.equal((await w('mcp/lessons/reschedule', { requestId: 'req-move-0005', lessonId: b2, version: l2.version - 1, date: '2026-10-23', start: '18:00', dryRun: true })).error.code, 'conflict', '版が違う');
   assert.equal((await w('mcp/lessons/reschedule', { requestId: 'req-move-0006', lessonId: b2, version: l2.version, date: '2026-10-21', start: '17:30', dryRun: true })).error.code, 'overlap', '重なりは強制しない');
   const moved = await wok('mcp/lessons/reschedule', { requestId: 'req-move-0007', lessonId: b2, version: l2.version, date: '2026-10-23', start: '18:00', confirm: dry.confirm });
-  assert.deepEqual([moved.lesson.date, moved.lesson.start, moved.mails.length], ['2026-10-23', '18:00', 1]);
-  assert.equal(familyMails('sakai@example.invalid').length, sentBefore + 1);
+  assert.deepEqual([moved.lesson.date, moved.lesson.start, moved.mails.length, moved.lesson.stage, moved.lesson.confirmBy], ['2026-10-23', '18:00', 0, 'adjusting', '']);
+  assert.equal(familyMails('sakai@example.invalid').length, sentBefore);
   l2 = (await wok('mcp/lessons/get', { lessonIds: [b2] })).lessons[0];
-  assert.deepEqual(l2.notices.map(n => n.action), ['propose', 'reschedule'], '送った履歴は事実どおり残る');
+  assert.deepEqual(l2.notices.map(n => n.action), ['propose'], '送った履歴は事実どおり残る（日時の変更はメールなし）');
+  // 調整中に戻った授業は、もう一度確認をお願いできる（新しい締め切り）
+  const pv2 = await wok('mcp/notices/preview', { lessonIds: [b2], studentIds: [b.id] });
+  assert.equal(pv2.targets[0].stage, 'asking');
   // 決定の授業で、前日23時を過ぎた変更は取消料の判断が要るので断る
   h.db2._sqlite.prepare("update lessons set status = 'decided', date = '2026-10-02', start = '18:00' where id = ?").run(b1);
   l1 = (await wok('mcp/lessons/get', { lessonIds: [b1] })).lessons[0];
