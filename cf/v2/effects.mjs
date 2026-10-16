@@ -27,8 +27,8 @@ export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now())
       dismissed++; continue;
     }
     const key=newId('delivery');
-    const r=await db.prepare("update effects set deliveryState = 'sending', deliveryKey = case when deliveryKey = '' then ? else deliveryKey end, attempts = attempts + 1 where id = ? and status in ('pending','failed') and deliveryState not in ('unknown','sending') and error <> '送っている途中'")
-      .bind(key,q.id).run();
+    const r=await db.prepare("update effects set deliveryState = 'sending', deliveryKey = case when deliveryKey = '' then ? else deliveryKey end, attempts = attempts + 1, attemptAt = ? where id = ? and status in ('pending','failed') and deliveryState not in ('unknown','sending') and error <> '送っている途中'")
+      .bind(key,new Date(now).toISOString(),q.id).run();
     if (r.meta?.changes) { const row=await db.prepare('select deliveryKey from effects where id = ?').bind(q.id).first(); mine.push({...q,key:row.deliveryKey}); }
   }
   let sent=0,failed=0,unknown=0,error='';

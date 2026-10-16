@@ -18,7 +18,7 @@ export const effectsAdminRoutes = {
     if(!['sent','notSent'].includes(b.result)||note.length<5) fail('needEvidence','送信先を確認した結果と、その根拠を書いてください');
     const row=await c.db.prepare("select * from effects where id = ? and (deliveryState in ('unknown','sending') or error = '送っている途中')").bind(Number(b.id)).first();
     if(!row) fail('notFound','確認が必要な送信記録がありません',404);
-    if(row.deliveryState==='sending' && Date.parse(row.createdAt)>c.now-10*60e3) fail('busy','送信の応答を待っています。10分後に確認してください',409);
+    if(row.deliveryState==='sending' && Date.parse(row.attemptAt||row.createdAt)>c.now-10*60e3) fail('busy','送信の応答を待っています。10分後に確認してください',409);
     await c.db.prepare("update effects set status = ?, deliveryState = ?, deliveryKey = case when ? = 'notSent' then '' else deliveryKey end, error = ?, sentAt = ? where id = ?")
       .bind(b.result==='sent'?'sent':'failed',b.result==='sent'?'sent':'failed',b.result,'管理者確認：'+note,b.result==='sent'?new Date(c.now).toISOString():'',row.id).run();
     await audit(c,'effectsResolve',String(row.id),{result:b.result,note});
@@ -80,8 +80,8 @@ export async function retryFailedEffects(env, db, now) {
   return { retried: rows.length, sent: r.sent };
 }
 // 止まったままの送信を、次の誰かの操作のついでに送る（応答のあとの送信は、deploy や Apps Script の遅さで切れることがある。2026-10-11）
-// 3 分より前の pending に「送っている途中」の印（error 欄）を付けてから送る（同時に 2 回送らないため。status の CHECK に新しい値を足さずに済む）。
-// 印のまま 10 分たったものは夜の送り直しが拾う
+// 3分より前の未着手 pending だけを送る。deliverEffects の条件付き更新で重複を防ぐ。
+// 新旧いずれの送信中・結果不明も、自動再試行しない。
 export const SWEEP_AFTER_MS = 3 * 60e3, SWEEPING = '送っている途中';
 export async function sweepStaleEffects(env, db, now) {
   if (!env.GAS_URL || !env.SYNC_KEY) return { swept: 0 };

@@ -30,10 +30,11 @@ const specialChecked = {}; // 特殊指導の「承認します」の印
 // ログインしていないときに開いた画面（メール・LINE のリンク。例 #confirm）。ログインや再設定のあと、その画面へ戻す
 const NEXT_KEY = 'sw2_family_next';
 const PAGES = ['home', 'schedule', 'confirm', 'learning', 'money', 'account', 'events', 'grades'];
+const decodeLink = v => {try{return decodeURIComponent(v);}catch{return '';}};
 function route() {
   const h = location.hash;
-  if (h.startsWith('#invite=')) return { page: 'invite', token: decodeURIComponent(h.slice(8)) };
-  if (h.startsWith('#reset=')) return { page: 'reset', token: decodeURIComponent(h.slice(7)) };
+  if (h.startsWith('#invite=')) return { page: 'invite', token: decodeLink(h.slice(8)) };
+  if (h.startsWith('#reset=')) return { page: 'reset', token: decodeLink(h.slice(7)) };
   const target=safeFamilyTarget(h.slice(1));
   return { page: h==='#forgot' ? 'forgot' : targetParts(target).path, target };
 }
@@ -374,7 +375,7 @@ app.addEventListener('submit', ev => {
       }
       money = null;
       if (r.ok) return say(`${monthLabel(el.dataset.month)}の受講合意書を承認しました。下の控えから印刷・PDF保存できます`, 'ok');
-      if (okCount) say(`${okCount}件は承認できましたが、途中で止まりました: ${r.error.message}`, 'error');
+      if (okCount) return say(`${okCount}件は承認できましたが、途中で止まりました: ${r.error.message}`, 'error');
     } else if (kind === 'event') { r = await call('family/events/add', v, store.get()); if (r.ok) { sched = null; calData = {}; closeSheet(); return say('先生に知らせました', 'ok'); } }
     if (!r) return;
     failed(r);
@@ -394,7 +395,7 @@ app.addEventListener('click', ev => {
   if (a === 'add-event') { sheetState = { kind: 'event' }; return render(); }
   if (a === 'invoice') { sheetState = { kind: 'invoice', id: b.dataset.id }; return render(); }
   if (a === 'fee') { sheetState = { kind: 'fee', id: b.dataset.id, note: '' }; return render(); }
-  if (a === 'plan-inquiry') { sheetState = { kind: 'inquiry', month: b.dataset.month, note: '' }; return render(); }
+  if (a === 'plan-inquiry') { sheetState = { kind: 'inquiry', month: b.dataset.month, refs:JSON.parse(b.dataset.refs||'[]'), note: '' }; return render(); }
   if (a === 'agreement-doc') { openAgreementDocument(() => call('family/plans/document', { refs: JSON.parse(b.dataset.refs) }, store.get()), message => { say(message, 'error'); render(); }); return; }
   if (a === 'gr-open') { const win = window.open('', '_blank'); run(async () => { const r = await openFile(() => call('files/link', { id: b.dataset.id }, store.get()), win); if (!r.ok) say(r.error.message, 'error'); }); return; }
   captureSheetInputs();
@@ -414,14 +415,16 @@ app.addEventListener('click', ev => {
     } else if (a === 'withdraw') { if (!confirm('この連絡を取り下げますか？')) return; r = await call('family/lessons/withdraw', { requestId: b.dataset.id }, store.get()); if (r.ok) { closeSheet(); sched = null; calData = {}; return say('連絡を取り下げました', 'ok'); } }
     else if (a === 'hw-done' || a === 'hw-undo') { r = await call('family/homework/report', { id: b.dataset.id, undo: a === 'hw-undo' }, store.get()); if (r.ok) { learning = null; return say(a === 'hw-done' ? 'できたと先生に知らせました' : '取り消しました', 'ok'); } }
     else if (a === 'plan-ack-month') {
-      const [, lines] = planGroups(money.plans).acks.find(([m]) => m === b.dataset.month) || [];
-      for (const l of (lines || [])) { r = await call('family/plans/ack', { id: l.id, version: l.version, ack: 'confirmed' }, store.get()); if (!r.ok) break; }
-      money = null; if (r && r.ok) return say('確認しました。ありがとうございます', 'ok');
+      const lines=JSON.parse(b.dataset.refs||'[]'); let completed=0;
+      for (const l of (lines || [])) { r = await call('family/plans/ack', { id: l.id, version: l.version, ack: 'confirmed' }, store.get()); if (!r.ok) break; completed++; }
+      money = null; if (r && r.ok) return say('確認しました。控えから印刷・PDF保存できます', 'ok');
+      if(completed)return say(completed+'件は確認できました。残りは再確認してください：'+r.error.message,'error');
     } else if (a === 'send-inquiry') {
       const s = sheetState; const note = (s.note || '').trim(); if (!note) return say('内容を書いてください', 'error');
-      const [, lines] = planGroups(money.plans).acks.find(([m]) => m === s.month) || [];
-      for (const l of (lines || [])) { r = await call('family/plans/ack', { id: l.id, version: l.version, ack: 'inquiry', note }, store.get()); if (!r.ok) break; }
+      const lines=s.refs||[]; let completed=0;
+      for (const l of (lines || [])) { r = await call('family/plans/ack', { id: l.id, version: l.version, ack: 'inquiry', note }, store.get()); if (!r.ok) break; completed++; }
       money = null; if (r && r.ok) { closeSheet(); return say('先生に伝えました。返事をお待ちください', 'ok'); }
+      if(completed){closeSheet();return say(completed+'件は伝えました。残りは再確認してください：'+r.error.message,'error');}
     } else if (a === 'contracts-open') {
       contracts = { loading: true }; render();
       const result = await call('family/contracts', {}, store.get());
@@ -439,6 +442,7 @@ app.addEventListener('click', ev => {
 wireSheets(app);
 // 画面の移り変わり: ふわっと入れ替える（対応しているブラウザだけ。「視差効果を減らす」では付けない）
 window.addEventListener('hashchange', () => {
+  if(targetParts(route().target||'').refs.length){ money=null; contracts=null; }
   say(''); closeSheet(); appliedTarget='';openedTarget='';
   if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return render();
   document.documentElement.dataset.nav = 'tab';

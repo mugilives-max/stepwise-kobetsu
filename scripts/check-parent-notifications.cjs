@@ -118,7 +118,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   assert.match(voidHtml,/お支払いは不要/);assert.doesNotMatch(voidHtml,/data-action="inv-report"/);
   const dueHtml=await page.evaluate(async v=>(await import('/assets/v2/portal-ui.js?v=20261016-notices')).invoiceSheet(v,{multi:false}),{...sampleInv,status:'confirmed',bank:'【テスト】架空銀行'});
   assert.match(dueHtml,/2026-10-23/);assert.match(dueHtml,/架空銀行/);
-  await page.setContent('<meta name="viewport" content="width=device-width"><link rel="stylesheet" href="'+origin+'/assets/v2/portal.css">'+dueHtml);
+  await page.setContent('<meta name="viewport" content="width=device-width"><link rel="stylesheet" href="'+origin+'/assets/v2/base.css">'+dueHtml);
   await page.screenshot({path:path.join(out,'06-invoice-payment.png'),fullPage:true});
   report.checks.push('invoice due date, bank and void state with no payment button');
 
@@ -145,6 +145,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await h2.ok('family/fees/relief',{auth:pa,id:fr().id,version:fr().version,reason:'【テスト】事情の確認をお願いします'});
   await h2.ok('billing/fees/relief',{auth:au,id:fr().id,version:fr().version,result:'reduced',amount:1500,response:'【テスト】ご連絡の状況を確認し、減額しました'});
   h2.clock=Date.parse('2026-10-16T12:00:00+09:00');
+  for(const l of h2.rows("select * from lessons where status='decided'"))await h2.ok('schedule/lessons/done',{auth:au,id:l.id,version:l.version});
   const inv=(await h2.ok('billing/confirm',{auth:au,familyId:extra.fam.id,month:'2026-09',dueReviewed:true,dueDate:'2026-10-23',dueNote:'【テスト】LINEで合意'})).invoice;
   await h2.ok('billing/void',{auth:au,id:inv.id,version:inv.version,reason:'【テスト】明細の訂正'});
   // Review copies contain only synthetic data; redact invitation/reset bearer strings.

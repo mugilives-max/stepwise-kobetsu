@@ -281,7 +281,7 @@ export const billingRoutes = {
     await c.db.batch(drafts.map(l => c.db.prepare("update planLines set status = 'proposed', proposedAt = ?, updatedAt = ?, version = version + 1 where id = ? and status = 'draft'").bind(now, now, l.id)));
     const names = Object.fromEntries((await c.db.prepare(`select * from students where id in (${ids.map(() => '?').join(', ')})`).bind(...ids).all()).results.map(s => [s.id, fullName(s)]));
     const sentLines=drafts.map(l=>({...l,version:l.version+1}));
-    await familyNotice(c,drafts[0].studentId,'授業内容・回数・料金をご確認ください（受講合意書）',planNoticeText(sentLines,names),
+    await familyNotice(c,drafts[0].studentId,[...new Set(sentLines.map(l=>l.startDate.slice(0,7)))].join('・')+' の授業内容・回数・料金をご確認ください（受講合意書）',planNoticeText(sentLines,names),
       familyTarget('money',{kind:'plan',refs:targetRefs(sentLines)}),{type:'plan',targets:sentLines.map(l=>({id:l.id,version:l.version}))});
     await audit(c, 'planSend', '', { lines: drafts.length });
     return { sent: drafts.length };
@@ -303,7 +303,7 @@ export const billingRoutes = {
       const sb = await studentBilling(c.db, sid);
       waiting += sb.lessons.filter(ls => !sb.line[ls.id] && !ls.invoiceId && lines.some(l => lineMatches(l, ls))).length;
     }
-    await familyNotice(c,lines[0].studentId,'受講合意書の確認のお願い（再案内）',planNoticeText(lines,names)+(waiting ? '\nこの計画に当たる授業が'+waiting+'回あります。日時の確定と、科目・回数・料金への承認は別です。' : ''),
+    await familyNotice(c,lines[0].studentId,[...new Set(lines.map(l=>l.startDate.slice(0,7)))].join('・')+' 受講合意書の確認のお願い（再案内）',planNoticeText(lines,names)+(waiting ? '\nこの計画に当たる授業が'+waiting+'回あります。日時の確定と、科目・回数・料金への承認は別です。' : ''),
       familyTarget('money',{kind:'plan',refs:targetRefs(lines)}),{type:'plan',targets:lines.map(l=>({id:l.id,version:l.version}))});
     const now = iso(c.now);
     await c.db.batch(lines.map(l => c.db.prepare('update planLines set remindedAt = ? where id = ?').bind(now, l.id)));

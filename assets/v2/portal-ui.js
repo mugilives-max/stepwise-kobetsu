@@ -170,7 +170,7 @@ export function planAckCard(month, lines, { multi, dis = '' }) {
   return `<div class="pcard ack" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書</strong><span class="tag">確かめてください</span></div>
     <p class="small muted">${esc(via)}で承諾いただいた内容を、先生が記録しました（${esc(date)}）。</p>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
-    ${agreementDocumentButtons(lines)}<div class="row"><button class="primary" data-action="plan-ack-month" data-month="${esc(month)}"${dis}>この内容で合っています</button><button data-action="plan-inquiry" data-month="${esc(month)}"${dis}>違うところがある</button></div></div>`;
+    ${agreementDocumentButtons(lines)}<div class="row"><button class="primary" data-action="plan-ack-month" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"${dis}>この内容で合っています</button><button data-action="plan-inquiry" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"${dis}>違うところがある</button></div></div>`;
 }
 // 決まった計画の一覧（月ごと）
 export function planHistory(lines, { multi }) {
@@ -225,7 +225,7 @@ export const specialLine = items => (items || []).filter(x => x.status === 'agre
 export const termsLine = terms => terms && terms.agreed.version ? `<p class="small muted">受講規約 ${esc(terms.agreed.version)} に同意済み（${esc(String(terms.agreed.at).slice(0, 10))}）${terms.agreed.url ? `・<a href="${esc(terms.agreed.url)}" target="_blank" rel="noopener">同意した版の全文</a>` : ''}</p>` : '';
 
 // ---- 請求 ----
-const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['入金の確認待ち', ''], paid: ['お支払い済み', 'ok'] };
+const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['入金の確認待ち', ''], paid: ['お支払い済み', 'ok'], void: ['取り消し済み', ''] };
 export function invoiceRows(invoices) {
   if (!invoices.length) return '<p class="muted small">まだ請求はありません。実施した授業の分を、翌月3日に確定してお知らせします。</p>';
   return '<div class="group">' + invoices.map(v => { const [label, cls] = INV[v.status] || [v.status, ''];

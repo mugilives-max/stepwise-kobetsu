@@ -445,7 +445,7 @@ export async function scheduleClick(ctx, a, b) {
       note=prompt(preview.lineText+'\n\n上の内容と回答期限を実際に案内してから、その日時・方法を記録してください。');
     }
     if(via!=='email'&&!note)return true;
-    const r=await ctx.call('schedule/lessons/renotify',{studentId:l.studentId,lessonIds:[l.id],via,note});
+    const r=await ctx.call('schedule/lessons/renotify',{studentId:l.studentId,lessonIds:[l.id],refs:[{id:l.id,version:l.version}],via,note});
     if(r.ok){data=null;cache={};sheet={kind:'line',title:'再案内の内容・回答期限',text:r.lineText};ctx.say('回答期限を更新しました。案内内容を確認してください','ok');}
     else ctx.say(r.error.message,'error');
     return true;

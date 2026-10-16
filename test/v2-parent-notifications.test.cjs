@@ -134,3 +134,13 @@ test('relay uses per-item receipts and prevents replay after an uncertain delive
  assert.equal(run('first').results[0].status,'sent');assert.equal(run('first').results[0].status,'sent');assert.equal(sent,1);
  fail=true;assert.equal(run('second').results[0].status,'unknown');assert.equal(run('second').results[0].status,'unknown');assert.equal(sent,2);
 });
+
+test('fresh attempt cannot be resolved using the age of its old queued record',async()=>{
+ const {h,auth}=await agreementFixture(),{recordEffects,deliverEffects}=await import('../cf/v2/effects.mjs');
+ const qs=await recordEffects(h.db2,[mail()],h.clock-86400e3);let unlock;
+ const waiting=new Promise(r=>{unlock=r});
+ const sending=deliverEffects(env,h.db2,qs,async(_u,i)=>{await waiting;return response({results:JSON.parse(i.body).items.map(x=>({id:x.deliveryId,status:'sent'}))});},h.clock);
+ for(let n=0;n<30 && h.rows('select deliveryState from effects where id=?',qs[0].id)[0].deliveryState!=='sending';n++)await new Promise(r=>setTimeout(r,0));
+ const r=await h.call('admin/effects/resolve',{auth,id:qs[0].id,result:'notSent',note:'【テスト】確認の記録'});
+ assert.equal(r.error.code,'busy');unlock();await sending;
+});

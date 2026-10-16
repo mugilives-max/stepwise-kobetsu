@@ -417,8 +417,12 @@ export const scheduleRoutes = {
     if(b.preview!==true && via!=='email' && !note) fail('needEvidence','実際に案内した日時と内容が分かる記録を書いてください');
     const bys=confirmByFor(rows.map(l=>l.date),today,b.confirmBy||''), now=iso(c.now);
     if(b.preview===true)return {lineText:lineForLine(askText(fullName(s),rows.map((l,i)=>({...l,confirmBy:bys[i]})))),confirmBy:bys.find(Boolean)||''};
-    await c.db.batch(rows.map((l,i)=>c.db.prepare("update lessons set askedAt = ?, confirmBy = ?, noticeState = ?, noticeAt = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
-      .bind(now,bys[i],via==='email'?'pending':'external',via==='email'?'':now,now,l.id,l.version)));
+    if(Array.isArray(b.refs) && (b.refs.length!==rows.length || rows.some(l=>!b.refs.some(r=>r.id===l.id && Number(r.version)===l.version)))) fail('conflict','案内の確認中に日程が変わりました。画面を読み直してください',409);
+    const cases=rows.map(()=>'(id = ? and version = ?)').join(' or '), params=rows.flatMap(l=>[l.id,l.version]);
+    const guard="status = 'proposed' and askedAt <> ''";
+    const saved=await c.db.prepare("update lessons set askedAt = ?, confirmBy = case id "+rows.map(()=>'when ? then ?').join(' ')+" end, noticeState = ?, noticeAt = ?, noticeId = ?, updatedAt = ?, version = version + 1 where ("+cases+") and "+guard+" and (select count(*) from lessons where ("+cases+") and "+guard+") = ?")
+      .bind(now,...rows.flatMap((l,i)=>[l.id,bys[i]]),via==='email'?'pending':'external',via==='email'?'':now,newId('notice'),now,...params,...params,rows.length).run();
+    if(Number(saved.meta?.changes)!==rows.length) fail('conflict','案内の確認中に日程が変わりました。画面を読み直してください（何も変えていません）',409);
     const text=askText(fullName(s),rows.map((l,i)=>({...l,confirmBy:bys[i]})));
     if(via==='email') await notifySchedule(c,s.id,text,rows.map(l=>l.id));
     await audit(c,'scheduleRenotice',s.id,{ids:rows.map(l=>l.id),via,note,at:now,deadlines:bys});
