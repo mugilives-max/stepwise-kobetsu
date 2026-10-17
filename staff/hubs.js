@@ -60,6 +60,6 @@ export function settingsPage(ctx, me) {
   else if(me.contractType==='employee')h+='<div class="group">'+row('#employment','file','#2f6fde','自分の雇用・勤務','契約書・勤務予定・実績・控え')+'</div>';
   if(me.employmentAccess===false)return h;
   if (roles.includes('manager')) h += '<div class="sec-title">教室の運営</div><div class="group">' + (me.contractType==='owner'?row('#rates', 'yen', '#2e9b5f', '時給と源泉徴収', '講師ごとの授業・面談の時給、甲欄・乙欄'):'') + row('#kinds', 'plan', '#5b6672', '授業の種類と標準料金', '受講合意書を作るときの初期値') + row('#terms', 'file', '#c98a00', '受講規約', '今の版・全文のリンク・家族の同意') + row('#docs', 'file', '#5b6672', '書類のひな形', '受講条件書（通常指導）・受講条件書（特殊指導）・請求書・領収書の見本をすぐ開く') + row('#effects', 'mail', '#d0533c', '送信の記録と控え', '送れなかったメール・カレンダーを送り直す。台帳の控え') + '</div>';
-  if (roles.includes('sysadmin')) h += '<div class="sec-title">システム</div><div class="group">' + row('#staff', 'person', '#7b4fd6', 'スタッフ', '招待・名前と役割・停止') + row('#migrate', 'swap', '#c98a00', '移行と切り替え', '今の仕組みからの写し・照らし合わせ・切り替え') + '</div>';
+  if (roles.includes('sysadmin')) h += '<div class="sec-title">システム</div><div class="group">' + row('#staff', 'person', '#7b4fd6', 'スタッフ', '招待・名前と役割・停止') + '</div>';
   return h;
 }

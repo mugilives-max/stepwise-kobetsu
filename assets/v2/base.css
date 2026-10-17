@@ -797,3 +797,7 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .fbadge.now { background: var(--primary); color: var(--white); }
 .reg-note { display: block; margin-top: 2px; font-size: 12px; color: #b54708; }
 .opt { font-size: 11px; font-weight: 700; line-height: 1.6; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; }
+/* 書類のひな形の一覧: 説明は折り返して全部見せ、右の「見本 ›」は小さく */
+.doc-row { font-size: 15px; }
+.doc-row .v small { white-space: normal; overflow: visible; line-height: 1.5; }
+.doc-row .go { font-size: 13px; color: var(--muted); white-space: nowrap; }

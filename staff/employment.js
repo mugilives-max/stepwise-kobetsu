@@ -249,7 +249,7 @@ export function employmentPage(ctx,me,id='',opts={}){
    const g=s.registration||{},state=s.status==='stopped'?'停止中':g.pending?'本人情報の確認待ち':g.returned?'本人が登録し直し中':g.required&&!g.submitted?(s.status==='active'?'本人情報の登録待ち':s.invitedAt?'招待済み・パスワードの設定待ち':'未招待'):s.status==='active'?'アカウント利用中':s.invitedAt?'招待済み':'未招待';
    const extra=[s.bank?.pending?'振込先の確認待ち':'',s.pendingWork?'実績の確認 '+s.pendingWork+'件':'',s.pendingCorrections?'訂正の申し出 '+s.pendingCorrections+'件':''].filter(Boolean);
    return '<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#employment='+esc(s.id)+'"><span class="v"><span class="lbl">'+esc(s.name)+'</span><small>'+esc([state,...extra].join('・'))+'</small><small>'+esc(s.email||'メール未登録')+'</small></span><span class="go" aria-hidden="true">›</span></a>';
-  }).join('')+'</div>'+(stoppedCount?linkRow(esc,'#employment-stopped','停止中の講師',stoppedCount+'件・ふだんの一覧には出しません'):'');
+  }).join('')+'</div>'+(stoppedCount?linkRow(esc,'#employment-stopped','停止中の講師',stoppedCount+'件'):'');
   return h+'<a class="btn wide" style="margin-top:16px" href="#employment-new">＋ 新しい講師を登録する</a>';
  }
  const d=cache;
