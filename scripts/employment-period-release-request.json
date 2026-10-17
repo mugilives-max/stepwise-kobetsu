@@ -1,0 +1,9 @@
+{
+  "operation": "inspect",
+  "source": "f91c7a64202ef7595d17c8d44970ec69d36c88cd",
+  "checkRuns": [
+    39043929172,
+    39043942831
+  ],
+  "authorization": "2026-10-18 the employment contract body should show the contract period as 2026年11月1日から2027年3月31日まで。 (PR #107); agent deploys Worker changes without confirmation (standing permission). Read-only inspection first."
+}

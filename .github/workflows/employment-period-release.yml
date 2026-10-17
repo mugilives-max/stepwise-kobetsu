@@ -1,0 +1,47 @@
+name: Employment contract period production release
+on:
+  push:
+    branches: ['claude/employment-period-release-20261018']
+    paths: ['scripts/employment-period-release-request.json', 'scripts/release-employment-period.mjs', '.github/workflows/employment-period-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: stepwise-production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'mugilives-max/stepwise-kobetsu'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: release-control
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: f91c7a64202ef7595d17c8d44970ec69d36c88cd
+          path: release-source
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 947b68ecc8383d2f887bb8864b645c7cd25d693f
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: release-source
+      - run: npm ci
+        working-directory: baseline
+      - name: Check pinned release
+        run: |
+          node --check release-control/scripts/release-employment-period.mjs
+      - name: Preserve records and perform explicitly requested operation
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: node release-control/scripts/release-employment-period.mjs
