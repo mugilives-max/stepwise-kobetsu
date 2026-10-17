@@ -4,6 +4,7 @@ import { fail, newId, normEmail, validEmail, iso, audit, sha256Hex } from './uti
 import { requireStaff, requireOwner, staffView } from './staff.mjs';
 import { issueChallenge } from './accounts.mjs';
 import { employmentSnapshot, employmentDocument, firstMonthEnd } from './employment-document.mjs';
+import { rulesReadAt } from './staff-rules.mjs';
 export const dateOK = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d||'')) && Number.isFinite(Date.parse(d+'T00:00:00Z')) && new Date(d+'T00:00:00Z').toISOString().slice(0,10)===d;
 const text=(v,max=500)=>{v=String(v||'').trim();if(v.length>max)fail('tooLong','入力が長すぎます');return v;};
 export const checkVersion=(r,b)=>{if(Number(b.version)!==r.version)fail('conflict','内容が更新されています。読み直して確認してください',409);};
@@ -62,6 +63,7 @@ async function readiness(c,s,p,contracts) {
  }
  const shifts=(await c.db.prepare('select id,date,planVersion,planAgreedVersion,planAgreedAt from workDays where staffId=? and planVersion>0 order by date').bind(s.id).all()).results;
  if(!shifts.some(d=>d.planAgreedVersion===d.planVersion&&d.planAgreedAt&&agreed&&d.date>=agreed.startDate&&d.date<=agreed.endDate))checks.push('初日の勤務予定（本人の確認）');
+ if(!(await rulesReadAt(c,s.id)))checks.push('講師のきまり（本人の確認）'); // 雇用契約書 第9条7項
  if(s.status!=='active')checks.push('本人のアカウント設定');
  return checks;
 }
@@ -73,7 +75,7 @@ async function detail(c,id,me) {
  const mail=(await c.db.prepare("select id,status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'$.notice.type')='challenge' and json_extract(payload,'$.to')=? order by id desc limit 1").bind(s.email).all()).results[0]||null;
  const days=(await c.db.prepare("select id,date,status,planned,planVersion,planAgreedVersion,payrollId from workDays where staffId=? order by date desc limit 60").bind(s.id).all()).results;
  const requests=(await c.db.prepare("select a.id,w.date,a.at,a.detail from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id) order by a.id").bind(s.id).all()).results;
- return {registration:await registrationDetail(c,s.id),bank:await bankSummary(c,s.id),days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
+ return {rulesReadAt:await rulesReadAt(c,s.id),registration:await registrationDetail(c,s.id),bank:await bankSummary(c,s.id),days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
 }
 export const employmentRoutes={
  'employment/list':async(c,b)=>{

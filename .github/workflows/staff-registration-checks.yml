@@ -2,7 +2,7 @@ name: Staff self-registration checks
 on:
   workflow_dispatch:
   push:
-    branches: ['codex/staff-self-registration-20261017', 'claude/staff-onboarding-stages-20261017', 'claude/staff-other-employment-20261017', 'claude/preview-seed-employee-20261017', 'claude/staff-registration-form-20261017', 'claude/staff-pending-page-20261017', 'claude/staff-owner-review-20261017', 'claude/staff-hide-stopped-20261017', 'claude/staff-cleanup-pages-20261017', 'claude/employment-conditions-split-20261017', 'claude/owner-stages-20261018', 'claude/staff-docs-samples-20261018', 'claude/payslip-layout-20261018', 'claude/terms-page-20261018', 'claude/employment-period-20261018', 'claude/contract-shift-insurance-20261018']
+    branches: ['codex/staff-self-registration-20261017', 'claude/staff-onboarding-stages-20261017', 'claude/staff-other-employment-20261017', 'claude/preview-seed-employee-20261017', 'claude/staff-registration-form-20261017', 'claude/staff-pending-page-20261017', 'claude/staff-owner-review-20261017', 'claude/staff-hide-stopped-20261017', 'claude/staff-cleanup-pages-20261017', 'claude/employment-conditions-split-20261017', 'claude/owner-stages-20261018', 'claude/staff-docs-samples-20261018', 'claude/payslip-layout-20261018', 'claude/terms-page-20261018', 'claude/employment-period-20261018', 'claude/contract-shift-insurance-20261018', 'claude/staff-rules-20261018']
     paths: ['cf/**','staff/**','test/**','scripts/check-staff-registration-ui.cjs','.github/workflows/staff-registration-checks.yml']
 permissions:
   contents: read
@@ -25,7 +25,7 @@ jobs:
           node --check --input-type=module < staff/bank.js
           node --check --input-type=module < staff/employment.js
           node --check --input-type=module < staff/app.js
-          node --test test/v2-staff-registration.test.cjs test/v2-staff-bank.test.cjs test/v2-employment.test.cjs test/v2-employment-email.test.cjs test/v2-payroll.test.cjs test/v2-accounts.test.cjs test/v2-backup.test.cjs test/v2-contract-history.test.cjs
+          node --test test/v2-staff-registration.test.cjs test/v2-staff-rules.test.cjs test/v2-staff-bank.test.cjs test/v2-employment.test.cjs test/v2-employment-email.test.cjs test/v2-payroll.test.cjs test/v2-accounts.test.cjs test/v2-backup.test.cjs test/v2-contract-history.test.cjs
       - name: Synthetic employee and owner browser flow
         run: |
           npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
