@@ -138,7 +138,10 @@ try{
   const r=await fetch('https://stepwise-api.stepwise-edu.workers.dev/',{signal:AbortSignal.timeout(30000)}),health=await r.json();check(r.ok&&health.ok&&health.release==='2026-10-16-parent-notifications','Public API health failed.');
   for(const route of ['employment/list','employment/mine','employment/contract/document','work/list','payroll/month','billing/plans/document','family/plans/document']){
    const rr=await fetch('https://stepwise-api.stepwise-edu.workers.dev/v2/'+route,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(30000)});
-   const bb=await rr.json();check(!bb.ok&&!bb.html&&(rr.status===401||rr.status===403||/auth|login|unauthorized/i.test(String(bb.error?.code||bb.code||''))),'Unauthenticated access check failed for '+route+' (HTTP '+rr.status+').');
+   const bb=await rr.json();
+   const expectedMissingDocument=route==='employment/contract/document'&&rr.status===404&&bb.error?.code==='notFound';
+   check(bb.ok===false&&!bb.html&&(expectedMissingDocument||((rr.status===401||rr.status===403)&&['needLogin','forbidden'].includes(bb.error?.code))),'Anonymous access check failed for '+route+' (HTTP '+rr.status+').');
+   console.log(JSON.stringify({route,httpStatus:rr.status,resultCode:bb.error?.code,documentReturned:false}));
   }
   const currentSettings=await cf('/workers/scripts/'+worker+'/settings');
   for(const key of ['bindings','compatibility_date','compatibility_flags','placement','observability']){
@@ -157,7 +160,7 @@ try{
    }
   }
   same(after,await deployed(),'Concurrent deployment during verification.');
-  const summary={source:sourceSha,operation:request.operation,backupPrefix:prefix,beforeVersion:before.versionId,workerVersion:after.versionId,privateBackupVerified:true,modulesMatch:true,migration,tablesChecked:Object.keys(state.columns).length,allExistingRecordsUnchanged:true,newTablesEmpty:true,runtimeSettingsPreserved:true,unauthenticatedRequestsRejected:true,publicAssetsMatch:assets,termsActivated:false,messagesSent:false};
+  const summary={source:sourceSha,operation:request.operation,backupPrefix:prefix,beforeVersion:before.versionId,workerVersion:after.versionId,privateBackupVerified:true,modulesMatch:true,migration,tablesChecked:Object.keys(state.columns).length,allExistingRecordsUnchanged:true,newTablesEmpty:true,runtimeSettingsPreserved:true,anonymousRequestsReturnNoData:true,missingEmploymentDocumentReturns404:true,publicAssetsMatch:assets,termsActivated:false,messagesSent:false};
   await save('manifest-'+request.operation+'.json',Buffer.from(JSON.stringify({...manifest,after,summary})));
   console.log(JSON.stringify(summary));await writeFile(process.env.GITHUB_STEP_SUMMARY,'## Employment release verified\n\n'+JSON.stringify(summary,null,2)+'\n');
  }

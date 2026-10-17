@@ -4,5 +4,5 @@
   "authorization": "2026-10-17: User explicitly requested production publication, preservation of existing contracts/consents/payroll, and Kura verification record.",
   "preflightRun": 38996780186,
   "backupPrefix": "release-backups/employment-20261017/38996905162-1",
-  "reason": "Verify the already published Worker; the previous check used the nonexistent payroll/mgmt route. Corrected to payroll/month. Do not migrate or deploy again."
+  "reason": "Read-only verification only: contract/document looks up the requested contract before checking ownership, so an empty/nonexistent ID correctly returns 404 notFound. Check that response separately from authentication-required collection routes; do not modify or redeploy the application."
 }
