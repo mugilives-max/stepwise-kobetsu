@@ -1,0 +1,8 @@
+{
+  "operation": "pages",
+  "source": "42c8f19fb4da173d3d5c603062707bd534b1954c",
+  "authorization": "2026-10-17: User explicitly requested production publication, preservation of existing contracts/consents/payroll, and Kura verification record.",
+  "preflightRun": 38996780186,
+  "backupPrefix": "release-backups/employment-20261017/38996905162-1",
+  "reason": "Verify published frontend against the reviewed source after PR #83 merge; read existing records only, with no migration or redeployment."
+}
