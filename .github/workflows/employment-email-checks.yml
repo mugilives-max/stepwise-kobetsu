@@ -1,0 +1,35 @@
+name: Employment optional email checks
+on:
+  push:
+    branches: ['codex/employment-optional-email-20261017']
+    paths: ['cf/v2/**','cf/migrations-v2/**','staff/**','test/**','scripts/check-employment-email-ui.cjs','.github/workflows/employment-email-checks.yml']
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Syntax and regression
+        run: |
+          npm run check
+          node --check cf/v2/employment.mjs
+          node --check cf/v2/accounts.mjs
+          node --check --input-type=module < staff/employment.js
+          node --test test/v2-*.test.cjs
+      - name: Synthetic mobile draft and invitation flow
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/check-employment-email-ui.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: employment-email-checks
+          path: employment-email-review-output/
+          retention-days: 14
