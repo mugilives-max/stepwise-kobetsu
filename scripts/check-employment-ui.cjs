@@ -45,7 +45,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await owner.getByText('第1版・案・未発行（紙）',{exact:true}).waitFor();
   let paper=(await w.get()).contracts[0];
   const paperHtml=(await h.ok('employment/contract/document',{auth,id:paper.id})).html;
-  await owner.screenshot({path:path.join(out,'01-owner-onboarding.png'),fullPage:true});
+  await owner.screenshot({path:path.join(out,'01-owner-onboarding.png'),fullPage:true,animations:'disabled'});
   report.checks.push('owner saves profile and creates paper draft without agreement or new mail');
   assert.equal((await w.get()).contracts[0].status,'draft');
 
@@ -74,7 +74,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await self.locator(accept+' input[name="agree"]').check();
   assert.equal(await self.locator(accept+' input[name="consenterName"]').inputValue(),'【テスト】講師 甲');
   await noOverflow(self);
-  await self.screenshot({path:path.join(out,'02-employee-agreement.png'),fullPage:true});
+  await self.screenshot({path:path.join(out,'02-employee-agreement.png'),fullPage:true,animations:'disabled'});
   await self.locator(accept+' button').click();
   await self.getByText('第2版・締結記録あり（電子）',{exact:true}).waitFor();
   r=await w.contract(r.id);assert.equal(r.status,'agreed');
@@ -108,7 +108,9 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await self.locator(actual+' button:not([type="button"])').click();
   await self.getByText('状態：代表の確認待ち',{exact:true}).waitFor();
   await noOverflow(self);
-  await self.screenshot({path:path.join(out,'03-employee-work.png'),fullPage:true});
+  await self.locator('[data-form="wk-submit"] button.primary:not([disabled])').waitFor();
+  await self.screenshot({path:path.join(out,'03-employee-work.png'),fullPage:true,animations:'disabled'});
+  await self.screenshot({path:path.join(out,'03-employee-work-screen.png'),fullPage:false,animations:'disabled'});
   await owner.reload();
   await owner.locator('[data-form="wk-confirm"] input[name="reason"]').fill('【テスト】100分の勤務と賃金を確認');
   await owner.locator('[data-form="wk-confirm"] input[name="reviewed"]').check();
@@ -117,7 +119,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   let v=(await h.ok('payroll/staff',{auth,staffId:staff.id,month:'2026-10'})).preview;
   assert.equal(v.workMinutes,100);assert.equal(v.gross,3333);assert.equal(v.issues.length,0);
   report.checks.push('structured time inputs retain edits; employee agrees, submits 100 minutes; owner confirms; 3,333 yen without duplicate pay');
-  await owner.screenshot({path:path.join(out,'04-owner-work.png'),fullPage:true});
+  await owner.screenshot({path:path.join(out,'04-owner-work.png'),fullPage:true,animations:'disabled'});
 
   for(const [name,html] of [['paper',paperHtml],['electronic',(await h.ok('employment/contract/document',{auth:ta,id:r.id})).html]]){
    const doc=await owner.context().newPage();await doc.setContent(html);await doc.emulateMedia({media:'print'});await doc.evaluate(()=>document.fonts.ready);
@@ -129,7 +131,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   }
   report.checks.push('fixed paper/electronic contract print layout and complete personalized text');
   assert.deepEqual(report.errors,[]);assert.deepEqual(report.externalRequests,[]);
- }catch(e){report.failure=e.stack;if(owner)await owner.screenshot({path:path.join(out,'failure-owner.png'),fullPage:true}).catch(()=>{});if(self)await self.screenshot({path:path.join(out,'failure-employee.png'),fullPage:true}).catch(()=>{});throw e;}
+ }catch(e){report.failure=e.stack;if(owner)await owner.screenshot({path:path.join(out,'failure-owner.png'),fullPage:true,animations:'disabled'}).catch(()=>{});if(self)await self.screenshot({path:path.join(out,'failure-employee.png'),fullPage:true,animations:'disabled'}).catch(()=>{});throw e;}
  finally{fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(report,null,2));await browser.close();await new Promise(r=>server.close(r));}
  console.log(JSON.stringify(report));
 })().catch(e=>{console.error(e);process.exitCode=1;});

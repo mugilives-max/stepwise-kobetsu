@@ -74,7 +74,7 @@ export function employmentPage(ctx,me,id=''){
  const d=cache;h+='<h1>'+esc(d.staff.name)+' さんの雇用・勤務</h1>';
  if(owner)h+='<p><a href="#employment">講師一覧へ</a></p><div class="notice"><strong>次に確認すること</strong><ul>'+d.checks.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>'+(d.checks.length?'':'準備項目の確認がそろっています。')+'</div>';
  h+=profile(ctx,d,owner);
- h+='<h2>2. 契約書・締結の控え</h2><p class="small">案の保存、書面の交付、双方の合意を別々に記録します。古い版と記録は残ります。</p>';
+ h+='<h2>'+(owner?'2. ':'')+'契約書・締結の控え</h2><p class="small">案の保存、書面の交付、双方の合意を別々に記録します。古い版と記録は残ります。</p>';
  if(owner)h+='<form class="stack" data-form="em-create" data-version="'+(d.profile?.version||0)+'">'+select(esc,'method','締結方法',[['','方法を選んでください'],['paper','紙で署名する'],['electronic','電子で同意する']])+'<button'+ctx.dis()+'>保存済みの条件から契約書案を作る</button></form>';
  h+=d.contracts.map(r=>contractCard(ctx,r,owner)).join('')||'<p>発行済みの契約書はありません。</p>';
  if(d.events?.length)h+='<details><summary>交付・同意の履歴</summary><ul>'+d.events.map(e=>'<li>'+esc(e.action)+'：'+esc(at(e.actualAt))+'／記録 '+esc(at(e.recordedAt))+' '+esc(e.actorName)+'</li>').join('')+'</ul></details>';
@@ -84,7 +84,7 @@ export function employmentPage(ctx,me,id=''){
   if(d.inviteDelivery)h+='<p class="small">招待の送信状況：'+esc({pending:'送信待ち',sent:'送信済み',failed:'確認が必要',dismissed:'送信なし'}[d.inviteDelivery.status]||d.inviteDelivery.status)+' '+esc(d.inviteDelivery.error||'')+'</p>';
   if(!d.staff.employmentAccess)h+='<button data-action="em-activate"'+ctx.dis()+'>準備を確認して業務画面を利用可能にする</button>';
  }
- h+='<h2>4. 勤務予定・実績</h2><form class="stack" data-form="wk-open">'+field(esc,'date','確認する勤務日',today(),'date',true)+'<button'+ctx.dis()+'>この日の勤務を開く</button></form><p><a href="#payroll">給与明細を確認する</a></p>';
+ h+='<h2>'+(owner?'4. ':'')+'勤務予定・実績</h2><form class="stack" data-form="wk-open">'+field(esc,'date','確認する勤務日',today(),'date',true)+'<button'+ctx.dis()+'>この日の勤務を開く</button></form><p><a href="#payroll">給与明細を確認する</a></p>';
  if(d.requests?.length)h+='<div class="notice"><strong>対応待ちの訂正申出</strong><ul>'+d.requests.map(x=>'<li><a href="#work='+esc(d.staff.id)+'/'+esc(x.date)+'">'+esc(x.date)+'</a> '+esc(JSON.parse(x.detail).reason)+'</li>').join('')+'</ul></div>';
  if(d.days?.length)h+='<details open><summary>登録した勤務日（新しい60日分）</summary><ul>'+d.days.map(x=>'<li><a href="#work='+esc(d.staff.id)+'/'+esc(x.date)+'">'+esc(x.date)+'</a> '+(x.payrollId?'給与反映済み':({draft:'実績未提出',submitted:'代表の確認待ち',confirmed:'代表確認済み'}[x.status]))+'</li>').join('')+'</ul></details>';
  return h;
@@ -111,7 +111,7 @@ export function workPage(ctx,me,id,date){
  else h+='<h2>勤務予定</h2><pre style="white-space:pre-wrap">'+esc(linesToText(r.planned))+'</pre>';
  h+='<p>本人の予定確認：'+(r.planAgreedAt&&r.planVersion===r.planAgreedVersion?'確認済み':'未確認')+'</p>';
  if(!owner&&r.planVersion&&r.planVersion!==r.planAgreedVersion)h+='<form class="stack" data-form="wk-agree"'+a+'>'+check(esc,'agree','この勤務予定を確認し、同意します')+'<button'+ctx.dis()+'>勤務予定を確認する</button></form>';
- h+='<h2>実際の勤務</h2><p>状態：'+esc({draft:'実績未提出',submitted:'代表の確認待ち',confirmed:'代表確認済み'}[r.status]||'未登録')+'</p>';
+ h+='<h2>実際の勤務</h2><p class="small">この日の授業・準備・その他業務をすべて記録してください。入力した日の給与は、この実績全体で計算します。</p><p>状態：'+esc({draft:'実績未提出',submitted:'代表の確認待ち',confirmed:'代表確認済み'}[r.status]||'未登録')+'</p>';
  if(!r.payrollId)h+='<form class="stack" data-form="wk-submit"'+a+'>'+intervalFields(ctx,'wk-submit',r.submittedAt?r.actual:r.planVersion?r.planned:dayCache.suggestion)+area(esc,'note','補足（取消・休業、途中交代など）',r.note||'')+field(esc,'reason','記録・訂正の理由','','text',true)+'<button class="primary"'+ctx.dis()+'>実績を提出する</button></form>';
  else h+='<p>給与に反映済みです。訂正が必要な場合は、下の欄から代表へ申し出てください。</p><pre style="white-space:pre-wrap">'+esc(linesToText(r.actual))+'</pre>';
  if(dayCache.warnings?.issues.length)h+='<div class="notice"><ul>'+dayCache.warnings.issues.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p>実際に働いた時間は残します。必要な割増・休業手当等は給与の調整で確認します。</p></div>';
