@@ -1,0 +1,9 @@
+{
+  "operation": "inspect",
+  "source": "862fd6f1812bd6f7a141c7cfe6891940b1da46be",
+  "checkRuns": [
+    39079127452,
+    39079130079
+  ],
+  "authorization": "2026-10-18 owner asked to fix the workplace change scope and move 'no online lessons for now' to the staff rules ('その形で直してください'); agent deploys Worker changes without confirmation (standing permission). Read-only inspection first."
+}
