@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "owner saves profile and creates paper draft without agreement or new mail",
+    "employee restricted entry, electronic preference, separate receipt and exact-version acceptance on mobile",
+    "structured time inputs retain edits; employee agrees, submits 100 minutes; owner confirms; 3,333 yen without duplicate pay",
+    "fixed paper/electronic contract print layout and complete personalized text"
+  ],
+  "externalRequests": [],
+  "errors": []
+}
