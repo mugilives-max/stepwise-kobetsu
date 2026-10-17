@@ -3,7 +3,7 @@
 // 画面（/family/・/student/・/staff/）と API（POST /v2/…）を同じ場所から出す。
 //   node scripts/dev-v2-preview.mjs            → http://localhost:8790/family/ （ログイン: parent@example.invalid / family password 1）
 //   node scripts/dev-v2-preview.mjs --live     → 切り替えたあとの状態（「準備中」の案内を出さない）
-// 生徒のマイページは起動時に出るリンク（/student/?k=…）。スタッフは owner@example.invalid / correct horse battery。
+// 生徒のマイページは起動時に出るリンク（/student/?k=…）。スタッフは owner@example.invalid / correct horse battery。初回登録を試す講師は teacher-new@example.invalid / teacher password 1。
 // 本番のデータ・メール・カレンダーには一切つながらない。
 import http from 'node:http';
 import fs from 'node:fs';
@@ -37,7 +37,7 @@ async function seed() {
   // 9月の計画（承認済み）と授業（実施済み）→ 9月分の請求（10/3 に確定）
   for (const [sid, subject] of [[taro.id, '数学'], [taro.id, '英語'], [hana.id, '化学']]) {
     const line = (await h.ok('billing/plans/save', { auth, studentId: sid, subject, kind: '通常', startDate: '2026-09-01', endDate: '2026-09-30', count: 4, minutes: 90, fee: 4500 })).line;
-    await h.ok('billing/plans/consent', { auth, id: line.id, version: h.rows('select version from planLines where id = ?', line.id)[0].version, consentDate: '2026-08-28', via: 'LINE' });
+    await h.ok('billing/plans/consent', { auth, id: line.id, version: h.rows('select version from planLines where id = ?', line.id)[0].version, consentDate: '2026-08-28', consenterName: '架空 花子', consentedAt: '2026-08-28T20:00:00+09:00', via: 'LINE' });
   }
   const sept = [];
   for (const d of ['2026-09-03', '2026-09-10', '2026-09-17', '2026-09-24']) { sept.push(await lesson(taro.id, d, '18:00', '数学')); sept.push(await lesson(taro.id, d, '19:30', '英語')); }
@@ -55,7 +55,7 @@ async function seed() {
   for (const l of [sept[0], sept[1], sept[2], sept[3], sept[8], sept[9], sept[10], sept[11]]) { const cur = h.rows('select status from lessons where id = ?', l.id)[0]; if (cur.status !== 'done') await done(l); }
   h.clock = at('2026-10-03T00:20:00');
   const pv = (await h.ok('billing/family', { auth, familyId: fam.id, month: '2026-09' })).preview;
-  await h.ok('billing/confirm', { auth, familyId: fam.id, month: '2026-09', expectedTotal: pv.total });
+  await h.ok('billing/confirm', { auth, dueReviewed: true, familyId: fam.id, month: '2026-09', expectedTotal: pv.total });
   // 10月: 決定した授業（これから）と仮予定、11月の計画（承認待ち）
   h.clock = at('2026-10-01T09:00:00');
   const oct = [];
@@ -64,7 +64,7 @@ async function seed() {
   for (const l of oct) await decide(l);
   for (const [sid, subject] of [[taro.id, '数学'], [taro.id, '英語'], [hana.id, '化学']]) {
     const line = (await h.ok('billing/plans/save', { auth, studentId: sid, subject, kind: '通常', startDate: '2026-10-01', endDate: '2026-10-31', count: subject === '化学' ? 4 : 5, minutes: 90, fee: 4500 })).line;
-    await h.ok('billing/plans/consent', { auth, id: line.id, version: h.rows('select version from planLines where id = ?', line.id)[0].version, consentDate: '2026-09-28', via: 'LINE' });
+    await h.ok('billing/plans/consent', { auth, id: line.id, version: h.rows('select version from planLines where id = ?', line.id)[0].version, consentDate: '2026-09-28', consenterName: '架空 花子', consentedAt: '2026-09-28T20:00:00+09:00', via: 'LINE' });
   }
   h.clock = at('2026-10-01T20:00:00'); await done(oct[0]); await done(oct[1]);
   await rec(oct[0], { range: '二次関数の利用（FS3 p.60-63）', rangeParts: [{ unit: '二次関数の利用', material: 'FS3', pages: 'p.60-63' }], comment: '文章題の立式が自分でできるようになってきました。', staffNotes: { understanding: '4' }, homework: [{ title: 'p.64-66', material: 'FS3', dueMode: 'nextLesson', dueSubject: '数学' }] });
@@ -92,6 +92,11 @@ async function seed() {
   await exam(taro.id, { kind: 'mock', name: '北辰テスト（第4回）', date: '2026-09-06', totalDeviation: 58.2 }, [{ subject: '英語', score: 72, max: 100, deviation: 61.0 }, { subject: '数学', score: 60, max: 100, deviation: 55.4 }, { subject: '国語', score: 68, max: 100, deviation: 57.1 }], { good: '英語の長文が安定してきた', issues: '数学の大問 3 以降', nextSteps: '関数の文章題を毎週 2 題' });
   await exam(taro.id, { kind: 'mock', name: '北辰テスト（第5回）', date: '2026-10-04', totalDeviation: 60.1 }, [{ subject: '英語', score: 78, max: 100, deviation: 63.2 }, { subject: '数学', score: 66, max: 100, deviation: 58.0 }, { subject: '国語', score: 65, max: 100, deviation: 55.9 }]);
   await exam(taro.id, { kind: 'regular', name: '1学期期末テスト', date: '2026-07-03' }, [{ subject: '英語', score: 81, max: 100, average: 62.3, rank: 18, rankOf: 160 }, { subject: '数学', score: 74, max: 100, average: 58.1, rank: 31, rankOf: 160 }]);
+  // 講師の初回登録を試すための架空の講師（代表が氏名・メールで招待し、本人がパスワードを設定した直後の状態）。
+  // ログイン: teacher-new@example.invalid / teacher password 1。本人情報の登録から始まる
+  const newcomer = (await h.ok('employment/save', { auth, familyName: '架空', givenName: '新人', email: 'teacher-new@example.invalid', data: {} })).staff;
+  await h.ok('employment/invite', { auth, staffId: newcomer.id, confirm: true });
+  await h.ok('staff/invite/accept', { token: h.linkFrom(h.mails().at(-1)), password: 'teacher password 1' });
   const k = h.rows('select linkCode from students where id = ?', taro.id)[0].linkCode;
   const kh = h.rows('select linkCode from students where id = ?', hana.id)[0].linkCode;
   if (LIVE) h.db2._sqlite.prepare("insert into settings (key, value, updatedAt) values ('live', '1', ?) on conflict(key) do update set value = '1'").run(new Date().toISOString());
@@ -135,4 +140,5 @@ server.listen(PORT, () => {
   console.log(`student (太郎): http://localhost:${PORT}/student/?k=${encodeURIComponent(k)}`);
   console.log(`student (花):   http://localhost:${PORT}/student/?k=${encodeURIComponent(kh)}`);
   console.log(`staff: http://localhost:${PORT}/staff/  (owner@example.invalid / correct horse battery)`);
+  console.log(`staff (新しい講師・初回登録): http://localhost:${PORT}/staff/  (teacher-new@example.invalid / teacher password 1)`);
 });

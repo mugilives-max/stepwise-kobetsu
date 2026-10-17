@@ -32,7 +32,7 @@ export function bankPage(ctx,me,id=''){
  }
  if(cache.loading)return '<p>読み込んでいます…</p>';if(!cache.ok)return ctx.notice();
  const {esc}=ctx,d=cache,latest=d.requests.find(r=>r.id===d.latestId),current=d.requests.find(r=>r.id===d.acceptedId);
- let h=ctx.notice()+'<p><a href="'+(owner?'#employment='+esc(id):'#employment')+'">雇用・勤務へ戻る</a></p><h1>給与の振込先</h1><p>'+esc(d.staff.name)+' さん</p><p>口座情報を確認できるのは本人と代表です。登録だけで振込は行われません。</p>';
+ let h=ctx.notice()+(owner?'<p><a href="#employment='+esc(id)+'">雇用・勤務へ戻る</a></p>':'')+'<h1>給与の振込先</h1><p>'+esc(d.staff.name)+' さん</p><p class="small muted">口座情報を見られるのは本人と代表だけです。登録しただけで振込が行われることはありません。</p>';
  if(!owner&&step==='edit'){
   h+='<h2>振込先を入力</h2><p>本人名義の口座を入力してください。ゆうちょ銀行は記号・番号ではなく、他行からの振込用の店名・預金種別・口座番号を確認してください。7桁未満の口座番号は先頭に0を付けてください。</p><form class="stack" autocomplete="off" data-form="bank-edit">';
   for(const [k,label] of fields){
@@ -45,10 +45,10 @@ export function bankPage(ctx,me,id=''){
   h+='<h2>振込先と同意内容を確認</h2>'+accountHtml(ctx,draft,true)+'<form class="stack" data-form="bank-submit">'+box(ctx,'agree',d.consentText,agreed)+'<button class="primary"'+ctx.dis()+'>同意して振込先を提出する</button><button type="button" data-action="bank-edit-again"'+ctx.dis()+'>入力内容を修正する</button></form>';
   return h;
  }
- if(current)h+='<h2>現在の振込先</h2>'+record(ctx,current);else h+='<p>システム内で確認済みの振込先はまだありません。別途確認した記録がある場合は雇用画面で確認できます。</p>';
+ if(current)h+='<h2>現在の振込先</h2>'+record(ctx,current);else if(owner)h+='<p>システム内で確認済みの振込先はまだありません。別途確認した記録がある場合は雇用画面で確認できます。</p>';else if(!latest)h+='<p>給与を振り込む、本人名義の口座を登録してください。登録すると代表が確認します。</p>';
  if(latest&&latest.id!==d.acceptedId)h+='<h2>今回の提出</h2>'+record(ctx,latest)+(current?'<p>変更の確認が完了するまでは、上の確認済み口座を振込先として扱います。直近の振込への適用は代表に確認してください。</p>':'');
  if(!owner){
-  h+='<button data-action="bank-edit"'+ctx.dis()+'>'+(latest?'振込先を変更・再提出する':'振込先を登録する')+'</button>';
+  h+='<button'+(latest?'':' class="primary"')+' data-action="bank-edit"'+ctx.dis()+'>'+(latest?'振込先を変更・再提出する':'振込先を登録する')+'</button>';
   if(latest?.status==='pending')h+='<p>提出済みです。代表の確認をお待ちください。</p>';
  }else if(latest?.status==='pending'){
   h+='<form class="stack" data-form="bank-accept">'+box(ctx,'confirm','口座情報の全文と本人の同意を確認し、この口座を給与の振込先として採用します',ownerConfirm)+'<button class="primary"'+ctx.dis()+'>確認して振込先に採用する</button></form><details><summary>修正をお願いする</summary><form class="stack" data-form="bank-return"><label>修正してほしい内容（口座番号は書かないでください）<textarea name="reason" required maxlength="200">'+esc(reason)+'</textarea></label><button'+ctx.dis()+'>修正を依頼する</button></form></details>';

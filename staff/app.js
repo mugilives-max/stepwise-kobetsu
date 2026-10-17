@@ -1,5 +1,5 @@
-import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-bank';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-otherwork';
+import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-looks';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-looks';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
@@ -58,10 +58,11 @@ const ICON = {
   monthly: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
   payroll: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
+  employment: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5h6M9 10h6M9 14h6M9 18h3"/>',
 };
 function navItems() {
   if (!me) return [];
-  if(me.employmentAccess===false)return [['employment','雇用・勤務','settings'],['settings','設定']]; // 入職の手続き中は、手続きの画面だけ（給与明細は契約のあとに雇用・勤務の中から）
+  if(me.employmentAccess===false)return [['employment','入職の手続き','employment'],['settings','設定']]; // 入職の手続き中は、手続きの画面だけ（給与明細は契約のあとに雇用・勤務の中から）
   const m = me.roles.includes('manager'), t = me.roles.includes('teacher');
   if (m) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['monthly', '月の仕事'], ['settings', '設定']];
   if (t) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['payroll', '給与'], ['settings', '設定']];
@@ -74,6 +75,7 @@ function tabOf(page) {
   if (['records', 'record'].includes(page)) return 'home';
   if (['plans', 'billing'].includes(page)) return 'monthly';
   if (page === 'payroll') return m ? 'monthly' : 'payroll';
+  if (me && me.employmentAccess === false && ['bank', 'employment', 'work'].includes(page)) return 'employment'; // 入職の手続き中は、手続きの画面が入口（振込先・勤務の日はその下）
   if (['bank','employment','work','staff', 'migrate', 'account', 'rates', 'kinds', 'terms', 'effects'].includes(page)) return 'settings';
   return page;
 }
@@ -97,7 +99,7 @@ function renderBack(r) {
   if (html) bar.insertAdjacentHTML('afterbegin', html);
   document.body.classList.toggle('has-back', !!html);
   // 記録を書く画面: 上の帯に名前と日時・三本線（「ステップワイズ」は出さない）。下のメニューは隠して、その画面だけにする
-  const info = !me ? null : r.page === 'record' ? recordBar() : r.page === 'home' ? todayBar() : r.page === 'students' ? studentsBar() : r.page === 'student' ? studentHubBar() : r.page === 'family' ? familyBar() : r.page === 'gradesOf' ? gradesBar() : PAGE_TITLE[r.page] ? { title: PAGE_TITLE[r.page], sub: '', right: '' } : null; // 上の帯に画面の名前
+  const info = !me ? null : r.page === 'record' ? recordBar() : r.page === 'home' ? todayBar() : r.page === 'students' ? studentsBar() : r.page === 'student' ? studentHubBar() : r.page === 'family' ? familyBar() : r.page === 'gradesOf' ? gradesBar() : PAGE_TITLE[r.page] ? { title: r.page === 'employment' && me.employmentAccess === false ? '入職の手続き' : PAGE_TITLE[r.page], sub: '', right: '' } : null; // 上の帯に画面の名前
   bar.querySelectorAll('.bar-title, .bar-right').forEach(x => x.remove());
   if (info) {
     const back = bar.querySelector('a.back');
