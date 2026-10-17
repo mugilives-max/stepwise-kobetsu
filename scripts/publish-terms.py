@@ -17,50 +17,7 @@ REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261015-r9"
 REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261015_R9.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
 EXPECTED_SOURCE_BLOB = "753f3f1c8bf2435c661bb4d1009c3c017e397932"
-OLD = {
-    "terms/2026-11-20261012-r2/index.html": "354a8bf240736f03fc9d401e8e693f5dae2c435b",
-    "terms/2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf": "6bdba5b303751f968ef031d0ee0db00e86981a8c",
-    "terms/2026-11-20261012-r3/index.html": "85e0c094cc0653e5b4983ed6c8793424c9b89556",
-    "terms/2026-11-20261012-r3/stepwise-terms-2026-11-20261012-r3.pdf": "e8c2f643a818e79e9e619a279a416de0e1f8d708",
-    "terms/2026-11-20261012-r3/waiver/index.html": "5ffc89314099bbc37d218b4563e60987294ea63f",
-    "terms/2026-11-20261012-r3/waiver/stepwise-waiver-guide-20261012.pdf": "a337e856f11b6301d4be8e1a237092ec804aba8c",
-    "terms/2026-11-20261012/index.html": "8ad7081a13be099e8b3f8e76c04d986886bb971c",
-    "terms/2026-11-20261012/stepwise-terms-2026-11-20261012.pdf": "a391290531d024ff6d3bb1298fe2394b59345b92",
-    "terms/2026-11-20261014-r4/index.html": "f72916fd77944ad3b9ff5aba58847c824bed430a",
-    "terms/2026-11-20261014-r4/stepwise-terms-2026-11-20261014-r4.pdf": "603aa2417b772ae43911408c5743c3bf9efb051f",
-    "terms/2026-11-20261014-r5/documents/agreement/agreement.pdf": "54d9d00bec1eb7b6e9077feb2be4ee709d623aaf",
-    "terms/2026-11-20261014-r5/documents/agreement/index.html": "06835fbc839421ddcc3accfe2e057c412ebe4b87",
-    "terms/2026-11-20261014-r5/documents/regular/index.html": "8ac2477aff99ce9ff7b666761a4f38f6e186eeb3",
-    "terms/2026-11-20261014-r5/documents/regular/regular.pdf": "cc87798034fe25b6191213a0b335176e3dbdb1bb",
-    "terms/2026-11-20261014-r5/documents/special/index.html": "98fdad42f68c183f88c61a6c412b2fb107f3b973",
-    "terms/2026-11-20261014-r5/documents/special/special.pdf": "7ecf138d100ac4bf5c203cd7bbc134c54853f8f7",
-    "terms/2026-11-20261014-r5/index.html": "88c2dc9fbeca0c373fc2bdc503d99f369fe49840",
-    "terms/2026-11-20261014-r5/stepwise-terms-2026-11-20261014-r5.pdf": "5e675693620db1899bf55d899956d35808e5a28b",
-    "terms/2026-11-20261014-r6/documents/agreement/agreement.pdf": "d12740bb845b6cd14822f8cd06c0d6dae7d03448",
-    "terms/2026-11-20261014-r6/documents/agreement/index.html": "af220eb557d78867de84fd82c34903131abc6492",
-    "terms/2026-11-20261014-r6/documents/regular/index.html": "b174312d088a3f031773efcc1e9c2aa02ba19829",
-    "terms/2026-11-20261014-r6/documents/regular/regular.pdf": "e08c79187531ba3e7f4d37afca933d68fc395b39",
-    "terms/2026-11-20261014-r6/documents/special/index.html": "b77b0effdb8526ba58741ac78fe884177ab88f7e",
-    "terms/2026-11-20261014-r6/documents/special/special.pdf": "ca343fbe764f5a9cff280acbcb6bcfd7207a3257",
-    "terms/2026-11-20261014-r6/index.html": "d5a835de01b0724a219cc23f7eed5dd0d0777e46",
-    "terms/2026-11-20261014-r6/stepwise-terms-2026-11-20261014-r6.pdf": "d203cd50d2194b7d43834b287c27cd35138876f5",
-    "terms/2026-11-20261014-r6/waiver/index.html": "fe903a8e627fab3b509c2dd2422131a052961ee8",
-    "terms/2026-11-20261014-r6/waiver/waiver.pdf": "2098c1c5fc0e32dd064758c7f347192c9834c4ec",
-    "terms/2026-11-20261014-r7/index.html": "e8b1f1ee6f1a2571cbce9e7e2a96369e18e34bc7",
-    "terms/2026-11-20261014-r7/stepwise-terms-2026-11-20261014-r7.pdf": "814d0f528d84bed989720dbed0e0c3c781893a34",
-    "terms/2026-11-20261015-r8/documents/agreement/agreement.pdf": "b4c5c016e2567d8c33711d681bd5268852aec9b2",
-    "terms/2026-11-20261015-r8/documents/agreement/index.html": "43bce6cb1d67942323490a9c22c038f461229a03",
-    "terms/2026-11-20261015-r8/documents/regular/index.html": "c19735f21b488cd0a4cefee37220aceb7c69874c",
-    "terms/2026-11-20261015-r8/documents/regular/regular.pdf": "6d1fd7c663e87c8a42be1b073f71406807364a5e",
-    "terms/2026-11-20261015-r8/documents/special/index.html": "32864a3983bcd46219b21052ea901a6f87faf22c",
-    "terms/2026-11-20261015-r8/documents/special/special.pdf": "f2c4abc5196a6c28439f9b3b25b9a0ff7f1eb772",
-    "terms/2026-11-20261015-r8/index.html": "42a104075f3a3c7d301157280e416291485dbc7d",
-    "terms/2026-11-20261015-r8/stepwise-terms-2026-11-20261015-r8.pdf": "6cdab87b4fc7c94f6245cef423ec0a1f94b24d6a",
-    "terms/2026-11-20261015-r8/waiver/index.html": "ead31f1b5c3e5b38859b20fa78609318c8cb952b",
-    "terms/2026-11-20261015-r8/waiver/waiver.pdf": "4dc786329631ff470dfee8c4a99addb2900e7d8f",
-    "terms/2026-11/index.html": "84325add6c395ff9cbe8588abcc3c0221e40b03f",
-    "terms/2026-11/stepwise-terms-2026-11.pdf": "94bcb70dc1eb25afdd78393c306d0d5ec518e6e9"
-}
+OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
     return hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
@@ -225,51 +182,23 @@ for filename,pair in manifest["related"].items():
     assert not any(phrase in pair["after"] for phrase in ["特殊指導","通常指導","受講条件書（"]),filename
 assert manifest["related"]["WAIVER_GUIDE.md"]["before"].replace("20261015-r8","20261015-r9").replace("（r8）","（r9）")==manifest["related"]["WAIVER_GUIDE.md"]["after"]
 
-html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月15日改訂）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">規約の版一覧・旧版</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
+html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月15日改訂）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">受講規約と書類の一覧</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
 (OUT / "index.html").write_text(html, encoding="utf-8")
 
+# 2026-10-18 本人「過去の受講規約が全部見れちゃうのなんか嫌」: サイトの一覧には正式版だけを出す。旧版は、ご家庭が同意した版だけを残す
+# （同意のない作成途中の版はサイトに載せない。外した版の控えは本人のドライブ Kura/塾/受講規約/旧版_サイトから外した版_20261018）
 index_html = """<!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約の版一覧｜ステップワイズ個別指導</title>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約｜ステップワイズ個別指導</title>
 <style>body{font-family:"Yu Gothic","Noto Sans CJK JP",Meiryo,sans-serif;color:#172526;line-height:1.9;margin:36px auto;padding:0 22px;max-width:760px}h1{font-size:1.6rem}h2{font-size:1.2rem;border-bottom:1px solid #b9cdcb;padding-bottom:7px;margin-top:28px}a{color:#126964}li{margin:9px 0}.note{color:#405452}</style></head><body>
-<p><a href="/">ステップワイズ個別指導</a></p><h1>受講規約の版一覧</h1>
+<p><a href="/">ステップワイズ個別指導</a></p><h1>受講規約</h1>
 <p>受講規約の本文とPDFをご確認いただけます。適用されるのは、ご家庭が同意した版です。掲載の更新だけで過去に同意した内容を置き換えることはありません。</p>
 <h2>正式版：2026年11月版（2026年10月15日改訂・受講条件と特別単価の整理）</h2>
 <p>適用開始日：2026年11月1日。全8章・33条。共通の条件を「受講条件書」、準備負担による単価の例外を「特別単価合意書」、月ごとの受講内容を「受講合意書」で定めます。準備負担の判断基準・料金の計算・期限・承認・予約の条件は変えていません。</p>
 <ul><li><a href="2026-11-20261015-r9/">Web版を読む</a></li><li><a href="2026-11-20261015-r9/stepwise-terms-2026-11-20261015-r9.pdf">PDFで開く</a></li></ul>
-<h2>旧版：2026年11月版（2026年10月15日改訂・r8）</h2>
-<p>受講の流れに沿って全体の構成を整理した版です。</p>
-<ul><li><a href="2026-11-20261015-r8/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261015-r8/stepwise-terms-2026-11-20261015-r8.pdf">旧版のPDFで開く</a></li></ul>
-<p>当時の空欄様式：<a href="2026-11-20261015-r8/documents/regular/">受講条件書（通常指導）</a>・<a href="2026-11-20261015-r8/documents/special/">受講条件書（特殊指導）</a>・<a href="2026-11-20261015-r8/documents/agreement/">受講合意書</a>。<a href="2026-11-20261015-r8/waiver/">免除申請案内</a>（各ページにPDF）。</p>
-<h2>旧版：2026年11月版（2026年10月14日改訂・r7）</h2>
-<p>受講合意書の役割を冒頭で説明した版です。</p>
-<ul><li><a href="2026-11-20261014-r7/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261014-r7/stepwise-terms-2026-11-20261014-r7.pdf">旧版のPDFで開く</a></li></ul>
-<h2>旧版：2026年11月版（2026年10月14日改訂・r6）</h2>
-<p>適用開始日：2026年11月1日。全8章・36条。受講内容の合意と、授業日時の調整・予約を分けた版です。塾内部の「下書き」の説明を外し、料金や予約の条件は変えていません。</p>
-<ul><li><a href="2026-11-20261014-r6/">Web版を読む</a></li><li><a href="2026-11-20261014-r6/stepwise-terms-2026-11-20261014-r6.pdf">PDFで開く</a></li></ul>
 <h2>関連書類の空欄様式</h2>
 <ul><li><a href="2026-11-20261015-r9/documents/regular/">受講条件書</a>（<a href="2026-11-20261015-r9/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261015-r9/documents/special/">特別単価合意書</a>（<a href="2026-11-20261015-r9/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261015-r9/documents/agreement/">受講合意書</a>（<a href="2026-11-20261015-r9/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
-<h2>旧版：2026年11月版（2026年10月14日改訂・r5）</h2>
-<p>契約書類の名称を受講条件書・受講合意書に統一した版です。</p>
-<ul><li><a href="2026-11-20261014-r5/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261014-r5/stepwise-terms-2026-11-20261014-r5.pdf">旧版のPDFで開く</a></li></ul>
-<p>当時の空欄様式：<a href="2026-11-20261014-r5/documents/regular/">通常指導</a>・<a href="2026-11-20261014-r5/documents/special/">特殊指導</a>・<a href="2026-11-20261014-r5/documents/agreement/">受講合意書</a>（各ページにPDF）。</p>
-<h2>旧版：2026年11月版（2026年10月14日改訂・r4）</h2>
-<p>授業予定の段階と予約を整理した版です。</p>
-<ul><li><a href="2026-11-20261014-r4/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261014-r4/stepwise-terms-2026-11-20261014-r4.pdf">旧版のPDFで開く</a></li></ul>
 <h2>キャンセル料金の免除申請</h2>
 <ul><li><a href="2026-11-20261015-r9/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261015-r9/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
-<p><a href="2026-11-20261014-r6/waiver/">旧案内（r6・r7）</a>、<a href="2026-11-20261012-r3/waiver/">旧案内（r3～r5の条番号）</a>も保存しています。</p>
-<h2>旧版：2026年11月版（2026年10月12日改訂・r3）</h2>
-<p>特殊指導の途中終了と返金の扱いを明確にし、免除申請の共通案内を用意した版です。</p>
-<ul><li><a href="2026-11-20261012-r3/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261012-r3/stepwise-terms-2026-11-20261012-r3.pdf">旧版のPDFで開く</a></li></ul>
-<h2>旧版：2026年11月版（2026年10月12日改訂・r2）</h2>
-<p>単価・指導区分、承認手続、精算・返金、資料の取り扱い等を整理した版です。</p>
-<ul><li><a href="2026-11-20261012-r2/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261012-r2/stepwise-terms-2026-11-20261012-r2.pdf">旧版のPDFで開く</a></li></ul>
-<h2>旧版：2026年11月版（2026年10月12日初回公開）</h2>
-<p>適用開始日：2026年11月1日。全7章・32条。</p>
-<ul><li><a href="2026-11-20261012/">旧版のWeb版を読む</a></li><li><a href="2026-11-20261012/stepwise-terms-2026-11-20261012.pdf">旧版のPDFで開く</a></li></ul>
-<h2>旧版：2026年11月版（25条版）</h2>
-<p>2026年11月版（20261006統合3を確定したもの）。全25条。旧版の本文とファイルを保存しています。</p>
-<ul><li><a href="2026-11/">旧版のWeb版を読む</a></li><li><a href="2026-11/stepwise-terms-2026-11.pdf">旧版のPDFで開く</a></li></ul>
 <p class="note">ご自身に適用される版が分からない場合は、当塾との通常連絡に使用しているLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
 </body></html>
 """
@@ -393,9 +322,9 @@ with sync_playwright() as p:
         form_css=css+"\ntable:has(th:nth-child(2):last-child) th:first-child{width:38%} @media print { body{font-size:8.8pt;line-height:1.5} h1{font-size:15pt} h2{margin:8pt 0 5pt;font-size:11pt} p{margin:4pt 0} table{font-size:8.3pt;line-height:1.5;margin:6pt 0} th,td{padding:4pt 5pt} }"
         if slug=="agreement": form_css+="\n@media print { th,td { padding:3pt 5pt; } }"
         if slug=="waiver": form_css=css
-        form_html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>'+title+'｜ステップワイズ個別指導</title><style>'+form_css+'</style></head><body><nav class="tools"><a href="'+slug+'.pdf">PDFで開く</a><a href="../../">受講規約</a><a href="../../../">書類・旧版一覧</a></nav><main>'+str(form_body)+'</main></body></html>'
+        form_html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>'+title+'｜ステップワイズ個別指導</title><style>'+form_css+'</style></head><body><nav class="tools"><a href="'+slug+'.pdf">PDFで開く</a><a href="../../">受講規約</a><a href="../../../">受講規約と書類の一覧</a></nav><main>'+str(form_body)+'</main></body></html>'
         if slug=="waiver":
-            form_html=form_html.replace('href="../../">受講規約','href="../">受講規約').replace('href="../../../">書類・旧版一覧','href="../../">書類・旧版一覧')
+            form_html=form_html.replace('href="../../">受講規約','href="../">受講規約').replace('href="../../../">受講規約と書類の一覧','href="../../">受講規約と書類の一覧')
         (dest/"index.html").write_text(form_html,encoding="utf-8")
         page.goto((dest/"index.html").as_uri());page.evaluate("document.fonts.ready")
         page.pdf(path=str(dest/(slug+".pdf")),format="A4",prefer_css_page_size=True,print_background=True,display_header_footer=True,header_template="<span></span>",footer_template='<div style="width:100%;font:8px sans-serif;text-align:center">Stepwise / 20261015-r9 / '+slug+'　<span class="pageNumber"></span> / <span class="totalPages"></span></div>',tagged=True)

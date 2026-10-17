@@ -113,7 +113,7 @@ export function termsPage(ctx) {
     }).join('') + '</div><p class="small muted" style="margin:6px 2px 0">書面や LINE でもらった同意は、家族を開いて「規約の同意を記録」で残せます。</p>' : '<p class="small muted">家族がまだいません。</p>');
   }
   // 4. めったに使わないもの
-  h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">これまでの版</span><small>サイトの「受講規約の版一覧」を開きます</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
+  h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトの受講規約</span><small>サイトの受講規約のページを開きます</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
   if (terms.history.length) h += `<details style="margin-top:12px"><summary>同意の記録（新しい${terms.history.length}件）</summary><div class="group">` + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(jaDay(x.acceptedAt))}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}・同意者：${esc(x.consenterName || '記録なし')}${x.actorKind === 'staff' ? `（${esc(x.recordedByName || '教室')}が記録）` : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div></details>';
   if (t.version) h += `<details style="margin-top:12px"><summary>同意のお願いをやめる</summary><p class="small muted">保護者ページから同意のお願いを外します。ふつうは使いません。</p><button type="button" data-action="terms-stop-start"${ctx.dis()}>同意のお願いをやめる</button></details>`;
   return h;
