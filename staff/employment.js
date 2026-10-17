@@ -9,11 +9,16 @@ export function captureEmployment(){
  document.querySelectorAll('form[data-form^="em-"],form[data-form^="wk-"]').forEach(f=>drafts.set(formKey(f),[...f.elements].filter(e=>e.name).map(e=>({name:e.name,value:e.value,checked:e.checked,type:e.type}))));
 }
 export function restoreEmployment(){
+ if(regFocus){regFocus=false;requestAnimationFrame(()=>{const f=document.querySelector('.reg-field.has-error');if(f){f.scrollIntoView({block:'center'});[...f.querySelectorAll('input')].find(i=>i.type==='radio'||!i.value.trim())?.focus({preventScroll:true});}});}
  document.querySelectorAll('form[data-form^="em-"],form[data-form^="wk-"]').forEach(f=>{
-  for(const x of drafts.get(formKey(f))||[]){const e=f.elements.namedItem(x.name);if(e){if(x.type==='checkbox')e.checked=x.checked;else e.value=x.value;}}
+  for(const x of drafts.get(formKey(f))||[]){
+   if(x.type==='radio'){if(x.checked){const e=[...f.querySelectorAll('input[type="radio"]')].find(i=>i.name===x.name&&i.value===x.value);if(e)e.checked=true;}continue;}
+   const e=f.elements.namedItem(x.name);if(e){if(x.type==='checkbox')e.checked=x.checked;else e.value=x.value;}
+  }
  });
 }
-export function resetEmployment(){cache=null;dayCache=null;key='';dayKey='';drafts.clear();}
+let regStep='input',regDraft=null,regErrors={},regFocus=false; // 本人情報の登録: 入力 → 確認 → 登録。regErrors は項目ごとの入力漏れ
+export function resetEmployment(){cache=null;dayCache=null;key='';dayKey='';drafts.clear();regStep='input';regDraft=null;regErrors={};}
 function load(ctx,want,route,body,work=false){
  const set=r=>{if(work){if(dayKey!==want)return;dayCache=r;}else{if(key!==want)return;cache=r;}if(!r.ok&&!ctx.handleAuth(r))ctx.say(r.error?.message||'読み込めませんでした','error');ctx.render();};
  if(work){dayKey=want;dayCache={loading:true};}else{key=want;cache={loading:true};}
@@ -46,20 +51,37 @@ function registrationSummary(esc,p,nameNote=''){
  return '<dl class="cond-dl" style="overflow-wrap:anywhere">'+(p.familyName?'<dt>氏名</dt><dd>'+esc(p.familyName+' '+p.givenName)+nameNote+'</dd>':'')+'<dt>現住所</dt><dd>'+esc(p.address||'未登録')+'</dd>'+(p.otherEmployment?'<dt>ほかに雇われている勤務先</dt><dd>'+esc(OTHER_EMPLOYMENT[p.otherEmployment])+(p.otherEmployment==='yes'?'<br>勤務する曜日と時間：'+esc(p.otherWorkHours):'')+'</dd>':'<dt>他の勤務先・勤務時間</dt><dd>'+esc(p.otherWork||'未登録')+'</dd>')+'<dt>扶養控除等申告書</dt><dd>'+esc(TAX_SITUATION[p.taxSituation]||'本人からの回答なし')+'</dd>'+(p.availability?'<dt>勤務希望（曜日・時間）</dt><dd>'+esc(p.availability)+'</dd>':'')+'</dl>';
 }
 // 本人の登録フォーム。氏名は代表が招待時に入れた表示名を写さず、本人に入力してもらう（再登録のときは前回の入力を出す）
-function registrationForm(ctx,g,r,{again=false}={}){
- const {esc}=ctx,p=r?.data||{};
- const half=(name,label,value)=>'<label style="flex:1 1 0;min-width:0">'+esc(label)+'<input name="'+name+'" value="'+esc(value)+'" required autocomplete="'+(name==='familyName'?'family-name':'given-name')+'"></label>';
- const hint=t=>'<p class="small muted" style="margin:-4px 0 0">'+t+'</p>';
- return '<form class="stack" data-form="em-registration" data-version="'+g.version+'">'+
-  '<div class="row" style="flex-wrap:nowrap;gap:10px">'+half('familyName','姓',p.familyName||'')+half('givenName','名',p.givenName||'')+'</div>'+
-  '<label>現住所<input name="address" value="'+esc(p.address||'')+'" required autocomplete="street-address"></label>'+
-  select(esc,'otherEmployment','ほかに雇われて働いている勤務先はありますか？',[['','選んでください'],['no','ない'],['yes','ある']],p.otherEmployment||'')+
-  hint('アルバイト・パートを含みます。業務委託や自営は含めません。')+
-  '<div class="ow-hours stack"><label>その勤務先で働く曜日と時間（おおよそ）<input name="otherWorkHours" value="'+esc(p.otherWorkHours||'')+'" maxlength="1000" placeholder="例：月・水 17時〜21時"></label>'+hint('勤務先の名前は書かなくてかまいません。労働時間は雇われている勤務先どうしで合算されるため、確認しています。')+'</div>'+
-  select(esc,'taxSituation','今年の扶養控除等申告書を、ほかの勤務先に出していますか？',[['','選んでください'],...Object.entries(TAX_SITUATION)],p.taxSituation||'')+
-  hint('分からなければ「分からない・確認中」で大丈夫です。この回答で税の区分が決まることはありません。')+
+const splitAddress=v=>{const m=String(v||'').match(/^〒\s*(\d{3}-?\d{4})\s*([\s\S]*)$/);return m?{zip:m[1],addr:m[2]}:{zip:'',addr:String(v||'')};};
+function registrationForm(ctx,g,r){
+ const {esc}=ctx,p=regDraft||r?.data||{},{zip,addr}=splitAddress(p.address);
+ const req='<span class="req">必須</span>',E=regErrors;
+ const err=(...k)=>k.map(x=>E[x]).filter(Boolean).map(m=>'<p class="reg-error" role="alert">'+esc(m)+'</p>').join(''),cls=(...k)=>'reg-field'+(k.some(x=>E[x])?' has-error':'');
+ const text=(name,label,value,attrs)=>'<label class="sub">'+esc(label)+'<input name="'+name+'" value="'+esc(value||'')+'" '+attrs+'></label>';
+ const radio=(name,opts,value)=>'<div class="choices">'+opts.map(([v,t,sub])=>'<label class="choice"><input type="radio" name="'+name+'" value="'+v+'" required'+(value===v?' checked':'')+'><span>'+esc(t)+(sub?'<small>'+esc(sub)+'</small>':'')+'</span></label>').join('')+'</div>';
+ return '<form class="reg-form" data-form="em-registration" data-version="'+g.version+'" novalidate>'+
+  '<fieldset class="'+cls('name')+'"><legend>氏名 '+req+'</legend><div class="row" style="flex-wrap:nowrap;gap:10px">'+
+   text('familyName','姓',p.familyName,'required autocomplete="family-name" placeholder="例：山田" style="min-width:0"').replace('<label class="sub">','<label class="sub" style="flex:1 1 0;min-width:0">')+
+   text('givenName','名',p.givenName,'required autocomplete="given-name" placeholder="例：太郎" style="min-width:0"').replace('<label class="sub">','<label class="sub" style="flex:1 1 0;min-width:0">')+
+  '</div>'+err('name')+'<p class="reg-help">契約書に載る氏名です。</p></fieldset>'+
+  '<fieldset class="'+cls('zip','addr')+'"><legend>現住所 '+req+'</legend>'+
+   text('zip','郵便番号',zip,'required inputmode="numeric" autocomplete="postal-code" pattern="\\d{3}-?\\d{4}" maxlength="8" placeholder="例：343-0002" style="max-width:11em"')+
+   text('addr','住所（都道府県から建物名・部屋番号まで）',addr,'required autocomplete="street-address" maxlength="480" placeholder="例：埼玉県越谷市袋山1-2-3 ○○ハイツ101"')+err('zip','addr')+
+  '</fieldset>'+
+  '<fieldset class="'+cls('otherEmployment','otherWorkHours')+'"><legend>ほかに雇われて働いている勤務先 '+req+'</legend><p class="reg-help">アルバイト・パートを含みます。業務委託や自営は含めません。</p>'+
+   radio('otherEmployment',[['no','ない'],['yes','ある']],p.otherEmployment)+err('otherEmployment')+
+   '<div class="ow-hours">'+text('otherWorkHours','その勤務先で働く曜日と時間（おおよそ）',p.otherWorkHours,'maxlength="1000" placeholder="例：月・水 17時〜21時"')+err('otherWorkHours')+'<p class="reg-help">勤務先の名前は不要です。労働時間は雇われている勤務先どうしで合算されるため、確認しています。</p></div>'+
+  '</fieldset>'+
+  '<fieldset class="'+cls('taxSituation')+'"><legend>扶養控除等申告書 '+req+'</legend><p class="reg-help">年末調整のための書類です。今年、ほかの勤務先に出しているかを選んでください。</p>'+
+   radio('taxSituation',[['noneElsewhere','ほかの勤務先には出していない'],['otherEmployer','ほかの勤務先に出している'],['unknown','分からない・確認中','この回答で税の区分が決まることはありません。代表が確認します。']],p.taxSituation)+err('taxSituation')+
+  '</fieldset>'+
   (p.availability?'<input type="hidden" name="availability" value="'+esc(p.availability)+'">':'')+
-  '<button class="primary"'+ctx.dis()+'>本人情報を登録する</button><p class="small muted" style="margin-top:-4px">登録した内容は代表が確認します。雇用契約への同意ではありません。マイナンバーや口座番号はここには入力しません。'+(again?'登録し直すと、代表の確認が済むまで契約書の発行は待ちになります。':'')+'</p></form>';
+  '<div class="stack"><button class="primary wide"'+ctx.dis()+'>入力内容を確認する</button><p class="small muted" style="margin:0">マイナンバーや口座番号は、ここでは入力しません。</p></div></form>';
+}
+// 確認画面: 入力した内容を一覧で見せ、「この内容で登録する」で初めて送る
+function registrationConfirm(ctx,g,again){
+ const {esc}=ctx;
+ return '<section class="reg-confirm"><h2>入力内容の確認</h2><p>内容に間違いがなければ「この内容で登録する」を押してください。</p>'+registrationSummary(esc,regDraft)+
+  '<form class="stack" data-form="em-registration-confirm" data-version="'+g.version+'"><button class="primary wide"'+ctx.dis()+'>この内容で登録する</button><button type="button" class="wide" data-action="em-reg-back"'+ctx.dis()+'>入力画面に戻って直す</button><p class="small muted" style="margin:0">登録した内容は代表が確認します。雇用契約への同意ではありません。'+(again?'登録し直すと、代表の確認が済むまで契約書の発行は待ちになります。':'')+'</p></form></section>';
 }
 function personalInfo(ctx,d,owner){
  const {esc}=ctx,g=d.registration||{requests:[],version:0},r=g.requests.find(x=>x.id===g.latestId);
@@ -80,9 +102,8 @@ function personalInfo(ctx,d,owner){
  }
  if(!owner){
   const stage=stageOf(d);
-  if(stage==='register')h+=registrationForm(ctx,g,r);
-  else if(stage==='pending')h+='<details><summary>登録した内容を直して登録し直す</summary>'+registrationForm(ctx,g,r,{again:true})+'</details>';
-  else if(g.required)h+='<details><summary>登録した本人情報を直す（引っ越しなど）</summary>'+registrationForm(ctx,g,r,{again:true})+'</details>';
+  if(stage==='pending')h+='<details><summary>登録した内容を直して登録し直す</summary>'+registrationForm(ctx,g,r)+'</details>';
+  else if(stage!=='register'&&g.required)h+='<details><summary>登録した本人情報を直す（引っ越しなど）</summary>'+registrationForm(ctx,g,r)+'</details>';
  }
  if(g.requests.length>1)h+='<details><summary>本人情報の登録履歴</summary><ul>'+g.requests.map(x=>'<li>'+esc(at(x.submittedAt))+'：'+esc(REG_STATUS[x.status])+(x.reason?'（'+esc(x.reason)+'）':'')+'</li>').join('')+'</ul></details>';
  return h+'</section>';
@@ -115,6 +136,12 @@ function nextStep(ctx,d,owner){
   else {const plan=d.days?.find(x=>x.planVersion&&x.planVersion!==x.planAgreedVersion);title=plan?'勤務予定を確認してください':d.staff.employmentAccess?'入職の準備が整っています':'初日の勤務予定・代表の最終確認待ちです';body=plan?'下に表示された勤務日を開き、予定を確認してください。':'予定が登録されると、この画面で確認できます。実際に働いた時間も勤務日から登録します。';wait=!plan&&!d.staff.employmentAccess;}
  }
  return '<section class="notice" style="overflow-wrap:anywhere"><h2 style="margin-top:0">'+ctx.esc(title)+'</h2><p>'+ctx.esc(body)+'</p>'+(wait?'<p class="small muted">'+(owner?'本人の対応を待っています。':'代表の対応を待っています。')+'</p>':'')+'</section>';
+}
+const STEPS=['本人情報','代表の確認','契約書','振込先','勤務開始'];
+function stepIndex(d){const s=stageOf(d);return s==='register'?0:s==='pending'?1:s==='prepare'||s==='contract'?2:s==='start'?(d.bank?.accepted?4:3):5;}
+function stepper(d){
+ const i=stepIndex(d);if(i>4)return '';
+ return '<ol class="steps" aria-label="入職の手続きの進み具合">'+STEPS.map((t,k)=>'<li class="'+(k<i?'done':k===i?'now':'')+'"'+(k===i?' aria-current="step"':'')+'><span class="n">'+(k<i?'✓':k+1)+'</span><span class="t">'+t+'</span></li>').join('')+'</ol>';
 }
 const FLOW='<p class="small">手続きの順番：本人情報の登録 → 代表による確認・勤務条件の設定 → 契約書の交付・同意 → 振込先・勤務予定の確認 → 勤務開始</p>';
 
@@ -202,9 +229,18 @@ export function employmentPage(ctx,me,id=''){
   return h;
  }
  // 本人: 段階に合わせて、今の操作に関係するものだけを出す
- const stage=stageOf(d);
+ const stage=stageOf(d),g=d.registration||{requests:[],version:0},r=g.requests.find(x=>x.id===g.latestId);
+ h+=stepper(d);
+ if(stage==='register'){
+  h+='<h1>本人情報の登録</h1>';
+  if(g.returned)h+='<section class="notice"><h2 style="margin-top:0">本人情報を直して登録し直してください</h2><p>代表からの修正依頼：'+esc(r?.reason||'')+'</p></section>';
+  else if(regStep!=='confirm')h+='<p>勤務を始めるために、ご本人の情報を登録してください。登録した内容は代表が確認します。入力は 3 分ほどで終わります。</p>';
+  h+=regStep==='confirm'&&regDraft?registrationConfirm(ctx,g,false):registrationForm(ctx,g,r);
+  return h+'<details style="margin-top:24px"><summary>この後の手続き</summary>'+FLOW+'<p>代表が本人情報を確認し、勤務条件を整えてから契約書をご案内します。給与の振込先や勤務予定は、契約のあとに登録します。</p></details>';
+ }
+ if(regStep==='confirm'&&regDraft)return h+registrationConfirm(ctx,g,true); // 登録し直すときの確認画面は、いちばん上に出す
  h+=nextStep(ctx,d,false);
- if(stage==='register'||stage==='pending'){
+ if(stage==='pending'){
   h+=personalInfo(ctx,d,false)+'<details><summary>この後の手続き</summary>'+FLOW+'<p>代表が本人情報を確認し、勤務条件を整えてから契約書をご案内します。給与の振込先や勤務予定は、契約のあとに登録します。</p></details>';
   return h;
  }
@@ -278,7 +314,20 @@ export async function employmentSubmit(ctx,kind,el){
  let route,body={...b,...v},msg='保存しました';
  try{
   if(kind==='em-new'){route='employment/save';body={...v,data:{}};}
-  else if(kind==='em-registration'){route='employment/registration/submit';body={...b,confirm:true,data:{familyName:v.familyName,givenName:v.givenName,address:v.address,otherEmployment:v.otherEmployment,otherWorkHours:v.otherEmployment==='yes'?v.otherWorkHours:'',taxSituation:v.taxSituation,availability:v.availability||''}};msg='登録しました。';}
+  else if(kind==='em-registration'){
+   const t=x=>String(x||'').trim(),zip=t(v.zip).replace(/^(\d{3})(\d{4})$/,'$1-$2'),E={};
+   if(!t(v.familyName)||!t(v.givenName))E.name='姓と名を入力してください';
+   if(!t(v.zip))E.zip='郵便番号を入力してください';else if(!/^\d{3}-\d{4}$/.test(zip))E.zip='郵便番号は 343-0002 のように 7 桁の数字で入力してください';
+   if(!t(v.addr))E.addr='住所を入力してください';
+   if(!v.otherEmployment)E.otherEmployment='「ない」か「ある」を選んでください';
+   else if(v.otherEmployment==='yes'&&!t(v.otherWorkHours))E.otherWorkHours='その勤務先で働く曜日と時間を入力してください';
+   if(!v.taxSituation)E.taxSituation='どれか 1 つを選んでください';
+   regErrors=E;
+   if(Object.keys(E).length){ctx.say('');regFocus=true;return true;}
+   regDraft={familyName:t(v.familyName),givenName:t(v.givenName),address:'〒'+zip+' '+t(v.addr),otherEmployment:v.otherEmployment,otherWorkHours:v.otherEmployment==='yes'?t(v.otherWorkHours):'',taxSituation:v.taxSituation,availability:v.availability||''};
+   regStep='confirm';ctx.say('');scrollTo(0,0);return true;
+  }
+  else if(kind==='em-registration-confirm'){if(!regDraft){regStep='input';return true;}route='employment/registration/submit';body={version:Number(el.dataset.version),confirm:true,data:regDraft};msg='登録が完了しました。代表の確認をお待ちください。';}
   else if(kind==='em-registration-accept'||kind==='em-registration-return'){route='employment/registration/review';body={...b,requestId:el.dataset.request,profileVersion:Number(el.dataset.profileVersion),outcome:kind==='em-registration-accept'?'accepted':'returned',confirm:kind==='em-registration-accept',reason:v.reason,nameDecision:v.nameDecision||''};msg=kind==='em-registration-accept'?'本人情報を確認して反映しました。本人と勤務希望を確認し、勤務条件を設定してください。':'修正依頼を記録しました。';}
   else if(kind==='em-profile'){route='employment/save';body={...b,data:{...v,...Object.fromEntries(['conditionsChecked','bankConsentChecked','insuranceChecked'].map(k=>[k,el.elements.namedItem(k).checked]))}};}
   else if(kind==='em-email'){route='employment/email';msg='メールアドレスを保存しました。メールは送っていません。';}
@@ -309,12 +358,13 @@ export async function employmentSubmit(ctx,kind,el){
   if(!route)return false;
   const r=await ctx.call(route,body);
   if(!r.ok){if(!ctx.handleAuth(r))ctx.say(r.error.message,'error');return true;}
-  drafts.delete(formKey(el));if(kind==='em-registration-accept'||kind==='em-registration-return'){for(const k of drafts.keys())if(k.startsWith(location.hash+'|em-profile|'))drafts.delete(k);}if(kind==='em-email')drafts.delete(location.hash+'|em-invite|');cache=null;dayCache=null;
+  drafts.delete(formKey(el));if(kind==='em-registration-confirm'){regStep='input';regDraft=null;drafts.delete(location.hash+'|em-registration|');scrollTo(0,0);}if(kind==='em-registration-accept'||kind==='em-registration-return'){for(const k of drafts.keys())if(k.startsWith(location.hash+'|em-profile|'))drafts.delete(k);}if(kind==='em-email')drafts.delete(location.hash+'|em-invite|');cache=null;dayCache=null;
   if(kind==='em-new')location.hash='#employment='+encodeURIComponent(r.staff.id);
   ctx.say(msg,'ok');return true;
  }catch(e){ctx.say(e.message,'error');return true;}
 }
 export async function employmentClick(ctx,a,b){
+ if(a==='em-reg-back'){regStep='input';ctx.say('');return true;}
  if(a==='wk-add'){
   const form=b.closest('form');captureEmployment();
   const rows=drafts.get(formKey(form))||[],c=rows.find(x=>x.name==='rowCount');

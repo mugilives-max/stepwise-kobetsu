@@ -742,4 +742,31 @@ form[data-form=sch-create]:has(select[name=studentId] option[data-trial]:checked
 .pv-schedule { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
 .parts-in { display: grid; grid-template-columns: minmax(0, 1fr) 6em; gap: 4px 8px; }
 /* 講師の本人情報: ほかに雇われている勤務先が「ある」のときだけ、曜日と時間の欄を出す（:has が使えない端末では常に出る） */
-form[data-form="em-registration"]:not(:has(select[name="otherEmployment"] option[value="yes"]:checked)) .ow-hours { display: none; }
+form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="yes"]:checked)) .ow-hours { display: none; }
+/* 入職の手続き: 進み具合（ステップ表示） */
+.steps { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; padding: 0; margin: 8px 0 18px; }
+.steps li { position: relative; display: grid; justify-items: center; gap: 4px; text-align: center; font-size: 11px; line-height: 1.3; color: var(--muted); }
+.steps li + li::before { content: ""; position: absolute; top: 13px; left: calc(-50% + 15px); right: calc(50% + 15px); height: 2px; background: var(--line); }
+.steps li.done::before, .steps li.now::before { background: var(--primary); }
+.steps .n { position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--line); background: var(--white); font-size: 12px; font-weight: 700; }
+.steps li.done .n { background: var(--primary); border-color: var(--primary); color: var(--white); }
+.steps li.now .n { border-color: var(--primary); color: var(--primary); }
+.steps li.now .t { color: var(--ink); font-weight: 700; }
+/* 入職の手続き: 本人情報の登録（項目ごとの見出し・必須の印・選択肢） */
+.reg-form { display: grid; gap: 22px; margin-top: 8px; }
+.reg-field { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.reg-field > legend { display: flex; align-items: center; gap: 8px; padding: 0; margin-bottom: 8px; font-size: 15px; font-weight: 700; color: var(--ink); }
+.req { font-size: 11px; font-weight: 700; line-height: 1.6; color: var(--white); background: #b42318; border-radius: 4px; padding: 0 6px; }
+.reg-help { margin: 0; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.reg-field label.sub { font-size: 12px; }
+.choices { display: grid; gap: 8px; }
+.choice { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); font-size: 15px; color: var(--ink); cursor: pointer; }
+.choice input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--primary); }
+.choice small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.choice:has(input:checked) { border-color: var(--primary); background: var(--soft); }
+.reg-confirm .cond-dl { background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.reg-error { margin: 0; font-size: 12px; font-weight: 700; color: #b42318; }
+.reg-field.has-error input:not([type="radio"]):placeholder-shown { border-color: #b42318; background: #fff6f5; }
+.reg-field.has-error .choice { border-color: #e7a59d; }
+.reg-confirm .cond-dl { grid-template-columns: minmax(6.5em, 38%) minmax(0, 1fr); }
+.reg-confirm .cond-dl dt { white-space: normal; }
