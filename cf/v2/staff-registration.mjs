@@ -1,6 +1,7 @@
 // Personal information is registered by the employee; employment conditions stay owner-managed.
 // 2026-10-17 本人の指摘: 氏名は本人に入力し直してもらう（招待時の氏名と違えば代表が確認して決める）。
 // 勤務可能な曜日・時間は「勤務希望」として、初回登録では聞かない（代表が勤務条件を整えるときに本人と確認する）。
+// ほかの勤務先は「雇われて働いている勤務先があるか」だけを聞き、ある場合だけ曜日と時間を聞く（労働時間は雇用先の間で通算される。雇用契約書 第9条3項）。勤務先の名前は聞かない。
 import { fail, newId, iso, sha256Hex } from './util.mjs';
 import { requireStaff, requireOwner } from './staff.mjs';
 const text=(v,max)=>{const s=String(v??'').trim();if(s.length>max)fail('tooLong','入力が長すぎます');return s;};
@@ -33,9 +34,14 @@ export const staffRegistrationRoutes={
   const st=await registrationState(c,me.id);expected(st,b);
   if(b.confirm!==true)fail('needConfirm','入力した本人情報を確認してください');
   const d=b.data||{};
+  const otherEmployment=String(d.otherEmployment||'');
+  if(!['yes','no'].includes(otherEmployment))fail('badOtherEmployment','ほかに雇われて働いている勤務先があるかを選んでください');
+  const otherWorkHours=otherEmployment==='yes'?need(d.otherWorkHours,1000,'ほかの勤務先で働く曜日と時間を入力してください'):'';
   const data={
    familyName:need(d.familyName,30,'姓を入力してください'),givenName:need(d.givenName,30,'名を入力してください'),
-   address:need(d.address,500,'現住所を入力してください'),otherWork:need(d.otherWork,1500,'他の勤務先を入力してください（ない場合は「なし」）'),
+   address:need(d.address,500,'現住所を入力してください'),
+   otherEmployment,otherWorkHours,
+   otherWork:otherEmployment==='yes'?'あり（雇われて働いている勤務先）。勤務する曜日と時間：'+otherWorkHours:'なし', // 雇用情報・契約書の「他の勤務先の申告」に写す文
    taxSituation:String(d.taxSituation||''),availability:text(d.availability,500) // 勤務希望は任意（初回登録では聞かない）
   };
   if(!TAX_SITUATIONS.includes(data.taxSituation))fail('badTax','扶養控除等申告書について、分かる範囲で選んでください');
