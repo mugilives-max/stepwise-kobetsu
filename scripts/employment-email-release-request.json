@@ -1,0 +1,11 @@
+{
+  "operation": "pages",
+  "source": "d50101c13cc9b8f737f3faa4e568a623d88fe75a",
+  "checkRuns": [
+    38998812317,
+    38998808729
+  ],
+  "authorization": "2026-10-17: User requested optional draft email, required invitation email, record preservation, GitHub-only production publication, then private employee draft registration and Kura record.",
+  "preflightRun": 38998929862,
+  "backupPrefix": "release-backups/employment-email-20261017/38999011373-1"
+}
