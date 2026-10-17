@@ -1,3 +1,4 @@
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-employment';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
@@ -9,8 +10,8 @@ import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetR
 import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261016-notices';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261016-stages';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261016-stages';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261016-stages';
-import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261008-launch1';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261017-employment';
+import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261017-employment';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261016-notices';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';
@@ -25,10 +26,12 @@ let lastPage = '';
 let me = null, busy = false, notice = null, staffList = null, shownLink = null, bootstrap = null, staffOpen = '';
 
 // 上の帯に出す画面の名前（本文には大見出しを置かない）
-const PAGE_TITLE = { monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', migrate: '移行と切り替え', records: '記録', terms: '受講規約', docs: '書類のひな形', effects: '送信の記録と控え' };
+const PAGE_TITLE = { employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', migrate: '移行と切り替え', records: '記録', terms: '受講規約', docs: '書類のひな形', effects: '送信の記録と控え' };
 const legacyToken = () => { try { return localStorage.getItem('sw_admt') || ''; } catch { return ''; } };
 function route() {
   const h = location.hash;
+  if(h.startsWith('#employment='))return {page:'employment',id:decodeURIComponent(h.slice(12))};
+  if(h.startsWith('#work=')){const [id,date]=h.slice(6).split('/');return {page:'work',id:decodeURIComponent(id),date};}
   if (h.startsWith('#invite=')) return { page: 'invite', token: decodeURIComponent(h.slice(8)) };
   if (h.startsWith('#reset=')) return { page: 'reset', token: decodeURIComponent(h.slice(7)) };
   if (h.startsWith('#family=')) return { page: 'family', id: decodeURIComponent(h.slice(8)) };
@@ -42,7 +45,7 @@ const noticeHtml = () => notice ? `<p class="notice ${notice.kind}" role="${noti
 const dis = () => busy ? ' disabled' : '';
 const roleTags = roles => roles.map(r => `<span class="tag">${esc(ROLE_LABEL[r] || r)}</span>`).join('');
 
-async function run(task) { if (busy) return; busy = true; render(); try { await task(); } finally { busy = false; render(); } }
+async function run(task) { if (busy) return; captureEmployment(); busy = true; render(); try { await task(); } finally { busy = false; render(); } }
 
 // メニュー（docs/UX_STRUCTURE.md 3）: 教室管理者は 今日・予定・生徒・月の仕事・設定、講師は 今日・予定・生徒・給与。スマホでは画面の下に出る
 const ICON = {
@@ -55,6 +58,7 @@ const ICON = {
 };
 function navItems() {
   if (!me) return [];
+  if(me.employmentAccess===false)return [['employment','雇用・勤務','settings'],['payroll','給与'],['settings','設定']];
   const m = me.roles.includes('manager'), t = me.roles.includes('teacher');
   if (m) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['monthly', '月の仕事'], ['settings', '設定']];
   if (t) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['payroll', '給与'], ['settings', '設定']];
@@ -67,7 +71,7 @@ function tabOf(page) {
   if (['records', 'record'].includes(page)) return 'home';
   if (['plans', 'billing'].includes(page)) return 'monthly';
   if (page === 'payroll') return m ? 'monthly' : 'payroll';
-  if (['staff', 'migrate', 'account', 'rates', 'kinds', 'terms', 'effects'].includes(page)) return 'settings';
+  if (['employment','work','staff', 'migrate', 'account', 'rates', 'kinds', 'terms', 'effects'].includes(page)) return 'settings';
   return page;
 }
 // 戻る（入口の下の画面の左上）。来た道をたどる。直接開いたときは、その画面の入口へ
@@ -162,6 +166,7 @@ function staffPage() {
   if (!me.roles.includes('sysadmin')) return '<h1>スタッフ</h1><p class="notice error">システム管理者だけが使えます。</p>';
   if (!staffList) { loadStaff(); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
   let h = noticeHtml();
+  if(me.contractType==='owner')h+='<p><a href="#employment">講師の雇用登録・契約・勤務はこちら</a></p>';
   if (shownLink) h += `<div class="notice ok"><p>${esc(shownLink.name)} さんに招待のメールを送りました。届かないときは、このリンクを LINE などで渡してください（7日有効・1回だけ使えます）。</p><p class="copy">${esc(shownLink.url)}</p><button data-action="copy-link"${dis()}>リンクをコピー</button></div>`;
   h += '<div class="group" style="margin-top:12px">' + staffList.map(s => rowButton(esc, 'st-open', { id: s.id }, `${esc(s.name)} <span class="tag ${s.status === 'active' ? '' : s.status === 'invited' ? 'warn' : 'gray'}">${STATUS_LABEL[s.status] || s.status}</span>`,
     esc(s.roles.map(r => ROLE_LABEL[r] || r).join('・') + '・' + s.email))).join('') + '</div>';
@@ -185,12 +190,13 @@ async function loadStaff() {
   if (!r.ok) { if (r.error.code === 'needLogin') return signedOut(); say(r.error.message, 'error'); staffList = []; } else staffList = r.staff;
   render();
 }
-function signedOut() { store.set(''); me = null; resetExtras(); resetFamilies(); resetMigrate(); resetSchedule(); resetRecords(); resetBilling(); resetGrades(); resetPayroll(); resetToday(); resetStudents(); say('ログインし直してください', 'error'); render(); }
+function signedOut() { store.set(''); me = null; resetEmployment(); resetExtras(); resetFamilies(); resetMigrate(); resetSchedule(); resetRecords(); resetBilling(); resetGrades(); resetPayroll(); resetToday(); resetStudents(); say('ログインし直してください', 'error'); render(); }
 // 各ページ（families.js・migrate.js）に渡す共通の道具
 const ctx = {
   call: (route, body = {}) => call(route, body, store.get()), esc, render: () => render(), dis: () => dis(), notice: () => noticeHtml(),
   say: (m, k) => say(m, k), handleAuth: r => { if (r && r.error && r.error.code === 'needLogin') { signedOut(); return true; } return false; },
   afterMigrate: () => { resetFamilies(); resetSchedule(); resetRecords(); resetBilling(); resetGrades(); resetToday(); resetStudents(); },
+  get isOwner(){return !!me && me.contractType==='owner';},
   get isManager() { return !!me && me.roles.includes('manager'); },
 };
 
@@ -201,6 +207,9 @@ function render() {
   if (r.page === 'invite') h = invitePage(r.token);
   else if (r.page === 'reset') h = resetPage();
   else if (!me) h = r.page === 'forgot' ? forgotPage() : loginPage();
+  else if(r.page==='employment')h=employmentPage(ctx,me,r.id||'');
+  else if(r.page==='work')h=workPage(ctx,me,r.id,r.date);
+  else if(me.employmentAccess===false&&!['account','settings','payroll'].includes(r.page))h=employmentPage(ctx,me);
   else if (r.page === 'schedule' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = schedulePage(ctx, me);
   else if (r.page === 'records' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = recordsPage(ctx);
   else if (r.page === 'record' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = recordPage(ctx, r.id);
@@ -226,6 +235,7 @@ function render() {
   const was = app.querySelector('.bsheet, .panel.open'), wasLabel = was && was.getAttribute('aria-label'), wasBody = was && (was.querySelector('.panel-body') || was), wasTop = wasBody ? wasBody.scrollTop : 0;
   const wasLoading = /^\s*読み込んでいます/.test(app.textContent || '');
   app.innerHTML = h;
+  restoreEmployment();
   if (wasLoading && !/^\s*読み込んでいます/.test(app.textContent || '')) fadeIn();
   renderBack(r);
   app.querySelectorAll('textarea.grow').forEach(grow);
@@ -249,7 +259,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && rou
 // ---------- 操作 ----------
 const form = el => Object.fromEntries(new FormData(el).entries());
 const checked = (el, name) => Array.from(el.querySelectorAll(`input[name="${name}"]:checked`)).map(i => i.value);
-function signedIn(r) { store.set(r.auth); me = r.me; inviteInfo = null; staffList = null; say(''); location.hash = '#home'; }
+function signedIn(r) { store.set(r.auth); me = r.me; inviteInfo = null; staffList = null; say(''); location.hash = me.employmentAccess===false?'#employment':'#home'; }
 
 app.addEventListener('submit', ev => {
   ev.preventDefault();
@@ -261,7 +271,7 @@ app.addEventListener('submit', ev => {
   const submitter = ev.submitter;
   captureRecordInputs(); // 記録の画面の書きかけを、描き直す前に覚えておく
   run(async () => {
-    if (await studentsSubmit(ctx, kind, el) || await extrasSubmit(ctx, kind, el) || await familiesSubmit(ctx, kind, el) || await scheduleSubmit(ctx, kind, el) || await recordsSubmit(ctx, kind, el, { submitter }) || await billingSubmit(ctx, kind, el) || await gradesSubmit(ctx, kind, el) || await payrollSubmit(ctx, kind, el) || await migrateSubmit(ctx, kind, el)) return;
+    if (await employmentSubmit(ctx, kind, el) || await studentsSubmit(ctx, kind, el) || await extrasSubmit(ctx, kind, el) || await familiesSubmit(ctx, kind, el) || await scheduleSubmit(ctx, kind, el) || await recordsSubmit(ctx, kind, el, { submitter }) || await billingSubmit(ctx, kind, el) || await gradesSubmit(ctx, kind, el) || await payrollSubmit(ctx, kind, el) || await migrateSubmit(ctx, kind, el)) return;
     let r;
     if (kind === 'login') { r = await call('staff/login', v); if (r.ok) return signedIn(r); }
     else if (kind === 'forgot') { r = await call('staff/reset/request', v); if (r.ok) return say(r.message, 'ok'); }
@@ -288,6 +298,7 @@ document.addEventListener('click', ev => {
   if (a === 'copy') { navigator.clipboard.writeText(b.dataset.text || '').then(() => { say('コピーしました', 'ok'); render(); }); return; }
   // 成績票は、待たずに新しいタブを開いてから読む（あとから開くと止められる）
   if (a === 'doc-sample') { const win = window.open('', '_blank'); run(async () => { const r = await ctx.call('admin/docs/sample', { type: b.dataset.type }); if (!r.ok) { if (win) win.close(); return say(r.error.message, 'error'); } const url = URL.createObjectURL(new Blob([r.html], { type: 'text/html' })); if (win && !win.closed) win.location.href = url; else location.href = url; }); return; }
+  if (a === 'em-doc') { openAgreementDocument(() => ctx.call('employment/contract/document',{id:b.dataset.id}),message=>{say(message,'error');render();}); return; }
   if (a === 'agreement-doc') { openAgreementDocument(() => ctx.call('billing/plans/document', { refs: JSON.parse(b.dataset.refs) }), message => { say(message, 'error'); render(); }); return; }
   if (a === 'gr-open') { const win = window.open('', '_blank'); run(async () => { const r = await openGradeFile(ctx, b, win); if (!r.ok) say(r.error.message, 'error'); }); return; }
   if (gradesClickShared(a, b)) return render(); // 成績のグラフの帯・試験の ‹ ›
@@ -299,7 +310,7 @@ document.addEventListener('click', ev => {
   if (a === 'gr-resolve') { const sel = document.querySelector(`[data-resolve-exam="${b.dataset.id}"]`); b.dataset.exam = sel ? sel.value : ''; }
   captureRecordInputs();
   run(async () => {
-    if (await studentsClick(ctx, a, b) || await todayClick(ctx, a, b) || await extrasClick(ctx, a, b) || await familiesClick(ctx, a, b) || await migrateClick(ctx, a) || await scheduleClick(ctx, a, b) || await recordsClick(ctx, a, b) || await billingClick(ctx, a, b) || await gradesClick(ctx, a, b) || await payrollClick(ctx, a, b)) return;
+    if (await employmentClick(ctx,a,b) || await studentsClick(ctx, a, b) || await todayClick(ctx, a, b) || await extrasClick(ctx, a, b) || await familiesClick(ctx, a, b) || await migrateClick(ctx, a) || await scheduleClick(ctx, a, b) || await recordsClick(ctx, a, b) || await billingClick(ctx, a, b) || await gradesClick(ctx, a, b) || await payrollClick(ctx, a, b)) return;
     let r;
     if (a === 'bootstrap') {
       r = await call('staff/bootstrap', { legacyToken: legacyToken() });

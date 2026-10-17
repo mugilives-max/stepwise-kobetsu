@@ -2,6 +2,8 @@
 // ログインのトークンは本文の auth に入れる（ヘッダーを使わないので、今の CORS の設定のまま使える）。
 // 返す形: 成功 { ok: true, ... } / 失敗 { ok: false, error: { code, message } }
 // データベースは今の台帳（env.DB）とは別の env.DB2。docs/REBUILD_DESIGN.md
+import { employmentRoutes } from './employment.mjs';
+import { workRoutes } from './workdays.mjs';
 import { ApiError } from './util.mjs';
 import { staffRoutes } from './staff.mjs';
 import { familyRoutes } from './family.mjs';
@@ -37,7 +39,7 @@ import { docsSampleRoutes } from './docs-sample.mjs';
 import { agreementDocumentRoutes } from './agreement-documents.mjs';
 import { contractRoutes } from './contracts.mjs';
 
-const ROUTES = { ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...mcpWriteRoutes };
+const ROUTES = { ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...mcpWriteRoutes };
 const MAX_BODY = 200000;
 
 // 毎日0時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、締め切りを過ぎた仮予定を決定する。切り替えたあとは、3日以降に前月分の請求を確定する
@@ -78,7 +80,7 @@ export async function handleV2(request, env, ctx, head = {}) {
   // スタッフのプレビューは表示だけ。読むだけの操作のほかは、ここですべて断る（書き込み・メール・ログアウト）
   if ((isPreviewToken(body.auth) || isPreviewToken(body.k)) && !PREVIEW_READS.has(route)) return reply(403, { ok: false, error: { code: 'preview', message: 'プレビュー中のため、変更はできません（表示だけです）' } });
 
-  const c = { env, db: env.DB2, now: Date.now(), effects: [], actor: null, userAgent: request.headers.get('user-agent') || '' };
+  const c = { route, env, db: env.DB2, now: Date.now(), effects: [], actor: null, userAgent: request.headers.get('user-agent') || '' };
   // 外のサービス（MCP）の鍵: 読むだけの操作を、代表のスタッフとして通す（cf/v2/service.mjs）
   if (body.serviceKey !== undefined) {
     if (!SERVICE_READS.has(route)) return reply(403, { ok: false, error: { code: 'service', message: 'この鍵では読むことしかできません（登録・変更は管理画面で）' } });
