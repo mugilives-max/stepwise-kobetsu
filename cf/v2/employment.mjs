@@ -64,12 +64,18 @@ async function detail(c,id,me) {
  const visible=me.contractType==='owner'?contracts:contracts.filter(r=>r.status!=='draft');
  const events=(await c.db.prepare('select e.* from employmentEvents e join employmentContracts x on x.id=e.contractId where x.staffId=? order by e.id').bind(s.id).all()).results.filter(e=>visible.some(r=>r.id===e.contractId));
  const mail=(await c.db.prepare("select id,status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'$.notice.type')='challenge' and json_extract(payload,'$.to')=? order by id desc limit 1").bind(s.email).all()).results[0]||null;
- return {staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
+ const days=(await c.db.prepare("select id,date,status,planVersion,planAgreedVersion,payrollId from workDays where staffId=? order by date desc limit 60").bind(s.id).all()).results;
+ const requests=(await c.db.prepare("select a.id,w.date,a.at,a.detail from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id) order by a.id").bind(s.id).all()).results;
+ return {days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
 }
 export const employmentRoutes={
  'employment/list':async(c,b)=>{
   await requireOwner(c,b);
   const rows=(await c.db.prepare("select s.id,s.name,s.email,s.status,s.employmentAccess,p.invitedAt,p.version from staff s left join employmentProfiles p on p.staffId=s.id where s.contractType='employee' order by s.createdAt").all()).results;
+  for(const s of rows){
+   s.pendingWork=Number((await c.db.prepare("select count(*) n from workDays where staffId=? and status='submitted'").bind(s.id).first()).n);
+   s.pendingCorrections=Number((await c.db.prepare("select count(*) n from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id)").bind(s.id).first()).n);
+  }
   return {staff:rows};
  },
  'employment/get':async(c,b)=>{const me=await requireOwner(c,b);return detail(c,b.staffId,me);},

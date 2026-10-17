@@ -73,9 +73,10 @@ export const workRoutes={
  'work/day':async(c,b)=>{
   const {id}=await who(c,b);if(!dateOK(b.date))fail('badDate','日付を選んでください');
   const r=await day(c,id,b.date),suggestion=await workSuggestion(c,id,b.date);
+  const answers=r?(await c.db.prepare("select id,at,detail from auditLog where target=? and action='workCorrectionAnswered' order by id").bind(r.id).all()).results:[];
   const w=await warnings(c,id,b.date,r?JSON.parse(r.actual):suggestion);
   if(r?.submittedAt&&workWarnings(JSON.parse(r.actual)).minutes<workWarnings(JSON.parse(r.planned)).minutes)w.issues.push('予定より勤務が短い日：勤務取消の事情・休業手当の要否を確認');
-  return {day:view(r),suggestion,warnings:w,corrections:r?(await c.db.prepare("select at,detail from auditLog where target=? and action='workCorrectionRequested' order by id desc").bind(r.id).all()).results:[],history:r?(await c.db.prepare('select * from workDayRevisions where workDayId=? order by version desc').bind(r.id).all()).results:[]};
+  return {day:view(r),suggestion,warnings:w,answers,corrections:r?(await c.db.prepare("select id,at,detail from auditLog where target=? and action='workCorrectionRequested' order by id desc").bind(r.id).all()).results:[],history:r?(await c.db.prepare('select * from workDayRevisions where workDayId=? order by version desc').bind(r.id).all()).results:[]};
  },
  'work/plan':async(c,b)=>{
   const me=await requireOwner(c,b),s=await employee(c,b.staffId);if(!dateOK(b.date))fail('badDate','日付を選んでください');
@@ -107,6 +108,14 @@ export const workRoutes={
   const w=await warnings(c,s.id,r.date,JSON.parse(r.actual)),reason=String(b.reason||'').trim();
   if(b.reviewed!==true||!reason||reason.length>500)fail('needReview','実績と休憩・必要な賃金調整を確認し、確認内容を残してください');
   return {day:await save(c,r,s.id,r.date,{status:'confirmed',confirmedAt:iso(c.now)},me,reason),warnings:w};
+ },
+ 'work/correction/respond':async(c,b)=>{
+  await requireOwner(c,b);const s=await employee(c,b.staffId),r=await day(c,s.id,b.date);
+  if(!r)fail('notFound','勤務記録がありません',404);checkVersion(r,b);
+  const request=await c.db.prepare("select id from auditLog where id=? and target=? and action='workCorrectionRequested'").bind(Number(b.requestId),r.id).first();
+  const message=String(b.message||'').trim();if(!request||!message||message.length>500)fail('needReply','対応した申出と対応結果を500文字以内で記録してください');
+  await audit(c,'workCorrectionAnswered',r.id,{requestId:request.id,message,version:r.version});
+  return {recorded:true};
  },
  'work/correction':async(c,b)=>{
   const {me,id}=await who(c,b),r=await day(c,id,b.date);

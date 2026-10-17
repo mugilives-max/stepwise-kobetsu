@@ -169,3 +169,16 @@ test('database rejects stale payroll basis and actual-work edits after confirmat
  const row=h.rows('select * from payrollMonths where id=?',p.id)[0];row.id='stale-test';row.month='2026-11';row.workBasis='[]';
  assert.throws(()=>h.db2._sqlite.prepare('insert into payrollMonths('+columns.join(',')+') values('+columns.map(()=>'?').join(',')+')').run(...columns.map(k=>row[k])),/work changed/);
 });
+
+test('correction requests reach owner queue and answers leave both request and original payroll intact',async()=>{
+ const w=await employmentWorld(),{h,auth,staff}=w,ta=await w.invite();h.clock=Date.parse('2026-10-17T15:00:00+09:00');
+ const d=(await h.ok('work/submit',{auth:ta,date:'2026-10-17',version:0,intervals:[{start:'13:00',end:'14:00',kind:'other'}],reason:'見学'})).day;
+ await h.ok('work/correction',{auth:ta,date:d.date,version:d.version,reason:'終了時刻を確認したい'});
+ const before=await w.get();assert.equal(before.requests.length,1);
+ assert.equal((await h.ok('employment/list',{auth})).staff.find(x=>x.id===staff.id).pendingCorrections,1);
+ const requestId=before.requests[0].id;
+ assert.equal((await h.call('work/correction/respond',{auth:ta,staffId:staff.id,date:d.date,version:d.version,requestId,message:'自己回答'})).error.code,'forbidden');
+ await h.ok('work/correction/respond',{auth,staffId:staff.id,date:d.date,version:d.version,requestId,message:'本人と確認し、元の時刻で正しいと確認しました'});
+ assert.equal((await w.get()).requests.length,0);
+ const read=await h.ok('work/day',{auth:ta,date:d.date});assert.equal(read.corrections.length,1);assert.equal(read.answers.length,1);assert.equal(read.day.version,d.version);
+});

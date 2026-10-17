@@ -21,15 +21,16 @@ function blocks(text) {
   return '<p>'+esc(p).replace(/\n/g,'<br>')+'</p>';
  }).join('\n');
 }
+const japanTime=v=>v?new Date(Date.parse(v)+9*3600e3).toISOString().slice(0,16).replace('T',' '):'';
 export function employmentDocument(r,events=[]) {
  const s=JSON.parse(r.snapshot),state={draft:'案・未締結',issued:'交付・同意待ち',agreed:'締結記録の控え',withdrawn:'取り下げた案'}[r.status];
- const hist=events.map(e=>'<tr><td>'+esc(e.action)+'</td><td>'+esc(e.actualAt)+'</td><td>'+esc(e.actorName)+'</td></tr>').join('');
+ const hist=events.map(e=>'<tr><td>'+esc(e.action)+'</td><td>'+esc(japanTime(e.actualAt))+'</td><td>'+esc(japanTime(e.recordedAt))+'</td><td>'+esc(e.actorName)+'</td></tr>').join('');
  return '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>雇用契約書 第'+r.revision+'版 '+esc(s.staffName)+'</title><style>'+
- '@page{size:A4;margin:16mm 17mm}*{box-sizing:border-box}body{font-family:"Noto Sans CJK JP","Yu Gothic",sans-serif;font-size:10pt;line-height:1.7;color:#18232d;max-width:760px;margin:24px auto;padding:0 16px}h1{font-size:18pt;margin:12px 0}h2{font-size:11pt;margin:18px 0 6px;break-after:avoid}p{margin:7px 0;overflow-wrap:anywhere;orphans:3;widows:3}table{border-collapse:collapse;width:100%;font-size:8pt;table-layout:fixed}td,th{border:1px solid #ccd5da;padding:5px;overflow-wrap:anywhere}tr{break-inside:avoid}.meta{padding:10px;background:#edf3f5;font-size:9pt}.sign{height:70px;border-bottom:1px solid #789;break-inside:avoid}.toolbar{position:sticky;top:0;background:white;padding:12px;border:1px solid #ccc}button{font:inherit;padding:8px}small{font-size:8pt;overflow-wrap:anywhere}@media print{body{max-width:none;margin:0;padding:0}.toolbar{display:none}.meta{background:#f4f4f4}}'+
+ '@page{size:A4;margin:16mm 17mm}*{box-sizing:border-box}body{font-family:"Noto Sans CJK JP","Yu Gothic",sans-serif;font-size:10pt;line-height:1.7;color:#18232d;max-width:760px;margin:24px auto;padding:0 16px}h1{font-size:18pt;margin:12px 0}h2{font-size:11pt;margin:18px 0 6px;break-after:avoid}p{margin:7px 0;overflow-wrap:anywhere;orphans:3;widows:3}table{border-collapse:collapse;width:100%;font-size:8pt;table-layout:fixed}td,th{border:1px solid #ccd5da;padding:5px;overflow-wrap:anywhere}tr{break-inside:avoid}.meta{padding:10px;background:#edf3f5;font-size:9pt}.sign-block{break-inside:avoid}.sign{height:70px;border-bottom:1px solid #789;break-inside:avoid}.toolbar{position:sticky;top:0;background:white;padding:12px;border:1px solid #ccc}button{font:inherit;padding:8px}small{font-size:8pt;overflow-wrap:anywhere}@media print{body{max-width:none;margin:0;padding:0}.toolbar{display:none}.meta{background:#f4f4f4}}'+
  '</style></head><body><div class="toolbar"><button onclick="window.print()">印刷・PDF保存</button> 保存後は、この書面全体を交付してください。</div>'+
  '<div class="meta">第'+r.revision+'版・'+esc(state)+'／'+(r.method==='paper'?'紙で締結':'電子で締結')+'<br>書面番号 '+esc(r.id)+'<br>対象期間 '+esc(s.startDate)+'〜'+esc(s.endDate)+'</div>'+
- blocks(s.text)+(r.method==='paper'?'<h2>署名欄</h2><p>契約日：　　　年　　　月　　　日</p><p class="sign">塾の代表者署名：</p><p class="sign">講師署名：</p>':'')+
- '<h2>締結・交付の記録</h2><p>代表の発行・合意：'+esc(r.issuedAt||'未発行')+'<br>交付日：'+esc(r.deliveredAt||'未記録')+'<br>講師の合意：'+esc(r.agreedAt||'未記録')+' '+esc(r.consenterName)+'</p>'+
- '<table><thead><tr><th>手続き</th><th>実際の日時</th><th>記録した人</th></tr></thead><tbody>'+hist+'</tbody></table>'+
- '<p><small>本文の照合番号 '+esc(r.contentHash)+'<br>時刻の末尾ZはUTC（日本時間は9時間後）です。紙の署名記録は代表による転記であり、本人の電子同意とは区別します。</small></p></body></html>';
+ blocks(s.text)+(r.method==='paper'?'<section class="sign-block"><h2>署名欄</h2><p>契約日：　　　年　　　月　　　日</p><p class="sign">塾の代表者署名：</p><p class="sign">講師署名：</p></section>':'')+
+ '<h2>締結・交付の記録</h2><p>代表の発行・合意：'+esc(japanTime(r.issuedAt)||'未発行')+'<br>交付日：'+esc(japanTime(r.deliveredAt)||'未記録')+'<br>講師の合意：'+esc(japanTime(r.agreedAt)||'未記録')+' '+esc(r.consenterName)+'</p>'+
+ '<table><thead><tr><th>手続き</th><th>実際の日時</th><th>記録した日時</th><th>記録した人</th></tr></thead><tbody>'+hist+'</tbody></table>'+
+ '<p><small>本文の照合番号 '+esc(r.contentHash)+'<br>日時は日本時間で表示しています。紙の署名記録は代表による転記であり、本人の電子同意とは区別します。</small></p></body></html>';
 }

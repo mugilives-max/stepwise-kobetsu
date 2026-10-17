@@ -1,6 +1,7 @@
 // Employment and actual work. Owner manages; each employee sees only their own data.
 let cache=null, key='', dayCache=null, dayKey='', drafts=new Map();
 const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+const at=v=>v?new Date(Date.parse(v)+9*3600e3).toISOString().slice(0,16).replace('T',' '):'';
 const STATUS={draft:'案・未発行',issued:'交付・同意待ち',agreed:'締結記録あり',withdrawn:'取り下げ'};
 const WORK={lesson:'授業',prep:'準備・記録',other:'事務・見学・研修',meeting:'面談',break:'休憩'};
 const formKey=f=>location.hash+'|'+f.dataset.form+'|'+(f.dataset.id||'');
@@ -49,7 +50,7 @@ function contractCard(ctx,r,owner){
  if(owner&&r.status==='draft')h+='<form class="stack" data-form="em-issue"'+a+'>'+check(esc,'agree','この版の全文を確認し、代表としてこの条件での契約に合意して発行する')+'<button'+ctx.dis()+'>この版を発行する</button></form>';
  if(r.status==='issued'&&owner) {
   h+='<p class="small">発行した書面全体を交付してから、実際の交付を記録してください。画面に置いたことだけで交付済みにはしません。</p>';
-  if(r.method==='electronic')h+='<p>電子交付の希望：'+(r.preferenceAt?esc(r.recipient)+'（'+esc(r.preferenceAt)+'）':'本人の確認待ち')+'</p>';
+  if(r.method==='electronic')h+='<p>電子交付の希望：'+(r.preferenceAt?esc(r.recipient)+'（'+esc(at(r.preferenceAt))+'）':'本人の確認待ち')+'</p>';
   if(r.method==='paper'||r.preferenceAt)h+='<form class="stack" data-form="em-delivery"'+a+'>'+field(esc,'deliveredAt','実際に交付した日時','','datetime-local',true)+area(esc,'note','交付方法・送付先・確認結果',r.deliveryNote)+check(esc,'delivered','この版の書面全体を実際に交付した')+'<button'+ctx.dis()+'>交付を記録する</button></form>';
   if(r.method==='paper'&&r.deliveredAt)h+='<form class="stack" data-form="em-paper"'+a+'>'+field(esc,'agreedAt','実際に双方が署名した日時','','datetime-local',true)+field(esc,'consenterName','署名した講師の氏名',s.staffName,'text',true)+area(esc,'evidenceRef','署名済み控えの非公開保管先（Drive等）')+check(esc,'signed','双方の署名と双方への控えの交付を確認した')+'<button'+ctx.dis()+'>紙での締結を記録する</button></form>';
  }
@@ -57,7 +58,7 @@ function contractCard(ctx,r,owner){
   if(!r.deliveredAt)h+='<form class="stack" data-form="em-preference"'+a+'>'+field(esc,'recipient','書面を受け取るメールアドレス',r.recipient||cache.staff.email,'email',true)+check(esc,'wish','保存・印刷できる書面の電子交付を希望します')+'<button'+ctx.dis()+'>受け取り方法を伝える</button><p class="small">紙を希望する場合は代表へお知らせください。この操作は契約内容への同意ではありません。</p></form>';
   else h+='<form class="stack" data-form="em-accept"'+a+'>'+field(esc,'consenterName','同意する本人の氏名','','text',true)+check(esc,'received','この版の書面全体を受け取り、自分で保存・印刷できます')+check(esc,'agree','この版の全文を確認し、記載された雇用条件に同意します')+'<button class="primary"'+ctx.dis()+'>この版に同意する</button></form>';
  }
- if(r.status==='agreed')h+='<p>合意した人：'+esc(r.consenterName)+'<br>合意日時：'+esc(r.agreedAt)+'<br>交付日時：'+esc(r.deliveredAt)+'</p>';
+ if(r.status==='agreed')h+='<p>合意した人：'+esc(r.consenterName)+'<br>合意日時：'+esc(at(r.agreedAt))+'<br>交付日時：'+esc(at(r.deliveredAt))+'</p>';
  if(owner&&['draft','issued'].includes(r.status))h+='<details><summary>案を取り下げる</summary><form class="stack" data-form="em-withdraw"'+a+'>'+field(esc,'reason','取り下げる理由','','text',true)+'<button'+ctx.dis()+'>この案を取り下げる</button></form></details>';
  return h+'</details>';
 }
@@ -67,7 +68,7 @@ export function employmentPage(ctx,me,id=''){
  if(cache.loading)return '<p>読み込んでいます…</p>';if(!cache.ok)return ctx.notice();
  const {esc}=ctx;let h=ctx.notice();
  if(owner&&!id){
-  h+='<p>講師ごとに、基本情報・契約・給与・勤務の準備を確認します。</p><div class="group">'+cache.staff.map(s=>'<a class="todo-row" href="#employment='+esc(s.id)+'"><span>'+esc(s.name)+'<br><small>'+esc(s.email)+'・'+(s.status==='active'?'アカウント利用中':s.invitedAt?'招待済み':'未招待')+'</small></span></a>').join('')+'</div>';
+  h+='<p>講師ごとに、基本情報・契約・給与・勤務の準備を確認します。</p><div class="group">'+cache.staff.map(s=>'<a class="todo-row" href="#employment='+esc(s.id)+'"><span>'+esc(s.name)+'<br><small>'+esc(s.email)+'・'+(s.status==='active'?'アカウント利用中':s.invitedAt?'招待済み':'未招待')+(s.pendingWork?'・実績確認 '+s.pendingWork+'件':'')+(s.pendingCorrections?'・訂正申出 '+s.pendingCorrections+'件':'')+'</small></span></a>').join('')+'</div>';
   return h+'<details open><summary>講師を下書き登録</summary><form class="stack" data-form="em-new">'+field(esc,'familyName','姓','','text',true)+field(esc,'givenName','名','','text',true)+field(esc,'email','本人のメールアドレス','','email',true)+'<button class="primary"'+ctx.dis()+'>下書きを保存（メールは送りません）</button></form></details>';
  }
  const d=cache;h+='<h1>'+esc(d.staff.name)+' さんの雇用・勤務</h1>';
@@ -76,7 +77,7 @@ export function employmentPage(ctx,me,id=''){
  h+='<h2>2. 契約書・締結の控え</h2><p class="small">案の保存、書面の交付、双方の合意を別々に記録します。古い版と記録は残ります。</p>';
  if(owner)h+='<form class="stack" data-form="em-create" data-version="'+(d.profile?.version||0)+'">'+select(esc,'method','締結方法',[['','方法を選んでください'],['paper','紙で署名する'],['electronic','電子で同意する']])+'<button'+ctx.dis()+'>保存済みの条件から契約書案を作る</button></form>';
  h+=d.contracts.map(r=>contractCard(ctx,r,owner)).join('')||'<p>発行済みの契約書はありません。</p>';
- if(d.events?.length)h+='<details><summary>交付・同意の履歴</summary><ul>'+d.events.map(e=>'<li>'+esc(e.action)+'：'+esc(e.actualAt)+'／記録 '+esc(e.recordedAt)+' '+esc(e.actorName)+'</li>').join('')+'</ul></details>';
+ if(d.events?.length)h+='<details><summary>交付・同意の履歴</summary><ul>'+d.events.map(e=>'<li>'+esc(e.action)+'：'+esc(at(e.actualAt))+'／記録 '+esc(at(e.recordedAt))+' '+esc(e.actorName)+'</li>').join('')+'</ul></details>';
  if(owner){
   h+='<h2>3. 給与・アカウントの準備</h2><p>契約の時給は授業・その他業務とも2,000円、面談は当面担当せず未設定です。</p><form class="stack" data-form="em-payroll">'+check(esc,'agree','確認済みの申告書区分と契約の時給を給与設定へ反映する')+'<button'+ctx.dis()+'>契約に合わせて給与を設定</button></form><p><a href="#rates">時給・源泉徴収の履歴を確認</a></p>';
   if(d.staff.status==='invited')h+='<form class="stack" data-form="em-invite">'+check(esc,'confirm',d.staff.email+' へ招待メールを送る。再送時は前のリンクが無効になります。')+'<button'+ctx.dis()+'>招待メールを送る</button></form>';
@@ -84,6 +85,8 @@ export function employmentPage(ctx,me,id=''){
   if(!d.staff.employmentAccess)h+='<button data-action="em-activate"'+ctx.dis()+'>準備を確認して業務画面を利用可能にする</button>';
  }
  h+='<h2>4. 勤務予定・実績</h2><form class="stack" data-form="wk-open">'+field(esc,'date','確認する勤務日',today(),'date',true)+'<button'+ctx.dis()+'>この日の勤務を開く</button></form><p><a href="#payroll">給与明細を確認する</a></p>';
+ if(d.requests?.length)h+='<div class="notice"><strong>対応待ちの訂正申出</strong><ul>'+d.requests.map(x=>'<li><a href="#work='+esc(d.staff.id)+'/'+esc(x.date)+'">'+esc(x.date)+'</a> '+esc(JSON.parse(x.detail).reason)+'</li>').join('')+'</ul></div>';
+ if(d.days?.length)h+='<details open><summary>登録した勤務日（新しい60日分）</summary><ul>'+d.days.map(x=>'<li><a href="#work='+esc(d.staff.id)+'/'+esc(x.date)+'">'+esc(x.date)+'</a> '+(x.payrollId?'給与反映済み':({draft:'実績未提出',submitted:'代表の確認待ち',confirmed:'代表確認済み'}[x.status]))+'</li>').join('')+'</ul></details>';
  return h;
 }
 const linesToText=list=>list.map(x=>x.start+'-'+x.end+' '+WORK[x.kind]+(x.label?' '+x.label:'')).join('\n');
@@ -113,7 +116,10 @@ export function workPage(ctx,me,id,date){
  else h+='<p>給与に反映済みです。訂正が必要な場合は、下の欄から代表へ申し出てください。</p><pre style="white-space:pre-wrap">'+esc(linesToText(r.actual))+'</pre>';
  if(dayCache.warnings?.issues.length)h+='<div class="notice"><ul>'+dayCache.warnings.issues.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p>実際に働いた時間は残します。必要な割増・休業手当等は給与の調整で確認します。</p></div>';
  if(owner&&r.status==='submitted')h+='<form class="stack" data-form="wk-confirm"'+a+'>'+field(esc,'reason','実績・休憩・賃金調整を確認した内容','','text',true)+check(esc,'reviewed','実際の勤務と必要な賃金調整を確認しました')+'<button'+ctx.dis()+'>実績を確認して給与へ反映</button></form>';
- if(r.version)h+='<details><summary>訂正の申し出・履歴</summary><form class="stack" data-form="wk-correction"'+a+'>'+area(esc,'reason','訂正してほしい内容')+'<button'+ctx.dis()+'>訂正の申し出を記録</button></form><ul>'+(dayCache.corrections||[]).map(x=>'<li>'+esc(x.at)+' '+esc(JSON.parse(x.detail).reason)+'</li>').join('')+'</ul><details><summary>以前の勤務記録</summary>'+dayCache.history.map(x=>'<pre style="white-space:pre-wrap;overflow-wrap:anywhere">第'+x.version+'版 '+esc(x.recordedAt)+'\n'+esc(linesToText(JSON.parse(x.snapshot).actual))+'\n'+esc(x.reason)+'</pre>').join('')+'</details></details>';
+ if(r.version)h+='<details><summary>訂正の申し出・履歴</summary><form class="stack" data-form="wk-correction"'+a+'>'+area(esc,'reason','訂正してほしい内容')+'<button'+ctx.dis()+'>訂正の申し出を記録</button></form><ul>'+(dayCache.corrections||[]).map(x=>{
+  const answers=(dayCache.answers||[]).filter(y=>JSON.parse(y.detail).requestId===x.id);
+  return '<li>'+esc(at(x.at))+' '+esc(JSON.parse(x.detail).reason)+answers.map(y=>'<p>代表の回答：'+esc(JSON.parse(y.detail).message)+'（'+esc(at(y.at))+'）</p>').join('')+(owner?'<form class="stack" data-form="wk-reply" data-id="'+x.id+'"'+a+'><input type="hidden" name="requestId" value="'+x.id+'">'+area(esc,'message','対応結果（勤務実績や給与の訂正は別途保存）')+'<button'+ctx.dis()+'>対応結果を記録する</button></form>':'')+'</li>';
+ }).join('')+'</ul><details><summary>以前の勤務記録</summary>'+dayCache.history.map(x=>'<pre style="white-space:pre-wrap;overflow-wrap:anywhere">第'+x.version+'版 '+esc(at(x.recordedAt))+'\n'+esc(linesToText(JSON.parse(x.snapshot).actual))+'\n'+esc(x.reason)+'</pre>').join('')+'</details></details>';
  return h;
 }
 export async function employmentSubmit(ctx,kind,el){
@@ -146,6 +152,7 @@ export async function employmentSubmit(ctx,kind,el){
   else if(kind==='wk-submit'){route='work/submit';body.intervals=readIntervals(v);}
   else if(kind==='wk-agree')route='work/plan/agree';
   else if(kind==='wk-confirm')route='work/confirm';
+  else if(kind==='wk-reply'){route='work/correction/respond';msg='対応結果を記録しました。';}
   else if(kind==='wk-correction'){route='work/correction';msg='訂正の申し出を記録しました。代表が確認します。';}
   if(!route)return false;
   const r=await ctx.call(route,body);
