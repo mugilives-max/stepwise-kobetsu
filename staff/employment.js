@@ -162,7 +162,7 @@ export async function employmentSubmit(ctx,kind,el){
   if(!route)return false;
   const r=await ctx.call(route,body);
   if(!r.ok){if(!ctx.handleAuth(r))ctx.say(r.error.message,'error');return true;}
-  drafts.delete(formKey(el));cache=null;dayCache=null;
+  drafts.delete(formKey(el));if(kind==='em-email')drafts.delete(location.hash+'|em-invite|');cache=null;dayCache=null;
   if(kind==='em-new')location.hash='#employment='+encodeURIComponent(r.staff.id);
   ctx.say(msg,'ok');return true;
  }catch(e){ctx.say(e.message,'error');return true;}
