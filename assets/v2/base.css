@@ -770,3 +770,28 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .reg-field.has-error .choice { border-color: #e7a59d; }
 .reg-confirm .cond-dl { grid-template-columns: minmax(6.5em, 38%) minmax(0, 1fr); }
 .reg-confirm .cond-dl dt { white-space: normal; }
+/* 入職の手続き: 登録内容（見出しの下に内容） */
+.reg-card { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 14px 0; }
+.reg-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.reg-card-head h2 { margin: 0; font-size: 16px; }
+.reg-rows { margin: 6px 0 0; }
+.reg-rows > div { padding: 10px 0; border-top: 1px solid var(--line); }
+.reg-rows > div:first-child { border-top: 0; }
+.reg-rows dt { font-size: 12px; color: var(--muted); }
+.reg-rows dd { margin: 2px 0 0; font-size: 15px; color: var(--ink); overflow-wrap: anywhere; }
+/* 入職の手続き: 今後の流れ */
+.flow { margin: 20px 0 8px; }
+.flow h2 { font-size: 16px; margin: 0 0 10px; }
+.flow ol { list-style: none; margin: 0; padding: 0; }
+.flow li { position: relative; padding: 0 0 16px 28px; }
+.flow li::before { content: ""; position: absolute; left: 4px; top: 4px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); background: var(--white); box-sizing: border-box; }
+.flow li::after { content: ""; position: absolute; left: 10px; top: 20px; bottom: 0; width: 2px; background: var(--line); }
+.flow li:last-child::after { display: none; }
+.flow li.done::before { background: var(--primary); border-color: var(--primary); }
+.flow li.done::after { background: var(--primary); }
+.flow li.now::before { border-color: var(--primary); box-shadow: 0 0 0 3px var(--soft); }
+.flow .ft { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--ink); }
+.flow li:not(.done):not(.now) .ft { color: var(--muted); }
+.flow .fb { margin-top: 2px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.fbadge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 0 8px; background: var(--soft); color: var(--primary); }
+.fbadge.now { background: var(--primary); color: var(--white); }
