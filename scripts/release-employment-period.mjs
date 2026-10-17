@@ -7,7 +7,9 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {ensure as check,runWrangler,compareModule,activeDeployment,assertPrivateBucket} from './release-contract-system.mjs';
 const repo='mugilives-max/stepwise-kobetsu',base='947b68ecc8383d2f887bb8864b645c7cd25d693f'; // base: source of the Worker published on 2026-10-18 (PR #105, 2026-10-18-staff-docs)
-const sourceSha='623410ce41b79ac9a172c1236d871057dfcfad52',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
+// publishedSource: the PR head the Worker was published from (run 39044433851). main moved twice (PR #108, #109: staff pages only, no cf/ change), so the PR head
+// became fc252af before merging. Pages checks the merged head as source; the live Worker must still equal a build of it exactly (modulesMatch).
+const publishedSource='623410ce41b79ac9a172c1236d871057dfcfad52',sourceSha='fc252afaa46caf2329d22cee72a4c3c1435ccfa9',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
 const mainBeforePublish='ddb157cf8498f1179ddb9f56d1af6ac50ac9259f',pullNumber=107,releaseLabel='2026-10-18-employment-period',branch='claude/employment-period-release-20261018',backupRoot='release-backups/employment-period-20261018/';
 const source=resolve('release-source'),baseline=resolve('baseline'),request=JSON.parse(await readFile('release-control/scripts/employment-period-release-request.json','utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex'),q=s=>'"'+s.replaceAll('"','""')+'"';
@@ -97,7 +99,7 @@ try{
  let state,manifest,settings,before;
  if(['verify','pages'].includes(request.operation)){
   manifest=JSON.parse(await readPrivate('manifest-before.json'));state=JSON.parse(await readPrivate('records-before.json'));settings=JSON.parse(await readPrivate('worker-settings-before.json'));before=manifest.before;
-  check(manifest.source===sourceSha&&manifest.base===base&&manifest.prefix===prefix,'Wrong checkpoint.');
+  check(manifest.source===publishedSource&&manifest.base===base&&manifest.prefix===prefix,'Wrong checkpoint.');
   check(hash(JSON.stringify(state))===manifest.recordsHash&&hash(await readPrivate('db2.sql'))===manifest.dbHash&&hash(await readPrivate('worker-before.bin'))===manifest.workerHash,'Backup integrity failed.');
  }else{
   stage='read-only production preflight';before=await deployed();const raw=await rawWorker();

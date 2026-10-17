@@ -20,7 +20,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 623410ce41b79ac9a172c1236d871057dfcfad52
+          ref: fc252afaa46caf2329d22cee72a4c3c1435ccfa9
           path: release-source
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

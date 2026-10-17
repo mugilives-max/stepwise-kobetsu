@@ -1,9 +1,10 @@
 {
-  "operation": "publish",
-  "source": "623410ce41b79ac9a172c1236d871057dfcfad52",
+  "operation": "pages",
+  "source": "fc252afaa46caf2329d22cee72a4c3c1435ccfa9",
   "checkRuns": [
-    39044224982,
-    39044228605
+    39044674466,
+    39044677468
   ],
-  "authorization": "2026-10-18 the employment contract body should show the contract period as 2026年11月1日から2027年3月31日まで。 (PR #107); agent deploys Worker changes without confirmation (standing permission). Inspection run 39044343002 passed (Worker 53077293 matches PR #105 source, no pending migration, 53 tables). Publish with private backup; no record changes."
+  "authorization": "2026-10-18 PR #107 merged after publish run 39044433851 (Worker d11d5f9f from 623410c). Before merging, main (PR #108, #109; staff pages only) was merged into the PR head, giving fc252af with an identical cf/ tree. Verify the published staff pages and the live Worker against fc252af, and records against the private checkpoint. Read-only.",
+  "backupPrefix": "release-backups/employment-period-20261018/39044433851-1"
 }
