@@ -1,10 +1,10 @@
 {
-  "operation": "verify",
+  "operation": "pages",
   "source": "0fbb458510db99503feccd6dec56b3ebb01bc6f3",
   "checkRuns": [
     39020066179,
     39020068798
   ],
-  "authorization": "2026-10-17 verify the Worker published by run 39020278086 against the private checkpoint; the source keeps the health label 2026-10-16-parent-notifications (label bump deferred to the next Worker release). Read-only.",
+  "authorization": "2026-10-17 PR #92 merged to main (2b1e2a55990919dd8bf8dd044daa6bb45d521f3c); verify the published staff pages against the reviewed source and re-check the Worker and records against the private checkpoint. Read-only.",
   "backupPrefix": "release-backups/staff-onboarding-20261017/39020278086-1"
 }
