@@ -40,7 +40,7 @@ function profileData(b) {
 }
 async function readiness(c,s,p,contracts) {
  const checks=[];
- const reg=await registrationDetail(c,s.id);if(reg.required&&(!reg.accepted||reg.pending||reg.returned))checks.push(reg.pending?'本人情報を代表が確認':'本人情報の登録・提出');
+ const reg=await registrationDetail(c,s.id);if(reg.required&&(!reg.accepted||reg.pending||reg.returned))checks.push(reg.pending?'本人情報を代表が確認':'本人情報の登録');
  if(!validEmail(s.email))checks.push('招待先メールアドレスを登録');
  if(!p)checks.push('基本情報を登録');
  if(!contracts.some(r=>r.status==='agreed'))checks.push('契約の締結・交付');
@@ -95,8 +95,8 @@ export const employmentRoutes={
    if(old) {
     const reg=await registrationState(c,s.id),prior=JSON.parse(old.data);
     if(reg.required){
-     for(const k of ['address','availability','otherWork'])if(Object.hasOwn(b.data||{},k)&&data[k]!==String(prior[k]||''))fail('selfOnly','本人情報は本人が提出し、代表が確認する手順で更新してください',409);
-     data=profileData({...prior,...b.data,address:prior.address,availability:prior.availability,otherWork:prior.otherWork});
+     for(const k of ['address','otherWork'])if(Object.hasOwn(b.data||{},k)&&data[k]!==String(prior[k]||''))fail('selfOnly','住所・他の勤務先は本人が登録し、代表が確認する手順で更新してください',409);
+     data=profileData({...prior,...b.data,address:prior.address,otherWork:prior.otherWork}); // 勤務希望（availability）は代表が本人と確認して保存できる
     }
     checkVersion(old,b);const r=await c.db.prepare('update employmentProfiles set data=?,updatedAt=?,version=version+1 where staffId=? and version=?').bind(JSON.stringify(data),now,s.id,old.version).run();if(r.meta.changes!==1)fail('conflict','読み直してください',409);}
    else {if(Number(b.version)!==0)fail('conflict','読み直してください',409);await c.db.prepare('insert into employmentProfiles(staffId,data,createdAt,updatedAt) values(?,?,?,?)').bind(s.id,JSON.stringify(data),now,now).run();}
@@ -133,7 +133,7 @@ export const employmentRoutes={
   if(b.email!==undefined&&normEmail(b.email)!==s.email)fail('conflict','招待先が変わっています。読み直して確認してください',409);
   const p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();if(!p)fail('needProfile','先に雇用情報を登録してください');
   if(b.confirm!==true)fail('needConfirm','宛先を確認してから招待してください');
-  const inviteUrl=await issueChallenge(c,'staff','staffInvite',s,{subject:'【ステップワイズ】雇用契約の確認・アカウント設定',body:url=>'入職の手続きを進めるアカウントをご用意しました。7日以内に、ご本人がリンクからパスワードを設定してください。\n\n'+url+'\n\n設定後は「雇用・勤務」の案内に沿って、住所・勤務可能時間などの本人情報を登録してください。代表が確認して勤務条件を整えたあと、契約書をご案内します。アカウントの設定だけでは契約への同意にはなりません。リンクを再送した場合、前のリンクは使えません。\n届かない・開けない場合は代表へご連絡ください。'});
+  const inviteUrl=await issueChallenge(c,'staff','staffInvite',s,{subject:'【ステップワイズ】雇用契約の確認・アカウント設定',body:url=>'入職の手続きを進めるアカウントをご用意しました。7日以内に、ご本人がリンクからパスワードを設定してください。\n\n'+url+'\n\n設定後は「雇用・勤務」の案内に沿って、氏名・住所などの本人情報を登録してください。代表が確認して勤務条件を整えたあと、契約書をご案内します。アカウントの設定だけでは契約への同意にはなりません。リンクを再送した場合、前のリンクは使えません。\n届かない・開けない場合は代表へご連絡ください。'});
   await c.db.prepare('update employmentProfiles set invitedAt=?,updatedAt=?,version=version+1 where staffId=?').bind(iso(c.now),iso(c.now),s.id).run();
   await audit(c,'employmentInvite',s.id);return {inviteUrl,...await detail(c,s.id,me)};
  },
@@ -141,7 +141,7 @@ export const employmentRoutes={
   const me=await requireOwner(c,b),s=await employee(c,b.staffId),p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();
   if(!p)fail('needProfile','基本情報を保存してください');checkVersion(p,b);await requireRegistration(c,s.id);
   const d=JSON.parse(p.data);
-  if(['address','startDate','endDate','workWindow','weeklyHours','availability','otherWork','taxDeclaration','taxCheckedOn'].some(k=>!d[k]))fail('incomplete','住所・契約期間・勤務条件・他の勤務先・申告書の確認を入力してください');
+  if(['address','startDate','endDate','workWindow','weeklyHours','availability','otherWork','taxDeclaration','taxCheckedOn'].some(k=>!d[k]))fail('incomplete','住所・契約期間・勤務条件・勤務希望・他の勤務先・申告書の確認を入力してください');
   if(!['paper','electronic'].includes(b.method))fail('badMethod','紙か電子を選んでください');
   const snap=JSON.stringify(employmentSnapshot(s,d)),id=newId('ec'),now=iso(c.now);
   const revision=Number((await c.db.prepare('select max(revision) n from employmentContracts where staffId=?').bind(s.id).first()).n||0)+1;

@@ -1,7 +1,7 @@
 name: Staff self-registration checks
 on:
   push:
-    branches: ['codex/staff-self-registration-20261017']
+    branches: ['codex/staff-self-registration-20261017', 'claude/staff-onboarding-stages-20261017']
     paths: ['cf/**','staff/**','test/**','scripts/check-staff-registration-ui.cjs','.github/workflows/staff-registration-checks.yml']
 permissions:
   contents: read
