@@ -81,7 +81,19 @@ try{
   const index=await rows("SELECT sql FROM sqlite_master WHERE type='index' AND name='staff_email'");
   check(index.length===1&&/WHERE email <> ''/i.test(index[0].sql),'Expected nonempty-email unique index.');
   same(await columnsNow(),state.columns,'Existing columns or tables changed.');
-  same(state.data,await snapshot(state.columns),'Existing contract, consent, payroll or other records changed.');
+  const currentData=await snapshot(state.columns);
+  for(const table of Object.keys(state.columns)){
+   const oldRows=state.data[table],newRows=currentData[table];
+   if(JSON.stringify(oldRows)===JSON.stringify(newRows))continue;
+   const cols=state.columns[table],id=cols.indexOf('id'),changedColumns=new Set();
+   if(id>=0){
+    const byId=new Map(oldRows.map(s=>{const r=JSON.parse(s);return [r[id],r];}));
+    for(const s of newRows){const r=JSON.parse(s),old=byId.get(r[id]);if(old)cols.forEach((c,i)=>{if(JSON.stringify(old[i])!==JSON.stringify(r[i]))changedColumns.add(c);});}
+   }
+   const oldSet=new Set(oldRows),newSet=new Set(newRows);
+   console.log(JSON.stringify({recordDrift:table,beforeCount:oldRows.length,afterCount:newRows.length,removedOrChanged:oldRows.filter(r=>!newSet.has(r)).length,addedOrChanged:newRows.filter(r=>!oldSet.has(r)).length,changedColumns:[...changedColumns].sort()}));
+  }
+  same(state.data,currentData,'Existing contract, consent, payroll or other records changed.');
  }
  stage='source and check verification';
  const pr=await gh('/pulls/85');check(pr.head.sha===sourceSha&&pr.head.repo.full_name===repo,'PR source changed.');
