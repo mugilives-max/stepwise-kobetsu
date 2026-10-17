@@ -1,9 +1,9 @@
 {
-  "operation": "inspect",
+  "operation": "publish",
   "source": "947b68ecc8383d2f887bb8864b645c7cd25d693f",
   "checkRuns": [
     39042777162,
     39042789671
   ],
-  "authorization": "2026-10-18 owner asked to add the employment contract and payslip samples to the document templates page; agent deploys Worker changes without confirmation (standing permission). Read-only inspection first."
+  "authorization": "2026-10-18 owner asked to add the employment contract and payslip samples to the document templates page; agent deploys Worker changes without confirmation (standing permission). Inspection run 39042895275 passed (Worker 50616986 matches PR #102 source, no pending migration, 53 tables). Publish with private backup; no record changes."
 }
