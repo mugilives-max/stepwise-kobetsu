@@ -1,0 +1,9 @@
+{
+  "operation": "inspect",
+  "source": "485c5fb573529e213303a2033d6396cf0b02c0ff",
+  "checkRuns": [
+    39039577227,
+    39039581189
+  ],
+  "authorization": "2026-10-17 user decided the three contract changes (\"その3つでいいので進めてください\"); read-only inspection before publishing PR #102. No migration."
+}
