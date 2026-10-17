@@ -1,3 +1,4 @@
+import { bankSummary } from './staff-bank.mjs';
 import { fail, newId, normEmail, validEmail, iso, audit, sha256Hex } from './util.mjs';
 import { requireStaff, requireOwner, staffView } from './staff.mjs';
 import { issueChallenge } from './accounts.mjs';
@@ -46,7 +47,8 @@ async function readiness(c,s,p,contracts) {
   if(!d.conditionsChecked)checks.push('未確定事項・勤務条件の確認');
   if(!d.taxDeclaration||!d.taxCheckedOn||(d.taxDeclaration==='submitted'&&d.dependents===''))checks.push('扶養控除等申告書の確認');
   if(d.taxDeclaration&&((d.taxDeclaration==='submitted'?'kou':'otsu')!==s.taxColumn||(d.taxDeclaration==='submitted'&&Number(d.dependents)!==s.dependents)))checks.push('申告書と給与の源泉区分・扶養人数の照合');
-  if(!d.bankConsentChecked)checks.push('振込先の受領・振込への同意確認');
+  const bank=await bankSummary(c,s.id);
+  if(!bank.accepted&&(bank.submitted||!d.bankConsentChecked))checks.push(bank.pending?'提出された給与振込先を代表が確認':bank.returned?'給与振込先の修正・再提出':'振込先の受領・振込への同意確認');
  }
  const rates=(await c.db.prepare('select * from staffRates where staffId=? order by startsOn desc').bind(s.id).all()).results;
  const agreed=contracts.find(r=>r.status==='agreed');
@@ -67,13 +69,14 @@ async function detail(c,id,me) {
  const mail=(await c.db.prepare("select id,status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'$.notice.type')='challenge' and json_extract(payload,'$.to')=? order by id desc limit 1").bind(s.email).all()).results[0]||null;
  const days=(await c.db.prepare("select id,date,status,planVersion,planAgreedVersion,payrollId from workDays where staffId=? order by date desc limit 60").bind(s.id).all()).results;
  const requests=(await c.db.prepare("select a.id,w.date,a.at,a.detail from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id) order by a.id").bind(s.id).all()).results;
- return {days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
+ return {bank:await bankSummary(c,s.id),days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
 }
 export const employmentRoutes={
  'employment/list':async(c,b)=>{
   await requireOwner(c,b);
   const rows=(await c.db.prepare("select s.id,s.name,s.email,s.status,s.employmentAccess,p.invitedAt,p.version from staff s left join employmentProfiles p on p.staffId=s.id where s.contractType='employee' order by s.createdAt").all()).results;
   for(const s of rows){
+   s.bank=await bankSummary(c,s.id);
    s.pendingWork=Number((await c.db.prepare("select count(*) n from workDays where staffId=? and status='submitted'").bind(s.id).first()).n);
    s.pendingCorrections=Number((await c.db.prepare("select count(*) n from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id)").bind(s.id).first()).n);
   }
