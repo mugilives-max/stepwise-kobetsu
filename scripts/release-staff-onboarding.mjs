@@ -8,7 +8,7 @@ import {spawnSync} from 'node:child_process';
 import {ensure as check,runWrangler,compareModule,activeDeployment,assertPrivateBucket} from './release-contract-system.mjs';
 const repo='mugilives-max/stepwise-kobetsu',base='65fbdaa6f942e81da0397fe4d352c800b273555c'; // base: source of the Worker published on 2026-10-17 (PR #89)
 const sourceSha='0fbb458510db99503feccd6dec56b3ebb01bc6f3',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
-const mainBeforePublish='f887814b34c58a1abfe80a1eb6511e6015479c36',pullNumber=92,releaseLabel='2026-10-17-staff-onboarding',branch='claude/staff-onboarding-release-20261017',backupRoot='release-backups/staff-onboarding-20261017/';
+const mainBeforePublish='f887814b34c58a1abfe80a1eb6511e6015479c36',pullNumber=92,releaseLabel='2026-10-16-parent-notifications',branch='claude/staff-onboarding-release-20261017',backupRoot='release-backups/staff-onboarding-20261017/';
 const source=resolve('release-source'),baseline=resolve('baseline'),request=JSON.parse(await readFile('release-control/scripts/staff-onboarding-release-request.json','utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex'),q=s=>'"'+s.replaceAll('"','""')+'"';
 const same=(a,b,msg)=>check(JSON.stringify(a)===JSON.stringify(b),msg);

@@ -1,9 +1,10 @@
 {
-  "operation": "publish",
+  "operation": "verify",
   "source": "0fbb458510db99503feccd6dec56b3ebb01bc6f3",
   "checkRuns": [
     39020066179,
     39020068798
   ],
-  "authorization": "2026-10-17 user handed the onboarding flow fix to Claude and asked to keep working on GitHub while preserving existing records; publish the reviewed Worker (PR #92) after a verified private backup. No migration."
+  "authorization": "2026-10-17 verify the Worker published by run 39020278086 against the private checkpoint; the source keeps the health label 2026-10-16-parent-notifications (label bump deferred to the next Worker release). Read-only.",
+  "backupPrefix": "release-backups/staff-onboarding-20261017/39020278086-1"
 }
