@@ -1,0 +1,10 @@
+{
+  "operation": "pages",
+  "source": "65fbdaa6f942e81da0397fe4d352c800b273555c",
+  "checkRuns": [
+    39016463323,
+    39016485071
+  ],
+  "authorization": "2026-10-17 user requested immediate onboarding fix and restarting registration; preserve existing records and release on GitHub.",
+  "backupPrefix": "release-backups/staff-registration-20261017/39016698204-1"
+}
