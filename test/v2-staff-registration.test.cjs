@@ -7,7 +7,7 @@ async function fresh(){
  const staff=d.staff,get=()=>h.ok('employment/get',{auth,staffId:staff.id});
  await h.ok('employment/invite',{auth,staffId:staff.id,confirm:true});
  const ta=(await h.ok('staff/invite/accept',{token:h.linkFrom(h.mails().at(-1)),password:'synthetic registration password'})).auth;
- const data={familyName:'【テスト】本人',givenName:'登録',address:'【テスト】本人が入力した住所',otherWork:'なし',taxSituation:'unknown'};
+ const data={familyName:'【テスト】本人',givenName:'登録',address:'【テスト】本人が入力した住所',otherEmployment:'no',taxSituation:'unknown'};
  const submit=async(extra={})=>h.ok('employment/registration/submit',{auth:ta,version:(await get()).registration.version,confirm:true,data,...extra});
  const review=async(outcome='accepted',extra={})=>{
   const d=await get(),r=d.registration.requests.find(x=>x.id===d.registration.latestId);
@@ -25,6 +25,7 @@ test('new employee starts with name/email only, registers own name and informati
  d=await get();assert.equal(d.registration.pending,true);assert.equal(d.profile.data.address,'');
  const req=d.registration.requests[0];
  assert.equal(req.data.startDate,undefined);assert.equal(req.data.availability,'','勤務希望は初回に聞かない');
+ assert.deepEqual([req.data.otherEmployment,req.data.otherWorkHours,req.data.otherWork],['no','','なし'],'ほかに雇われていなければ時間は聞かない');
  assert.equal(req.submittedName,'【テスト】本人 登録');assert.equal(req.nameDiffers,false);
  assert.equal((await h.ok('employment/list',{auth})).staff.find(s=>s.id===staff.id).registration.pending,true);
  assert.equal((await w.review()).ok,true);
@@ -78,7 +79,9 @@ test('only employee can submit and only owner reviews; cross-employee and stale 
  assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{...w.data,address:''}})).error.code,'badRegistration');
  assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{...w.data,familyName:''}})).error.code,'badRegistration');
  assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{...w.data,givenName:' '}})).error.code,'badRegistration');
- assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{...w.data,otherWork:''}})).error.code,'badRegistration');
+ assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{...w.data,otherEmployment:''}})).error.code,'badOtherEmployment');
+ assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{...w.data,otherEmployment:'yes'}})).error.code,'badRegistration','ある場合は曜日と時間が要る');
+ assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{...w.data,otherEmployment:'yes',otherWorkHours:'x'.repeat(1001)}})).error.code,'tooLong');
  assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{...w.data,taxSituation:'submitted'}})).error.code,'badTax');
  await w.submit();
  assert.equal((await w.review('accepted',{auth:ta})).error.code,'forbidden');
@@ -114,10 +117,11 @@ test('legacy signed contract and payroll survive self-service changes; migration
  let r=await w.issue(await w.create());r=await w.pref(r,ta);r=await w.deliver(r);r=await w.agree(r,ta);
  assert.equal((await w.get()).registration.required,false);assert.equal((await w.get()).registration.requests.length,0);
  const contracts=h.rows('select * from employmentContracts'),events=h.rows('select * from employmentEvents'),staffBefore=h.rows('select * from staff'),payroll=h.rows('select * from payrollMonths');
- await h.ok('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{familyName:'【テスト】講師',givenName:'甲',address:'【テスト】転居',availability:'日曜',otherWork:'なし',taxSituation:'otherEmployer'}});
+ await h.ok('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{familyName:'【テスト】講師',givenName:'甲',address:'【テスト】転居',availability:'日曜',otherEmployment:'yes',otherWorkHours:'月・水 17時〜21時',taxSituation:'otherEmployer'}});
  const d=await w.get(),req=d.registration.requests[0];
  await h.ok('employment/registration/review',{auth,staffId:staff.id,version:d.registration.version,profileVersion:d.profile.version,requestId:req.id,hash:req.contentHash,outcome:'accepted',confirm:true});
  assert.deepEqual(h.rows('select * from employmentContracts'),contracts);assert.deepEqual(h.rows('select * from employmentEvents'),events);assert.deepEqual(h.rows('select * from staff'),staffBefore);assert.deepEqual(h.rows('select * from payrollMonths'),payroll);
  const after=(await w.get()).profile.data;
  assert.equal(after.taxDeclaration,w.data.taxDeclaration);assert.equal(after.availability,'日曜','本人が書いた勤務希望は写す');assert.equal(after.address,'【テスト】転居');
+ assert.equal(after.otherWork,'あり（雇われて働いている勤務先）。勤務する曜日と時間：月・水 17時〜21時','契約書の申告欄に写す文');
 });

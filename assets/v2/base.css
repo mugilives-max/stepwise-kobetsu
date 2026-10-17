@@ -741,3 +741,5 @@ form[data-form=sch-create]:has(select[name=studentId] option[data-trial]:checked
 .pv-total b { font-size: 18px; white-space: nowrap; }
 .pv-schedule { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
 .parts-in { display: grid; grid-template-columns: minmax(0, 1fr) 6em; gap: 4px 8px; }
+/* 講師の本人情報: ほかに雇われている勤務先が「ある」のときだけ、曜日と時間の欄を出す（:has が使えない端末では常に出る） */
+form[data-form="em-registration"]:not(:has(select[name="otherEmployment"] option[value="yes"]:checked)) .ow-hours { display: none; }
