@@ -109,7 +109,7 @@ export async function payPreview(c, staffId, month, { ignorePayrollId = '' } = {
   t.withholding = w.tax || 0;
   t.net = t.gross - t.withholding;
   if (t.gross < 0) issues.push('総支給額がマイナスです。調整を確かめてください');
-  return { workDays:manual.filter(d=>d.status==='confirmed'&&(!d.payrollId||d.payrollId===ignorePayrollId)).map(d=>({id:d.id,version:d.version,date:d.date})), staffId, name: fullName(s), month, payOn, ...tax, items, issues, ...t, canConfirm: !issues.length && items.length > 0 };
+  return { workBasis:JSON.stringify(manual.map(({id,version,status,payrollId})=>({id,version,status,payrollId}))), workDays:manual.filter(d=>d.status==='confirmed'&&(!d.payrollId||d.payrollId===ignorePayrollId)).map(d=>({id:d.id,version:d.version,date:d.date})), staffId, name: fullName(s), month, payOn, ...tax, items, issues, ...t, canConfirm: !issues.length && items.length > 0 };
 }
 
 const payrollView = p => ({ id: p.id, staffId: p.staffId, month: p.month, status: p.status, lessonMinutes: p.lessonMinutes, meetingMinutes: p.meetingMinutes, lessonAmount: p.lessonAmount, meetingAmount: p.meetingAmount, prepMinutes: p.prepMinutes || 0, prepAmount: p.prepAmount || 0,
@@ -165,7 +165,7 @@ export const payrollRoutes = {
       const p = await activePayroll(c, s.id, month);
       if (p) { rows.push({ staffId: s.id, name: fullName(s), payroll: payrollView(p) }); continue; }
       const v = await payPreview(c, s.id, month);
-      if (v.items.length || v.issues.length) rows.push({ staffId: s.id, name: fullName(s), preview: { gross: v.gross, net: v.net, lessonMinutes: v.lessonMinutes, meetingMinutes: v.meetingMinutes, issues: v.issues, canConfirm: v.canConfirm } });
+      if (v.items.length || v.issues.length) rows.push({ staffId: s.id, name: fullName(s), preview: { gross: v.gross, net: v.net, lessonMinutes: v.lessonMinutes, meetingMinutes: v.meetingMinutes, workMinutes:v.workMinutes,prepMinutes:v.prepMinutes, issues: v.issues, canConfirm: v.canConfirm } });
     }
     const unassigned = (await c.db.prepare("select count(*) n from lessons where staffId = '' and status = 'done' and date between ? and ?").bind(month + '-01', monthEnd(month)).first()).n;
     return { month, payOn: payOnFor(month), staff: rows, unassigned };
@@ -211,8 +211,8 @@ export const payrollRoutes = {
     if (!v.canConfirm) fail('notReady', v.issues.length ? '確かめることがあります: ' + v.issues.join(' / ') : 'この月の勤務はありません', 409);
     if (b.expectedNet !== undefined && Number(b.expectedNet) !== v.net) fail('changed', '金額が変わりました。画面を更新して確かめてください', 409);
     const id = newId('pm'), now = iso(c.now), db = c.db;
-    const stmts = [db.prepare("insert into payrollMonths (id, staffId, month, status, lessonMinutes, meetingMinutes, lessonAmount, meetingAmount, prepMinutes, prepAmount, workMinutes, workAmount, adjustAmount, gross, withholding, taxColumn, dependents, net, payOn, confirmedAt, confirmedBy, createdAt, updatedAt) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(id, staffId, b.month, v.lessonMinutes, v.meetingMinutes, v.lessonAmount, v.meetingAmount, v.prepMinutes, v.prepAmount, v.workMinutes,v.workAmount,v.adjustAmount, v.gross, v.withholding, v.taxColumn, v.dependents, v.net, v.payOn, now, 'staff:' + me.id, now, now)];
+    const stmts = [db.prepare("insert into payrollMonths (id, staffId, month, status, lessonMinutes, meetingMinutes, lessonAmount, meetingAmount, prepMinutes, prepAmount, workMinutes, workAmount, adjustAmount, gross, withholding, taxColumn, dependents, net, payOn, confirmedAt, confirmedBy, createdAt, updatedAt,workBasis) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)")
+      .bind(id, staffId, b.month, v.lessonMinutes, v.meetingMinutes, v.lessonAmount, v.meetingAmount, v.prepMinutes, v.prepAmount, v.workMinutes,v.workAmount,v.adjustAmount, v.gross, v.withholding, v.taxColumn, v.dependents, v.net, v.payOn, now, 'staff:' + me.id, now, now,v.workBasis)];
     v.items.forEach((i, n) => {
       stmts.push(db.prepare('insert into payrollItems (id, payrollId, kind, lessonId, meetingId, date, start, minutes, label, rate, amount, sortOrder,workDayId) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)')
         .bind(newId('pi'), id, i.kind, i.lessonId || '', i.meetingId || '', i.date, i.start, i.minutes, i.label, i.rate, i.amount, n,i.workDayId||''));
@@ -226,7 +226,7 @@ export const payrollRoutes = {
       stmts.push(db.prepare("update lessons set payrollId=? where staffId=? and date=? and payrollId='' and status in ('done','decided')").bind(id,staffId,d.date));
       stmts.push(db.prepare("update meetings set payrollId=? where staffId=? and date=? and payrollId='' and status<>'cancelled'").bind(id,staffId,d.date));
     }
-    await db.batch(stmts);
+    try{await db.batch(stmts);}catch(e){if(/work changed during payroll/.test(String(e)))fail('conflict','勤務の記録が更新されました。読み直してから給与を確定してください',409);throw e;}
     const s = await db.prepare('select email from staff where id = ?').bind(staffId).first();
     c.effects.push({ kind: 'mail', to: s.email, name: 'ステップワイズ', subject: `[ステップワイズ] ${Number(b.month.slice(5))}月分の給与明細`, body: `${Number(b.month.slice(5))}月分の給与が確定しました。\n差引支給額 ${v.net.toLocaleString('ja-JP')}円（${v.payOn} にお支払いします）\n明細は「給与」の画面で見られます。\n\nhttps://www.stepwise-education.jp/staff/#payroll`, audience: 'staff' });
     await audit(c, 'payrollConfirm', id, { staffId, month: b.month, gross: v.gross, net: v.net });

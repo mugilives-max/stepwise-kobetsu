@@ -87,26 +87,29 @@ export function employmentPage(ctx,me,id=''){
  return h;
 }
 const linesToText=list=>list.map(x=>x.start+'-'+x.end+' '+WORK[x.kind]+(x.label?' '+x.label:'')).join('\n');
-function parseLines(s){
- return String(s).split('\n').filter(x=>x.trim()).map((line,i)=>{
-  const m=/^(\d{2}:\d{2})\s*[-〜～]\s*(\d{2}:\d{2})\s+(\S+)(?:\s+(.*))?$/.exec(line.trim());
-  const kind=m&&Object.keys(WORK).find(k=>WORK[k]===m[3]);
-  if(!m||!kind)throw Error((i+1)+'行目は「13:00-14:00 事務・見学・研修 授業見学」の形で入力してください');
-  return {start:m[1],end:m[2],kind,label:m[4]||''};
- });
+function intervalFields(ctx,kind,list) {
+ const prior=drafts.get(location.hash+'|'+kind+'|');
+ const count=Number(prior?.find(x=>x.name==='rowCount')?.value||Math.max(1,list.length));
+ return '<input type="hidden" name="rowCount" value="'+count+'">'+Array.from({length:count},(_,i)=>{
+  const x=list[i]||{};
+  return '<fieldset style="min-width:0;margin:8px 0;border:1px solid #d5dce1;border-radius:8px;padding:12px"><legend>時間 '+(i+1)+'</legend><div class="row">'+field(ctx.esc,'start_'+i,'開始',x.start||'','time')+field(ctx.esc,'end_'+i,'終了',x.end==='24:00'?'00:00':x.end||'','time')+'</div>'+select(ctx.esc,'kind_'+i,'仕事の種類',Object.entries(WORK),x.kind||'other')+field(ctx.esc,'label_'+i,'内容（任意）',x.label||'')+'</fieldset>';
+ }).join('')+'<button type="button" data-action="wk-add">時間の行を追加</button><p class="small muted">不要な行は開始・終了を両方空欄にしてください。</p>';
+}
+function readIntervals(v){
+ return Array.from({length:Number(v.rowCount||0)},(_,i)=>({start:v['start_'+i],end:v['end_'+i],kind:v['kind_'+i],label:v['label_'+i]})).map(x=>({...x,end:x.end==='00:00'&&x.start&&x.start!=='00:00'?'24:00':x.end})).filter(x=>x.start||x.end);
 }
 export function workPage(ctx,me,id,date){
  const want=id+'/'+date,owner=me.contractType==='owner';
  if(dayKey!==want||!dayCache){load(ctx,want,'work/day',{staffId:id,date},true);return '<p>読み込んでいます…</p>';}
  if(dayCache.loading)return '<p>読み込んでいます…</p>';if(!dayCache.ok)return ctx.notice();
  const {esc}=ctx,r=dayCache.day||{version:0,planned:[],actual:[]},a=' data-staff="'+esc(id)+'" data-date="'+esc(date)+'" data-version="'+r.version+'"';
- let h=ctx.notice()+'<p><a href="'+(owner?'#employment='+esc(id):'#employment')+'">雇用・勤務へ戻る</a></p><h1>'+esc(date)+'の勤務</h1><p class="small">1行に開始-終了、種類、内容を入力します。種類：授業／準備・記録／事務・見学・研修／面談／休憩。空白の時間は勤務に含めません。</p>';
- if(owner)h+='<details open><summary>勤務予定</summary><form class="stack" data-form="wk-plan"'+a+'>'+area(esc,'intervals','勤務予定の時間と内訳',linesToText(r.planVersion?r.planned:dayCache.suggestion))+field(esc,'reason','予定・変更の説明','','text',true)+'<button'+ctx.dis()+'>勤務予定を保存</button></form></details>';
+ let h=ctx.notice()+'<p><a href="'+(owner?'#employment='+esc(id):'#employment')+'">雇用・勤務へ戻る</a></p><h1>'+esc(date)+'の勤務</h1><p class="small">授業、見学・研修、準備・記録、休憩の時間を分けて入力してください。時間が重なる場合は、一度だけ登録します。終了の0:00は、その日の終わりを表します。</p>';
+ if(owner)h+='<details open><summary>勤務予定</summary><form class="stack" data-form="wk-plan"'+a+'>'+intervalFields(ctx,'wk-plan',r.planVersion?r.planned:dayCache.suggestion)+field(esc,'reason','予定・変更の説明','','text',true)+'<button'+ctx.dis()+'>勤務予定を保存</button></form></details>';
  else h+='<h2>勤務予定</h2><pre style="white-space:pre-wrap">'+esc(linesToText(r.planned))+'</pre>';
  h+='<p>本人の予定確認：'+(r.planAgreedAt&&r.planVersion===r.planAgreedVersion?'確認済み':'未確認')+'</p>';
  if(!owner&&r.planVersion&&r.planVersion!==r.planAgreedVersion)h+='<form class="stack" data-form="wk-agree"'+a+'>'+check(esc,'agree','この勤務予定を確認し、同意します')+'<button'+ctx.dis()+'>勤務予定を確認する</button></form>';
  h+='<h2>実際の勤務</h2><p>状態：'+esc({draft:'実績未提出',submitted:'代表の確認待ち',confirmed:'代表確認済み'}[r.status]||'未登録')+'</p>';
- if(!r.payrollId)h+='<form class="stack" data-form="wk-submit"'+a+'>'+area(esc,'intervals','実際に働いた時間と内訳',linesToText(r.submittedAt?r.actual:r.planVersion?r.planned:dayCache.suggestion))+area(esc,'note','補足（取消・休業、途中交代など）',r.note||'')+field(esc,'reason','記録・訂正の理由','','text',true)+'<button class="primary"'+ctx.dis()+'>実績を提出する</button></form>';
+ if(!r.payrollId)h+='<form class="stack" data-form="wk-submit"'+a+'>'+intervalFields(ctx,'wk-submit',r.submittedAt?r.actual:r.planVersion?r.planned:dayCache.suggestion)+area(esc,'note','補足（取消・休業、途中交代など）',r.note||'')+field(esc,'reason','記録・訂正の理由','','text',true)+'<button class="primary"'+ctx.dis()+'>実績を提出する</button></form>';
  else h+='<p>給与に反映済みです。訂正が必要な場合は、下の欄から代表へ申し出てください。</p><pre style="white-space:pre-wrap">'+esc(linesToText(r.actual))+'</pre>';
  if(dayCache.warnings?.issues.length)h+='<div class="notice"><ul>'+dayCache.warnings.issues.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p>実際に働いた時間は残します。必要な割増・休業手当等は給与の調整で確認します。</p></div>';
  if(owner&&r.status==='submitted')h+='<form class="stack" data-form="wk-confirm"'+a+'>'+field(esc,'reason','実績・休憩・賃金調整を確認した内容','','text',true)+check(esc,'reviewed','実際の勤務と必要な賃金調整を確認しました')+'<button'+ctx.dis()+'>実績を確認して給与へ反映</button></form>';
@@ -139,8 +142,8 @@ export async function employmentSubmit(ctx,kind,el){
    drafts.delete(formKey(el));cache=null;ctx.say('時給と源泉区分を保存しました','ok');return true;
   }
   else if(kind==='wk-open'){drafts.delete(formKey(el));location.hash='#work='+encodeURIComponent(cache.staff.id)+'/'+v.date;return true;}
-  else if(kind==='wk-plan'){route='work/plan';body.intervals=parseLines(v.intervals);}
-  else if(kind==='wk-submit'){route='work/submit';body.intervals=parseLines(v.intervals);}
+  else if(kind==='wk-plan'){route='work/plan';body.intervals=readIntervals(v);}
+  else if(kind==='wk-submit'){route='work/submit';body.intervals=readIntervals(v);}
   else if(kind==='wk-agree')route='work/plan/agree';
   else if(kind==='wk-confirm')route='work/confirm';
   else if(kind==='wk-correction'){route='work/correction';msg='訂正の申し出を記録しました。代表が確認します。';}
@@ -152,7 +155,13 @@ export async function employmentSubmit(ctx,kind,el){
   ctx.say(msg,'ok');return true;
  }catch(e){ctx.say(e.message,'error');return true;}
 }
-export async function employmentClick(ctx,a){
+export async function employmentClick(ctx,a,b){
+ if(a==='wk-add'){
+  const form=b.closest('form');captureEmployment();
+  const rows=drafts.get(formKey(form))||[],c=rows.find(x=>x.name==='rowCount');
+  if(c&&Number(c.value)<80)c.value=String(Number(c.value)+1);
+  ctx.render();return true;
+ }
  if(a!=='em-activate')return false;
  const r=await ctx.call('employment/activate',{staffId:cache.staff.id});
  if(r.ok){cache=null;ctx.say('業務画面を利用できるようにしました','ok');}else if(!ctx.handleAuth(r))ctx.say(r.error.message,'error');

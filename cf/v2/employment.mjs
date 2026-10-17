@@ -44,6 +44,7 @@ async function readiness(c,s,p,contracts) {
   const d=JSON.parse(p.data);
   if(!d.conditionsChecked)checks.push('未確定事項・勤務条件の確認');
   if(!d.taxDeclaration||!d.taxCheckedOn||(d.taxDeclaration==='submitted'&&d.dependents===''))checks.push('扶養控除等申告書の確認');
+  if(d.taxDeclaration&&((d.taxDeclaration==='submitted'?'kou':'otsu')!==s.taxColumn||(d.taxDeclaration==='submitted'&&Number(d.dependents)!==s.dependents)))checks.push('申告書と給与の源泉区分・扶養人数の照合');
   if(!d.bankConsentChecked)checks.push('振込先の受領・振込への同意確認');
  }
  const rates=(await c.db.prepare('select * from staffRates where staffId=? order by startsOn desc').bind(s.id).all()).results;
@@ -62,7 +63,7 @@ async function detail(c,id,me) {
  const contracts=(await c.db.prepare('select * from employmentContracts where staffId=? order by revision desc').bind(s.id).all()).results;
  const visible=me.contractType==='owner'?contracts:contracts.filter(r=>r.status!=='draft');
  const events=(await c.db.prepare('select e.* from employmentEvents e join employmentContracts x on x.id=e.contractId where x.staffId=? order by e.id').bind(s.id).all()).results.filter(e=>visible.some(r=>r.id===e.contractId));
- const mail=(await c.db.prepare("select id,status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'notice.type')='challenge' and json_extract(payload,'to')=? order by id desc limit 1").bind(s.email).all()).results[0]||null;
+ const mail=(await c.db.prepare("select id,status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'$.notice.type')='challenge' and json_extract(payload,'$.to')=? order by id desc limit 1").bind(s.email).all()).results[0]||null;
  return {staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
 }
 export const employmentRoutes={

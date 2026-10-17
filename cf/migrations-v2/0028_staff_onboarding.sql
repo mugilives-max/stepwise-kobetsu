@@ -57,11 +57,11 @@ CREATE TABLE workDayRevisions(
 );
 CREATE TRIGGER workDayArchiveInsert AFTER INSERT ON workDays BEGIN
  INSERT INTO workDayRevisions(workDayId,version,snapshot,reason,recordedAt,recordedBy)
- VALUES(NEW.id,NEW.version,json_object('staffId',NEW.staffId,'date',NEW.date,'planned',json(NEW.planned),'actual',json(NEW.actual),'status',NEW.status,'planVersion',NEW.planVersion,'planAgreedVersion',NEW.planAgreedVersion,'note',NEW.note,'reviewNote',NEW.reviewNote),NEW.reviewNote,NEW.updatedAt,NEW.confirmedBy);
+ VALUES(NEW.id,NEW.version,json_object('staffId',NEW.staffId,'date',NEW.date,'planned',json(NEW.planned),'actual',json(NEW.actual),'status',NEW.status,'planVersion',NEW.planVersion,'planAgreedVersion',NEW.planAgreedVersion,'note',NEW.note,'reviewNote',NEW.reviewNote,'planAgreedAt',NEW.planAgreedAt,'submittedAt',NEW.submittedAt,'confirmedAt',NEW.confirmedAt,'confirmedBy',NEW.confirmedBy),NEW.reviewNote,NEW.updatedAt,NEW.confirmedBy);
 END;
 CREATE TRIGGER workDayArchiveUpdate AFTER UPDATE OF version ON workDays BEGIN
  INSERT INTO workDayRevisions(workDayId,version,snapshot,reason,recordedAt,recordedBy)
- VALUES(NEW.id,NEW.version,json_object('staffId',NEW.staffId,'date',NEW.date,'planned',json(NEW.planned),'actual',json(NEW.actual),'status',NEW.status,'planVersion',NEW.planVersion,'planAgreedVersion',NEW.planAgreedVersion,'note',NEW.note,'reviewNote',NEW.reviewNote),NEW.reviewNote,NEW.updatedAt,NEW.confirmedBy);
+ VALUES(NEW.id,NEW.version,json_object('staffId',NEW.staffId,'date',NEW.date,'planned',json(NEW.planned),'actual',json(NEW.actual),'status',NEW.status,'planVersion',NEW.planVersion,'planAgreedVersion',NEW.planAgreedVersion,'note',NEW.note,'reviewNote',NEW.reviewNote,'planAgreedAt',NEW.planAgreedAt,'submittedAt',NEW.submittedAt,'confirmedAt',NEW.confirmedAt,'confirmedBy',NEW.confirmedBy),NEW.reviewNote,NEW.updatedAt,NEW.confirmedBy);
 END;
 CREATE TRIGGER workDayRevisionFixed BEFORE UPDATE ON workDayRevisions BEGIN SELECT RAISE(ABORT,'append only'); END;
 CREATE TRIGGER workDayRevisionRetain BEFORE DELETE ON workDayRevisions BEGIN SELECT RAISE(ABORT,'append only'); END;
@@ -73,4 +73,20 @@ CREATE TABLE payrollWorkDays(
 
 CREATE TRIGGER payrollWorkVersion BEFORE INSERT ON payrollWorkDays
  WHEN NOT EXISTS(SELECT 1 FROM workDays WHERE id=NEW.workDayId AND version=NEW.workVersion AND status='confirmed' AND payrollId='')
+ BEGIN SELECT RAISE(ABORT,'work changed during payroll confirmation'); END;
+
+-- Payroll confirmation and actual-work editing are mutually exclusive even under concurrent requests.
+CREATE TRIGGER workDayClosedInsert BEFORE INSERT ON workDays
+ WHEN NEW.submittedAt<>'' AND EXISTS(SELECT 1 FROM payrollMonths WHERE staffId=NEW.staffId AND status<>'void' AND month>=substr(NEW.date,1,7))
+ BEGIN SELECT RAISE(ABORT,'payroll is confirmed; correct payroll before actual work'); END;
+CREATE TRIGGER workDayClosedUpdate BEFORE UPDATE OF actual,status,submittedAt,confirmedAt ON workDays
+ WHEN EXISTS(SELECT 1 FROM payrollMonths WHERE staffId=NEW.staffId AND status<>'void' AND month>=substr(NEW.date,1,7))
+ BEGIN SELECT RAISE(ABORT,'payroll is confirmed; correct payroll before actual work'); END;
+
+ALTER TABLE payrollMonths ADD COLUMN workBasis TEXT NOT NULL DEFAULT '';
+CREATE TRIGGER payrollWorkBasis BEFORE INSERT ON payrollMonths
+ WHEN NEW.workBasis<>'' AND NEW.workBasis<>(
+  SELECT coalesce(json_group_array(json_object('id',id,'version',version,'status',status,'payrollId',payrollId)),'[]')
+  FROM (SELECT id,version,status,payrollId FROM workDays WHERE staffId=NEW.staffId AND date<=date(NEW.month||'-01','+1 month','-1 day') AND submittedAt<>'' ORDER BY date)
+ )
  BEGIN SELECT RAISE(ABORT,'work changed during payroll confirmation'); END;

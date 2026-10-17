@@ -92,7 +92,7 @@ test('actual work replaces daily auto time without double pay and keeps old payr
  // Synthetic parent records remain byte-for-byte unchanged except payroll linkage metadata.
  const family=(await h.ok('admin/families/create',{auth,name:'【テスト】家',email:'p@example.invalid'})).family;
  const kid=(await h.ok('admin/students/create',{auth,familyId:family.id,familyName:'【テスト】子',givenName:'甲',baseRate30:1500})).student;
- h.clock=Date.parse('2026-10-16T10:00:00+09:00');
+ h.clock=Date.parse('2026-10-17T15:00:00+09:00');
  await h.ok('schedule/lessons/create',{auth,studentId:kid.id,date,start:'13:00',minutes:90,subject:'数学',deliveryMode:'in_person',staffId:staff.id,force:true});
  let l=h.rows('select * from lessons where studentId=?',kid.id)[0];
  await h.ok('schedule/lessons/decide',{auth,id:l.id,version:l.version});
@@ -145,4 +145,27 @@ test('pay date uses previous banking day; unknown calendars are not silently con
  assert.equal(payrollPayOn('2026-06'),'2026-07-24');
  assert.equal(payrollPayOn('2026-10'),'2026-11-25');
  assert.equal(calendarKnown(2028),false);
+});
+
+test('new accounts cannot be assigned future teaching while preparation is incomplete',async()=>{
+ const w=await employmentWorld(),{h,auth,staff}=w;await w.invite();
+ const family=(await h.ok('admin/families/create',{auth,name:'【テスト】担当確認',email:'gated-parent@example.invalid'})).family;
+ const student=(await h.ok('admin/students/create',{auth,familyId:family.id,familyName:'【テスト】',givenName:'生徒',baseRate30:1500})).student;
+ const r=await h.call('schedule/lessons/create',{auth,studentId:student.id,date:'2026-10-18',start:'13:00',minutes:90,subject:'数学',deliveryMode:'in_person',staffId:staff.id,force:true});
+ assert.equal(r.error.code,'employmentNotReady');
+ assert.equal(h.rows('select count(*) n from lessons where staffId=?',staff.id)[0].n,0);
+});
+test('database rejects stale payroll basis and actual-work edits after confirmation',async()=>{
+ const w=await employmentWorld(),{h,auth,staff}=w,ta=await w.invite();h.clock=Date.parse('2026-10-17T15:00:00+09:00');
+ await h.ok('payroll/rates/save',{auth,staffId:staff.id,startsOn:'2026-10',lessonHourly:2000,meetingHourly:null});
+ let d=(await h.ok('work/submit',{auth:ta,date:'2026-10-17',version:0,intervals:[{start:'13:00',end:'14:00',kind:'other'}],reason:'見学'})).day;
+ d=(await h.ok('work/confirm',{auth,staffId:staff.id,date:d.date,version:d.version,reviewed:true,reason:'確認'})).day;
+ const v=(await h.ok('payroll/staff',{auth,staffId:staff.id,month:'2026-10'})).preview;
+ assert.equal(JSON.parse(v.workBasis)[0].version,d.version);
+ h.clock=Date.parse('2026-11-01T12:00:00+09:00');
+ const p=(await h.ok('payroll/confirm',{auth,staffId:staff.id,month:'2026-10'})).payroll;
+ assert.throws(()=>h.db2._sqlite.prepare("update workDays set actual='[]' where id=?").run(d.id),/payroll is confirmed/);
+ const columns=h.rows('pragma table_info(payrollMonths)').map(x=>x.name);
+ const row=h.rows('select * from payrollMonths where id=?',p.id)[0];row.id='stale-test';row.month='2026-11';row.workBasis='[]';
+ assert.throws(()=>h.db2._sqlite.prepare('insert into payrollMonths('+columns.join(',')+') values('+columns.map(()=>'?').join(',')+')').run(...columns.map(k=>row[k])),/work changed/);
 });

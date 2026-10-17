@@ -45,7 +45,7 @@ export function payrollPage(ctx, me) {
   const status = s => s.payroll ? STATUS[s.payroll.status] : s.preview.issues.length ? ['確かめることあり', 'danger'] : ['確定前', 'gray'];
   h += list.staff.length ? '<div class="group">' + list.staff.map(s => {
     const p = s.payroll, v = s.preview, st = status(s);
-    return `<button type="button" class="irow" data-action="pr-open" data-id="${esc(s.staffId)}"><span class="b"><b>${esc(s.name)}</b><small><span class="tag ${st[1]}">${st[0]}</span> 授業 ${hm((p || v).lessonMinutes)}${(p || v).meetingMinutes ? '・面談 ' + hm((p || v).meetingMinutes) : ''}${(p || v).prepMinutes ? '・準備・記録 ' + hm((p || v).prepMinutes) : ''}${v && v.issues.length ? `・確かめること ${v.issues.length}件` : ''}</small></span><span class="amt">${yen(p ? p.net : v.net)}</span><span class="go">›</span></button>`;
+    return `<button type="button" class="irow" data-action="pr-open" data-id="${esc(s.staffId)}"><span class="b"><b>${esc(s.name)}</b><small><span class="tag ${st[1]}">${st[0]}</span> 授業 ${hm((p || v).lessonMinutes)}${(p || v).workMinutes ? '・勤務実績 ' + hm((p || v).workMinutes) : ''}${(p || v).meetingMinutes ? '・面談 ' + hm((p || v).meetingMinutes) : ''}${(p || v).prepMinutes ? '・準備・記録 ' + hm((p || v).prepMinutes) : ''}${v && v.issues.length ? `・確かめること ${v.issues.length}件` : ''}</small></span><span class="amt">${yen(p ? p.net : v.net)}</span><span class="go">›</span></button>`;
   }).join('') + '</div>' : '<p class="muted small">この月の勤務はありません。</p>';
   const s = open && list.staff.find(x => x.staffId === open);
   if (s) {
@@ -117,7 +117,7 @@ function minePage(ctx, me) {
   let h = `<p class="small muted" style="margin-top:12px">あなたの給与明細です。月末締め・翌月25日払い。</p>${ctx.notice()}`;
   if (mine.loading) return h + '<p class="muted">読み込んでいます…</p>';
   if (mine.owner) return h + '<p class="muted">代表のアカウントには給与明細はありません。</p>';
-  if (mine.current && mine.current.items) h += `<p class="notice small">${label(mine.current.month)}の見込み（確定前の目安）: 授業 ${hm(mine.current.lessonMinutes)}${mine.current.meetingMinutes ? '・面談 ' + hm(mine.current.meetingMinutes) : ''}${mine.current.prepMinutes ? '・準備・記録 ' + hm(mine.current.prepMinutes) : ''}・総支給 ${yen(mine.current.gross)}</p>`;
+  if (mine.current && mine.current.items) h += `<p class="notice small">${label(mine.current.month)}の見込み（確定前の目安）: 授業 ${hm(mine.current.lessonMinutes)}${mine.current.workMinutes ? '・勤務実績 ' + hm(mine.current.workMinutes) : ''}${mine.current.meetingMinutes ? '・面談 ' + hm(mine.current.meetingMinutes) : ''}${mine.current.prepMinutes ? '・準備・記録 ' + hm(mine.current.prepMinutes) : ''}・総支給 ${yen(mine.current.gross)}</p>`;
   h += mine.statements.length ? mine.statements.map((s, i) => `<details class="sheet"${i === 0 ? ' open' : ''}><summary><strong>${label(s.month)}分</strong> 差引 ${yen(s.net)} <span class="tag ${STATUS[s.status][1]}">${STATUS[s.status][0]}</span></summary>${statementTable(esc, s)}
     <div class="small muted">お支払い ${esc(s.paidOn || s.payOn)}${s.paidOn ? '（済み）' : '（予定）'}</div><p><button data-action="pr-print-mine" data-i="${i}">印刷・PDF で保存</button></p></details>`).join('') : '<p class="muted">まだ確定した明細はありません。</p>';
   return h;

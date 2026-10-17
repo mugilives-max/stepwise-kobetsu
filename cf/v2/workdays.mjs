@@ -73,7 +73,9 @@ export const workRoutes={
  'work/day':async(c,b)=>{
   const {id}=await who(c,b);if(!dateOK(b.date))fail('badDate','日付を選んでください');
   const r=await day(c,id,b.date),suggestion=await workSuggestion(c,id,b.date);
-  return {day:view(r),suggestion,warnings:await warnings(c,id,b.date,r?JSON.parse(r.actual):suggestion),corrections:r?(await c.db.prepare("select at,detail from auditLog where target=? and action='workCorrectionRequested' order by id desc").bind(r.id).all()).results:[],history:r?(await c.db.prepare('select * from workDayRevisions where workDayId=? order by version desc').bind(r.id).all()).results:[]};
+  const w=await warnings(c,id,b.date,r?JSON.parse(r.actual):suggestion);
+  if(r?.submittedAt&&workWarnings(JSON.parse(r.actual)).minutes<workWarnings(JSON.parse(r.planned)).minutes)w.issues.push('予定より勤務が短い日：勤務取消の事情・休業手当の要否を確認');
+  return {day:view(r),suggestion,warnings:w,corrections:r?(await c.db.prepare("select at,detail from auditLog where target=? and action='workCorrectionRequested' order by id desc").bind(r.id).all()).results:[],history:r?(await c.db.prepare('select * from workDayRevisions where workDayId=? order by version desc').bind(r.id).all()).results:[]};
  },
  'work/plan':async(c,b)=>{
   const me=await requireOwner(c,b),s=await employee(c,b.staffId);if(!dateOK(b.date))fail('badDate','日付を選んでください');

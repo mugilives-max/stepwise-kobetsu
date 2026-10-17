@@ -165,7 +165,21 @@ export function lessonFields(b, base = {}) {
   return out;
 }
 // 重なりの確かめ。同じ生徒の授業が重なれば断る。同じ講師は対面2人までなら確かめを求め、オンラインが入るか3人以上なら断る。休み・授業ができない日は、force がなければ確かめを求める
+// New onboarding accounts need confirmed preparation before a future assignment.
+// Actual past work remains recordable; legacy accounts keep their current behaviour.
+async function checkEmploymentAssignment(c,x,meeting=false) {
+ if(!x.staffId||Date.parse(x.date+'T'+x.start+':00+09:00')<=c.now)return;
+ const s=await c.db.prepare('select s.* from staff s join employmentProfiles p on p.staffId=s.id where s.id=?').bind(x.staffId).first();
+ if(!s||s.contractType!=='employee')return;
+ const agreed=await c.db.prepare("select 1 from employmentContracts where staffId=? and status='agreed' and startDate<=? and endDate>=?").bind(s.id,x.date,x.date).first();
+ if(!s.employmentAccess||s.status!=='active'||!agreed)fail('employmentNotReady','この講師の契約・勤務準備を代表が確認してから、新しい担当を登録してください',409);
+ if(meeting) {
+  const r=await c.db.prepare('select * from staffRates where staffId=? and startsOn<=? order by startsOn desc limit 1').bind(s.id,x.date).first();
+  if(!r?.meetingConfigured||!r.meetingHourly)fail('meetingNotReady','面談の給与を本人へ書面で示し、時給を設定してから担当を登録してください',409);
+ }
+}
 export async function checkConflicts(c, candidates, { force, exceptId = '' } = {}) {
+  for(const x of candidates)await checkEmploymentAssignment(c,x);
   const dates = [...new Set(candidates.map(x => x.date))];
   const q = `(${dates.map(() => '?').join(', ')})`;
   const lessons = (await c.db.prepare(`select * from lessons where date in ${q} and status in ('held', 'proposed', 'decided', 'done') and id <> ?`).bind(...dates, exceptId).all()).results;
@@ -696,6 +710,7 @@ export const scheduleRoutes = {
     const date = String(b.date || ''), start = String(b.start || ''), minutes = Number(b.minutes || 30);
     if (!validDate(date) || !validTime(start) || !Number.isInteger(minutes) || minutes < 10 || minutes > 180) fail('badTime', '日時と長さを確かめてください');
     const id = newId('mt'), mode = b.deliveryMode === 'online' ? 'online' : 'in_person';
+    await checkEmploymentAssignment(c,{date,start,staffId:String(b.staffId||c.actor.id)},true);
     await c.db.prepare('insert into meetings (id, familyId, withName, studentId, staffId, date, start, minutes, deliveryMode, title, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .bind(id, fam ? fam.id : '', fam ? '' : withName, fam ? String(b.studentId || '') : '', String(b.staffId || c.actor.id), date, start, minutes, mode, String(b.title || '面談').slice(0, 60), iso(c.now), iso(c.now)).run();
     const m = await c.db.prepare('select * from meetings where id = ?').bind(id).first();
