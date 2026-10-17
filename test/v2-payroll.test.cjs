@@ -35,7 +35,7 @@ test('the month statement counts done lessons and past meetings at each instruct
   await done(a); await done(b);
   let m = await h.ok('payroll/month', { auth, month: '2026-09' });
   assert.match(m.staff.find(s => s.staffId === t.id).preview.issues.join(), /時給が決まっていません/);
-  assert.equal(m.payOn, '2026-10-25', '翌月25日払い');
+  assert.equal(m.payOn, '2026-10-23', '翌月25日払い');
   await h.ok('payroll/rates/save', { auth, staffId: t.id, startsOn: '2026-09', lessonHourly: 1555, meetingHourly: 1500 });
   await h.ok('payroll/rates/save', { auth, staffId: u.id, startsOn: '2026-09', lessonHourly: 1400, meetingHourly: 1500 });
   const v = (await h.ok('payroll/staff', { auth, staffId: t.id, month: '2026-09' })).preview;
@@ -71,7 +71,7 @@ test('confirming fixes the statement; corrections void it with a reason; instruc
   await done(late);
   const before = h.mails().length;
   const p = (await h.ok('payroll/confirm', { auth, staffId: t.id, month: '2026-09', expectedNet: 2250 + 250 + 2250 + 250 + 1500 })).payroll;
-  assert.deepEqual([p.status, p.gross, p.withholding, p.taxColumn, p.dependents, p.items.length, p.payOn], ['confirmed', 6500, 0, 'kou', 0, 5, '2026-10-25'], '確定した明細に計算した欄を残す');
+  assert.deepEqual([p.status, p.gross, p.withholding, p.taxColumn, p.dependents, p.items.length, p.payOn], ['confirmed', 6500, 0, 'kou', 0, 5, '2026-10-23'], '確定した明細に計算した欄を残す');
   assert.match(h.mails().slice(before).map(m => m.subject).join(), /9月分の給与明細/);
   assert.equal((await h.call('payroll/rates/save', { auth, staffId: t.id, startsOn: '2026-09', lessonHourly: 1600, meetingHourly: 1500 })).error.code, 'confirmed', '確定した月の時給は変えない');
   // 講師: 自分の明細だけ

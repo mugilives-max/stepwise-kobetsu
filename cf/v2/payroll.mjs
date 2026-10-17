@@ -11,7 +11,9 @@
 //   社会保険料（雇用保険料）はまだ差し引かないので、総支給額をそのまま表に当てる。表の年は支払日（翌月25日）の年
 // - 代表（contractType = owner）は数えない。講師（contractType = employee）は自分の明細だけを見る
 import { fail, newId, iso, audit } from './util.mjs';
-import { requireStaff } from './staff.mjs';
+import { requireStaff, requireOwner } from './staff.mjs';
+import { payrollPayOn, calendarKnown } from './bank-calendar.mjs';
+import { workWarnings, minute, WORK_LABEL } from './workdays.mjs';
 import { todayJst } from './schedule.mjs';
 import { validMonth, monthEnd, shiftMonth } from './plan-calc.mjs';
 import { monthlyWithholding } from './tax-table.mjs';
@@ -19,7 +21,7 @@ import { monthlyWithholding } from './tax-table.mjs';
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ') || s.name || '';
 const sameVersion = (row, b) => { if (Number(b.version) !== Number(row.version)) fail('conflict', 'ほかの操作で変わりました。画面を更新してください', 409); };
 const md = d => d.slice(5).replace('-', '/');
-export const payOnFor = month => shiftMonth(month, 1) + '-25';
+export const payOnFor = payrollPayOn;
 export const TAX_COLUMN_LABEL = { kou: '甲欄', otsu: '乙欄' };
 const itemAmount = (minutes, rate) => Math.floor(minutes * rate / 60);
 const toMin = hm => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + m; };
@@ -32,7 +34,7 @@ function rateFor(rates, month) {
   return rates.filter(r => r.startsOn.slice(0, 7) <= month).sort((a, b) => b.startsOn.localeCompare(a.startsOn))[0] || null;
 }
 async function employees(c) {
-  return (await c.db.prepare("select * from staff where contractType = 'employee' and status <> 'invited' order by familyName, givenName").all()).results;
+  return (await c.db.prepare("select * from staff where contractType = 'employee' order by familyName, givenName").all()).results;
 }
 
 // ---- 月の計算（講師ごと） ----
@@ -46,9 +48,32 @@ export async function payPreview(c, staffId, month, { ignorePayrollId = '' } = {
   const meetings = (await c.db.prepare(`select * from meetings where staffId = ? and date <= ? and date < ? and status <> 'cancelled' and ${open} order by date, start`).bind(staffId, end, today, ignorePayrollId || '-').all()).results;
   const adjusts = (await c.db.prepare(`select * from payrollAdjustments where staffId = ? and month = ? and ${open} order by createdAt`).bind(staffId, month, ignorePayrollId || '-').all()).results;
   const issues = [], items = [];
+  const manual=(await c.db.prepare("select * from workDays where staffId=? and date<=? and submittedAt<>'' order by date").bind(staffId,end).all()).results;
+  const manualDates=new Set(manual.map(d=>d.date));
+  const profile=await c.db.prepare('select data from employmentProfiles where staffId=?').bind(staffId).first();
+  if(profile && (manual.length||lessons.length||meetings.length)) {
+    const d=JSON.parse(profile.data);
+    if(!d.taxDeclaration||!d.taxCheckedOn)issues.push('扶養控除等申告書の確認が未完了です');
+    else if((d.taxDeclaration==='submitted'?'kou':'otsu')!==s.taxColumn)issues.push('申告書と源泉徴収の欄が一致していません');
+  }
+  for(const d of manual) {
+    if(d.payrollId && d.payrollId!==ignorePayrollId)continue;
+    if(d.status!=='confirmed'){issues.push(d.date+' の勤務実績を代表が確認してください');continue;}
+    const r=rateFor(rates,d.date.slice(0,7));
+    const segments=JSON.parse(d.actual);
+    const grouped=new Map();
+    for(const x of segments.filter(x=>x.kind!=='break')) {
+      const rate=x.kind==='meeting'?(r?.meetingConfigured?r.meetingHourly:0):r?.lessonHourly;
+      if(!rate){issues.push(d.date+' の'+WORK_LABEL[x.kind]+'の時給が決まっていません');continue;}
+      const mins=minute(x.end)-minute(x.start),g=grouped.get(rate)||{minutes:0,start:x.start,kinds:{}};
+      g.minutes+=mins;g.kinds[x.kind]=(g.kinds[x.kind]||0)+mins;grouped.set(rate,g);
+    }
+    for(const [rate,g] of grouped)items.push({kind:'adjust',workDayId:d.id,workVersion:d.version,date:d.date,start:g.start,minutes:g.minutes,label:'勤務実績（'+Object.entries(g.kinds).map(([k,m])=>WORK_LABEL[k]+m+'分').join('・')+'）',rate,amount:itemAmount(g.minutes,rate),carried:d.date<month+'-01'});
+  }
   const paidByDay = {}, lessonsByDay = {}; // 日ごとに、払う分の印（同じ 1 分を二重に数えない）と、数えた授業の [開始, 終わり, 時給]
   const paidOn = d => (paidByDay[d] = paidByDay[d] || new Set());
   for (const l of lessons) {
+    if(manualDates.has(l.date))continue;
     if (l.status === 'decided') { if (l.date <= today) issues.push(`${md(l.date)} ${l.subject}（${fullName(l)}さん）が実施済みになっていません`); continue; }
     const r = rateFor(rates, l.date.slice(0, 7));
     if (!r || !r.lessonHourly) { issues.push(`${l.date.slice(0, 7)} の授業の時給が決まっていません`); continue; }
@@ -59,8 +84,9 @@ export async function payPreview(c, staffId, month, { ignorePayrollId = '' } = {
     items.push({ kind: 'lesson', lessonId: l.id, date: l.date, start: l.start, minutes: paid, label: `${l.subject}（${fullName(l)}さん）${note}`, rate: r.lessonHourly, amount: itemAmount(paid, r.lessonHourly), carried: l.date < month + '-01' });
   }
   for (const m of meetings) {
+    if(manualDates.has(m.date))continue;
     const r = rateFor(rates, m.date.slice(0, 7));
-    if (!r || !r.meetingHourly) { issues.push(`${m.date.slice(0, 7)} の面談の時給が決まっていません`); continue; }
+    if (!r || !r.meetingHourly || !r.meetingConfigured) { issues.push(`${m.date.slice(0, 7)} の面談の時給が決まっていません`); continue; }
     // 授業と重なる分は面談として数えない（授業の時給で払っている）
     const ms = toMin(m.start), mins = takeMinutes(paidOn(m.date), ms, ms + Number(m.minutes)), cut = Number(m.minutes) - mins;
     items.push({ kind: 'meeting', meetingId: m.id, date: m.date, start: m.start, minutes: mins, label: '面談' + (m.title ? '（' + m.title + '）' : '') + (cut ? `（授業と重なる${cut}分を除く）` : ''), rate: r.meetingHourly, amount: itemAmount(mins, r.meetingHourly), carried: m.date < month + '-01' });
@@ -74,20 +100,21 @@ export async function payPreview(c, staffId, month, { ignorePayrollId = '' } = {
   items.sort((a, b) => a.date.localeCompare(b.date) || (a.kind === 'prep') - (b.kind === 'prep') || a.start.localeCompare(b.start));
   for (const a of adjusts) items.push({ kind: 'adjust', adjustId: a.id, date: '', start: '', minutes: 0, label: a.label, rate: 0, amount: a.amount });
   const sum = (k, f) => items.filter(i => i.kind === k).reduce((n, i) => n + i[f], 0);
-  const t = { lessonMinutes: sum('lesson', 'minutes'), meetingMinutes: sum('meeting', 'minutes'), lessonAmount: sum('lesson', 'amount'), meetingAmount: sum('meeting', 'amount'), prepMinutes: sum('prep', 'minutes'), prepAmount: sum('prep', 'amount'), adjustAmount: sum('adjust', 'amount') };
-  t.gross = t.lessonAmount + t.meetingAmount + t.prepAmount + t.adjustAmount;
+  const t = { lessonMinutes: sum('lesson', 'minutes'), meetingMinutes: sum('meeting', 'minutes'), lessonAmount: sum('lesson', 'amount'), meetingAmount: sum('meeting', 'amount'), prepMinutes: sum('prep', 'minutes'), prepAmount: sum('prep', 'amount'), adjustAmount: items.filter(i=>i.kind==='adjust'&&!i.workDayId).reduce((n,i)=>n+i.amount,0), workMinutes: items.filter(i=>i.workDayId).reduce((n,i)=>n+i.minutes,0), workAmount: items.filter(i=>i.workDayId).reduce((n,i)=>n+i.amount,0) };
+  t.gross = t.lessonAmount + t.meetingAmount + t.prepAmount + t.workAmount + t.adjustAmount;
   const payOn = payOnFor(month), tax = { taxColumn: s.taxColumn, dependents: s.taxColumn === 'kou' ? s.dependents : 0 };
   const w = monthlyWithholding(t.gross, { year: Number(payOn.slice(0, 4)), column: tax.taxColumn, dependents: tax.dependents });
   if (w.error) issues.push(w.error);
+  if(!calendarKnown(Number(payOn.slice(0,4))))issues.push('支払年の祝日情報を更新してください');
   t.withholding = w.tax || 0;
   t.net = t.gross - t.withholding;
   if (t.gross < 0) issues.push('総支給額がマイナスです。調整を確かめてください');
-  return { staffId, name: fullName(s), month, payOn, ...tax, items, issues, ...t, canConfirm: !issues.length && items.length > 0 };
+  return { workDays:manual.filter(d=>d.status==='confirmed'&&(!d.payrollId||d.payrollId===ignorePayrollId)).map(d=>({id:d.id,version:d.version,date:d.date})), staffId, name: fullName(s), month, payOn, ...tax, items, issues, ...t, canConfirm: !issues.length && items.length > 0 };
 }
 
 const payrollView = p => ({ id: p.id, staffId: p.staffId, month: p.month, status: p.status, lessonMinutes: p.lessonMinutes, meetingMinutes: p.meetingMinutes, lessonAmount: p.lessonAmount, meetingAmount: p.meetingAmount, prepMinutes: p.prepMinutes || 0, prepAmount: p.prepAmount || 0,
-  adjustAmount: p.adjustAmount, gross: p.gross, withholding: p.withholding, taxColumn: p.taxColumn, dependents: p.dependents, net: p.net, payOn: p.payOn, paidOn: p.paidOn, confirmedAt: p.confirmedAt, voidReason: p.voidReason, version: p.version });
-const itemView = i => ({ kind: i.kind, date: i.date, start: i.start, minutes: i.minutes, label: i.label, rate: i.rate, amount: i.amount });
+  workMinutes:p.workMinutes||0,workAmount:p.workAmount||0,adjustAmount: p.adjustAmount, gross: p.gross, withholding: p.withholding, taxColumn: p.taxColumn, dependents: p.dependents, net: p.net, payOn: p.payOn, paidOn: p.paidOn, confirmedAt: p.confirmedAt, voidReason: p.voidReason, version: p.version });
+const itemView = i => ({ workDayId:i.workDayId||'',kind: i.kind, date: i.date, start: i.start, minutes: i.minutes, label: i.label, rate: i.rate, amount: i.amount });
 async function activePayroll(c, staffId, month) { return c.db.prepare("select * from payrollMonths where staffId = ? and month = ? and status <> 'void'").bind(staffId, month).first(); }
 async function withItems(c, p) { return { ...payrollView(p), items: (await c.db.prepare('select * from payrollItems where payrollId = ? order by sortOrder').bind(p.id).all()).results.map(itemView) }; }
 async function getPayroll(c, id) { const p = await c.db.prepare('select * from payrollMonths where id = ?').bind(String(id || '')).first(); if (!p) fail('notFound', '明細が見つかりません', 404); return p; }
@@ -96,32 +123,32 @@ export const payrollRoutes = {
   // ---- 教室管理者 ----
   // 時給と源泉徴収の欄（講師ごと）
   'payroll/rates/list': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    await requireOwner(c, b);
     const out = [];
     for (const s of await employees(c)) {
       const rates = (await c.db.prepare('select * from staffRates where staffId = ? order by startsOn desc').bind(s.id).all()).results;
-      out.push({ id: s.id, name: fullName(s), status: s.status, taxColumn: s.taxColumn, dependents: s.dependents, version: s.version, rates: rates.map(r => ({ id: r.id, startsOn: r.startsOn.slice(0, 7), lessonHourly: r.lessonHourly, meetingHourly: r.meetingHourly })) });
+      out.push({ id: s.id, name: fullName(s), status: s.status, taxColumn: s.taxColumn, dependents: s.dependents, version: s.version, rates: rates.map(r => ({ id: r.id, startsOn: r.startsOn.slice(0, 7), lessonHourly: r.lessonHourly, meetingHourly: r.meetingHourly, meetingConfigured:!!r.meetingConfigured })) });
     }
     return { staff: out };
   },
   // 時給を決める（その月から）。同じ月なら置き換える。確定した明細は変わらない
   'payroll/rates/save': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    await requireOwner(c, b);
     const s = await c.db.prepare("select * from staff where id = ? and contractType = 'employee'").bind(String(b.staffId || '')).first(); if (!s) fail('notFound', '講師が見つかりません', 404);
     if (!validMonth(b.startsOn)) fail('badMonth', 'いつの月からかを選んでください');
-    const lesson = Number(b.lessonHourly), meeting = Number(b.meetingHourly);
+    const lesson = Number(b.lessonHourly), configured=b.meetingHourly!==null&&b.meetingHourly!==''&&b.meetingHourly!==undefined, meeting = configured?Number(b.meetingHourly):0;
     for (const [v, label] of [[lesson, '授業'], [meeting, '面談']]) if (!Number.isInteger(v) || v < 0 || v > 20000) fail('badRate', `${label}の時給は0〜20,000円にしてください`);
     const confirmedLater = await c.db.prepare("select month from payrollMonths where staffId = ? and month >= ? and status <> 'void' order by month limit 1").bind(s.id, b.startsOn).first();
     if (confirmedLater) fail('confirmed', `${confirmedLater.month} の明細はもう確定しています。時給を変えるのは、まだ確定していない月からにしてください`, 409);
     const now = iso(c.now);
-    await c.db.prepare('insert into staffRates (id, staffId, startsOn, lessonHourly, meetingHourly, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?) on conflict(staffId, startsOn) do update set lessonHourly = excluded.lessonHourly, meetingHourly = excluded.meetingHourly, updatedAt = excluded.updatedAt, version = version + 1')
-      .bind(newId('sr'), s.id, b.startsOn + '-01', lesson, meeting, now, now).run();
+    await c.db.prepare('insert into staffRates (id, staffId, startsOn, lessonHourly, meetingHourly, meetingConfigured, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?) on conflict(staffId, startsOn) do update set lessonHourly = excluded.lessonHourly, meetingHourly = excluded.meetingHourly, meetingConfigured=excluded.meetingConfigured, updatedAt = excluded.updatedAt, version = version + 1')
+      .bind(newId('sr'), s.id, b.startsOn + '-01', lesson, meeting, configured?1:0, now, now).run();
     await audit(c, 'staffRateSave', s.id, { startsOn: b.startsOn, lesson, meeting });
     return {};
   },
   // 源泉徴収の欄: 扶養控除等申告書を出していれば甲欄（扶養の人数も）、出していなければ乙欄。まだ確定していない明細から使う
   'payroll/withholding': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    await requireOwner(c, b);
     const s = await c.db.prepare("select * from staff where id = ? and contractType = 'employee'").bind(String(b.staffId || '')).first(); if (!s) fail('notFound', '講師が見つかりません', 404); sameVersion(s, b);
     const column = b.taxColumn, dependents = column === 'kou' ? Number(b.dependents || 0) : 0;
     if (!TAX_COLUMN_LABEL[column]) fail('badColumn', '甲欄か乙欄を選んでください');
@@ -132,7 +159,7 @@ export const payrollRoutes = {
   },
   // 月の一覧: 講師ごとの見込み（確定前）か、確定した明細
   'payroll/month': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    await requireOwner(c, b);
     const month = validMonth(b.month) ? b.month : shiftMonth(todayJst(c.now).slice(0, 7), -1), rows = [];
     for (const s of await employees(c)) {
       const p = await activePayroll(c, s.id, month);
@@ -144,7 +171,7 @@ export const payrollRoutes = {
     return { month, payOn: payOnFor(month), staff: rows, unassigned };
   },
   'payroll/staff': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    await requireOwner(c, b);
     if (!validMonth(b.month)) fail('badMonth', '月を選んでください');
     const p = await activePayroll(c, String(b.staffId || ''), b.month);
     if (p) return { payroll: await withItems(c, p) };
@@ -154,7 +181,7 @@ export const payrollRoutes = {
   },
   // 調整（確定の前）。理由と金額（マイナスもよい）
   'payroll/adjust/add': async (c, b) => {
-    const me = await requireStaff(c, b, 'manager');
+    const me = await requireOwner(c, b);
     const s = await c.db.prepare("select id from staff where id = ? and contractType = 'employee'").bind(String(b.staffId || '')).first(); if (!s) fail('notFound', '講師が見つかりません', 404);
     if (!validMonth(b.month)) fail('badMonth', '月を選んでください');
     if (await activePayroll(c, s.id, b.month)) fail('confirmed', 'この月の明細はもう確定しています', 409);
@@ -166,7 +193,7 @@ export const payrollRoutes = {
     return {};
   },
   'payroll/adjust/delete': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    await requireOwner(c, b);
     const a = await c.db.prepare('select * from payrollAdjustments where id = ?').bind(String(b.id || '')).first();
     if (!a) fail('notFound', '調整が見つかりません', 404);
     if (a.payrollId) fail('confirmed', '確定した明細の調整は消せません', 409);
@@ -175,7 +202,7 @@ export const payrollRoutes = {
   },
   // 確定: 月が終わってから。授業・面談・調整に明細を付ける。講師にお知らせ
   'payroll/confirm': async (c, b) => {
-    const me = await requireStaff(c, b, 'manager');
+    const me = await requireOwner(c, b);
     if (!validMonth(b.month)) fail('badMonth', '月を選んでください');
     if (b.month >= todayJst(c.now).slice(0, 7)) fail('tooEarly', '月が終わってから確定してください（月末締め）');
     const staffId = String(b.staffId || '');
@@ -184,15 +211,21 @@ export const payrollRoutes = {
     if (!v.canConfirm) fail('notReady', v.issues.length ? '確かめることがあります: ' + v.issues.join(' / ') : 'この月の勤務はありません', 409);
     if (b.expectedNet !== undefined && Number(b.expectedNet) !== v.net) fail('changed', '金額が変わりました。画面を更新して確かめてください', 409);
     const id = newId('pm'), now = iso(c.now), db = c.db;
-    const stmts = [db.prepare("insert into payrollMonths (id, staffId, month, status, lessonMinutes, meetingMinutes, lessonAmount, meetingAmount, prepMinutes, prepAmount, adjustAmount, gross, withholding, taxColumn, dependents, net, payOn, confirmedAt, confirmedBy, createdAt, updatedAt) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(id, staffId, b.month, v.lessonMinutes, v.meetingMinutes, v.lessonAmount, v.meetingAmount, v.prepMinutes, v.prepAmount, v.adjustAmount, v.gross, v.withholding, v.taxColumn, v.dependents, v.net, v.payOn, now, 'staff:' + me.id, now, now)];
+    const stmts = [db.prepare("insert into payrollMonths (id, staffId, month, status, lessonMinutes, meetingMinutes, lessonAmount, meetingAmount, prepMinutes, prepAmount, workMinutes, workAmount, adjustAmount, gross, withholding, taxColumn, dependents, net, payOn, confirmedAt, confirmedBy, createdAt, updatedAt) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, staffId, b.month, v.lessonMinutes, v.meetingMinutes, v.lessonAmount, v.meetingAmount, v.prepMinutes, v.prepAmount, v.workMinutes,v.workAmount,v.adjustAmount, v.gross, v.withholding, v.taxColumn, v.dependents, v.net, v.payOn, now, 'staff:' + me.id, now, now)];
     v.items.forEach((i, n) => {
-      stmts.push(db.prepare('insert into payrollItems (id, payrollId, kind, lessonId, meetingId, date, start, minutes, label, rate, amount, sortOrder) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .bind(newId('pi'), id, i.kind, i.lessonId || '', i.meetingId || '', i.date, i.start, i.minutes, i.label, i.rate, i.amount, n));
+      stmts.push(db.prepare('insert into payrollItems (id, payrollId, kind, lessonId, meetingId, date, start, minutes, label, rate, amount, sortOrder,workDayId) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)')
+        .bind(newId('pi'), id, i.kind, i.lessonId || '', i.meetingId || '', i.date, i.start, i.minutes, i.label, i.rate, i.amount, n,i.workDayId||''));
       if (i.kind === 'lesson') stmts.push(db.prepare("update lessons set payrollId = ? where id = ? and payrollId = ''").bind(id, i.lessonId));
       if (i.kind === 'meeting') stmts.push(db.prepare("update meetings set payrollId = ? where id = ? and payrollId = ''").bind(id, i.meetingId));
-      if (i.kind === 'adjust') stmts.push(db.prepare("update payrollAdjustments set payrollId = ? where id = ? and payrollId = ''").bind(id, i.adjustId));
+      if (i.kind === 'adjust' && !i.workDayId) stmts.push(db.prepare("update payrollAdjustments set payrollId = ? where id = ? and payrollId = ''").bind(id, i.adjustId));
     });
+    for(const d of v.workDays){
+      stmts.push(db.prepare('insert into payrollWorkDays(payrollId,workDayId,workVersion) values(?,?,?)').bind(id,d.id,d.version));
+      stmts.push(db.prepare("update workDays set payrollId=? where id=? and version=? and payrollId=''").bind(id,d.id,d.version));
+      stmts.push(db.prepare("update lessons set payrollId=? where staffId=? and date=? and payrollId='' and status in ('done','decided')").bind(id,staffId,d.date));
+      stmts.push(db.prepare("update meetings set payrollId=? where staffId=? and date=? and payrollId='' and status<>'cancelled'").bind(id,staffId,d.date));
+    }
     await db.batch(stmts);
     const s = await db.prepare('select email from staff where id = ?').bind(staffId).first();
     c.effects.push({ kind: 'mail', to: s.email, name: 'ステップワイズ', subject: `[ステップワイズ] ${Number(b.month.slice(5))}月分の給与明細`, body: `${Number(b.month.slice(5))}月分の給与が確定しました。\n差引支給額 ${v.net.toLocaleString('ja-JP')}円（${v.payOn} にお支払いします）\n明細は「給与」の画面で見られます。\n\nhttps://www.stepwise-education.jp/staff/#payroll`, audience: 'staff' });
@@ -201,7 +234,7 @@ export const payrollRoutes = {
   },
   // 取消（訂正）: 理由を残す。授業・面談・調整は明細の前に戻り、直してから確定し直す。支払い済みは取り消せない
   'payroll/void': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    await requireOwner(c, b);
     const p = await getPayroll(c, b.id); sameVersion(p, b);
     if (p.status === 'paid') fail('paid', '支払い済みの明細は取り消せません。先に支払いの記録を戻してください', 409);
     if (p.status === 'void') return {};
@@ -209,6 +242,7 @@ export const payrollRoutes = {
     const now = iso(c.now);
     await c.db.batch([
       c.db.prepare("update payrollMonths set status = 'void', voidedAt = ?, voidReason = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?").bind(now, reason, now, p.id, p.version),
+      c.db.prepare("update workDays set payrollId = '' where payrollId = ?").bind(p.id),
       c.db.prepare("update lessons set payrollId = '' where payrollId = ?").bind(p.id),
       c.db.prepare("update meetings set payrollId = '' where payrollId = ?").bind(p.id),
       c.db.prepare("update payrollAdjustments set payrollId = '' where payrollId = ?").bind(p.id),
@@ -218,7 +252,7 @@ export const payrollRoutes = {
   },
   // 支払いの記録（paid）と、その取り消し（undo）
   'payroll/paid': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    await requireOwner(c, b);
     const p = await getPayroll(c, b.id); sameVersion(p, b);
     const now = iso(c.now);
     if (b.undo) {
@@ -243,6 +277,6 @@ export const payrollRoutes = {
     const statements = []; for (const p of list) statements.push(await withItems(c, p));
     // 今月の見込み（確定前の目安）
     const month = todayJst(c.now).slice(0, 7), cur = await payPreview(c, me.id, month);
-    return { statements, current: { month, gross: cur.gross, lessonMinutes: cur.lessonMinutes, meetingMinutes: cur.meetingMinutes, items: cur.items.length } };
+    return { statements, current: { month, gross: cur.gross, lessonMinutes: cur.lessonMinutes, meetingMinutes: cur.meetingMinutes, workMinutes:cur.workMinutes,prepMinutes:cur.prepMinutes,items: cur.items.length } };
   },
 };

@@ -7,7 +7,7 @@ export const ROLE_LABEL = { teacher: '講師', manager: '教室管理者', sysad
 export const rolesOf = who => String(who.roles || '').split(',').filter(r => ROLES.includes(r));
 
 export function staffView(who) {
-  return { id: who.id, name: who.name, familyName: who.familyName || '', givenName: who.givenName || '', email: who.email, roles: rolesOf(who), status: who.status, contractType: who.contractType, version: who.version };
+  return { id: who.id, name: who.name, familyName: who.familyName || '', givenName: who.givenName || '', email: who.email, roles: rolesOf(who), status: who.status, contractType: who.contractType, employmentAccess: who.employmentAccess !== 0, version: who.version };
 }
 // 姓と名。name（表示用）は「姓 名」にそろえる
 function nameParts(b, base = {}) {
@@ -20,11 +20,17 @@ function nameParts(b, base = {}) {
 export async function requireStaff(c, body, ...roles) {
   const me = c.serviceStaff || await readSession(c, 'staff', body.auth);
   if (!me) fail('needLogin', 'ログインし直してください', 401);
+  if (me.employmentAccess === 0 && !String(c.route||'').startsWith('employment/') && !String(c.route||'').startsWith('work/') && !['staff/me','staff/password','staff/logout','payroll/mine'].includes(c.route)) fail('employmentPending','雇用・勤務の準備を確認してから業務画面を利用できます',403);
   c.actor = { kind: c.serviceStaff ? 'service' : 'staff', id: me.id };
   if (roles.length && !roles.some(r => rolesOf(me).includes(r))) fail('forbidden', 'この操作をする役割がありません', 403);
   return me;
 }
 
+export async function requireOwner(c,b) {
+ const me=await requireStaff(c,b);
+ if(me.contractType!=='owner'||c.serviceStaff)fail('forbidden','代表だけが管理できます',403);
+ return me;
+}
 const INVITE_MAIL = { subject: '【ステップワイズ】スタッフのアカウントの設定', body: url => 'ステップワイズのスタッフのアカウントが用意されました。7日以内に次のリンクを開き、パスワードを決めてください。\n\n' + url + '\n\n心当たりがない場合は、このメールを破棄してください。' };
 
 function cleanRoles(list) {
@@ -78,6 +84,7 @@ export const staffRoutes = {
   },
   'admin/staff/invite': async (c, b) => {
     await requireStaff(c, b, 'sysadmin');
+    if(b.contractType==='owner')fail('forbidden','代表の追加はこの画面から行えません',403);
     const { familyName, givenName, name } = nameParts(b), email = normEmail(b.email), roles = cleanRoles(b.roles);
     if (!validEmail(email)) fail('badEmail', 'メールアドレスを確かめてください');
     if (await c.db.prepare('select 1 from staff where email = ?').bind(email).first()) fail('duplicate', 'このメールアドレスのスタッフはすでにいます', 409);

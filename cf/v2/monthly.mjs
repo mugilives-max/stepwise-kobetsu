@@ -11,13 +11,13 @@ const count = (rows, f) => rows.filter(f).length;
 
 export const monthlyRoutes = {
   'monthly/overview': async (c, b) => {
-    await requireStaff(c, b, 'manager');
+    const me=await requireStaff(c, b, 'manager');
     const today = todayJst(c.now), month = today.slice(0, 7), prev = shiftMonth(month, -1), next = shiftMonth(month, 1), day = Number(today.slice(8));
     const [bill, fees, plans, pay] = await Promise.all([
       billingRoutes['billing/month'](c, { ...b, month: prev }),
       billingRoutes['billing/fees/list'](c, b),
       billingRoutes['billing/plans/list'](c, { ...b, month: next }),
-      payrollRoutes['payroll/month'](c, { ...b, month: prev }),
+      me.contractType==='owner'?payrollRoutes['payroll/month'](c, { ...b, month: prev }):Promise.resolve({payOn:'',staff:[],unassigned:0,restricted:true}),
     ]);
     // 1. 前月分の請求
     const inv = bill.families.filter(f => f.invoice), pre = bill.families.filter(f => f.preview);
@@ -49,7 +49,7 @@ export const monthlyRoutes = {
     };
     // 4. 前月分の給与
     const payroll = {
-      month: prev, payOn: pay.payOn, staff: pay.staff.length,
+      restricted:!!pay.restricted, month: prev, payOn: pay.payOn, staff: pay.staff.length,
       confirmed: count(pay.staff, s => s.payroll && s.payroll.status === 'confirmed'), paid: count(pay.staff, s => s.payroll && s.payroll.status === 'paid'),
       ready: count(pay.staff, s => s.preview && s.preview.canConfirm), check: pay.staff.filter(s => s.preview && s.preview.issues.length).map(s => ({ name: s.name, issues: s.preview.issues })),
       unassigned: pay.unassigned,
