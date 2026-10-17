@@ -50,17 +50,13 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await owner.locator(f+' input[name="givenName"]').fill('乙');
   await send(f,'employment/save');
   await owner.getByRole('heading',{name:'【テスト】メール未定 乙 さんの雇用・勤務'}).waitFor();
-  await owner.locator('[data-form="em-todo"] textarea[name="preparationNote"]').fill('【テスト】メール未定でも勤務条件を保存');
-  await send('[data-form="em-todo"]','employment/save');
-  await owner.getByText('保存しました',{exact:true}).waitFor();
+  assert.equal(await owner.locator('[data-form="em-todo"]').count(),0,'招待の前は勤務開始の準備を出さない');
   const id=owner.url().split('#employment=')[1];
   const get=()=>h.ok('employment/get',{auth,staffId:id});
   assert.equal((await get()).staff.email,'');
-  assert.equal((await get()).profile.data.preparationNote,'【テスト】メール未定でも勤務条件を保存');
   assert.equal(await owner.locator('[data-form="em-invite"]').count(),0);
   assert.equal(h.mails().length,0);
   await owner.reload();await owner.locator('[data-form="em-email"]').waitFor();
-  assert.equal(await owner.locator('[data-form="em-todo"] textarea[name="preparationNote"]').inputValue(),'【テスト】メール未定でも勤務条件を保存');
   assert.equal(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await owner.screenshot({path:path.join(out,'01-draft-without-email.png'),fullPage:true,animations:'disabled'});
   await owner.locator('[data-form="em-email"] input[name="email"]').fill('employment@example.invalid');
@@ -88,7 +84,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   assert.equal(h.mails().length,1);assert.equal(h.mails()[0].to,'confirmed-draft@example.invalid');
   assert.equal(await owner.locator('[data-form="em-email"]').count(),0);
   assert.equal((await get()).staff.employmentAccess,false);
-  report.checks.push('mobile draft saved/reloaded with no email or message','duplicate email rejected without record change','later email save sends nothing; explicit invite uses saved recipient','invited address protected; business access remains disabled');
+  report.checks.push('mobile new teacher saved/reloaded with no email or message','duplicate email rejected without record change','later email save sends nothing; explicit invite uses saved recipient','invited address protected; business access remains disabled');
   assert.deepEqual(report.errors,[]);assert.deepEqual(report.externalRequests,[]);
  }catch(e){report.failure=e.stack;if(owner)await owner.screenshot({path:path.join(out,'failure.png'),fullPage:true}).catch(()=>{});throw e;}
  finally{console.log(JSON.stringify(report));fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(report,null,2));await browser.close();await new Promise(r=>server.close(r));}
