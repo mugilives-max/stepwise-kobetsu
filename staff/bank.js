@@ -16,10 +16,10 @@ function accountHtml(ctx,a,full=false){
  return '<dl style="overflow-wrap:anywhere">'+fields.map(([k,label])=>'<dt>'+ctx.esc(label)+'</dt><dd>'+ctx.esc(k==='accountType'?types[a[k]]:k==='accountNumber'&&!full?'••••'+a[k].slice(-3):a[k]||'未入力')+'</dd>').join('')+'</dl>';
 }
 function record(ctx,r){
- const labels={pending:'代表の確認待ち',accepted:r.current?'確認済み・現在の振込先':'以前に確認した振込先',returned:'修正して再提出',superseded:'新しい提出に置き換え'};
+ const labels={pending:'確認中',accepted:r.current?'確認済み・現在の振込先':'以前に確認した振込先',returned:'修正して再提出',superseded:'新しい提出に置き換え'};
  return '<section class="card"><h3>'+ctx.esc(labels[r.status])+'</h3>'+accountHtml(ctx,r.account)+
  '<details><summary>口座情報と同意の全文を確認</summary>'+accountHtml(ctx,r.account,true)+'<p>'+ctx.esc(r.consentText)+'</p><p>同意した人：'+ctx.esc(r.consenterName)+'<br>同意・提出日時：'+ctx.esc(at(r.submittedAt))+'</p></details>'+
- (r.reviewedAt?'<p>代表の確認：'+ctx.esc(at(r.reviewedAt))+' '+ctx.esc(r.reviewerName)+'</p>':'')+(r.reason?'<p>修正してほしい内容：'+ctx.esc(r.reason)+'</p>':'')+'</section>';
+ (r.reviewedAt?'<p>確認日時：'+ctx.esc(at(r.reviewedAt))+'</p>':'')+(r.reason?'<p>修正してほしい内容：'+ctx.esc(r.reason)+'</p>':'')+'</section>';
 }
 export function bankPage(ctx,me,id=''){
  const owner=me.contractType==='owner',want=owner?id:me.id;
@@ -49,7 +49,7 @@ export function bankPage(ctx,me,id=''){
  if(latest&&latest.id!==d.acceptedId)h+='<h2>今回の提出</h2>'+record(ctx,latest)+(current?'<p>変更の確認が完了するまでは、上の確認済み口座を振込先として扱います。直近の振込への適用は代表に確認してください。</p>':'');
  if(!owner){
   h+='<button'+(latest?'':' class="primary"')+' data-action="bank-edit"'+ctx.dis()+'>'+(latest?'振込先を変更・再提出する':'振込先を登録する')+'</button>';
-  if(latest?.status==='pending')h+='<p>提出済みです。代表の確認をお待ちください。</p>';
+  if(latest?.status==='pending')h+='<p>登録しました。確認が終わるまでお待ちください。</p>';
  }else if(latest?.status==='pending'){
   h+='<form class="stack" data-form="bank-accept">'+box(ctx,'confirm','口座情報の全文と本人の同意を確認し、この口座を給与の振込先として採用します',ownerConfirm)+'<button class="primary"'+ctx.dis()+'>確認して振込先に採用する</button></form><details><summary>修正をお願いする</summary><form class="stack" data-form="bank-return"><label>修正してほしい内容（口座番号は書かないでください）<textarea name="reason" required maxlength="200">'+esc(reason)+'</textarea></label><button'+ctx.dis()+'>修正を依頼する</button></form></details>';
  }else if(!latest)h+='<p>本人の「雇用・勤務」→「給与の振込先」から登録・同意してもらってください。</p>';
@@ -75,7 +75,7 @@ export async function bankSubmit(ctx,kind,el){
    return true;
   }
   cache=r;step='view';draft=null;agreed=false;ownerConfirm=false;reason='';
-  ctx.say(kind==='bank-submit'?'振込先と同意を提出しました。代表の確認をお待ちください。':kind==='bank-accept'?'確認済みの振込先として保存しました。':'修正の依頼を記録しました。','ok');
+  ctx.say(kind==='bank-submit'?'振込先を登録しました。確認が終わるまでお待ちください。':kind==='bank-accept'?'確認済みの振込先として保存しました。':'修正の依頼を記録しました。','ok');
  }catch{ctx.say('保存結果を確認できませんでした。画面を更新して提出状況を確認してください。','error');}
  return true;
 }

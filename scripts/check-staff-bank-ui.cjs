@@ -65,7 +65,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await employee.locator('[data-form="bank-submit"] [name="agree"]').check();
   let r=await send(employee,'[data-form="bank-submit"]','同意して振込先を提出する','employment/bank/submit');
   assert.equal(r.requests[0].status,'pending');
-  await employee.getByText('提出済みです。代表の確認をお待ちください。',{exact:true}).waitFor();
+  await employee.getByText('登録しました。確認が終わるまでお待ちください。',{exact:true}).waitFor();
   assert.equal(await employee.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.equal((await employee.evaluate(()=>JSON.stringify(localStorage))).includes('0123456'),false);
   await employee.screenshot({path:path.join(out,'02-employee-pending-mobile.png'),fullPage:true});
