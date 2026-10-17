@@ -10,6 +10,7 @@ import { conditionDocHtml } from './condition-doc.mjs';
 import { specialDocHtml } from './special-doc.mjs';
 import { invoiceDocHtml, receiptDocHtml, billingSettings } from './billing-doc.mjs';
 import { employmentSnapshot, employmentDocument } from './employment-document.mjs';
+import { rulesDocHtml } from './staff-rules.mjs';
 
 const family = { id: 'fam_sample', name: '見本家', guardianName: '見本 花子' };
 const student = { id: 'stu_sample', familyName: '見本', givenName: '太郎', grade: '中3' };
@@ -20,6 +21,7 @@ export const DOC_TYPES = {
   special: { title: '受講条件書（特殊指導）', when: '特殊指導を提案したとき（案）と、保護者が承認したとき（確定）', who: '保護者はお支払いから。塾は生徒の画面から', where: '家族の画面 → 生徒 → 特殊指導' },
   invoice: { title: '請求書', when: '月の請求を確定したとき', who: '保護者はお支払いの請求から。塾は請求の画面から', where: '請求 → 家族の月。振込先と備考は 設定 → 請求の下の「請求書の設定」' },
   employment: { title: '雇用契約書', when: '講師ごとに契約書の案を作ったとき', who: '講師と代表', where: '設定 → 雇用・勤務 → 講師' },
+  rules: { title: '講師のきまり', when: '今の版をいつでも', who: '講師と代表', where: '設定 → 講師のきまり' },
   receipt: { title: '領収書', when: '入金を記録したとき', who: '保護者はお支払いの請求から。塾は請求の画面から', where: '請求 → 家族の月 → 入金を記録' },
 };
 
@@ -54,6 +56,7 @@ export async function sampleDocHtml(db, type, now) {
     return invoiceDocHtml({ inv, items, family, settings: await billingSettings(db) });
   }
   if (type === 'receipt') return receiptDocHtml({ inv, family });
+  if (type === 'rules') return rulesDocHtml(); // 見本ではなく今の版そのもの（印刷して渡せる）
   if (type === 'employment') {
     const snapshot = employmentSnapshot({ name: '見本 講師' }, { startDate: '2026-11-01', endDate: '2027-03-31', weeklyHours: '週5〜6時間ほど。', address: '〒000-0000 見本県見本市1-2-3', otherWork: 'なし', hourly: '2000', employmentInsurance: 'no' }, [
       { date: '2026-11-04', planned: [{ start: '17:55', end: '19:35' }] }, { date: '2026-11-07', planned: [{ start: '09:55', end: '11:35' }, { start: '13:00', end: '14:40' }] },

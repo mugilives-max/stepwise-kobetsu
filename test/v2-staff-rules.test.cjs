@@ -18,4 +18,7 @@ test('staff rules: employee reads the current version once; owner sees readers; 
  assert.ok(!(await w.get()).checks.includes('講師のきまり（本人の確認）'));assert.equal((await w.get()).rulesReadAt,first);
  const o=await h.ok('employment/rules/get',{auth});assert.deepEqual(o.readers.find(x=>x.id===staff.id),{id:staff.id,name:staff.name,readAt:first});
  assert.equal((await h.call('employment/rules/get',{})).error.code,'needLogin');
+ // 書面（A4。印刷して渡せる）: 講師も代表も開ける。受け取りの欄つき
+ for(const who of [ta,auth]){const html=(await h.ok('employment/rules/document',{auth:who})).html;for(const t of ['<title>講師のきまり（2026年11月版）</title>','@page { size: A4','受け取りの記録','講師の氏名（署名）'])assert.ok(html.includes(t),t);assert.doesNotMatch(html,/<script/);}
+ assert.equal((await h.call('employment/rules/document',{})).error.code,'needLogin');
 });

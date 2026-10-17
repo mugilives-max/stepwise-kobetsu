@@ -1,5 +1,5 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-pending';
-import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261018-rules2';
+import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261018-doc';
 import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261018-rules';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
@@ -14,7 +14,7 @@ import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261018-rules';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261018-payslip';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
-import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261018-rules';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261018-rulesdoc';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { billingPick } from '/staff/billing.js?v=20261016-notices';
@@ -316,6 +316,7 @@ document.addEventListener('click', ev => {
   // 成績票は、待たずに新しいタブを開いてから読む（あとから開くと止められる）
   if (a === 'doc-sample' && b.dataset.type === 'payslip') { const url = URL.createObjectURL(new Blob([sampleStatementHtml(esc)], { type: 'text/html' })); if (!window.open(url, '_blank')) location.href = url; return; }
   if (a === 'doc-sample') { const win = window.open('', '_blank'); run(async () => { const r = await ctx.call('admin/docs/sample', { type: b.dataset.type }); if (!r.ok) { if (win) win.close(); return say(r.error.message, 'error'); } const url = URL.createObjectURL(new Blob([r.html], { type: 'text/html' })); if (win && !win.closed) win.location.href = url; else location.href = url; }); return; }
+  if (a === 'rules-doc') { openAgreementDocument(() => ctx.call('employment/rules/document', {}), message => { say(message, 'error'); render(); }); return; }
   if (a === 'em-doc') { openAgreementDocument(() => ctx.call('employment/contract/document',{id:b.dataset.id}),message=>{say(message,'error');render();}); return; }
   if (a === 'agreement-doc') { openAgreementDocument(() => ctx.call('billing/plans/document', { refs: JSON.parse(b.dataset.refs) }), message => { say(message, 'error'); render(); }); return; }
   if (a === 'gr-open') { const win = window.open('', '_blank'); run(async () => { const r = await openGradeFile(ctx, b, win); if (!r.ok) say(r.error.message, 'error'); }); return; }
