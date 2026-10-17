@@ -36,6 +36,14 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   owner=await make(auth,1100);self=await make(ta,390);
   await owner.goto(origin+'/staff/#employment='+staff.id);
   await owner.locator('[data-form="em-draft"]').waitFor();
+  // 最初の1か月のシフトがないうちは案を作れない。シフトを入れると「最初の1か月のシフト」に出る
+  await owner.locator('[data-form="em-draft"] input[name="method"][value="paper"]').check();
+  await owner.locator('[data-form="em-draft"] button.primary').click();
+  await owner.getByText('契約の始まりから1か月の勤務予定（シフト）を先に入れてください。契約書の末尾に載ります',{exact:true}).waitFor();
+  await w.firstShift();await owner.reload();
+  await owner.getByText('2026年10月20日（火）',{exact:true}).waitFor();
+  assert.equal(await owner.locator('[data-form="em-draft"] input[name="hourly"]').inputValue(),'2000');
+  assert.equal(await owner.locator('[data-form="em-draft"] input[name="employmentInsurance"][value="no"]').isChecked(),true);
   assert.equal(await owner.locator('[data-form="em-draft"] [name="availability"]').count(),0,'勤務希望は契約書に入れない');
   assert.equal(await owner.locator('[data-form="em-draft"] [name="taxDeclaration"]').count(),0,'甲欄・乙欄は給与の設定で扱う');
   for(const f of ['em-pay','em-shift','em-todo'])assert.equal(await owner.locator('[data-form="'+f+'"]').count(),0,f+' は契約書の準備の段階で出さない');
@@ -124,7 +132,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   for(const [name,html] of [['paper',paperHtml],['electronic',(await h.ok('employment/contract/document',{auth:ta,id:r.id})).html]]){
    const doc=await owner.context().newPage();await doc.setContent(html);await doc.emulateMedia({media:'print'});await doc.evaluate(()=>document.fonts.ready);
    assert.equal(await doc.locator('table').evaluateAll(ts=>ts.filter(t=>t.scrollWidth>t.clientWidth+1).length),0);
-   const text=await doc.locator('body').innerText();for(const expected of ['第1条','第11条','2,000円','2026-10-17','2027-03-31','他の勤務先','講師 甲'])assert.ok(text.includes(expected),name+' '+expected);
+   const text=await doc.locator('body').innerText();for(const expected of ['第1条','第11条','2,000円','2026年10月17日','2027年3月31日','最初の1か月のシフト表','2026年10月20日（火） 18:00〜19:30','この契約では：加入しない','他の勤務先','講師 甲'])assert.ok(text.includes(expected),name+' '+expected);
    assert.ok(!text.includes('【講師の氏名】')&&!text.includes('提出状況の確認日：【'),'personalized fields');
    await doc.pdf({path:path.join(out,name+'-contract.pdf'),format:'A4',printBackground:true,preferCSSPageSize:true,displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="width:100%;font-size:8px;text-align:center;color:#666">【テスト】確認用・実際の契約ではありません　<span class="pageNumber"></span> / <span class="totalPages"></span></div>'});
    await doc.close();

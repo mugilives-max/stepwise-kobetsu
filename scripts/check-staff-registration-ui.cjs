@@ -125,7 +125,8 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await owner.getByRole('heading',{name:'契約書の案を作ってください',exact:true}).waitFor();
   await owner.locator('[data-form="em-draft"]').waitFor();
   assert.equal(await owner.locator('[data-form="em-draft"] [name="address"]').count(),0,'住所は本人の登録内容から入る');
-  for(const f of ['em-pay','em-shift','em-todo','wk-open'])assert.equal(await owner.locator('[data-form="'+f+'"]').count(),0,f+' は契約書の準備の段階で出さない');
+  await owner.getByText('最初の1か月のシフト',{exact:false}).first().waitFor(); // 契約書の末尾に載る最初の1か月のシフトは、この段階で入れる
+  for(const f of ['em-pay','em-shift','em-todo'])assert.equal(await owner.locator('[data-form="'+f+'"]').count(),0,f+' は契約書の準備の段階で出さない');
   await owner.screenshot({path:path.join(out,'03c-owner-contract-stage.png'),fullPage:true,animations:'disabled'});
   await employee.reload();await employee.getByRole('heading',{name:'契約書を準備しています',exact:true}).waitFor();
   assert.equal(await employee.locator('[data-form="wk-open"]').count(),0,'勤務日がないうちは勤務の記録を出さない');

@@ -194,15 +194,33 @@ const formAttrs=(name,d)=>' class="reg-form" style="margin-top:10px" data-form="
 // 契約書に載る内容: 本人の情報を確かめ、契約期間などを入れて、そのまま案を作る（契約書の準備の段階はこれだけ）
 const rows=(esc,list)=>'<dl class="reg-rows">'+list.map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>';
 const METHOD={electronic:'電子（本人がこの画面で同意）',paper:'紙（印刷して双方が署名）'};
+const WEEKJ='日月火水木金土';
+const dayW=v=>jaDate(v)+'（'+WEEKJ[new Date(v+'T00:00:00Z').getUTCDay()]+'）';
+const monthEnd=start=>{const [y,m,dd]=start.split('-').map(Number);const t=new Date(Date.UTC(y,m,dd));t.setUTCDate(t.getUTCDate()-1);return t.toISOString().slice(0,10);};
+const plannedOf=x=>{try{return JSON.parse(x.planned||'[]');}catch{return [];}};
+const timesOf=x=>{const out=[];for(const i of plannedOf(x).sort((a,b)=>a.start<b.start?-1:1)){const l=out.at(-1);if(l&&l.end>=i.start){if(i.end>l.end)l.end=i.end;}else out.push({start:i.start,end:i.end});}return out.map(i=>i.start+'〜'+i.end).join('、');};
+// 契約書の時給（締結済みの版があればそれ、なければ入れた時給、どちらもなければ 2,000円）
+const hourlyOf=d=>Number(d.contracts?.find(x=>x.status==='agreed')?.snapshot?.lessonHourly||d.profile?.data?.hourly||2000);
+// 最初の1か月のシフト（契約書の末尾に載る）。勤務の日は勤務の画面で入れる
+function firstShifts(ctx,d){
+ const {esc}=ctx,p=d.profile?.data||{},start=p.startDate||'',end=start?monthEnd(start):'';
+ const days=(d.days||[]).filter(x=>x.planVersion&&plannedOf(x).length&&(!start||(x.date>=start&&x.date<=end))).sort((a,b)=>a.date<b.date?-1:1);
+ return '<div class="sec-title">最初の1か月のシフト <span class="req">必須</span></div><p class="reg-help" style="margin:0 0 6px">'+(start?esc(jaDate(start)+'〜'+jaDate(end))+'の、勤務の日と始業・終業の時刻です。':'契約の開始日から1か月の、勤務の日と始業・終業の時刻です。')+'契約書の末尾に載ります。</p>'+
+  (days.length?'<div class="group">'+days.map(x=>'<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#work='+esc(d.staff.id)+'/'+esc(x.date)+'"><span class="v"><span class="lbl">'+esc(dayW(x.date))+'</span><small>'+esc(timesOf(x))+'</small></span><span class="go" aria-hidden="true">›</span></a>').join('')+'</div>':'<p class="reg-help" style="margin:0">まだ入っていません。</p>')+
+  '<form class="row" style="gap:8px;margin-top:8px;flex-wrap:nowrap" data-form="wk-open"><input type="date" name="date" required value="'+esc(start||today())+'" style="flex:1 1 0;min-width:0"><button style="white-space:nowrap"'+ctx.dis()+'>この日の予定を入れる</button></form>';
+}
 function ownerDraftForm(ctx,d,{again=false}={}){
  const {esc}=ctx,p=d.profile?.data||{},legacy=!d.registration?.required,req=' <span class="req">必須</span>';
  const radio=(v,t)=>'<label class="choice"><input type="radio" name="method" value="'+v+'" required><span>'+esc(t)+'</span></label>';
- const who=legacy?'':'<div class="sec-title" style="margin-top:6px">本人の情報</div>'+rows(esc,[['氏名',d.staff.name],['住所',p.address||'未登録'],['ほかに雇われて働いている勤務先',p.otherWork||'未登録']])+'<p class="reg-help" style="margin:2px 0 0">本人が登録した内容です。変わったときは、本人が登録し直します。</p><div class="sec-title">契約の条件</div>';
- return card(again?'新しい契約書の案':'契約書に載る内容','',who+
+ const ins=(v,t,sub)=>'<label class="choice"><input type="radio" name="employmentInsurance" value="'+v+'" required'+(p.employmentInsurance===v?' checked':'')+'><span>'+esc(t)+'<small>'+esc(sub)+'</small></span></label>';
+ const who=legacy?'':'<div class="sec-title" style="margin-top:6px">本人の情報</div>'+rows(esc,[['氏名',d.staff.name],['住所',p.address||'未登録'],['ほかに雇われて働いている勤務先',p.otherWork||'未登録']])+'<p class="reg-help" style="margin:2px 0 0">本人が登録した内容です。変わったときは、本人が登録し直します。</p>';
+ return card(again?'新しい契約書の案':'契約書に載る内容','',who+firstShifts(ctx,d)+'<div class="sec-title">契約の条件</div>'+
   '<form'+formAttrs('em-draft',d)+'>'+
   (legacy?fset('住所'+req,'<input name="address" required maxlength="500" value="'+esc(p.address||'')+'">')+fset('ほかに雇われて働いている勤務先'+req,'<textarea name="otherWork" required rows="2" maxlength="1500">'+esc(p.otherWork||'')+'</textarea>','ない場合は「なし」と入れます。'):'')+
   fset('契約期間'+req,'<div class="row" style="flex-wrap:nowrap;gap:10px"><label class="sub" style="flex:1 1 0;min-width:0">開始日<input type="date" name="startDate" required value="'+esc(p.startDate||'')+'"></label><label class="sub" style="flex:1 1 0;min-width:0">終了日<input type="date" name="endDate" required value="'+esc(p.endDate||'')+'"></label></div>')+
-  fset('勤務時間の目安'+req,'<input name="weeklyHours" required maxlength="500" value="'+esc(p.weeklyHours||'週5〜6時間ほど。')+'">','勤務する日と時間は毎月のシフトで決めます。その目安です。勤務する時間帯は全員共通で、平日18:00〜22:00、土日8:00〜22:00 と載ります。')+
+  fset('勤務時間の目安'+req,'<input name="weeklyHours" required maxlength="500" value="'+esc(p.weeklyHours||'週5〜6時間ほど。')+'">','日ごとの勤務はシフト表で決めます。その目安です。勤務する時間帯は全員共通で、平日18:00〜22:00、土日8:00〜22:00 と載ります。')+
+  fset('時給'+req,'<div class="row" style="gap:8px;align-items:center;flex-wrap:nowrap"><input type="number" name="hourly" required min="100" max="99999" step="1" inputmode="numeric" style="max-width:9em" value="'+esc(p.hourly||'2000')+'"><span>円</span></div>','授業・授業の準備と記録・研修などに、この時給を使います。')+
+  fset('雇用保険'+req,'<div class="choices">'+ins('no','加入しない','週20時間未満の勤務、または昼間の学生')+ins('yes','加入する','週20時間以上で、31日以上続けて働く見込み')+'</div>')+
   fset('締結の方法'+req,'<div class="choices">'+radio('electronic',METHOD.electronic)+radio('paper',METHOD.paper)+'</div>')+
   '<div class="stack"><button class="primary wide"'+ctx.dis()+'>この内容で契約書の案を作る</button><p class="reg-help" style="margin:0">案を作っても、本人にはまだ見えません。次に全文を確かめて発行します。</p></div></form>');
 }
@@ -250,7 +268,7 @@ function ownerPay(ctx,d){
   fset('扶養控除等申告書','<div class="choices">'+radio('submitted','塾に出す（甲欄）','ほかの勤務先に出していない人')+radio('notSubmitted','塾には出さない（乙欄）','ほかの勤務先に出している人など')+'</div>',reg?.taxSituation?'本人の回答：'+esc({otherEmployer:'ほかの勤務先に出している',noneElsewhere:'ほかの勤務先には出していない',unknown:'分からない・確認中'}[reg.taxSituation]||''):'')+
   fset('扶養人数（甲欄のとき）','<input type="number" name="dependents" min="0" max="7" style="max-width:8em" value="'+esc(p.dependents||'')+'">','甲欄のときは 0 人でも入れてください。')+
   fset('確認した日','<input type="date" name="taxCheckedOn" required style="max-width:12em" value="'+esc(p.taxCheckedOn||today2())+'">')+
-  '<p class="reg-help" style="margin:0">時給は授業・その他の業務とも 2,000円です（面談は当面なし）。保存すると、この時給と源泉徴収の区分が給与に入ります。<a href="#rates">時給・源泉徴収の履歴</a></p>'+
+  '<p class="reg-help" style="margin:0">時給は契約書のとおり '+hourlyOf(d).toLocaleString('ja-JP')+'円です（授業・その他の業務とも。面談は当面なし）。保存すると、この時給と源泉徴収の区分が給与に入ります。<a href="#rates">時給・源泉徴収の履歴</a></p>'+
   '<button class="primary wide"'+ctx.dis()+'>給与の設定を保存</button></form>');
 }
 // 3. シフトのメモ（予定を組むときの参考。契約書には載らない）
@@ -340,7 +358,7 @@ export function employmentPage(ctx,me,id='',opts={}){
   let stage=stageOf(d);
   if(stage==='register'&&agreed){h+=personalInfo(ctx,d,true);stage=d.staff.employmentAccess?'working':'start';} // 締結後の登録し直し（引っ越しなど）
   const work=(intro='')=>workSection(ctx,d,true,true,intro);
-  const pastWork=()=>d.days?.length||d.requests?.length?work():'';
+  const pastWork=()=>d.requests?.length||d.days?.some(x=>x.status!=='draft'||!x.planVersion)?work():''; // 予定だけの日（最初の1か月のシフトなど）では出さない
   const bank=()=>linkRow(esc,'#bank='+d.staff.id,'給与の振込先',d.bank?.pending?'確認してください（本人が登録済み）':d.bank?.returned?'本人の登録し直し待ち':d.bank?.accepted?'確認済み':'本人の登録待ち');
   // 1. 本人情報の登録まで: 招待と、本人の登録待ちだけ
   if(stage==='register')return h+invitation(ctx,d)+personalInfo(ctx,d,true)+pastWork()+ownerRecords(ctx,d);
@@ -380,12 +398,12 @@ export function employmentPage(ctx,me,id='',opts={}){
  const contracts=()=>d.contracts.length?'<h2>契約書</h2>'+d.contracts.map(r=>contractCard(ctx,r,false)).join(''):'';
  if(stage==='prepare'){
   h+=contracts()+'<h2>契約と並行してできること</h2>'+bankLink(esc,d);
-  if(d.days?.length||d.requests?.length)h+=workSection(ctx,d,false,false);
+  if(d.requests?.length||d.days?.some(x=>x.status!=='draft'||!x.planVersion))h+=workSection(ctx,d,false,false);
   return h+flowList(d)+extra();
  }
  if(stage==='contract'){
   h+=contracts()+'<h2>契約と並行してできること</h2>'+bankLink(esc,d);
-  if(d.days?.length||d.requests?.length)h+=workSection(ctx,d,false,false);
+  if(d.requests?.length||d.days?.some(x=>x.status!=='draft'||!x.planVersion))h+=workSection(ctx,d,false,false);
   return h+extra();
  }
  if(stage==='start'){
@@ -456,8 +474,9 @@ export async function employmentSubmit(ctx,kind,el){
   else if(kind==='em-registration-confirm'){if(!regDraft){regStep='input';return true;}route='employment/registration/submit';body={version:Number(el.dataset.version),confirm:true,data:regDraft};msg='登録が完了しました。';}
   else if(kind==='em-registration-accept'||kind==='em-registration-return'){route='employment/registration/review';body={...b,requestId:el.dataset.request,profileVersion:Number(el.dataset.profileVersion),outcome:kind==='em-registration-accept'?'accepted':'returned',confirm:kind==='em-registration-accept',reason:v.reason,nameDecision:v.nameDecision||''};msg=kind==='em-registration-accept'?'本人情報を確認して反映しました。本人と勤務希望を確認し、勤務条件を設定してください。':'修正依頼を記録しました。';}
   else if(kind==='em-draft'){
+   if(!v.employmentInsurance)throw Error('雇用保険に加入するかを選んでください');
    if(!v.method)throw Error('締結の方法を選んでください');
-   let r=await ctx.call('employment/save',{staffId:cache.staff.id,version:Number(el.dataset.version),data:Object.fromEntries(['startDate','endDate','weeklyHours','address','otherWork'].filter(k=>k in v).map(k=>[k,v[k]]))});
+   let r=await ctx.call('employment/save',{staffId:cache.staff.id,version:Number(el.dataset.version),data:Object.fromEntries(['startDate','endDate','weeklyHours','hourly','employmentInsurance','address','otherWork'].filter(k=>k in v).map(k=>[k,v[k]]))});
    if(!r.ok){if(!ctx.handleAuth(r))ctx.say(r.error.message,'error');return true;}
    r=await ctx.call('employment/get',{staffId:cache.staff.id});if(!r.ok)throw Error(r.error.message);
    route='employment/contract/create';body={staffId:cache.staff.id,version:r.profile.version,method:v.method};msg='契約書の案を作りました。全文を確かめて発行してください。';
@@ -470,7 +489,7 @@ export async function employmentSubmit(ctx,kind,el){
    const p=cache.profile?.data;if(!p?.startDate)throw Error('先に「契約の条件」で契約期間を保存してください');
    let r=await ctx.call('employment/save',{staffId:cache.staff.id,version:Number(el.dataset.version),data:{taxDeclaration:v.taxDeclaration,dependents:v.taxDeclaration==='submitted'?v.dependents:'',taxCheckedOn:v.taxCheckedOn}});
    if(!r.ok)throw Error(r.error.message);
-   r=await ctx.call('payroll/rates/save',{staffId:cache.staff.id,startsOn:p.startDate.slice(0,7),lessonHourly:2000,meetingHourly:null});
+   r=await ctx.call('payroll/rates/save',{staffId:cache.staff.id,startsOn:p.startDate.slice(0,7),lessonHourly:hourlyOf(cache),meetingHourly:null});
    if(!r.ok)throw Error('申告書の区分は保存しました。時給は確認が必要です：'+r.error.message);
    r=await ctx.call('payroll/withholding',{staffId:cache.staff.id,version:cache.staff.version,taxColumn:v.taxDeclaration==='submitted'?'kou':'otsu',dependents:Number(v.dependents||0)});
    if(!r.ok)throw Error('時給は保存しました。源泉徴収の区分は確認が必要です：'+r.error.message);
@@ -487,7 +506,7 @@ export async function employmentSubmit(ctx,kind,el){
   else if(kind==='em-payroll'){
    if(!v.agree)throw Error('給与へ反映する内容を確認してください');
    const p=cache.profile?.data;if(!p?.startDate||!p.taxDeclaration||!p.taxCheckedOn||(p.taxDeclaration==='submitted'&&p.dependents===''))throw Error('契約開始日と申告書の確認を先に保存してください');
-   let r=await ctx.call('payroll/rates/save',{staffId:cache.staff.id,startsOn:p.startDate.slice(0,7),lessonHourly:2000,meetingHourly:null});
+   let r=await ctx.call('payroll/rates/save',{staffId:cache.staff.id,startsOn:p.startDate.slice(0,7),lessonHourly:hourlyOf(cache),meetingHourly:null});
    if(!r.ok)throw Error(r.error.message);
    r=await ctx.call('payroll/withholding',{staffId:cache.staff.id,version:cache.staff.version,taxColumn:p.taxDeclaration==='submitted'?'kou':'otsu',dependents:Number(p.dependents||0)});
    if(!r.ok)throw Error('時給は保存しました。源泉区分は確認が必要です：'+r.error.message);
