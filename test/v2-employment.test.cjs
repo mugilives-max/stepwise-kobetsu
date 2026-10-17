@@ -35,6 +35,7 @@ test('electronic agreement requires exact version, own preference, actual delive
  const ev=h.rows('select * from employmentEvents where contractId=?',r.id);
  assert.equal(ev.length,4);assert.equal(ev.at(-1).actorId,staff.id);
  const doc=await h.ok('employment/contract/document',{auth:ta,id:r.id});assert.match(doc.html,/本人の電子同意/);assert.match(doc.html,/2,000円/);
+ assert.match(doc.html,/1\. 期間の定めあり：2026年10月17日から2027年3月31日まで。/,'契約期間は日本語の日付で書く');assert.match(doc.html,/対象期間 2026年10月17日〜2027年3月31日/);assert.doesNotMatch(doc.html,/2026-10-17から|2027-03-31まで/);
  const wrong=await h.staffWith(auth,['teacher'],'other-view@example.invalid');
  assert.equal((await h.call('employment/contract/document',{auth:wrong,id:r.id})).error.code,'forbidden');
  assert.equal((await h.call('employment/contract/withdraw',{auth,id:r.id,version:r.version,reason:'削除'})).error.code,'closed');
@@ -185,4 +186,12 @@ test('correction requests reach owner queue and answers leave both request and o
  await h.ok('work/correction/respond',{auth,staffId:staff.id,date:d.date,version:d.version,requestId,message:'本人と確認し、元の時刻で正しいと確認しました'});
  assert.equal((await w.get()).requests.length,0);
  const read=await h.ok('work/day',{auth:ta,date:d.date});assert.equal(read.corrections.length,1);assert.equal(read.answers.length,1);assert.equal(read.day.version,d.version);
+});
+
+test('a snapshot fixed under the earlier layout keeps its body text; only the heading shows Japanese dates',async()=>{
+ const {employmentDocument}=await import('../cf/v2/employment-document.mjs');
+ const text='### 雇用契約書（兼 労働条件通知書）\n\n**第1条（契約期間）**\n\n1. 期間の定めあり：2026-10-17から2027-03-31まで。';
+ const html=employmentDocument({id:'ec-old',revision:1,status:'agreed',method:'electronic',contentHash:'x',snapshot:JSON.stringify({layoutVersion:'20261017-2',staffName:'【テスト】講師',startDate:'2026-10-17',endDate:'2027-03-31',text})});
+ assert.match(html,/期間の定めあり：2026-10-17から2027-03-31まで。/,'締結済みの本文は作り直さない');
+ assert.match(html,/対象期間 2026年10月17日〜2027年3月31日/);
 });
