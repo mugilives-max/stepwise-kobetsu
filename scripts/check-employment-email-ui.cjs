@@ -49,6 +49,8 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await owner.locator(f+' input[name="givenName"]').fill('乙');
   await send(f,'employment/save');
   await owner.getByRole('heading',{name:'【テスト】メール未定 乙 さんの雇用・勤務'}).waitFor();
+  // 勤務条件の欄は、本人情報の確認が済むまで閉じている（開いてから入力する）
+  if(!await owner.locator('[data-form="em-profile"]').isVisible())await owner.getByText('勤務条件・代表の確認事項',{exact:true}).click();
   await owner.locator('[data-form="em-profile"] textarea[name="preparationNote"]').fill('【テスト】メール未定でも勤務条件を保存');
   await send('[data-form="em-profile"]','employment/save');
   await owner.getByText('保存しました',{exact:true}).waitFor();
@@ -59,6 +61,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   assert.equal(await owner.locator('[data-form="em-invite"]').count(),0);
   assert.equal(h.mails().length,0);
   await owner.reload();await owner.locator('[data-form="em-email"]').waitFor();
+  if(!await owner.locator('[data-form="em-profile"]').isVisible())await owner.getByText('勤務条件・代表の確認事項',{exact:true}).click();
   assert.equal(await owner.locator('[data-form="em-profile"] textarea[name="preparationNote"]').inputValue(),'【テスト】メール未定でも勤務条件を保存');
   assert.equal(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await owner.screenshot({path:path.join(out,'01-draft-without-email.png'),fullPage:true,animations:'disabled'});
