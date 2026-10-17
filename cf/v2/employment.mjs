@@ -38,6 +38,7 @@ function profileData(b) {
 }
 async function readiness(c,s,p,contracts) {
  const checks=[];
+ if(!validEmail(s.email))checks.push('招待先メールアドレスを登録');
  if(!p)checks.push('基本情報を登録');
  if(!contracts.some(r=>r.status==='agreed'))checks.push('契約の締結・交付');
  if(p) {
@@ -89,8 +90,9 @@ export const employmentRoutes={
    else {if(Number(b.version)!==0)fail('conflict','読み直してください',409);await c.db.prepare('insert into employmentProfiles(staffId,data,createdAt,updatedAt) values(?,?,?,?)').bind(s.id,JSON.stringify(data),now,now).run();}
   } else {
    const familyName=text(b.familyName,30),givenName=text(b.givenName,30),email=normEmail(b.email);
-   if(!familyName||!givenName||!validEmail(email))fail('badName','氏名とメールアドレスを入力してください');
-   if(await c.db.prepare('select 1 from staff where email=?').bind(email).first())fail('duplicate','このメールアドレスは登録済みです。既存の講師を開いてください',409);
+   if(!familyName||!givenName)fail('badName','氏名を入力してください');
+   if(email&&!validEmail(email))fail('badEmail','メールアドレスを確かめてください。未定の場合は空欄で保存できます');
+   if(email&&await c.db.prepare('select 1 from staff where email=?').bind(email).first())fail('duplicate','このメールアドレスは登録済みです。既存の講師を開いてください',409);
    s={id:newId('st'),name:familyName+' '+givenName,email};
    await c.db.batch([
     c.db.prepare("insert into staff(id,name,familyName,givenName,email,roles,status,contractType,employmentAccess,testOnly,createdAt,updatedAt) values(?,?,?,?,?,'teacher','invited','employee',0,?,?,?)").bind(s.id,s.name,familyName,givenName,email,b.testOnly===true&&s.name.startsWith('【テスト】')?1:0,now,now),
@@ -99,9 +101,23 @@ export const employmentRoutes={
   }
   await audit(c,'employmentProfileSaved',s.id);return detail(c,s.id,me);
  },
+ // Email is editable only before any invitation. Profile/contract/payroll records are untouched.
+ 'employment/email':async(c,b)=>{
+  const me=await requireOwner(c,b),s=await employee(c,b.staffId),email=normEmail(b.email);
+  checkVersion(s,b);
+  if(email&&!validEmail(email))fail('badEmail','メールアドレスを確かめてください');
+  if(s.status!=='invited'||await c.db.prepare("select 1 from authChallenges where subjectId=? and purpose='staffInvite'").bind(s.id).first())fail('alreadyInvited','招待済みのメールアドレスはこの画面では変更できません',409);
+  if(email&&await c.db.prepare('select 1 from staff where email=? and id<>?').bind(email,s.id).first())fail('duplicate','このメールアドレスは登録済みです。既存の講師を確認してください',409);
+  const r=await c.db.prepare("update staff set email=?,updatedAt=?,version=version+1 where id=? and version=? and status='invited' and not exists(select 1 from authChallenges where subjectId=staff.id and purpose='staffInvite') and not exists(select 1 from employmentProfiles where staffId=staff.id and invitedAt<>'')")
+   .bind(email,iso(c.now),s.id,s.version).run();
+  if(r.meta.changes!==1)fail('conflict','ほかの操作で更新されています。読み直して確認してください',409);
+  await audit(c,'employmentEmailSaved',s.id);return detail(c,s.id,me);
+ },
  'employment/invite':async(c,b)=>{
   const me=await requireOwner(c,b),s=await employee(c,b.staffId);
   if(s.status!=='invited')fail('notInvited','招待前・招待中の講師だけに送れます');
+  if(!validEmail(s.email))fail('needEmail','本人のメールアドレスを登録してから招待してください');
+  if(b.email!==undefined&&normEmail(b.email)!==s.email)fail('conflict','招待先が変わっています。読み直して確認してください',409);
   const p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();if(!p)fail('needProfile','先に雇用情報を登録してください');
   if(b.confirm!==true)fail('needConfirm','宛先を確認してから招待してください');
   const inviteUrl=await issueChallenge(c,'staff','staffInvite',s,{subject:'【ステップワイズ】雇用契約の確認・アカウント設定',body:url=>'雇用契約の内容を確認するためのアカウントをご用意しました。7日以内に、ご本人がリンクからパスワードを設定してください。\n\n'+url+'\n\n設定後は「雇用・勤務」を開いてください。アカウントの設定だけでは契約への同意にはなりません。リンクを再送した場合、前のリンクは使えません。\n届かない・開けない場合は代表へご連絡ください。'});

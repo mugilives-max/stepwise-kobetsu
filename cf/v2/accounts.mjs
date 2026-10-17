@@ -3,7 +3,7 @@ import { safeFamilyTarget } from '../../assets/v2/family-target.js';
 // - パスワードは PBKDF2（util.mjs）。端末ごとにログインを保つ（sessions）。
 // - 5 回続けて間違えると 15 分ロック。メールアドレスがあるかどうかは答え方で分からないようにする。
 // - 再設定・招待はメールのリンク。リンクのトークンそのものは保存しない（SHA-256 だけ）。
-import { fail, newToken, sha256Hex, hashPassword, verifyPassword, passwordProblem, newSalt, normEmail, iso, audit } from './util.mjs';
+import { fail, newToken, sha256Hex, hashPassword, verifyPassword, passwordProblem, newSalt, normEmail, validEmail, iso, audit } from './util.mjs';
 
 export const SITE = 'https://www.stepwise-education.jp';
 export async function isLive(c) { const r = await c.db.prepare("select value from settings where key = 'live'").first(); return !!r && r.value === '1'; }
@@ -86,6 +86,7 @@ export async function changePassword(c, kind, me, { current, next }) {
 
 // 招待・再設定のリンクを作ってメールを積む。返すのはリンク（招待はコピーして渡せるように画面にも出す）
 export async function issueChallenge(c, kind, purpose, who, mail, returnTo = '') {
+  if (!validEmail(who.email)) fail('needEmail', '本人のメールアドレスを登録してから招待・再設定を行ってください');
   const k = KINDS[kind], token = newToken(purpose === k.invite ? 'iv' : 'rs');
   const ms = purpose === k.invite ? INVITE_MS : RESET_MS;
   // 同じ目的の古いリンクは使えなくする

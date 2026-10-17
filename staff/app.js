@@ -1,4 +1,4 @@
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-employment';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-optional-email';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
@@ -327,8 +327,8 @@ document.addEventListener('click', ev => {
   });
 });
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape') { const x = app.querySelector('.bsheet-head button.icon, .panel.open .panel-head button.icon'); if (x) x.click(); } });
-app.addEventListener('change', ev => { if (ev.target.dataset && ev.target.dataset.slider) sliderInput(ev.target); if (ev.target.dataset && ev.target.dataset.pick) { billingPick(ev.target.dataset.pick, ev.target.checked); render(); return; } if (ev.target.dataset && ev.target.dataset.hpick) { schedulePick(ev.target.dataset.hpick, ev.target.checked); render(); return; } if (ev.target.type === 'file' && ev.target.closest('form[data-form=gr-attach]')) ev.target.closest('form').requestSubmit(); }); // 押しただけのときは change だけ来ることがある。成績票をつける: 選んだらすぐ送る
-app.addEventListener('input', ev => { if (route().page === 'record') soonAutosave(); if (ev.target.classList && ev.target.classList.contains('grow')) grow(ev.target); if (ev.target.dataset && ev.target.dataset.slider) return sliderInput(ev.target); const n = ev.target.dataset && ev.target.dataset.input; if (n && !studentsInput(ctx, n, ev.target)) familiesInput(ctx, n, ev.target); });
+app.addEventListener('change', ev => { if (ev.target.closest('form[data-form^="em-"],form[data-form^="wk-"]')) captureEmployment(); if (ev.target.dataset && ev.target.dataset.slider) sliderInput(ev.target); if (ev.target.dataset && ev.target.dataset.pick) { billingPick(ev.target.dataset.pick, ev.target.checked); render(); return; } if (ev.target.dataset && ev.target.dataset.hpick) { schedulePick(ev.target.dataset.hpick, ev.target.checked); render(); return; } if (ev.target.type === 'file' && ev.target.closest('form[data-form=gr-attach]')) ev.target.closest('form').requestSubmit(); }); // 押しただけのときは change だけ来ることがある。成績票をつける: 選んだらすぐ送る
+app.addEventListener('input', ev => { if (ev.target.closest('form[data-form^="em-"],form[data-form^="wk-"]')) captureEmployment(); if (route().page === 'record') soonAutosave(); if (ev.target.classList && ev.target.classList.contains('grow')) grow(ev.target); if (ev.target.dataset && ev.target.dataset.slider) return sliderInput(ev.target); const n = ev.target.dataset && ev.target.dataset.input; if (n && !studentsInput(ctx, n, ev.target)) familiesInput(ctx, n, ev.target); });
 window.addEventListener('hashchange', () => {
   // 「今日」「生徒」に戻ってきたら読み直す（記録を書いたあとなど）。同じ生徒の画面のタブを切り替えるときは読み直さない
   const pg = route().page, hash = location.hash || '#home';
