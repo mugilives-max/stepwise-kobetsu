@@ -44,6 +44,7 @@ test('new employee starts with name/email only, registers own name and informati
  assert.doesNotMatch(contract.snapshot.text,/扶養控除等申告書：|提出状況の確認日：/,'甲欄・乙欄は契約書に書かない（給与の設定）');
  assert.match(contract.snapshot.text,/塾全体の勤務時間帯：平日18:00〜22:00、土日8:00〜22:00。/,'勤務時間帯は全員共通');
  assert.match(contract.snapshot.text,/講師の勤務の目安：週5時間/);
+ assert.match(contract.snapshot.text,/期間の定めあり：2026年10月17日から2027年3月31日まで。/,'契約期間は日本語の日付で書く');assert.equal(contract.snapshot.layoutVersion,'20261018-1');
  await w.submit({data:{...w.data,address:'【テスト】新住所'}});
  assert.equal((await h.call('employment/contract/issue',{auth,id:contract.id,version:contract.version,hash:contract.contentHash,agree:true})).error.code,'needRegistration');
  assert.deepEqual(h.rows('select snapshot from employmentContracts where id=?',contract.id)[0].snapshot,JSON.stringify(contract.snapshot));
