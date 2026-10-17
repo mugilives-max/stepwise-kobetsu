@@ -11,9 +11,9 @@ import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBi
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261016-stages';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261016-stages';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261017-docs';
-import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261017-employment';
+import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261018-docs';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
-import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261017-docs';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261018-docs';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { billingPick } from '/staff/billing.js?v=20261016-notices';
@@ -312,6 +312,7 @@ document.addEventListener('click', ev => {
   if (a === 'copy-link' && shownLink) { navigator.clipboard.writeText(shownLink.url).then(() => { say('リンクをコピーしました', 'ok'); render(); }); return; }
   if (a === 'copy') { navigator.clipboard.writeText(b.dataset.text || '').then(() => { say('コピーしました', 'ok'); render(); }); return; }
   // 成績票は、待たずに新しいタブを開いてから読む（あとから開くと止められる）
+  if (a === 'doc-sample' && b.dataset.type === 'payslip') { const url = URL.createObjectURL(new Blob([sampleStatementHtml(esc)], { type: 'text/html' })); if (!window.open(url, '_blank')) location.href = url; return; }
   if (a === 'doc-sample') { const win = window.open('', '_blank'); run(async () => { const r = await ctx.call('admin/docs/sample', { type: b.dataset.type }); if (!r.ok) { if (win) win.close(); return say(r.error.message, 'error'); } const url = URL.createObjectURL(new Blob([r.html], { type: 'text/html' })); if (win && !win.closed) win.location.href = url; else location.href = url; }); return; }
   if (a === 'em-doc') { openAgreementDocument(() => ctx.call('employment/contract/document',{id:b.dataset.id}),message=>{say(message,'error');render();}); return; }
   if (a === 'agreement-doc') { openAgreementDocument(() => ctx.call('billing/plans/document', { refs: JSON.parse(b.dataset.refs) }), message => { say(message, 'error'); render(); }); return; }

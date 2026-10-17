@@ -22,15 +22,27 @@ function statementTable(esc, s) {
     <table class="small" style="width:100%;margin-top:6px"><tr><td>授業 ${hm(s.lessonMinutes)}</td><td style="text-align:right">${yen(s.lessonAmount)}</td></tr>${s.meetingMinutes ? `<tr><td>面談 ${hm(s.meetingMinutes)}</td><td style="text-align:right">${yen(s.meetingAmount)}</td></tr>` : ''}${s.prepMinutes ? `<tr><td>授業の準備・記録 ${hm(s.prepMinutes)}</td><td style="text-align:right">${yen(s.prepAmount)}</td></tr>` : ''}${s.workMinutes ? `<tr><td>勤務実績 ${hm(s.workMinutes)}</td><td style="text-align:right">${yen(s.workAmount)}</td></tr>` : ''}${s.adjustAmount ? `<tr><td>調整</td><td style="text-align:right">${yen(s.adjustAmount)}</td></tr>` : ''}
     <tr><td><strong>総支給額</strong></td><td style="text-align:right"><strong>${yen(s.gross)}</strong></td></tr><tr><td>源泉徴収（所得税${taxBasis(s) ? '・' + taxBasis(s) : ''}）</td><td style="text-align:right">${s.withholding ? '−' + yen(s.withholding) : '0円'}</td></tr><tr><td><strong>差引支給額</strong></td><td style="text-align:right"><strong>${yen(s.net)}</strong></td></tr></table>`;
 }
+// 明細の書面（印刷用の窓と、書類のひな形の見本で共通）。sample のときは見本の帯を出し、自動で印刷しない
+export function statementHtml(esc, s, name, { sample = false } = {}) {
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>給与明細 ${esc(label(s.month))} ${esc(name)}</title>
+    <style>body{font-family:system-ui,"Hiragino Sans","Yu Gothic",sans-serif;color:#111;margin:32px;max-width:720px}h1{font-size:20px}td,th{padding:4px 6px;border-bottom:1px solid #ddd;font-size:13px}.small{font-size:13px}.muted{color:#666}.sample{border:2px solid #b45309;color:#b45309;padding:6px 10px;font-weight:700}</style></head>
+    <body>${sample ? '<div class="sample">見本・架空の講師です。実際の明細ではありません。</div>' : ''}<h1>給与明細（${esc(label(s.month))}分）</h1><p>${esc(name)} 様</p><p class="small">ステップワイズ個別指導・給与（月末締め・翌月25日払い（休業日は前営業日））<br>確定 ${esc(String(s.confirmedAt || '').slice(0, 10))}・お支払い ${esc(s.paidOn || s.payOn)}${s.paidOn ? '（支払い済み）' : '（予定）'}</p>
+    ${statementTable(esc, s)}${sample ? '' : '<script>window.onload=()=>window.print()<\/script>'}</body></html>`;
+}
 // 印刷用の窓に明細だけを出す（ブラウザの印刷で PDF にも保存できる）
 export function printStatement(esc, s, name) {
   const w = window.open('', '_blank'); if (!w) return false;
-  w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>給与明細 ${esc(label(s.month))} ${esc(name)}</title>
-    <style>body{font-family:system-ui,"Hiragino Sans","Yu Gothic",sans-serif;color:#111;margin:32px;max-width:720px}h1{font-size:20px}td,th{padding:4px 6px;border-bottom:1px solid #ddd;font-size:13px}.small{font-size:13px}.muted{color:#666}</style></head>
-    <body><h1>給与明細（${esc(label(s.month))}分）</h1><p>${esc(name)} 様</p><p class="small">ステップワイズ個別指導・給与（月末締め・翌月25日払い（休業日は前営業日））<br>確定 ${esc(String(s.confirmedAt || '').slice(0, 10))}・お支払い ${esc(s.paidOn || s.payOn)}${s.paidOn ? '（支払い済み）' : '（予定）'}</p>
-    ${statementTable(esc, s)}<script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.write(statementHtml(esc, s, name));
   w.document.close();
   return true;
+}
+// 書類のひな形の見本: 架空の講師の 11月分（授業 4 回と準備・記録、甲欄・扶養0人）
+export function sampleStatementHtml(esc) {
+  const lesson = (date, subject, student) => ({ kind: 'lesson', date, minutes: 90, label: `${subject}（${student}さん）`, rate: 2000, amount: 3000 });
+  const items = [lesson('2026-11-04', '英語', '見本 太郎'), lesson('2026-11-11', '英語', '見本 太郎'), lesson('2026-11-18', '数学', '見本 次郎'), lesson('2026-11-25', '数学', '見本 次郎'),
+    { kind: 'prep', date: '2026-11-30', minutes: 40, label: '授業の準備・記録（授業の前後5分。授業・面談の時間と重なる分を除く）', rate: 2000, amount: 1333 }];
+  const s = { month: '2026-11', items, lessonMinutes: 360, lessonAmount: 12000, prepMinutes: 40, prepAmount: 1333, gross: 13333, withholding: 0, net: 13333, taxColumn: 'kou', dependents: 0, confirmedAt: '2026-12-03', payOn: '2026-12-25' };
+  return statementHtml(esc, s, '見本 講師', { sample: true });
 }
 
 export function payrollPage(ctx, me) {
