@@ -136,9 +136,9 @@ try{
   await modulesMatch(await rawWorker(),source,'published');
   await assertMigrated(state);
   const r=await fetch('https://stepwise-api.stepwise-edu.workers.dev/',{signal:AbortSignal.timeout(30000)}),health=await r.json();check(r.ok&&health.ok&&health.release==='2026-10-16-parent-notifications','Public API health failed.');
-  for(const route of ['employment/list','employment/mine','employment/contract/document','work/list','payroll/mgmt','billing/plans/document','family/plans/document']){
+  for(const route of ['employment/list','employment/mine','employment/contract/document','work/list','payroll/month','billing/plans/document','family/plans/document']){
    const rr=await fetch('https://stepwise-api.stepwise-edu.workers.dev/v2/'+route,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(30000)});
-   const bb=await rr.json();check(!bb.ok&&!bb.html&&(rr.status===401||rr.status===403||/auth|login|unauthorized/i.test(String(bb.error?.code||bb.code||''))),'Unauthenticated access was not rejected.');
+   const bb=await rr.json();check(!bb.ok&&!bb.html&&(rr.status===401||rr.status===403||/auth|login|unauthorized/i.test(String(bb.error?.code||bb.code||''))),'Unauthenticated access check failed for '+route+' (HTTP '+rr.status+').');
   }
   const currentSettings=await cf('/workers/scripts/'+worker+'/settings');
   for(const key of ['bindings','compatibility_date','compatibility_flags','placement','observability']){
