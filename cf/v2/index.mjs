@@ -1,3 +1,4 @@
+import { staffRegistrationRoutes } from './staff-registration.mjs';
 import { staffBankRoutes } from './staff-bank.mjs';
 // v2（作り直し）の API の入口。POST /v2/<領域>/<操作> に JSON を送る。
 // ログインのトークンは本文の auth に入れる（ヘッダーを使わないので、今の CORS の設定のまま使える）。
@@ -40,7 +41,7 @@ import { docsSampleRoutes } from './docs-sample.mjs';
 import { agreementDocumentRoutes } from './agreement-documents.mjs';
 import { contractRoutes } from './contracts.mjs';
 
-const ROUTES = { ...staffBankRoutes, ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...mcpWriteRoutes };
+const ROUTES = { ...staffRegistrationRoutes, ...staffBankRoutes, ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...mcpWriteRoutes };
 const MAX_BODY = 200000;
 
 // 毎日0時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、締め切りを過ぎた仮予定を決定する。切り替えたあとは、3日以降に前月分の請求を確定する
