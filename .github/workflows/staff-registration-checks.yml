@@ -2,7 +2,7 @@ name: Staff self-registration checks
 on:
   workflow_dispatch:
   push:
-    branches: ['codex/staff-self-registration-20261017', 'claude/staff-onboarding-stages-20261017', 'claude/staff-other-employment-20261017', 'claude/preview-seed-employee-20261017', 'claude/staff-registration-form-20261017', 'claude/staff-pending-page-20261017']
+    branches: ['codex/staff-self-registration-20261017', 'claude/staff-onboarding-stages-20261017', 'claude/staff-other-employment-20261017', 'claude/preview-seed-employee-20261017', 'claude/staff-registration-form-20261017', 'claude/staff-pending-page-20261017', 'claude/staff-owner-review-20261017']
     paths: ['cf/**','staff/**','test/**','scripts/check-staff-registration-ui.cjs','.github/workflows/staff-registration-checks.yml']
 permissions:
   contents: read
