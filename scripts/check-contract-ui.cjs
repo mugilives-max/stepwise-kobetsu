@@ -65,10 +65,12 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await page.screenshot({path:path.join(out,'family-history.png'),fullPage:true});
   report.checks.push('old fixed link, old plan, mobile layout, name retention');
   await page.goto(origin+'/staff/#terms');
-  await page.locator('[data-action="terms-select"][data-version="2026-11-20261012-r3"]').click();
-  assert.equal(await page.locator('[data-form="terms-set"] input[name="version"]').inputValue(),'2026-11-20261012-r3');
-  assert.equal((await h.ok('admin/terms/get',{auth})).terms.version,'new','choosing catalogue entry does not activate it');
-  report.checks.push('catalogue selection stays in form without activating consent requests');
+  await page.getByRole('heading',{name:'保護者に同意をお願いしている規約',exact:true}).waitFor();
+  await page.locator('[data-action="terms-publish-start"]').click();
+  await page.getByRole('heading',{name:'公開するとどうなるか',exact:true}).waitFor();
+  assert.equal(await page.locator('[data-form="terms-publish"] input[name="confirm"]').isChecked(),false);
+  assert.equal((await h.ok('admin/terms/get',{auth})).terms.version,'new','opening the publish confirmation does not activate it');
+  report.checks.push('publishing the site version needs a separate confirmation and does not activate consent requests by itself');
   await page.screenshot({path:path.join(out,'staff-terms.png'),fullPage:true});
   const {sampleDocHtml}=await import('../cf/v2/docs-sample.mjs');
   for(const type of ['condition','special']){
