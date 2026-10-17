@@ -3,7 +3,7 @@ import { bankSummary } from './staff-bank.mjs';
 import { fail, newId, normEmail, validEmail, iso, audit, sha256Hex } from './util.mjs';
 import { requireStaff, requireOwner, staffView } from './staff.mjs';
 import { issueChallenge } from './accounts.mjs';
-import { employmentSnapshot, employmentDocument } from './employment-document.mjs';
+import { employmentSnapshot, employmentDocument, firstMonthEnd } from './employment-document.mjs';
 export const dateOK = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d||'')) && Number.isFinite(Date.parse(d+'T00:00:00Z')) && new Date(d+'T00:00:00Z').toISOString().slice(0,10)===d;
 const text=(v,max=500)=>{v=String(v||'').trim();if(v.length>max)fail('tooLong','入力が長すぎます');return v;};
 export const checkVersion=(r,b)=>{if(Number(b.version)!==r.version)fail('conflict','内容が更新されています。読み直して確認してください',409);};
@@ -31,7 +31,9 @@ async function change(c,r,me,action,values,at=iso(c.now),detail={}) {
 }
 function profileData(b) {
  const p={};
- for(const k of ['address','startDate','endDate','workWindow','weeklyHours','availability','otherWork','taxDeclaration','dependents','taxCheckedOn','preparationNote','insuranceNote'])p[k]=text(b[k],k==='otherWork'?1500:500);
+ for(const k of ['address','startDate','endDate','workWindow','weeklyHours','availability','otherWork','taxDeclaration','dependents','taxCheckedOn','preparationNote','insuranceNote','hourly','employmentInsurance'])p[k]=text(b[k],k==='otherWork'?1500:500);
+ if(p.hourly&&!/^\d{3,5}$/.test(p.hourly))fail('badHourly','時給は円の数字（例：2000）で入れてください');
+ if(p.employmentInsurance&&!['yes','no'].includes(p.employmentInsurance))fail('badInsurance','雇用保険に加入するかを選んでください');
  if(p.dependents!==''&&(!/^\d$/.test(p.dependents)||Number(p.dependents)>7))fail('badDependents','扶養人数は0〜7人で確認してください');
  for(const k of ['conditionsChecked','bankConsentChecked','insuranceChecked'])p[k]=b[k]===true;
  if(p.startDate&&!dateOK(p.startDate)||p.endDate&&!dateOK(p.endDate)||p.taxCheckedOn&&!dateOK(p.taxCheckedOn)||p.startDate&&p.endDate&&p.endDate<p.startDate)fail('badDate','契約期間・確認日を確認してください');
@@ -69,7 +71,7 @@ async function detail(c,id,me) {
  const visible=me.contractType==='owner'?contracts:contracts.filter(r=>r.status!=='draft');
  const events=(await c.db.prepare('select e.* from employmentEvents e join employmentContracts x on x.id=e.contractId where x.staffId=? order by e.id').bind(s.id).all()).results.filter(e=>visible.some(r=>r.id===e.contractId));
  const mail=(await c.db.prepare("select id,status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'$.notice.type')='challenge' and json_extract(payload,'$.to')=? order by id desc limit 1").bind(s.email).all()).results[0]||null;
- const days=(await c.db.prepare("select id,date,status,planVersion,planAgreedVersion,payrollId from workDays where staffId=? order by date desc limit 60").bind(s.id).all()).results;
+ const days=(await c.db.prepare("select id,date,status,planned,planVersion,planAgreedVersion,payrollId from workDays where staffId=? order by date desc limit 60").bind(s.id).all()).results;
  const requests=(await c.db.prepare("select a.id,w.date,a.at,a.detail from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id) order by a.id").bind(s.id).all()).results;
  return {registration:await registrationDetail(c,s.id),bank:await bankSummary(c,s.id),days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
 }
@@ -141,9 +143,12 @@ export const employmentRoutes={
   const me=await requireOwner(c,b),s=await employee(c,b.staffId),p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();
   if(!p)fail('needProfile','基本情報を保存してください');checkVersion(p,b);await requireRegistration(c,s.id);
   const d=JSON.parse(p.data);
-  if(['address','startDate','endDate','weeklyHours','otherWork'].some(k=>!d[k]))fail('incomplete','契約の条件（契約期間・勤務時間の目安）と、住所・ほかの勤務先を入れてください');
+  if(['address','startDate','endDate','weeklyHours','otherWork','hourly','employmentInsurance'].some(k=>!d[k]))fail('incomplete','契約の条件（契約期間・勤務時間の目安・時給・雇用保険）と、住所・ほかの勤務先を入れてください');
+  // 最初の1か月のシフト表（契約書の末尾に載せる）。シフト制は契約と一緒にシフト表を渡す
+  const shifts=(await c.db.prepare('select date,planned from workDays where staffId=? and planVersion>0 and date>=? and date<=? order by date').bind(s.id,d.startDate,firstMonthEnd(d.startDate)).all()).results.map(r=>({date:r.date,planned:JSON.parse(r.planned||'[]')})).filter(r=>r.planned.length);
+  if(!shifts.length)fail('needShift','契約の始まりから1か月の勤務予定（シフト）を先に入れてください。契約書の末尾に載ります');
   if(!['paper','electronic'].includes(b.method))fail('badMethod','紙か電子を選んでください');
-  const snap=JSON.stringify(employmentSnapshot(s,d)),id=newId('ec'),now=iso(c.now);
+  const snap=JSON.stringify(employmentSnapshot(s,d,shifts.map(r=>({date:r.date,planned:r.planned.map(x=>({start:x.start,end:x.end}))})))),id=newId('ec'),now=iso(c.now);
   const revision=Number((await c.db.prepare('select max(revision) n from employmentContracts where staffId=?').bind(s.id).first()).n||0)+1;
   await c.db.prepare("insert into employmentContracts(id,staffId,revision,status,method,snapshot,contentHash,startDate,endDate,createdAt,updatedAt) values(?,?,?,'draft',?,?,?,?,?,?,?)").bind(id,s.id,revision,b.method,snap,sha256Hex(snap),d.startDate,d.endDate,now,now).run();
   await audit(c,'employmentDraft',id);return {contract:rowView(await contractRow(c,id))};

@@ -55,7 +55,10 @@ export async function sampleDocHtml(db, type, now) {
   }
   if (type === 'receipt') return receiptDocHtml({ inv, family });
   if (type === 'employment') {
-    const snapshot = employmentSnapshot({ name: '見本 講師' }, { startDate: '2026-11-01', endDate: '2027-03-31', weeklyHours: '週5〜6時間ほど。', address: '〒000-0000 見本県見本市1-2-3', otherWork: 'なし' });
+    const snapshot = employmentSnapshot({ name: '見本 講師' }, { startDate: '2026-11-01', endDate: '2027-03-31', weeklyHours: '週5〜6時間ほど。', address: '〒000-0000 見本県見本市1-2-3', otherWork: 'なし', hourly: '2000', employmentInsurance: 'no' }, [
+      { date: '2026-11-04', planned: [{ start: '17:55', end: '19:35' }] }, { date: '2026-11-07', planned: [{ start: '09:55', end: '11:35' }, { start: '13:00', end: '14:40' }] },
+      { date: '2026-11-11', planned: [{ start: '17:55', end: '19:35' }] }, { date: '2026-11-14', planned: [{ start: '09:55', end: '11:35' }] },
+    ]);
     const r = { id: 'ec_sample', revision: 1, status: 'agreed', method: 'electronic', snapshot: JSON.stringify(snapshot), contentHash: 'SAMPLE', issuedAt: '2026-10-20T03:00:00.000Z', deliveredAt: '2026-10-20T05:00:00.000Z', agreedAt: '2026-10-21T10:00:00.000Z', consenterName: '見本 講師' };
     const events = [['代表の発行・合意', r.issuedAt, '麦倉 優輔'], ['交付を記録', r.deliveredAt, '麦倉 優輔'], ['本人の同意', r.agreedAt, '見本 講師']].map(([action, t, actorName]) => ({ action, actualAt: t, recordedAt: t, actorName }));
     return employmentDocument(r, events).replace('<body>', '<body><div style="border:2px solid #b45309;color:#b45309;padding:6px 10px;margin:0 0 12px;font-weight:700">見本・架空の講師です。実際の契約ではありません。</div>');

@@ -35,16 +35,25 @@ test('new employee starts with name/email only, registers own name and informati
  assert.equal((await h.call('employment/save',{auth,staffId:staff.id,version:d.profile.version,data:{address:'代表の上書き'}})).error.code,'selfOnly');
  assert.equal((await h.call('employment/save',{auth,staffId:staff.id,version:d.profile.version,data:{otherWork:'代表の上書き'}})).error.code,'selfOnly');
  // 勤務希望は、代表が本人と確認して勤務条件と一緒に保存する
- await h.ok('employment/save',{auth,staffId:staff.id,version:d.profile.version,data:{startDate:'2026-10-17',endDate:'2027-03-31',workWindow:'18時〜22時',weeklyHours:'週5時間',availability:'土曜日13時〜15時（本人と確認）',taxDeclaration:'notSubmitted',taxCheckedOn:'2026-10-17',conditionsChecked:true}});
+ await h.ok('employment/save',{auth,staffId:staff.id,version:d.profile.version,data:{startDate:'2026-10-17',endDate:'2027-03-31',workWindow:'18時〜22時',weeklyHours:'週5時間',hourly:'2100',employmentInsurance:'no',availability:'土曜日13時〜15時（本人と確認）',taxDeclaration:'notSubmitted',taxCheckedOn:'2026-10-17',conditionsChecked:true}});
  d=await get();assert.equal(d.profile.data.address,w.data.address);assert.equal(d.profile.data.availability,'土曜日13時〜15時（本人と確認）');assert.equal(d.profile.data.otherWork,'なし');
  assert.deepEqual(h.rows('select * from employmentContracts'),contracts);assert.deepEqual(h.rows('select * from payrollMonths'),payroll);assert.deepEqual(h.rows('select * from staffRates'),rates);assert.deepEqual(h.rows('select * from staff'),staffBefore);assert.equal(h.mails().length,mails);
+ // 最初の1か月のシフトがないと、契約書の案は作れない（シフト制は契約と一緒にシフト表を渡す）
+ assert.equal((await h.call('employment/contract/create',{auth,staffId:staff.id,version:d.profile.version,method:'electronic'})).error.code,'needShift');
+ await h.ok('work/plan',{auth,staffId:staff.id,date:'2026-10-24',version:0,intervals:[{start:'09:55',end:'11:35',kind:'lesson',label:'【テスト】初回'},{start:'13:00',end:'14:40',kind:'lesson',label:'【テスト】2コマ目'}],reason:'【テスト】最初のシフト'});
+ await h.ok('work/plan',{auth,staffId:staff.id,date:'2026-11-20',version:0,intervals:[{start:'18:00',end:'19:30',kind:'lesson',label:'【テスト】1か月より後'}],reason:'【テスト】1か月より後の予定'});
  const contract=(await h.ok('employment/contract/create',{auth,staffId:staff.id,version:d.profile.version,method:'electronic'})).contract;
+ assert.ok(contract.snapshot.text.includes('**最初の1か月のシフト表（第4条2項）**\n\n2026年10月17日から2026年11月16日までの勤務の日と、日ごとの始業・終業の時刻です。\n・2026年10月24日（土） 09:55〜11:35、13:00〜14:40\n\n**他の勤務先の申告'),'最初の1か月のシフト表が末尾に載り、1か月より後の予定は載らない');
+ assert.match(contract.snapshot.text,/日ごとの始業・終業の時刻は、シフト表で定める。/);
+ assert.match(contract.snapshot.text,/   - 授業：2,100円。/,'時給は講師ごと');assert.equal(contract.snapshot.lessonHourly,2100);
+ assert.match(contract.snapshot.text,/この契約では：加入しない。/,'雇用保険は講師ごと');assert.doesNotMatch(contract.snapshot.text,/現在：加入しない/);
+ assert.equal((await h.call('employment/save',{auth,staffId:staff.id,version:(await get()).profile.version,data:{hourly:'2千円'}})).error.code,'badHourly');
  assert.equal(contract.snapshot.staffName,staff.name);
  assert.doesNotMatch(contract.snapshot.text,/土曜日13時〜15時/,'勤務希望は契約書に載せない（シフトのメモ）');
  assert.doesNotMatch(contract.snapshot.text,/扶養控除等申告書：|提出状況の確認日：/,'甲欄・乙欄は契約書に書かない（給与の設定）');
  assert.match(contract.snapshot.text,/塾全体の勤務時間帯：平日18:00〜22:00、土日8:00〜22:00。/,'勤務時間帯は全員共通');
  assert.match(contract.snapshot.text,/講師の勤務の目安：週5時間/);
- assert.match(contract.snapshot.text,/期間の定めあり：2026年10月17日から2027年3月31日まで。/,'契約期間は日本語の日付で書く');assert.equal(contract.snapshot.layoutVersion,'20261018-1');
+ assert.match(contract.snapshot.text,/期間の定めあり：2026年10月17日から2027年3月31日まで。/,'契約期間は日本語の日付で書く');assert.equal(contract.snapshot.layoutVersion,'20261018-2');
  await w.submit({data:{...w.data,address:'【テスト】新住所'}});
  assert.equal((await h.call('employment/contract/issue',{auth,id:contract.id,version:contract.version,hash:contract.contentHash,agree:true})).error.code,'needRegistration');
  assert.deepEqual(h.rows('select snapshot from employmentContracts where id=?',contract.id)[0].snapshot,JSON.stringify(contract.snapshot));

@@ -1,5 +1,5 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-pending';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261018-stages';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261018-contract3';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
