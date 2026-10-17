@@ -52,9 +52,9 @@ function registrationSummary(esc,p,nameNote=''){
  return '<dl class="cond-dl" style="overflow-wrap:anywhere">'+(p.familyName?'<dt>氏名</dt><dd>'+esc(p.familyName+' '+p.givenName)+nameNote+'</dd>':'')+'<dt>現住所</dt><dd>'+esc(p.address||'未登録')+'</dd>'+(p.otherEmployment?'<dt>ほかに雇われている勤務先</dt><dd>'+esc(OTHER_EMPLOYMENT[p.otherEmployment])+(p.otherEmployment==='yes'?'<br>勤務する曜日と時間：'+esc(p.otherWorkHours):'')+'</dd>':'<dt>他の勤務先・勤務時間</dt><dd>'+esc(p.otherWork||'未登録')+'</dd>')+'<dt>扶養控除等申告書</dt><dd>'+esc(TAX_SITUATION[p.taxSituation]||'本人からの回答なし')+'</dd>'+(p.availability?'<dt>勤務希望（曜日・時間）</dt><dd>'+esc(p.availability)+'</dd>':'')+'</dl>';
 }
 const OTHER_TEXT=p=>p.otherEmployment?OTHER_EMPLOYMENT[p.otherEmployment]+(p.otherEmployment==='yes'&&p.otherWorkHours?'（'+p.otherWorkHours+'）':''):(p.otherWork||'未登録');
-function regRows(esc,p){
- const rows=[['氏名',p.familyName?p.familyName+' '+p.givenName:''],['現住所',p.address],['ほかに雇われて働いている勤務先',OTHER_TEXT(p)],['扶養控除等申告書',TAX_SITUATION[p.taxSituation]||'未回答']].filter(([,v])=>v);
- return '<dl class="reg-rows">'+rows.map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>';
+function regRows(esc,p,nameNote=''){
+ const rows=[['氏名',p.familyName?p.familyName+' '+p.givenName:'',nameNote],['現住所',p.address],['ほかに雇われて働いている勤務先',OTHER_TEXT(p)],['扶養控除等申告書',TAX_SITUATION[p.taxSituation]||'未回答']].filter(([,v])=>v);
+ return '<dl class="reg-rows">'+rows.map(([k,v,note])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+(note?'<small class="reg-note">'+esc(note)+'</small>':'')+'</dd></div>').join('')+'</dl>';
 }
 // 登録済みの内容（本人の画面）。右上の「修正する」で同じ入力 → 確認の流れへ
 function registeredCard(ctx,d){
@@ -107,10 +107,11 @@ function personalInfo(ctx,d,owner){
  let h='<section id="personal-info"><h2>本人情報</h2>';
  if(owner){
   if(!r)return h+'<p>'+ (g.required?'本人が氏名・住所などを登録します。代表による事前入力は不要です。':'この講師は以前の登録方式です。既存の情報・契約はそのまま利用できます。')+'</p></section>';
-  h+='<p class="small muted">本人の登録：'+esc(at(r.submittedAt))+' ／ '+esc(REG_STATUS[r.status])+'</p>';
+  const t=at(r.submittedAt);
+  return '<section class="reg-card"><div class="reg-card-head"><h2>本人の登録内容</h2><span class="small muted">'+esc(REG_STATUS[r.status])+'</span></div><p class="small muted" style="margin:2px 0 0">'+esc(jaDate(t.slice(0,10))+' '+t.slice(11))+' に登録</p>'+regRows(esc,p)+(r.reason&&r.status==='returned'?'<p class="notice" style="margin-bottom:0">本人に伝えた修正のお願い：'+esc(r.reason)+'</p>':'')+'</section>'+
+   (g.requests.length>1?'<details><summary>これまでの登録（'+g.requests.length+'件）</summary><ul>'+g.requests.map(x=>'<li>'+esc(at(x.submittedAt))+'：'+esc(REG_STATUS[x.status])+(x.reason?'（'+esc(x.reason)+'）':'')+'</li>').join('')+'</ul></details>':'');
  }
- const nameNote=owner&&r?.status==='pending'&&r.nameDiffers?'<br><span class="tag warn">招待時の表示名と違います</span> <span class="small muted">招待時：'+esc(d.staff.name)+'</span>':'';
- if(r)h+=registrationSummary(esc,p,nameNote);
+ if(r)h+=registrationSummary(esc,p);
  if(r?.reason&&r.status==='returned')h+='<p class="notice">修正してほしい内容：'+esc(r.reason)+'</p>';
  if(owner&&r?.status==='pending'){
   const data=' data-version="'+g.version+'" data-request="'+esc(r.id)+'" data-hash="'+esc(r.contentHash)+'" data-profile-version="'+(d.profile?.version||0)+'"';
@@ -120,6 +121,19 @@ function personalInfo(ctx,d,owner){
  }
  if(owner&&g.requests.length>1)h+='<details><summary>本人情報の登録履歴</summary><ul>'+g.requests.map(x=>'<li>'+esc(at(x.submittedAt))+'：'+esc(REG_STATUS[x.status])+(x.reason?'（'+esc(x.reason)+'）':'')+'</li>').join('')+'</ul></details>';
  return h+'</section>';
+}
+function ownerReview(ctx,d){
+ const {esc}=ctx,g=d.registration,r=g.requests.find(x=>x.id===g.latestId),p=r.data,t=at(r.submittedAt);
+ const data=' data-version="'+g.version+'" data-request="'+esc(r.id)+'" data-hash="'+esc(r.contentHash)+'" data-profile-version="'+(d.profile?.version||0)+'"';
+ let h='<section class="reg-card"><div class="reg-card-head"><h2>本人が登録した内容</h2></div><p class="small muted" style="margin:2px 0 0">'+esc(jaDate(t.slice(0,10))+' '+t.slice(11))+' に登録</p>'+regRows(esc,p,r.nameDiffers?'招待のときの表示名：'+d.staff.name:'')+'</section>';
+ h+='<form class="reg-form" data-form="em-registration-accept"'+data+'>';
+ if(r.nameDiffers)h+='<fieldset class="reg-field"><legend>表示名をどうしますか</legend><p class="reg-help">講師一覧や予定に出る名前です。ログインのメールアドレスと、すでに発行した契約書は変わりません。</p><div class="choices">'+
+  '<label class="choice"><input type="radio" name="nameDecision" value="apply" required><span>「'+esc(r.submittedName)+'」に変える<small>これから作る契約書にも、この氏名が載ります。</small></span></label>'+
+  '<label class="choice"><input type="radio" name="nameDecision" value="keep" required><span>「'+esc(d.staff.name)+'」のままにする<small>本人に確かめてから、あとで設定のスタッフの画面で直せます。</small></span></label></div></fieldset>';
+ h+='<div class="stack"><button class="primary wide"'+ctx.dis()+'>この内容で受け付ける</button><p class="reg-help">受け付けると、住所とほかの勤務先が、この講師の雇用情報（契約書のもとになる情報）に入ります。そのあと勤務条件を入れて、契約書を作れます。扶養控除等申告書の区分（甲欄・乙欄）は、勤務条件のところで決めます。</p></div></form>';
+ h+='<details style="margin-top:14px"><summary>修正をお願いする</summary><form class="stack" data-form="em-registration-return"'+data+'>'+area(esc,'reason','直してほしいところ（本人の画面に表示されます）')+'<button'+ctx.dis()+'>修正をお願いする</button></form></details>';
+ if(g.requests.length>1)h+='<details><summary>これまでの登録（'+g.requests.length+'件）</summary><ul>'+g.requests.map(x=>'<li>'+esc(at(x.submittedAt))+'：'+esc(REG_STATUS[x.status])+(x.reason?'（'+esc(x.reason)+'）':'')+'</li>').join('')+'</ul></details>';
+ return h;
 }
 function invitation(ctx,d){
  if(d.staff.status!=='invited')return '';
@@ -136,7 +150,7 @@ function nextStep(ctx,d,owner){
  let title,body,wait=false;
  if(owner){
   if(d.staff.status==='invited'){title=d.profile?.invitedAt?'本人のアカウント設定待ち':'まず招待メールを送ってください';body=d.profile?.invitedAt?'本人がパスワードを設定すると、本人情報の登録に進めます。':'氏名や住所は、招待後に本人が入力します。';wait=!!d.profile?.invitedAt;}
-  else if(g.pending){title='登録された本人情報を確認してください';body='下の内容を確認して反映すると、勤務条件の設定に進めます。';}
+  else if(g.pending){title='登録内容を確認してください';body='問題がなければ「この内容で受け付ける」を押してください。直してほしいところがあれば「修正をお願いする」から本人に伝えます。';}
   else if(g.required&&(!g.accepted||g.returned)){title='本人情報の登録待ち';body=g.returned?'修正した情報の登録し直しを待っています。':'本人の画面に登録欄を表示しています。';wait=true;}
   else {title='勤務条件と契約の準備を進めてください';body='本人と勤務希望を確認して勤務条件を保存し、契約書の発行・交付へ進めます。';}
  }else{
@@ -221,13 +235,19 @@ export function employmentPage(ctx,me,id=''){
  if(cache.loading)return '<p>読み込んでいます…</p>';if(!cache.ok)return ctx.notice();
  const {esc}=ctx;let h=ctx.notice();
  if(owner&&!id){
-  h+='<p>氏名・メールアドレスで招待し、本人情報の登録を受けてから勤務条件と契約を整えます。</p><div class="group">'+cache.staff.map(s=>'<a class="todo-row" href="#employment='+esc(s.id)+'"><span>'+esc(s.name)+'<br><small>'+esc(s.email||'メール未登録')+'・'+(s.status==='active'?'アカウント利用中':s.invitedAt?'招待済み':'未招待')+(s.registration?.pending?'・本人情報の確認待ち':'')+(s.bank?.pending?'・振込先の確認待ち':'')+(s.pendingWork?'・実績確認 '+s.pendingWork+'件':'')+(s.pendingCorrections?'・訂正申出 '+s.pendingCorrections+'件':'')+'</small></span></a>').join('')+'</div>';
-  return h+'<details open><summary>新しい講師を登録する</summary><form class="stack" data-form="em-new">'+field(esc,'familyName','姓','','text',true)+field(esc,'givenName','名','','text',true)+field(esc,'email','本人のメールアドレス（下書きでは任意）','','email')+'<p class="small muted">未定の場合は空欄で保存できます。本人への招待時に登録してください。氏名は本人が登録時に入力し直します。</p>'+'<button class="primary"'+ctx.dis()+'>下書きを保存（メールは送りません）</button></form></details>';
+  h+='<p>氏名・メールアドレスで招待し、本人情報の登録を受けてから勤務条件と契約を整えます。</p><div class="group">'+cache.staff.map(s=>{
+   const g=s.registration||{},state=s.status==='stopped'?'停止中':g.pending?'本人情報の確認待ち':g.returned?'本人が登録し直し中':g.required&&!g.submitted?(s.status==='active'?'本人情報の登録待ち':s.invitedAt?'招待済み・パスワードの設定待ち':'未招待'):s.status==='active'?'アカウント利用中':s.invitedAt?'招待済み':'未招待';
+   const extra=[s.bank?.pending?'振込先の確認待ち':'',s.pendingWork?'実績の確認 '+s.pendingWork+'件':'',s.pendingCorrections?'訂正の申し出 '+s.pendingCorrections+'件':''].filter(Boolean);
+   return '<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#employment='+esc(s.id)+'"><span class="v"><span class="lbl">'+esc(s.name)+'</span><small>'+esc([state,...extra].join('・'))+'</small><small>'+esc(s.email||'メール未登録')+'</small></span><span class="go" aria-hidden="true">›</span></a>';
+  }).join('')+'</div>';
+  return h+'<details open style="margin-top:20px"><summary>新しい講師を登録する</summary><form class="stack" data-form="em-new">'+field(esc,'familyName','姓','','text',true)+field(esc,'givenName','名','','text',true)+field(esc,'email','本人のメールアドレス（下書きでは任意）','','email')+'<p class="small muted">未定の場合は空欄で保存できます。本人への招待時に登録してください。氏名は本人が登録時に入力し直します。</p>'+'<button class="primary"'+ctx.dis()+'>下書きを保存（メールは送りません）</button></form></details>';
  }
  const d=cache;
  if(owner){
   h+='<h1>'+esc(d.staff.name)+' さんの雇用・勤務</h1>';
-  h+='<p><a href="#employment">講師一覧へ</a></p>'+nextStep(ctx,d,true)+FLOW+invitation(ctx,d)+personalInfo(ctx,d,true)+profile(ctx,d,true);
+  h+='<p><a href="#employment">講師一覧へ</a></p>'+stepper(d)+nextStep(ctx,d,true);
+  if(d.registration?.pending)return h+ownerReview(ctx,d);
+  h+=invitation(ctx,d)+personalInfo(ctx,d,true)+profile(ctx,d,true);
   const regOpen=d.registration?.required&&(!d.registration.accepted||d.registration.pending||d.registration.returned);
   h+='<h2>契約書・締結の控え</h2>'+(regOpen?'<p class="small muted">本人情報の確認が済むと、ここで契約書の案を作れます。</p>':'<p class="small">保存済みの勤務条件から案を作成します。発行・交付・合意をそれぞれ記録し、古い版も残します。</p><form class="stack" data-form="em-create" data-version="'+(d.profile?.version||0)+'">'+select(esc,'method','締結方法',[['','方法を選んでください'],['paper','紙で署名する'],['electronic','電子で同意する']])+'<button'+ctx.dis()+'>保存済みの条件から契約書案を作る</button></form>');
   h+=d.contracts.map(r=>contractCard(ctx,r,true)).join('')||'<p>契約書はまだありません。</p>';
