@@ -1,3 +1,4 @@
+import { registrationState, registrationDetail, requireRegistration } from './staff-registration.mjs';
 import { bankSummary } from './staff-bank.mjs';
 import { fail, newId, normEmail, validEmail, iso, audit, sha256Hex } from './util.mjs';
 import { requireStaff, requireOwner, staffView } from './staff.mjs';
@@ -39,6 +40,7 @@ function profileData(b) {
 }
 async function readiness(c,s,p,contracts) {
  const checks=[];
+ const reg=await registrationDetail(c,s.id);if(reg.required&&(!reg.accepted||reg.pending||reg.returned))checks.push(reg.pending?'本人情報を代表が確認':'本人情報の登録・提出');
  if(!validEmail(s.email))checks.push('招待先メールアドレスを登録');
  if(!p)checks.push('基本情報を登録');
  if(!contracts.some(r=>r.status==='agreed'))checks.push('契約の締結・交付');
@@ -69,7 +71,7 @@ async function detail(c,id,me) {
  const mail=(await c.db.prepare("select id,status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'$.notice.type')='challenge' and json_extract(payload,'$.to')=? order by id desc limit 1").bind(s.email).all()).results[0]||null;
  const days=(await c.db.prepare("select id,date,status,planVersion,planAgreedVersion,payrollId from workDays where staffId=? order by date desc limit 60").bind(s.id).all()).results;
  const requests=(await c.db.prepare("select a.id,w.date,a.at,a.detail from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id) order by a.id").bind(s.id).all()).results;
- return {bank:await bankSummary(c,s.id),days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
+ return {registration:await registrationDetail(c,s.id),bank:await bankSummary(c,s.id),days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
 }
 export const employmentRoutes={
  'employment/list':async(c,b)=>{
@@ -77,6 +79,7 @@ export const employmentRoutes={
   const rows=(await c.db.prepare("select s.id,s.name,s.email,s.status,s.employmentAccess,p.invitedAt,p.version from staff s left join employmentProfiles p on p.staffId=s.id where s.contractType='employee' order by s.createdAt").all()).results;
   for(const s of rows){
    s.bank=await bankSummary(c,s.id);
+   const reg=await registrationDetail(c,s.id);s.registration={required:reg.required,submitted:!!reg.latestId,pending:reg.pending,returned:reg.returned,accepted:reg.accepted};
    s.pendingWork=Number((await c.db.prepare("select count(*) n from workDays where staffId=? and status='submitted'").bind(s.id).first()).n);
    s.pendingCorrections=Number((await c.db.prepare("select count(*) n from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id)").bind(s.id).first()).n);
   }
@@ -85,11 +88,17 @@ export const employmentRoutes={
  'employment/get':async(c,b)=>{const me=await requireOwner(c,b);return detail(c,b.staffId,me);},
  'employment/mine':async(c,b)=>{const me=await requireStaff(c,b);if(me.contractType==='owner')return {owner:true};return detail(c,me.id,me);},
  'employment/save':async(c,b)=>{
-  const me=await requireOwner(c,b),data=profileData(b.data||{}),now=iso(c.now);
+  const me=await requireOwner(c,b),now=iso(c.now);let data=profileData(b.data||{});
   let s;
   if(b.staffId) {
    s=await employee(c,b.staffId);const old=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();
-   if(old) {checkVersion(old,b);const r=await c.db.prepare('update employmentProfiles set data=?,updatedAt=?,version=version+1 where staffId=? and version=?').bind(JSON.stringify(data),now,s.id,old.version).run();if(r.meta.changes!==1)fail('conflict','読み直してください',409);}
+   if(old) {
+    const reg=await registrationState(c,s.id),prior=JSON.parse(old.data);
+    if(reg.required){
+     for(const k of ['address','availability','otherWork'])if(Object.hasOwn(b.data||{},k)&&data[k]!==String(prior[k]||''))fail('selfOnly','本人情報は本人が提出し、代表が確認する手順で更新してください',409);
+     data=profileData({...prior,...b.data,address:prior.address,availability:prior.availability,otherWork:prior.otherWork});
+    }
+    checkVersion(old,b);const r=await c.db.prepare('update employmentProfiles set data=?,updatedAt=?,version=version+1 where staffId=? and version=?').bind(JSON.stringify(data),now,s.id,old.version).run();if(r.meta.changes!==1)fail('conflict','読み直してください',409);}
    else {if(Number(b.version)!==0)fail('conflict','読み直してください',409);await c.db.prepare('insert into employmentProfiles(staffId,data,createdAt,updatedAt) values(?,?,?,?)').bind(s.id,JSON.stringify(data),now,now).run();}
   } else {
    const familyName=text(b.familyName,30),givenName=text(b.givenName,30),email=normEmail(b.email);
@@ -99,7 +108,8 @@ export const employmentRoutes={
    s={id:newId('st'),name:familyName+' '+givenName,email};
    await c.db.batch([
     c.db.prepare("insert into staff(id,name,familyName,givenName,email,roles,status,contractType,employmentAccess,testOnly,createdAt,updatedAt) values(?,?,?,?,?,'teacher','invited','employee',0,?,?,?)").bind(s.id,s.name,familyName,givenName,email,b.testOnly===true&&s.name.startsWith('【テスト】')?1:0,now,now),
-    c.db.prepare('insert into employmentProfiles(staffId,data,createdAt,updatedAt) values(?,?,?,?)').bind(s.id,JSON.stringify(data),now,now)
+    c.db.prepare('insert into employmentProfiles(staffId,data,createdAt,updatedAt) values(?,?,?,?)').bind(s.id,JSON.stringify(data),now,now),
+    c.db.prepare('insert into staffRegistrationState(staffId,required) values(?,1)').bind(s.id)
    ]);
   }
   await audit(c,'employmentProfileSaved',s.id);return detail(c,s.id,me);
@@ -123,13 +133,13 @@ export const employmentRoutes={
   if(b.email!==undefined&&normEmail(b.email)!==s.email)fail('conflict','招待先が変わっています。読み直して確認してください',409);
   const p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();if(!p)fail('needProfile','先に雇用情報を登録してください');
   if(b.confirm!==true)fail('needConfirm','宛先を確認してから招待してください');
-  const inviteUrl=await issueChallenge(c,'staff','staffInvite',s,{subject:'【ステップワイズ】雇用契約の確認・アカウント設定',body:url=>'雇用契約の内容を確認するためのアカウントをご用意しました。7日以内に、ご本人がリンクからパスワードを設定してください。\n\n'+url+'\n\n設定後は「雇用・勤務」を開いてください。アカウントの設定だけでは契約への同意にはなりません。リンクを再送した場合、前のリンクは使えません。\n届かない・開けない場合は代表へご連絡ください。'});
+  const inviteUrl=await issueChallenge(c,'staff','staffInvite',s,{subject:'【ステップワイズ】雇用契約の確認・アカウント設定',body:url=>'入職の手続きを進めるアカウントをご用意しました。7日以内に、ご本人がリンクからパスワードを設定してください。\n\n'+url+'\n\n設定後は「雇用・勤務」の案内に沿って、住所・勤務可能時間などの本人情報を登録してください。代表が確認して勤務条件を整えたあと、契約書をご案内します。アカウントの設定だけでは契約への同意にはなりません。リンクを再送した場合、前のリンクは使えません。\n届かない・開けない場合は代表へご連絡ください。'});
   await c.db.prepare('update employmentProfiles set invitedAt=?,updatedAt=?,version=version+1 where staffId=?').bind(iso(c.now),iso(c.now),s.id).run();
   await audit(c,'employmentInvite',s.id);return {inviteUrl,...await detail(c,s.id,me)};
  },
  'employment/contract/create':async(c,b)=>{
   const me=await requireOwner(c,b),s=await employee(c,b.staffId),p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();
-  if(!p)fail('needProfile','基本情報を保存してください');checkVersion(p,b);
+  if(!p)fail('needProfile','基本情報を保存してください');checkVersion(p,b);await requireRegistration(c,s.id);
   const d=JSON.parse(p.data);
   if(['address','startDate','endDate','workWindow','weeklyHours','availability','otherWork','taxDeclaration','taxCheckedOn'].some(k=>!d[k]))fail('incomplete','住所・契約期間・勤務条件・他の勤務先・申告書の確認を入力してください');
   if(!['paper','electronic'].includes(b.method))fail('badMethod','紙か電子を選んでください');
@@ -140,6 +150,7 @@ export const employmentRoutes={
  },
  'employment/contract/issue':async(c,b)=>{
   const me=await requireOwner(c,b),r=await contractRow(c,b.id);checkVersion(r,b);
+  await requireRegistration(c,r.staffId);
   if(r.status!=='draft'||b.agree!==true||b.hash!==r.contentHash)fail('needReview','この版の全文を確認し、代表として合意する操作が必要です');
   const p=JSON.parse((await c.db.prepare('select data from employmentProfiles where staffId=?').bind(r.staffId).first()).data);
   if(!p.conditionsChecked)fail('incomplete','契約ひな形の確認事項と個別条件を確認してから発行してください');
