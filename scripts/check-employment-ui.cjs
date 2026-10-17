@@ -35,9 +35,11 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
  try {
   owner=await make(auth,1100);self=await make(ta,390);
   await owner.goto(origin+'/staff/#employment='+staff.id);
-  await owner.locator('[data-form="em-profile"]').waitFor();
-  await owner.locator('[data-form="em-profile"] textarea[name="preparationNote"]').fill('【テスト】画面から保存した確認事項');
-  await owner.locator('[data-form="em-profile"] button').click();
+  await owner.locator('[data-form="em-terms"]').waitFor();
+  assert.equal(await owner.locator('[data-form="em-terms"] [name="availability"]').count(),0,'勤務希望は契約の条件に入れない');
+  assert.equal(await owner.locator('[data-form="em-terms"] [name="taxDeclaration"]').count(),0,'甲欄・乙欄は給与の設定で扱う');
+  await owner.locator('[data-form="em-todo"] textarea[name="preparationNote"]').fill('【テスト】画面から保存した確認事項');
+  await owner.locator('[data-form="em-todo"] button').click();
   await owner.getByText('保存しました',{exact:true}).waitFor();
   assert.equal((await w.get()).profile.data.preparationNote,'【テスト】画面から保存した確認事項');
   await owner.locator('[data-form="em-create"] select').selectOption('paper');

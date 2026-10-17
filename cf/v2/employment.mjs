@@ -43,23 +43,23 @@ async function readiness(c,s,p,contracts) {
  const reg=await registrationDetail(c,s.id);if(reg.required&&(!reg.accepted||reg.pending||reg.returned))checks.push(reg.pending?'本人情報を代表が確認':'本人情報の登録');
  if(!validEmail(s.email))checks.push('招待先メールアドレスを登録');
  if(!p)checks.push('基本情報を登録');
- if(!contracts.some(r=>r.status==='agreed'))checks.push('契約の締結・交付');
+ if(!contracts.some(r=>r.status==='agreed'))checks.push('契約書の締結');
  if(p) {
   const d=JSON.parse(p.data);
-  if(!d.conditionsChecked)checks.push('未確定事項・勤務条件の確認');
-  if(!d.taxDeclaration||!d.taxCheckedOn||(d.taxDeclaration==='submitted'&&d.dependents===''))checks.push('扶養控除等申告書の確認');
-  if(d.taxDeclaration&&((d.taxDeclaration==='submitted'?'kou':'otsu')!==s.taxColumn||(d.taxDeclaration==='submitted'&&Number(d.dependents)!==s.dependents)))checks.push('申告書と給与の源泉区分・扶養人数の照合');
+  if(!d.insuranceChecked)checks.push('労働保険（労災保険など）の届出・確認');
+  if(!d.taxDeclaration||!d.taxCheckedOn||(d.taxDeclaration==='submitted'&&d.dependents===''))checks.push('給与の設定（扶養控除等申告書の区分）');
+  if(d.taxDeclaration&&((d.taxDeclaration==='submitted'?'kou':'otsu')!==s.taxColumn||(d.taxDeclaration==='submitted'&&Number(d.dependents)!==s.dependents)))checks.push('給与の設定（源泉徴収の区分）');
   const bank=await bankSummary(c,s.id);
-  if(!bank.accepted&&(bank.submitted||!d.bankConsentChecked))checks.push(bank.pending?'提出された給与振込先を代表が確認':bank.returned?'給与振込先の修正・再提出':'振込先の受領・振込への同意確認');
+  if(!bank.accepted&&(bank.submitted||!d.bankConsentChecked))checks.push(bank.pending?'振込先の確認（本人が登録済み）':bank.returned?'振込先（本人の登録し直し待ち）':'振込先（本人の登録待ち）');
  }
  const rates=(await c.db.prepare('select * from staffRates where staffId=? order by startsOn desc').bind(s.id).all()).results;
  const agreed=contracts.find(r=>r.status==='agreed');
  if(agreed) {
   const r=rates.find(r=>r.startsOn<=agreed.startDate),snap=JSON.parse(agreed.snapshot);
-  if(!r||r.lessonHourly!==snap.lessonHourly)checks.push('契約と時給設定の照合');
+  if(!r||r.lessonHourly!==snap.lessonHourly)checks.push('給与の設定（時給）');
  }
  const shifts=(await c.db.prepare('select id,date,planVersion,planAgreedVersion,planAgreedAt from workDays where staffId=? and planVersion>0 order by date').bind(s.id).all()).results;
- if(!shifts.some(d=>d.planAgreedVersion===d.planVersion&&d.planAgreedAt&&agreed&&d.date>=agreed.startDate&&d.date<=agreed.endDate))checks.push('初日の勤務予定を本人と確認');
+ if(!shifts.some(d=>d.planAgreedVersion===d.planVersion&&d.planAgreedAt&&agreed&&d.date>=agreed.startDate&&d.date<=agreed.endDate))checks.push('初日の勤務予定（本人の確認）');
  if(s.status!=='active')checks.push('本人のアカウント設定');
  return checks;
 }
@@ -97,7 +97,7 @@ export const employmentRoutes={
     if(reg.required){
      for(const k of ['address','otherWork'])if(Object.hasOwn(b.data||{},k)&&data[k]!==String(prior[k]||''))fail('selfOnly','住所・他の勤務先は本人が登録し、代表が確認する手順で更新してください',409);
      data=profileData({...prior,...b.data,address:prior.address,otherWork:prior.otherWork}); // 勤務希望（availability）は代表が本人と確認して保存できる
-    }
+    } else data=profileData({...prior,...b.data}); // 送られた項目だけを変える
     checkVersion(old,b);const r=await c.db.prepare('update employmentProfiles set data=?,updatedAt=?,version=version+1 where staffId=? and version=?').bind(JSON.stringify(data),now,s.id,old.version).run();if(r.meta.changes!==1)fail('conflict','読み直してください',409);}
    else {if(Number(b.version)!==0)fail('conflict','読み直してください',409);await c.db.prepare('insert into employmentProfiles(staffId,data,createdAt,updatedAt) values(?,?,?,?)').bind(s.id,JSON.stringify(data),now,now).run();}
   } else {
@@ -141,7 +141,7 @@ export const employmentRoutes={
   const me=await requireOwner(c,b),s=await employee(c,b.staffId),p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();
   if(!p)fail('needProfile','基本情報を保存してください');checkVersion(p,b);await requireRegistration(c,s.id);
   const d=JSON.parse(p.data);
-  if(['address','startDate','endDate','workWindow','weeklyHours','availability','otherWork','taxDeclaration','taxCheckedOn'].some(k=>!d[k]))fail('incomplete','住所・契約期間・勤務条件・勤務希望・他の勤務先・申告書の確認を入力してください');
+  if(['address','startDate','endDate','weeklyHours','otherWork'].some(k=>!d[k]))fail('incomplete','契約の条件（契約期間・勤務時間の目安）と、住所・ほかの勤務先を入れてください');
   if(!['paper','electronic'].includes(b.method))fail('badMethod','紙か電子を選んでください');
   const snap=JSON.stringify(employmentSnapshot(s,d)),id=newId('ec'),now=iso(c.now);
   const revision=Number((await c.db.prepare('select max(revision) n from employmentContracts where staffId=?').bind(s.id).first()).n||0)+1;
@@ -152,8 +152,6 @@ export const employmentRoutes={
   const me=await requireOwner(c,b),r=await contractRow(c,b.id);checkVersion(r,b);
   await requireRegistration(c,r.staffId);
   if(r.status!=='draft'||b.agree!==true||b.hash!==r.contentHash)fail('needReview','この版の全文を確認し、代表として合意する操作が必要です');
-  const p=JSON.parse((await c.db.prepare('select data from employmentProfiles where staffId=?').bind(r.staffId).first()).data);
-  if(!p.conditionsChecked)fail('incomplete','契約ひな形の確認事項と個別条件を確認してから発行してください');
   const pending=(await c.db.prepare("select * from employmentContracts where staffId=? and status='issued' and startDate<=? and endDate>=?").bind(r.staffId,r.endDate,r.startDate).all()).results;
   if(pending.length)fail('pendingVersion','対象期間が重なる未締結の版があります。先に取り下げてください',409);
   return {contract:await change(c,r,me,'代表の発行・合意',{status:'issued',issuedAt:iso(c.now),issuedBy:me.name})};

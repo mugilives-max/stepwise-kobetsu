@@ -134,6 +134,10 @@ test('readiness links agreement, rates, tax and confirmed shift; explicit owner 
  await h.ok('payroll/rates/save',{auth,staffId:staff.id,startsOn:'2026-10',lessonHourly:2000,meetingHourly:null});
  let d=(await h.ok('work/plan',{auth,staffId:staff.id,date:'2026-10-17',version:0,intervals:[{start:'13:00',end:'14:30',kind:'other'}],reason:'初日'})).day;
  await h.ok('work/plan/agree',{auth:ta,date:d.date,version:d.version,agree:true});
+ assert.deepEqual((await w.get()).checks,['労働保険（労災保険など）の届出・確認'],'代表のやること：労働保険の届出・確認');
+ const pp=(await w.get()).profile,before=pp.data;
+ await h.ok('employment/save',{auth,staffId:staff.id,version:pp.version,data:{insuranceChecked:true}});
+ const after=(await w.get()).profile.data;assert.equal(after.insuranceChecked,true);assert.deepEqual({...after,insuranceChecked:before.insuranceChecked},before,'一部だけ保存しても、ほかの項目は消えない');
  assert.deepEqual((await w.get()).checks,[]);
  await h.ok('employment/activate',{auth,staffId:staff.id});
  assert.equal((await h.ok('staff/me',{auth:ta})).me.employmentAccess,true);

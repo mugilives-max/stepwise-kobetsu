@@ -801,3 +801,7 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .doc-row { font-size: 15px; }
 .doc-row .v small { white-space: normal; overflow: visible; line-height: 1.5; }
 .doc-row .go { font-size: 13px; color: var(--muted); white-space: nowrap; }
+/* 代表の画面: 勤務開始までにすること */
+.todo-list { margin: 8px 0 0; padding-left: 1.2em; }
+.todo-list li { margin: 2px 0; }
+.reg-card .reg-form { gap: 16px; }
