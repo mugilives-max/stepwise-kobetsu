@@ -1,9 +1,10 @@
 {
-  "operation": "publish",
+  "operation": "pages",
   "source": "862fd6f1812bd6f7a141c7cfe6891940b1da46be",
   "checkRuns": [
     39079127452,
     39079130079
   ],
-  "authorization": "2026-10-18 owner asked to fix the workplace change scope and move 'no online lessons for now' to the staff rules ('その形で直してください'); agent deploys Worker changes without confirmation (standing permission). Inspection passed (Worker matches PR #117 source, no pending migration). Publish with private backup; no record changes."
+  "authorization": "2026-10-18 PR #119 merged after publish run 39079327158. Verify the published staff pages against the reviewed source and re-check the Worker and records against the private checkpoint. Read-only.",
+  "backupPrefix": "release-backups/contract-online-20261018/39079327158-1"
 }
