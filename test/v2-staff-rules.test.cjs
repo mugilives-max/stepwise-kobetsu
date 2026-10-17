@@ -8,6 +8,7 @@ test('staff rules: employee reads the current version once; owner sees readers; 
  assert.equal(r.rules.title,'講師のきまり（2026年11月版）');assert.equal(r.readAt,'');
  assert.ok(r.rules.sections.flatMap(x=>x[1]).includes('授業記録は、その日の授業中に塾のシステムに入れます。'));
  assert.ok(r.rules.sections.flatMap(x=>x[1]).some(x=>x.includes('LINE で代表に連絡')));
+ assert.ok(r.rules.sections.flatMap(x=>x[1]).includes('オンラインの授業は、当面行いません。始めるときは、場所と進め方を前もってお知らせします。'));
  assert.ok((await w.get()).checks.includes('講師のきまり（本人の確認）'));
  assert.equal((await h.call('employment/rules/read',{auth:ta,hash:'old',confirm:true})).error.code,'staleRules');
  assert.equal((await h.call('employment/rules/read',{auth:ta,hash:r.hash})).error.code,'needConfirm');

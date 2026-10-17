@@ -47,6 +47,7 @@ test('new employee starts with name/email only, registers own name and informati
  assert.match(contract.snapshot.text,/日ごとの始業・終業の時刻は、シフト表で定める。/);
  assert.match(contract.snapshot.text,/3. 生徒と、仕事のほかで私的に連絡を取ったり会ったりしない。/);assert.match(contract.snapshot.text,/7. 塾が定める「講師のきまり」に従う。/);
  assert.doesNotMatch(contract.snapshot.text,/代表が同じ場にいるときに限って/,'代表同席は講師のきまりへ');assert.ok(contract.snapshot.text.includes('**他の勤務先の申告（第9条6項）**'));
+ assert.ok(contract.snapshot.text.includes('2. 変更の範囲：塾の教室と、講師の自宅など塾が認めた場所（オンラインの授業を行うとき）。'));assert.ok(!contract.snapshot.text.includes('当面行わない'),'オンラインを当面行わないことは講師のきまりへ');
  assert.match(contract.snapshot.text,/   - 授業：2,100円。/,'時給は講師ごと');assert.equal(contract.snapshot.lessonHourly,2100);
  assert.match(contract.snapshot.text,/この契約では：加入しない。/,'雇用保険は講師ごと');assert.doesNotMatch(contract.snapshot.text,/現在：加入しない/);
  assert.equal((await h.call('employment/save',{auth,staffId:staff.id,version:(await get()).profile.version,data:{hourly:'2千円'}})).error.code,'badHourly');
@@ -55,7 +56,7 @@ test('new employee starts with name/email only, registers own name and informati
  assert.doesNotMatch(contract.snapshot.text,/扶養控除等申告書：|提出状況の確認日：/,'甲欄・乙欄は契約書に書かない（給与の設定）');
  assert.match(contract.snapshot.text,/塾全体の勤務時間帯：平日18:00〜22:00、土日8:00〜22:00。/,'勤務時間帯は全員共通');
  assert.match(contract.snapshot.text,/講師の勤務の目安：週5時間/);
- assert.match(contract.snapshot.text,/期間の定めあり：2026年10月17日から2027年3月31日まで。/,'契約期間は日本語の日付で書く');assert.equal(contract.snapshot.layoutVersion,'20261018-3');
+ assert.match(contract.snapshot.text,/期間の定めあり：2026年10月17日から2027年3月31日まで。/,'契約期間は日本語の日付で書く');assert.equal(contract.snapshot.layoutVersion,'20261018-4');
  await w.submit({data:{...w.data,address:'【テスト】新住所'}});
  assert.equal((await h.call('employment/contract/issue',{auth,id:contract.id,version:contract.version,hash:contract.contentHash,agree:true})).error.code,'needRegistration');
  assert.deepEqual(h.rows('select snapshot from employmentContracts where id=?',contract.id)[0].snapshot,JSON.stringify(contract.snapshot));
