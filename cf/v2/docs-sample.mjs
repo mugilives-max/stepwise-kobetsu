@@ -1,5 +1,6 @@
 // 書類のひな形（設定 → 書類のひな形）。2026-10-12 本人「書類に関するひな形みたいなのをパッと確認できる場所が欲しい」。
 // 台帳に残す書面（受講条件書（通常指導）・受講条件書（特殊指導）・請求書・領収書）を、架空の家族（見本家）で描いて返す。読むだけ。
+// 2026-10-18 本人「雇用契約書と、給与明細的な講師関連の書類も追加して」: 雇用契約書は架空の講師（見本 講師）で、今のひな形から描く。給与明細は画面側（staff/payroll.js）で描く。
 // 請求書の振込先・備考だけは本番の設定を使う（今どう載るかを確かめるため）。
 import { agreementDocHtml } from './agreement-doc-20261016.mjs';
 import { fail, iso } from './util.mjs';
@@ -8,6 +9,7 @@ import { currentTerms } from './terms.mjs';
 import { conditionDocHtml } from './condition-doc.mjs';
 import { specialDocHtml } from './special-doc.mjs';
 import { invoiceDocHtml, receiptDocHtml, billingSettings } from './billing-doc.mjs';
+import { employmentSnapshot, employmentDocument } from './employment-document.mjs';
 
 const family = { id: 'fam_sample', name: '見本家', guardianName: '見本 花子' };
 const student = { id: 'stu_sample', familyName: '見本', givenName: '太郎', grade: '中3' };
@@ -17,6 +19,7 @@ export const DOC_TYPES = {
   condition: { title: '受講条件書（通常指導）', when: '生徒ごとに「条件を決めてお知らせ」したとき（案）と、保護者が同意したとき（確定）', who: '保護者はお支払いから。塾は生徒の画面から', where: '家族の画面 → 生徒 → 受講条件書（通常指導）' },
   special: { title: '受講条件書（特殊指導）', when: '特殊指導を提案したとき（案）と、保護者が承認したとき（確定）', who: '保護者はお支払いから。塾は生徒の画面から', where: '家族の画面 → 生徒 → 特殊指導' },
   invoice: { title: '請求書', when: '月の請求を確定したとき', who: '保護者はお支払いの請求から。塾は請求の画面から', where: '請求 → 家族の月。振込先と備考は 設定 → 請求の下の「請求書の設定」' },
+  employment: { title: '雇用契約書', when: '講師ごとに契約書の案を作ったとき', who: '講師と代表', where: '設定 → 雇用・勤務 → 講師' },
   receipt: { title: '領収書', when: '入金を記録したとき', who: '保護者はお支払いの請求から。塾は請求の画面から', where: '請求 → 家族の月 → 入金を記録' },
 };
 
@@ -51,6 +54,12 @@ export async function sampleDocHtml(db, type, now) {
     return invoiceDocHtml({ inv, items, family, settings: await billingSettings(db) });
   }
   if (type === 'receipt') return receiptDocHtml({ inv, family });
+  if (type === 'employment') {
+    const snapshot = employmentSnapshot({ name: '見本 講師' }, { startDate: '2026-11-01', endDate: '2027-03-31', weeklyHours: '週5〜6時間ほど。', address: '〒000-0000 見本県見本市1-2-3', otherWork: 'なし' });
+    const r = { id: 'ec_sample', revision: 1, status: 'agreed', method: 'electronic', snapshot: JSON.stringify(snapshot), contentHash: 'SAMPLE', issuedAt: '2026-10-20T03:00:00.000Z', deliveredAt: '2026-10-20T05:00:00.000Z', agreedAt: '2026-10-21T10:00:00.000Z', consenterName: '見本 講師' };
+    const events = [['代表の発行・合意', r.issuedAt, '麦倉 優輔'], ['交付を記録', r.deliveredAt, '麦倉 優輔'], ['本人の同意', r.agreedAt, '見本 講師']].map(([action, t, actorName]) => ({ action, actualAt: t, recordedAt: t, actorName }));
+    return employmentDocument(r, events).replace('<body>', '<body><div style="border:2px solid #b45309;color:#b45309;padding:6px 10px;margin:0 0 12px;font-weight:700">見本・架空の講師です。実際の契約ではありません。</div>');
+  }
   fail('badType', 'その書類はありません');
 }
 

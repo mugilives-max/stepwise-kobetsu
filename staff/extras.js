@@ -20,6 +20,10 @@ const DOC_GROUPS = [
     ['special', '受講条件書（特殊指導）', '通常とは別の料金で行う指導の内容と料金'],
     ['agreement', '受講合意書', '月ごとの授業の回数と料金。保護者の承認で確定します'],
   ]],
+  ['講師の書類', '#7a5bd6', [
+    ['employment', '雇用契約書', '講師と結ぶ契約書。働く条件と給与のきまり'],
+    ['payslip', '給与明細', '毎月の給与を確定すると作られます'],
+  ]],
   ['お金の書類', '#2e9b5f', [
     ['invoice', '請求書', '月の請求を確定すると作られます'],
     ['receipt', '領収書', '入金を記録すると作られます'],
@@ -37,7 +41,7 @@ export function docsPage(ctx) {
       : `<a class="todo-row doc-row" href="#terms">${body}<span class="go">版を決める ›</span></a>`;
     return `<button type="button" class="todo-row doc-row" data-action="doc-sample" data-type="${type}">${body}<span class="go">見本 ›</span></button>`;
   };
-  let h = ctx.notice() + '<p class="small muted" style="margin:12px 0 4px">保護者と交わす書類の見本です。押すと、架空の家族で作った見本が開きます。</p>';
+  let h = ctx.notice() + '<p class="small muted" style="margin:12px 0 4px">保護者・講師と交わす書類の見本です。押すと、架空の家族・講師で作った見本が開きます。</p>';
   for (const [name, color, docs] of DOC_GROUPS) h += `<div class="sec-title">${esc(name)}</div><div class="group">${docs.map(([type, title, note]) => row(color, type, title, note)).join('')}</div>`;
   return h + '<p class="small muted" style="margin-top:14px">見本は印刷（Ctrl+P）で PDF にできます。</p>';
 }
