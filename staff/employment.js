@@ -229,18 +229,28 @@ function plannedDays(ctx,d){
  if(!days.length)return '<p class="small muted">初日の勤務予定が決まると、ここに出ます。</p>';
  return '<div class="group">'+days.map(x=>'<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#work='+esc(d.staff.id)+'/'+esc(x.date)+'"><span class="v"><span class="lbl">'+esc(jaDate(x.date))+'</span><small>'+(x.planAgreedVersion===x.planVersion?'予定を確認済み':'予定を確認してください')+'</small></span><span class="go" aria-hidden="true">›</span></a>').join('')+'</div>';
 }
-export function employmentPage(ctx,me,id=''){
+export function employmentPage(ctx,me,id='',opts={}){
  const owner=me.contractType==='owner',want=owner?(id||'list'):'mine';
  if(key!==want||!cache){load(ctx,want,owner?(id?'employment/get':'employment/list'):'employment/mine',id?{staffId:id}:{});return '<p>読み込んでいます…</p>';}
  if(cache.loading)return '<p>読み込んでいます…</p>';if(!cache.ok)return ctx.notice();
  const {esc}=ctx;let h=ctx.notice();
  if(owner&&!id){
-  h+='<p>氏名・メールアドレスで招待し、本人情報の登録を受けてから勤務条件と契約を整えます。</p><div class="group">'+cache.staff.map(s=>{
+  if(opts.newForm){
+   const req='<span class="req">必須</span>',opt='<span class="opt">任意</span>';
+   return h+'<p style="margin-top:12px">まず氏名とメールアドレスだけを登録します。住所などは、招待したあと本人が入力します。</p>'+
+    '<form class="reg-form" data-form="em-new">'+
+    '<fieldset class="reg-field"><legend>氏名 '+req+'</legend><div class="row" style="flex-wrap:nowrap;gap:10px"><label class="sub" style="flex:1 1 0;min-width:0">姓<input name="familyName" maxlength="30" required placeholder="例：山田"></label><label class="sub" style="flex:1 1 0;min-width:0">名<input name="givenName" maxlength="30" required placeholder="例：太郎"></label></div><p class="reg-help">講師一覧に出る名前です。仮の名前でもかまいません。正式な氏名は、本人が登録のときに入力します。</p></fieldset>'+
+    '<fieldset class="reg-field"><legend>メールアドレス '+opt+'</legend><label class="sub">招待メールの送り先<input type="email" name="email" maxlength="200" autocomplete="off" placeholder="例：taro@example.com"></label><p class="reg-help">決まっていなければ空欄で登録できます。あとで講師の画面から入れられます。</p></fieldset>'+
+    '<div class="stack"><button class="primary wide"'+ctx.dis()+'>登録する</button><p class="reg-help">登録してもメールは送りません。招待メールは、次の画面で送ります。</p><a class="btn wide" href="#employment">やめて一覧に戻る</a></div></form>';
+  }
+  const stopped=!!opts.stopped,list=cache.staff.filter(s=>stopped?s.status==='stopped':s.status!=='stopped'),stoppedCount=cache.staff.filter(s=>s.status==='stopped').length;
+  if(stopped)return h+'<p class="small muted">停止中の講師はログインできません。契約書・勤務・給与の記録はそのまま残っています。開くと記録を確認できます。アカウントを戻すときは、設定のスタッフの画面で「再開する」を押します。</p>'+(list.length?'<div class="group">'+list.map(s=>'<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#employment='+esc(s.id)+'"><span class="v"><span class="lbl">'+esc(s.name)+'</span><small>'+esc(s.email||'メール未登録')+'</small></span><span class="go" aria-hidden="true">›</span></a>').join('')+'</div>':'<p>停止中の講師はいません。</p>');
+  h+='<p>氏名・メールアドレスで招待し、本人情報の登録を受けてから勤務条件と契約を整えます。</p><div class="group">'+list.map(s=>{
    const g=s.registration||{},state=s.status==='stopped'?'停止中':g.pending?'本人情報の確認待ち':g.returned?'本人が登録し直し中':g.required&&!g.submitted?(s.status==='active'?'本人情報の登録待ち':s.invitedAt?'招待済み・パスワードの設定待ち':'未招待'):s.status==='active'?'アカウント利用中':s.invitedAt?'招待済み':'未招待';
    const extra=[s.bank?.pending?'振込先の確認待ち':'',s.pendingWork?'実績の確認 '+s.pendingWork+'件':'',s.pendingCorrections?'訂正の申し出 '+s.pendingCorrections+'件':''].filter(Boolean);
    return '<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#employment='+esc(s.id)+'"><span class="v"><span class="lbl">'+esc(s.name)+'</span><small>'+esc([state,...extra].join('・'))+'</small><small>'+esc(s.email||'メール未登録')+'</small></span><span class="go" aria-hidden="true">›</span></a>';
-  }).join('')+'</div>';
-  return h+'<details open style="margin-top:20px"><summary>新しい講師を登録する</summary><form class="stack" data-form="em-new">'+field(esc,'familyName','姓','','text',true)+field(esc,'givenName','名','','text',true)+field(esc,'email','本人のメールアドレス（下書きでは任意）','','email')+'<p class="small muted">未定の場合は空欄で保存できます。本人への招待時に登録してください。氏名は本人が登録時に入力し直します。</p>'+'<button class="primary"'+ctx.dis()+'>下書きを保存（メールは送りません）</button></form></details>';
+  }).join('')+'</div>'+(stoppedCount?linkRow(esc,'#employment-stopped','停止中の講師',stoppedCount+'件・ふだんの一覧には出しません'):'');
+  return h+'<a class="btn wide" style="margin-top:16px" href="#employment-new">＋ 新しい講師を登録する</a>';
  }
  const d=cache;
  if(owner){
