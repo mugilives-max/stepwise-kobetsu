@@ -11,7 +11,7 @@ export function rulesPage(ctx, me) {
   if (data.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
   if (data.error) return h + `<p class="notice error">${esc(data.error)}</p>`;
   const r = data.rules, owner = me.contractType === 'owner';
-  h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>${esc(r.title)}</h2>${!owner && data.readAt ? '<span class="tag ok">読みました</span>' : ''}</div><p class="reg-help" style="margin:6px 0 0">${esc(r.intro)}</p></section>`;
+  h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>${esc(r.title)}</h2>${!owner && data.readAt ? '<span class="tag ok">読みました</span>' : ''}</div><p class="reg-help" style="margin:6px 0 0">${esc(r.intro)}</p><button type="button" class="wide" style="margin-top:10px" data-action="rules-doc">書面で開く・印刷</button></section>`;
   h += r.sections.map(([title, items], i) => `<section class="reg-card"><div class="reg-card-head"><h2>${i + 1}. ${esc(title)}</h2></div><ol style="margin:8px 0 0;padding-left:1.4em;line-height:1.8">${items.map(x => `<li>${esc(x)}</li>`).join('')}</ol></section>`).join('');
   if (owner) {
     h += '<div class="sec-title">読んだ講師</div>' + (data.readers.length ? '<div class="group">' + data.readers.map(x => `<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#employment=${esc(x.id)}"><span class="v"><span class="lbl">${esc(x.name)}</span><small>${x.readAt ? '読みました・' + esc(jaDay(x.readAt)) : 'まだ読んでいません'}</small></span><span class="go" aria-hidden="true">›</span></a>`).join('') + '</div>' : '<p class="small muted">講師がまだいません。</p>');

@@ -5,11 +5,12 @@
 // - 入職の手続き中の講師も読めるように、経路は employment/ の下に置く
 import { fail, audit, sha256Hex } from './util.mjs';
 import { requireStaff } from './staff.mjs';
+import { docPage, DOC_ISSUER } from './billing-doc.mjs';
 
 export const STAFF_RULES = {
   version: '2026-11',
   title: '講師のきまり（2026年11月版）',
-  intro: 'ステップワイズ個別指導で働くときの、日々の仕事のやり方です。雇用契約書の第9条7項にもとづきます。変えるときは、前もってこの画面でお知らせします。',
+  intro: 'ステップワイズ個別指導で働くときの、日々の仕事のやり方です。雇用契約書の第9条7項にもとづきます。変えるときは、前もって講師の画面でお知らせします。',
   sections: [
     ['授業', [
       '教室での授業は、当面、代表が同じ場にいるときに限って行います。',
@@ -48,6 +49,21 @@ export const STAFF_RULES = {
 };
 export const STAFF_RULES_HASH = sha256Hex(JSON.stringify(STAFF_RULES));
 
+// 書面（請求書・契約書と同じ A4）。2026-10-18 本人「書類みたいに表示できるスタイルが良い。印刷して渡す可能性もある」。
+// 紙で渡すときのために、末尾に受け取りの欄（日付・講師の署名）を付ける
+const escH = v => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+export function rulesDocHtml() {
+  const r = STAFF_RULES;
+  const body = `
+  <div class="head"><h1>講師のきまり</h1><div class="meta">${escH(r.title.replace('講師のきまり', '').replace(/[（）]/g, ''))}<br>照合番号 ${escH(STAFF_RULES_HASH.slice(0, 12))}</div></div>
+  <p style="margin:6mm 0 0;line-height:1.9">${escH(r.intro)}</p>
+  <style>.rsec{break-inside:avoid;page-break-inside:avoid}@media screen and (max-width:820px){.sheet{width:auto;min-height:0;margin:0;padding:6mm 5mm;box-shadow:none}.head{flex-direction:column;gap:2mm}.meta{text-align:left}h1{font-size:22px;letter-spacing:.2em}}</style>
+  ${r.sections.map(([title, items], i) => `<div class="rsec"><h2 style="margin:6mm 0 1mm;font-size:14px;border-bottom:1px solid #b9c0c8;padding-bottom:1mm">${i + 1}. ${escH(title)}</h2><ol style="margin:0;padding-left:1.6em;line-height:1.9">${items.map(x => `<li>${escH(x)}</li>`).join('')}</ol></div>`).join('')}
+  <div style="margin-top:9mm;border:1px solid #b9c0c8;padding:4mm 5mm;line-height:2.2;break-inside:avoid"><div style="font-weight:bold">受け取りの記録</div>この「講師のきまり」を受け取り、内容を確かめました。<br>日付：　　　　年　　月　　日<br>講師の氏名（署名）：</div>
+  <div style="margin-top:8mm;display:flex;justify-content:flex-end">${DOC_ISSUER()}</div>`;
+  return docPage(r.title, `${r.title}。印刷（Ctrl+P）で PDF に保存できます。`, body);
+}
+
 // 今の版を読んだ日時（読んでいなければ ''）
 export async function rulesReadAt(c, staffId) {
   const r = await c.db.prepare("select at from auditLog where action = 'staffRulesRead' and target = ? and json_extract(detail, '$.hash') = ? order by id desc limit 1").bind(String(staffId), STAFF_RULES_HASH).first();
@@ -65,6 +81,7 @@ export const staffRulesRoutes = {
     }
     return out;
   },
+  'employment/rules/document': async (c, b) => { await requireStaff(c, b); return { html: rulesDocHtml() }; },
   'employment/rules/read': async (c, b) => {
     const me = await requireStaff(c, b);
     if (me.contractType !== 'employee') fail('forbidden', '講師が読んだことを残す操作です', 403);
