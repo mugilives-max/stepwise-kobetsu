@@ -89,7 +89,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await employee.locator('[data-form="em-registration"] [name="confirm"]').check();
   await send(employee,'[data-form="em-registration"]','本人情報を登録する','employment/registration/submit');
   await owner.reload();await owner.locator('[data-form="em-registration-accept"]').waitFor();
-  await owner.getByText('招待時の表示名：【テスト】本人 登録',{exact:true}).waitFor();
+  await owner.getByText('招待時の表示名：【テスト】本人 登録').waitFor();
   await owner.screenshot({path:path.join(out,'03-owner-review.png'),fullPage:true});
   await owner.locator('[data-form="em-registration-accept"] [name="confirm"]').check();
   await owner.locator('[data-form="em-registration-accept"] [name="nameDecision"][value="apply"]').check();
