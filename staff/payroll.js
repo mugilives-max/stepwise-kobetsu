@@ -6,7 +6,7 @@ export function leavePayroll() { open = ''; rateOpen = ''; }
 export function resetPayroll() { list = null; detail = null; rates = null; mine = null; open = ''; rateOpen = ''; }
 
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
-const hm = m => `${Math.floor(m / 60)}時間${m % 60 ? (m % 60) + '分' : ''}`;
+const hm = m => m < 60 ? `${m}分` : `${Math.floor(m / 60)}時間${m % 60 ? (m % 60) + '分' : ''}`;
 const md = d => d ? Number(d.slice(5, 7)) + '/' + Number(d.slice(8)) : '';
 const thisMonth = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
 const shift = (m, n) => { const [y, mo] = m.split('-').map(Number); return new Date(Date.UTC(y, mo - 1 + n, 1)).toISOString().slice(0, 7); };
@@ -22,26 +22,81 @@ function statementTable(esc, s) {
     <table class="small" style="width:100%;margin-top:6px"><tr><td>授業 ${hm(s.lessonMinutes)}</td><td style="text-align:right">${yen(s.lessonAmount)}</td></tr>${s.meetingMinutes ? `<tr><td>面談 ${hm(s.meetingMinutes)}</td><td style="text-align:right">${yen(s.meetingAmount)}</td></tr>` : ''}${s.prepMinutes ? `<tr><td>授業の準備・記録 ${hm(s.prepMinutes)}</td><td style="text-align:right">${yen(s.prepAmount)}</td></tr>` : ''}${s.workMinutes ? `<tr><td>勤務実績 ${hm(s.workMinutes)}</td><td style="text-align:right">${yen(s.workAmount)}</td></tr>` : ''}${s.adjustAmount ? `<tr><td>調整</td><td style="text-align:right">${yen(s.adjustAmount)}</td></tr>` : ''}
     <tr><td><strong>総支給額</strong></td><td style="text-align:right"><strong>${yen(s.gross)}</strong></td></tr><tr><td>源泉徴収（所得税${taxBasis(s) ? '・' + taxBasis(s) : ''}）</td><td style="text-align:right">${s.withholding ? '−' + yen(s.withholding) : '0円'}</td></tr><tr><td><strong>差引支給額</strong></td><td style="text-align:right"><strong>${yen(s.net)}</strong></td></tr></table>`;
 }
-// 明細の書面（印刷用の窓と、書類のひな形の見本で共通）。sample のときは見本の帯を出し、自動で印刷しない
+// 給与明細書（印刷用の窓と、書類のひな形の見本で共通）。2026-10-18 本人「給与明細がダサい」→ 一般的な給与明細の形
+// （頭・勤怠・支給・控除・差引支給額、そのあとに日ごとの内訳）にし、見た目は請求書（cf/v2/billing-doc.mjs）とそろえる
+const DOC_STYLE = `
+  @page { size: A4; margin: 15mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #eef0f3; color: #1e2630; font-family: "Hiragino Sans", "Yu Gothic", "YuGothic", system-ui, sans-serif; }
+  .bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; align-items: center; padding: 10px 16px; background: #1e2630; color: #fff; font-size: 13px; }
+  .bar button { font: inherit; white-space: nowrap; padding: 6px 12px; border: 0; border-radius: 6px; background: #fff; color: #1e2630; cursor: pointer; margin-left: auto; }
+  .sheet { width: 210mm; min-height: 297mm; margin: 16px auto; padding: 16mm; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.12); font-size: 12.5px; }
+  .sample { border: 2px solid #b45309; color: #b45309; padding: 2mm 3mm; margin-bottom: 5mm; font-weight: bold; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 6mm; }
+  h1 { margin: 0; font-size: 26px; letter-spacing: .3em; }
+  .meta { text-align: right; line-height: 1.8; }
+  .to { margin-top: 8mm; font-size: 17px; border-bottom: 1px solid #1e2630; display: inline-block; min-width: 85mm; padding-bottom: 1mm; }
+  .grid { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 6mm; }
+  .issuer { line-height: 1.7; }
+  .issuer .name { font-size: 15px; font-weight: bold; }
+  .total { margin-top: 4mm; display: flex; gap: 6mm; align-items: baseline; padding: 3mm 5mm; border: 2px solid #1e2630; width: 100mm; }
+  .total .yen { font-size: 24px; font-weight: bold; }
+  h2 { margin: 7mm 0 2mm; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #b9c0c8; padding: 2mm 2.5mm; vertical-align: top; }
+  th { background: #f3f5f7; font-weight: 600; text-align: left; }
+  .box { table-layout: fixed; }
+  .box th { text-align: center; font-size: 11.5px; }
+  .box td { text-align: right; white-space: nowrap; font-size: 13.5px; }
+  .box .sum { background: #f3f5f7; font-weight: bold; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tfoot td { font-weight: bold; }
+  .memo { margin-top: 6mm; line-height: 1.7; }
+  @media screen and (max-width: 820px) { .sheet { width: auto; min-height: 0; margin: 0; padding: 6mm 5mm; box-shadow: none; } .head, .grid { flex-direction: column; align-items: stretch; } .meta { text-align: left; } h1 { font-size: 22px; letter-spacing: .15em; } .total { width: auto; } .to { min-width: 0; } .detail th, .detail td { padding: 1.5mm 1.5mm; font-size: 11.5px; } .detail .rate { display: none; } }
+  @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; } }
+`;
+const ymdJa = v => { const d = String(v || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? `${Number(d.slice(0, 4))}年${Number(d.slice(5, 7))}月${Number(d.slice(8))}日` : ''; };
+const ISSUER = '<div class="issuer"><div class="name">ステップワイズ個別指導</div>代表　麦倉 優輔<br>〒343-0002　埼玉県越谷市袋山1319-9<br>080-6259-3025　／　mugilives@gmail.com</div>';
+// 横に並ぶ枠（上が項目、下が値）。値が 0 の任意の欄は出さない
+const box = (esc, cols) => `<table class="box"><tr>${cols.map(([k, , , sum]) => `<th${sum ? ' class="sum"' : ''}>${esc(k)}</th>`).join('')}</tr><tr>${cols.map(([, v, , sum]) => `<td${sum ? ' class="sum"' : ''}>${esc(v)}</td>`).join('')}</tr></table>`;
 export function statementHtml(esc, s, name, { sample = false } = {}) {
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>給与明細 ${esc(label(s.month))} ${esc(name)}</title>
-    <style>body{font-family:system-ui,"Hiragino Sans","Yu Gothic",sans-serif;color:#111;margin:32px;max-width:720px}h1{font-size:20px}td,th{padding:4px 6px;border-bottom:1px solid #ddd;font-size:13px}.small{font-size:13px}.muted{color:#666}.sample{border:2px solid #b45309;color:#b45309;padding:6px 10px;font-weight:700}</style></head>
-    <body>${sample ? '<div class="sample">見本・架空の講師です。実際の明細ではありません。</div>' : ''}<h1>給与明細（${esc(label(s.month))}分）</h1><p>${esc(name)} 様</p><p class="small">ステップワイズ個別指導・給与（月末締め・翌月25日払い（休業日は前営業日））<br>確定 ${esc(String(s.confirmedAt || '').slice(0, 10))}・お支払い ${esc(s.paidOn || s.payOn)}${s.paidOn ? '（支払い済み）' : '（予定）'}</p>
-    ${statementTable(esc, s)}${sample ? '' : '<script>window.onload=()=>window.print()<\/script>'}</body></html>`;
+  const yenS = n => yen(n), opt = (k, v, show) => show ? [[k, v]] : [];
+  const days = new Set(s.items.filter(i => i.date && (i.kind === 'lesson' || i.kind === 'meeting' || i.workDayId)).map(i => i.date)).size;
+  const kintai = [['勤務日数', days + '日'], ['授業', hm(s.lessonMinutes || 0)], ...opt('面談', hm(s.meetingMinutes || 0), s.meetingMinutes), ['授業の準備・記録', hm(s.prepMinutes || 0)], ...opt('その他の勤務', hm(s.workMinutes || 0), s.workMinutes)];
+  const shikyu = [['授業', yenS(s.lessonAmount)], ...opt('面談', yenS(s.meetingAmount), s.meetingMinutes), ['授業の準備・記録', yenS(s.prepAmount)], ...opt('その他の勤務', yenS(s.workAmount), s.workMinutes), ...opt('調整', yenS(s.adjustAmount), s.adjustAmount), ['総支給額', yenS(s.gross), '', true]];
+  const kojo = [[`所得税${taxBasis(s) ? '（' + taxBasis(s) + '）' : ''}`, yenS(s.withholding)], ['住民税', '0円'], ['雇用保険', '0円'], ['控除計', yenS(s.withholding), '', true]];
+  const rows = s.items.map(i => `<tr><td>${i.kind === 'adjust' && !i.workDayId ? '調整' : esc(md(i.date))}</td><td>${esc(i.label)}${i.carried ? ' <span style="color:#556;font-size:11px">前の月の分</span>' : ''}</td><td class="num">${i.minutes ? esc(hm(i.minutes)) : ''}</td><td class="num rate">${i.rate ? esc(yen(i.rate)) : ''}</td><td class="num">${esc(yen(i.amount))}</td></tr>`).join('');
+  const paid = !!s.paidOn, payDay = ymdJa(s.paidOn || s.payOn);
+  const body = `${sample ? '<div class="sample">見本・架空の講師です。実際の明細ではありません。</div>' : ''}
+  <div class="head"><h1>給与明細書</h1><div class="meta">${esc(label(s.month))}分<br>支給日 ${esc(payDay)}${paid ? '' : '（予定）'}<br>確定日 ${esc(ymdJa(s.confirmedAt))}</div></div>
+  <div class="to">${esc(name)}　様</div>
+  <div class="grid"><div><p style="margin:2mm 0 0">${esc(label(s.month))}分の給与を、下記のとおり${paid ? '支給しました' : '支給します'}。</p>
+    <div class="total"><span>差引支給額</span><span class="yen">${esc(yen(s.net))}</span></div></div>${ISSUER}</div>
+  <h2>勤怠</h2>${box(esc, kintai)}
+  <h2>支給</h2>${box(esc, shikyu)}
+  <h2>控除</h2>${box(esc, kojo)}
+  <h2>内訳</h2>
+  <table class="detail"><thead><tr><th style="width:11%">日付</th><th>内容</th><th class="num" style="width:13%">時間</th><th class="num rate" style="width:12%">時給</th><th class="num" style="width:14%">金額</th></tr></thead>
+  <tbody>${rows}</tbody><tfoot><tr><td colspan="3" class="num">総支給額</td><td class="rate"></td><td class="num">${esc(yen(s.gross))}</td></tr></tfoot></table>
+  <div class="memo"><h2 style="margin:0 0 1mm">備考</h2>月末締め・翌月25日払い（金融機関の休業日は前営業日）。${s.taxColumn === 'kou' || s.taxColumn === 'otsu' ? `所得税は源泉徴収税額表の${s.taxColumn === 'otsu' ? '乙欄' : '甲欄'}で計算しています。` : ''}<br><span style="color:#556;font-size:11px">この明細は、講師の画面の「給与明細」からいつでも開けます。</span></div>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>給与明細書 ${esc(label(s.month))}分 ${esc(name)}</title><style>${DOC_STYLE}</style></head>
+<body><div class="bar"><span>給与明細書（${esc(label(s.month))}分）。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div><div class="sheet">${body}</div></body></html>`;
 }
-// 印刷用の窓に明細だけを出す（ブラウザの印刷で PDF にも保存できる）
+// 印刷用の窓に明細書を出す（上の帯のボタンか Ctrl+P で印刷・PDF 保存）
 export function printStatement(esc, s, name) {
   const w = window.open('', '_blank'); if (!w) return false;
   w.document.write(statementHtml(esc, s, name));
   w.document.close();
   return true;
 }
-// 書類のひな形の見本: 架空の講師の 11月分（授業 4 回と準備・記録、甲欄・扶養0人）
+// 書類のひな形の見本: 架空の講師の 11月分（授業 4 回と、その前後の準備・記録、甲欄・扶養0人）
 export function sampleStatementHtml(esc) {
-  const lesson = (date, subject, student) => ({ kind: 'lesson', date, minutes: 90, label: `${subject}（${student}さん）`, rate: 2000, amount: 3000 });
-  const items = [lesson('2026-11-04', '英語', '見本 太郎'), lesson('2026-11-11', '英語', '見本 太郎'), lesson('2026-11-18', '数学', '見本 次郎'), lesson('2026-11-25', '数学', '見本 次郎'),
-    { kind: 'prep', date: '2026-11-30', minutes: 40, label: '授業の準備・記録（授業の前後5分。授業・面談の時間と重なる分を除く）', rate: 2000, amount: 1333 }];
-  const s = { month: '2026-11', items, lessonMinutes: 360, lessonAmount: 12000, prepMinutes: 40, prepAmount: 1333, gross: 13333, withholding: 0, net: 13333, taxColumn: 'kou', dependents: 0, confirmedAt: '2026-12-03', payOn: '2026-12-25' };
+  const dates = [['2026-11-04', '英語', '見本 太郎'], ['2026-11-11', '英語', '見本 太郎'], ['2026-11-18', '数学', '見本 次郎'], ['2026-11-25', '数学', '見本 次郎']];
+  const items = dates.flatMap(([date, subject, student]) => [
+    { kind: 'lesson', date, minutes: 90, label: `${subject}（${student}さん）`, rate: 2000, amount: 3000 },
+    { kind: 'prep', date, minutes: 10, label: '授業の準備・記録（授業の前後5分）', rate: 2000, amount: 333 },
+  ]);
+  const s = { month: '2026-11', items, lessonMinutes: 360, lessonAmount: 12000, prepMinutes: 40, prepAmount: 1332, gross: 13332, withholding: 0, net: 13332, taxColumn: 'kou', dependents: 0, confirmedAt: '2026-12-03T00:10:00.000Z', payOn: '2026-12-25' };
   return statementHtml(esc, s, '見本 講師', { sample: true });
 }
 
