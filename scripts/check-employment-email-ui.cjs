@@ -12,7 +12,9 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
    const u=new URL(req.url,'http://localhost');
    if(u.pathname.startsWith('/v2/')){
     const chunks=[];for await(const b of req)chunks.push(b);
-    const r=await h.call(u.pathname.slice(4),JSON.parse(Buffer.concat(chunks).toString()||'{}'));
+    const payload=JSON.parse(Buffer.concat(chunks).toString()||'{}');
+    if(u.pathname==='/v2/employment/save')report.checks.push({save:payload.staffId?'profile':'new',preparationNote:payload.data?.preparationNote||''});
+    const r=await h.call(u.pathname.slice(4),payload);
     res.setHeader('content-type','application/json');res.end(JSON.stringify(r));return;
    }
    const p=path.resolve(root,'.'+decodeURIComponent(u.pathname));
@@ -33,7 +35,8 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
  let owner;
  const send=async(form,route)=>{
   const response=owner.waitForResponse(r=>new URL(r.url()).pathname==='/v2/'+route&&r.request().method()==='POST');
-  await owner.locator(form+' button').click();await response;
+  await owner.locator(form+' button').click();const r=await (await response).json();
+  report.checks.push({route,ok:r.ok,code:r.error?.code});
   await owner.locator('button[disabled]').first().waitFor({state:'detached'});
  };
  try{
@@ -81,6 +84,6 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   report.checks.push('mobile draft saved/reloaded with no email or message','duplicate email rejected without record change','later email save sends nothing; explicit invite uses saved recipient','invited address protected; business access remains disabled');
   assert.deepEqual(report.errors,[]);assert.deepEqual(report.externalRequests,[]);
  }catch(e){report.failure=e.stack;if(owner)await owner.screenshot({path:path.join(out,'failure.png'),fullPage:true}).catch(()=>{});throw e;}
- finally{fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(report,null,2));await browser.close();await new Promise(r=>server.close(r));}
+ finally{console.log(JSON.stringify(report));fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(report,null,2));await browser.close();await new Promise(r=>server.close(r));}
  console.log(JSON.stringify(report));
 })().catch(e=>{console.error(e);process.exitCode=1;});
