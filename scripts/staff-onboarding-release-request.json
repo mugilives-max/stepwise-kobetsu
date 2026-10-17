@@ -1,9 +1,9 @@
 {
-  "operation": "inspect",
+  "operation": "publish",
   "source": "0fbb458510db99503feccd6dec56b3ebb01bc6f3",
   "checkRuns": [
     39020066179,
     39020068798
   ],
-  "authorization": "2026-10-17 user handed the onboarding flow fix to Claude and asked to keep working on GitHub while preserving existing records; read-only inspection of production before publishing PR #92."
+  "authorization": "2026-10-17 user handed the onboarding flow fix to Claude and asked to keep working on GitHub while preserving existing records; publish the reviewed Worker (PR #92) after a verified private backup. No migration."
 }
