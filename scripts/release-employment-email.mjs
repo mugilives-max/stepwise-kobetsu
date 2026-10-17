@@ -73,6 +73,36 @@ try{
  }
  const localMigrations=(await readdir(join(source,'cf/migrations-v2'))).filter(n=>n.endsWith('.sql')).sort();
  const applied=async()=> (await rows('SELECT name FROM d1_migrations ORDER BY name')).map(r=>r.name);
+ let concurrentOperationalChanges=[];
+ function verifyConcurrentOperations(state,current){
+  const different=Object.keys(state.columns).filter(t=>JSON.stringify(state.data[t])!==JSON.stringify(current[t]));
+  same(different.sort(),['auditLog','lessonRecords','lessons','sessions'],'Unexpected tables changed after publication.');
+  const objects=(data,t)=>data[t].map(s=>Object.fromEntries(state.columns[t].map((c,i)=>[c,JSON.parse(s)[i]])));
+  const changed=(table,key='id')=>{
+   const old=objects(state.data,table),now=objects(current,table),map=new Map(old.map(r=>[r[key],r]));
+   check(old.length===now.length&&new Set(now.map(r=>r[key])).size===old.length,'Unexpected row count in '+table);
+   return now.flatMap(r=>{const b=map.get(r[key]);check(b,'Existing row disappeared in '+table);return JSON.stringify(b)===JSON.stringify(r)?[]:[{before:b,after:r,columns:state.columns[table].filter(c=>JSON.stringify(b[c])!==JSON.stringify(r[c]))}];});
+  };
+  const oldAudit=new Set(state.data.auditLog),newAudit=new Set(current.auditLog);
+  check([...oldAudit].every(s=>newAudit.has(s)),'Previous audit history changed.');
+  const events=objects({auditLog:current.auditLog.filter(s=>!oldAudit.has(s))},'auditLog');
+  check(events.length===1,'Review new concurrent audit events.');
+  const event=events[0],detail=JSON.parse(event.detail),actors=objects(state.data,'staff');
+  check(event.action==='recordPublish'&&event.actorKind==='staff'&&actors.some(s=>s.id===event.actorId&&s.contractType==='owner'&&s.status==='active'),'Unexpected concurrent operation.');
+  check(Date.parse(event.at)>=Date.parse('2026-10-17T03:32:13.000Z')&&Date.parse(event.at)<=Date.now(),'Operation is not after verified publication.');
+  const records=changed('lessonRecords'),lessons=changed('lessons'),sessions=changed('sessions','tokenHash');
+  check(records.length===1&&lessons.length===1&&sessions.length===1,'Review additional concurrent changes.');
+  const rec=records[0],lesson=lessons[0],session=sessions[0];
+  same(rec.columns.sort(),['comment','publishedAt','publishedJson','status','updatedAt','version'],'Unexpected lesson record fields.');
+  check(rec.after.id===event.target&&rec.after.lessonId===detail.lessonId&&rec.after.status==='published'&&rec.before.status==='draft'&&rec.after.version===rec.before.version+1&&rec.after.updatedAt===event.at&&rec.after.publishedAt===event.at,'Lesson record does not match audit event.');
+  same(JSON.parse(rec.after.publishedJson),{range:rec.after.range,comment:rec.after.comment,parentMessage:rec.after.parentMessage},'Published record differs from recorded content.');
+  same(lesson.columns.sort(),['status','updatedAt','version'],'Unexpected lesson fields.');
+  check(lesson.after.id===detail.lessonId&&lesson.before.status==='decided'&&lesson.after.status==='done'&&lesson.after.version===lesson.before.version+1&&lesson.after.updatedAt===event.at,'Lesson transition does not match audit event.');
+  same(session.columns.sort(),['expiresAt','lastSeenAt'],'Unexpected session fields.');
+  check(Date.parse(session.after.lastSeenAt)-Date.parse(session.before.lastSeenAt)>3600e3&&Date.parse(session.after.expiresAt)-Date.parse(session.after.lastSeenAt)===30*86400e3&&Date.parse(session.after.lastSeenAt)<=Date.now(),'Unexpected session renewal.');
+  concurrentOperationalChanges=[{action:'recordPublish',count:1,previousAuditPreserved:true,lessonRecordAndStatusMatchAudit:true},{action:'sessionRenewal',count:1,identityAndPermissionsPreserved:true}];
+  console.log(JSON.stringify({concurrentOperationalChanges,contractConsentPayrollAndOtherTablesUnchanged:true}));
+ }
  async function assertMigrated(state){
   same(await applied(),localMigrations,'Migration set differs from reviewed source.');
   const migrationRows=await rows('SELECT * FROM d1_migrations ORDER BY id');
@@ -93,7 +123,10 @@ try{
    const oldSet=new Set(oldRows),newSet=new Set(newRows);
    console.log(JSON.stringify({recordDrift:table,beforeCount:oldRows.length,afterCount:newRows.length,removedOrChanged:oldRows.filter(r=>!newSet.has(r)).length,addedOrChanged:newRows.filter(r=>!oldSet.has(r)).length,changedColumns:[...changedColumns].sort()}));
   }
-  same(state.data,currentData,'Existing contract, consent, payroll or other records changed.');
+  if(request.operation==='pages'&&JSON.stringify(state.data)!==JSON.stringify(currentData)){
+   verifyConcurrentOperations(state,currentData);
+   await save('records-pages-after.json',Buffer.from(JSON.stringify({columns:state.columns,data:currentData})));
+  }else same(state.data,currentData,'Existing contract, consent, payroll or other records changed.');
  }
  stage='source and check verification';
  const pr=await gh('/pulls/85');check(pr.head.sha===sourceSha&&pr.head.repo.full_name===repo,'PR source changed.');
@@ -171,7 +204,7 @@ try{
    }
   }
   same(after,await deployed(),'Concurrent deployment during verification.');
-  const summary={source:sourceSha,operation:request.operation,backupPrefix:prefix,beforeVersion:before.versionId,workerVersion:after.versionId,privateBackupVerified:true,modulesMatch:true,migration,tablesChecked:Object.keys(state.columns).length,allExistingRecordsUnchanged:true,emailIndexAllowsEmpty:true,runtimeSettingsPreserved:true,anonymousRequestsReturnNoData:true,missingEmploymentDocumentReturns404:true,publicAssetsMatch:assets,termsActivated:false,messagesSent:false};
+  const summary={source:sourceSha,operation:request.operation,backupPrefix:prefix,beforeVersion:before.versionId,workerVersion:after.versionId,privateBackupVerified:true,modulesMatch:true,migration,tablesChecked:Object.keys(state.columns).length,allExistingRecordsUnchanged:concurrentOperationalChanges.length===0,existingContractConsentPayrollRecordsUnchanged:true,concurrentOperationalChanges,emailIndexAllowsEmpty:true,runtimeSettingsPreserved:true,anonymousRequestsReturnNoData:true,missingEmploymentDocumentReturns404:true,publicAssetsMatch:assets,termsActivated:false,messagesSent:false};
   await save('manifest-'+request.operation+'.json',Buffer.from(JSON.stringify({...manifest,after,summary})));
   console.log(JSON.stringify(summary));await writeFile(process.env.GITHUB_STEP_SUMMARY,'## Employment release verified\n\n'+JSON.stringify(summary,null,2)+'\n');
  }
