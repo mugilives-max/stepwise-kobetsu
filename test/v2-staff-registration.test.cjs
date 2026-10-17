@@ -40,6 +40,10 @@ test('new employee starts with name/email only, registers own name and informati
  assert.deepEqual(h.rows('select * from employmentContracts'),contracts);assert.deepEqual(h.rows('select * from payrollMonths'),payroll);assert.deepEqual(h.rows('select * from staffRates'),rates);assert.deepEqual(h.rows('select * from staff'),staffBefore);assert.equal(h.mails().length,mails);
  const contract=(await h.ok('employment/contract/create',{auth,staffId:staff.id,version:d.profile.version,method:'electronic'})).contract;
  assert.equal(contract.snapshot.staffName,staff.name);
+ assert.doesNotMatch(contract.snapshot.text,/土曜日13時〜15時/,'勤務希望は契約書に載せない（シフトのメモ）');
+ assert.doesNotMatch(contract.snapshot.text,/扶養控除等申告書：|提出状況の確認日：/,'甲欄・乙欄は契約書に書かない（給与の設定）');
+ assert.match(contract.snapshot.text,/塾全体の勤務時間帯：平日18:00〜22:00、土日8:00〜22:00。/,'勤務時間帯は全員共通');
+ assert.match(contract.snapshot.text,/講師の勤務の目安：週5時間/);
  await w.submit({data:{...w.data,address:'【テスト】新住所'}});
  assert.equal((await h.call('employment/contract/issue',{auth,id:contract.id,version:contract.version,hash:contract.contentHash,agree:true})).error.code,'needRegistration');
  assert.deepEqual(h.rows('select snapshot from employmentContracts where id=?',contract.id)[0].snapshot,JSON.stringify(contract.snapshot));

@@ -152,7 +152,7 @@ function nextStep(ctx,d,owner){
   if(d.staff.status==='invited'){title=d.profile?.invitedAt?'本人のアカウント設定待ち':'まず招待メールを送ってください';body=d.profile?.invitedAt?'本人がパスワードを設定すると、本人情報の登録に進めます。':'氏名や住所は、招待後に本人が入力します。';wait=!!d.profile?.invitedAt;}
   else if(g.pending){title='登録内容を確認してください';body='問題がなければ「この内容で受け付ける」を押してください。直してほしいところがあれば「修正をお願いする」から本人に伝えます。';}
   else if(g.required&&(!g.accepted||g.returned)){title='本人情報の登録待ち';body=g.returned?'修正した情報の登録し直しを待っています。':'本人の画面に登録欄を表示しています。';wait=true;}
-  else {title='勤務条件と契約の準備を進めてください';body='本人と勤務希望を確認して勤務条件を保存し、契約書の発行・交付へ進めます。';}
+  else {title='契約の条件と契約書を準備してください';body='「契約の条件」を保存して、契約書の案を作ってください。そのあと給与の設定、振込先、初日の勤務予定へ進みます。';}
  }else{
   const stage=stageOf(d);
   if(stage==='register'){title=g.returned?'本人情報を直して登録し直してください':'まず本人情報を登録してください';body=g.returned?'修正してほしい点を下に表示しています。':'下の欄に氏名・現住所などを入力し、「本人情報を登録する」を押してください。';}
@@ -175,22 +175,53 @@ const FLOW='<p class="small">手続きの順番：本人情報の登録 → 代�
 function profile(ctx,d,owner){
  const {esc}=ctx,p=d.profile?.data||{};
  if(!owner)return '<details><summary>自分の雇用情報</summary><p>'+esc(d.staff.name)+'<br>'+esc(p.startDate||'未登録')+'〜'+esc(p.endDate||'未登録')+'<br>'+(p.availability?'勤務希望：'+esc(p.availability):'')+'</p><p>誤りがある場合は塾へお知らせください。</p></details>';
- return '<details'+(d.registration?.required&&!d.registration.accepted?'':' open')+'><summary>勤務条件・代表の確認事項</summary><form class="stack" data-form="em-profile" data-staff="'+esc(d.staff.id)+'" data-version="'+(d.profile?.version||0)+'">'+
- (d.registration?.required?'':field(esc,'address','住所（以前の登録情報）',p.address))+
- '<div class="row">'+field(esc,'startDate','契約開始日',p.startDate||'','date')+field(esc,'endDate','契約終了日',p.endDate||'','date')+'</div>'+
- field(esc,'workWindow','塾全体の勤務時間帯（本人と確認）',p.workWindow||'')+
- field(esc,'weeklyHours','勤務時間の目安',p.weeklyHours||'週5〜6時間ほど。')+
- area(esc,'availability','勤務希望（本人と確認した、勤務できる曜日・時間）',p.availability||'')+
- (d.registration?.required?'':area(esc,'otherWork','他の勤務先・勤務時間（ない場合は「なし」）',p.otherWork))+
- select(esc,'taxDeclaration','扶養控除等申告書の確認',[['','未確認'],['submitted','塾に提出する（甲欄）'],['notSubmitted','塾に提出しない（乙欄）']],p.taxDeclaration)+
- field(esc,'dependents','扶養人数（甲欄の場合は0人も入力）',p.dependents||'','number')+
- field(esc,'taxCheckedOn','申告書の確認日',p.taxCheckedOn,'date')+
- area(esc,'preparationNote','勤務条件・未確定事項を確認した内容',p.preparationNote)+
- check(esc,'conditionsChecked','契約ひな形の確認事項と、この講師の勤務条件を確認した',p.conditionsChecked)+
- check(esc,'bankConsentChecked','別途受領した振込先・振込同意を確認した（本人画面での電子提出とは別の記録）',p.bankConsentChecked)+
- area(esc,'insuranceNote','労働保険等の確認状況・次の手続き',p.insuranceNote)+
- check(esc,'insuranceChecked','必要な事業所の届出・保険の確認を済ませた',p.insuranceChecked)+
- '<p class="small muted">口座番号は「給与の振込先」で本人が入力します。マイナンバーはこの画面に入力しません。保存だけではメール送信・契約締結を行いません。</p><button class="primary"'+ctx.dis()+'>勤務条件を保存</button></form></details>';
+ return '';
+}
+const today2=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+const card=(title,help,body)=>'<section class="reg-card"><div class="reg-card-head"><h2>'+title+'</h2></div>'+(help?'<p class="reg-help" style="margin-top:2px">'+help+'</p>':'')+body+'</section>';
+const fset=(legend,body,help='')=>'<fieldset class="reg-field"><legend>'+legend+'</legend>'+body+(help?'<p class="reg-help">'+help+'</p>':'')+'</fieldset>';
+const formAttrs=(name,d)=>' class="reg-form" style="margin-top:10px" data-form="'+name+'" data-staff="'+d.staff.id+'" data-version="'+(d.profile?.version||0)+'"';
+// 1. 契約の条件（契約書に載る）
+function ownerTerms(ctx,d){
+ const {esc}=ctx,p=d.profile?.data||{},legacy=!d.registration?.required,req=' <span class="req">必須</span>';
+ return card('契約の条件','契約書に載る条件です。勤務の日と時間は毎月のシフトで決めます。塾全体の勤務時間帯（平日18:00〜22:00、土日8:00〜22:00）は全員共通です。',
+  '<form'+formAttrs('em-terms',d)+'>'+
+  fset('契約期間'+req,'<div class="row" style="flex-wrap:nowrap;gap:10px"><label class="sub" style="flex:1 1 0;min-width:0">開始日<input type="date" name="startDate" required value="'+esc(p.startDate||'')+'"></label><label class="sub" style="flex:1 1 0;min-width:0">終了日<input type="date" name="endDate" required value="'+esc(p.endDate||'')+'"></label></div>')+
+  fset('勤務時間の目安'+req,'<input name="weeklyHours" required maxlength="500" value="'+esc(p.weeklyHours||'週5〜6時間ほど。')+'">')+
+  (legacy?fset('住所（契約書に載ります）','<input name="address" maxlength="500" value="'+esc(p.address||'')+'">')+fset('ほかの勤務先（契約書の申告欄）','<textarea name="otherWork" rows="2" maxlength="1500">'+esc(p.otherWork||'')+'</textarea>')
+   :'<p class="reg-help" style="margin:0">住所とほかの勤務先は、本人の登録内容が契約書に入ります。</p>')+
+  '<button class="primary wide"'+ctx.dis()+'>契約の条件を保存</button></form>');
+}
+// 2. 給与の設定（源泉徴収の区分と時給。契約書には載らない）
+function ownerPay(ctx,d){
+ const {esc}=ctx,p=d.profile?.data||{},g=d.registration||{requests:[]},reg=g.requests.find(x=>x.id===g.acceptedId)?.data;
+ const pending=d.checks.filter(x=>x.startsWith('給与の設定'));
+ const radio=(v,t,sub)=>'<label class="choice"><input type="radio" name="taxDeclaration" value="'+v+'" required'+(p.taxDeclaration===v?' checked':'')+'><span>'+t+(sub?'<small>'+sub+'</small>':'')+'</span></label>';
+ return card('給与の設定','源泉徴収の区分と時給です。契約書には載りません。最初の給与の前に済ませてください。'+(pending.length?'':'<br><strong>設定済みです。</strong>'),
+  '<form'+formAttrs('em-pay',d)+'>'+
+  fset('扶養控除等申告書','<div class="choices">'+radio('submitted','塾に出す（甲欄）','ほかの勤務先に出していない人')+radio('notSubmitted','塾には出さない（乙欄）','ほかの勤務先に出している人など')+'</div>',reg?.taxSituation?'本人の回答：'+esc({otherEmployer:'ほかの勤務先に出している',noneElsewhere:'ほかの勤務先には出していない',unknown:'分からない・確認中'}[reg.taxSituation]||''):'')+
+  fset('扶養人数（甲欄のとき）','<input type="number" name="dependents" min="0" max="7" style="max-width:8em" value="'+esc(p.dependents||'')+'">','甲欄のときは 0 人でも入れてください。')+
+  fset('確認した日','<input type="date" name="taxCheckedOn" required style="max-width:12em" value="'+esc(p.taxCheckedOn||today2())+'">')+
+  '<p class="reg-help" style="margin:0">時給は授業・その他の業務とも 2,000円です（面談は当面なし）。保存すると、この時給と源泉徴収の区分が給与に入ります。<a href="#rates">時給・源泉徴収の履歴</a></p>'+
+  '<button class="primary wide"'+ctx.dis()+'>給与の設定を保存</button></form>');
+}
+// 3. シフトのメモ（予定を組むときの参考。契約書には載らない）
+function ownerShift(ctx,d){
+ const {esc}=ctx,p=d.profile?.data||{};
+ return card('シフトのメモ','勤務できる曜日・時間など、予定を組むときの参考です。契約書には載りません。',
+  '<form'+formAttrs('em-shift',d)+'><textarea name="availability" rows="3" maxlength="500" placeholder="例：土曜は15時まで、日曜は終日。金曜は不可">'+esc(p.availability||'')+'</textarea><button'+ctx.dis()+'>メモを保存</button></form>');
+}
+// 4. 勤務開始までにすること（代表のやることリスト。残りがなくなったら業務画面を使えるようにする）
+function ownerTodo(ctx,d,{memoOnly=false}={}){
+ const {esc}=ctx,p=d.profile?.data||{},legacy=!d.registration?.required;
+ const list=memoOnly?'':(d.checks.length?'<ul class="todo-list">'+d.checks.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'<p><strong>すべて済んでいます。</strong></p>');
+ const box=(name,label,on)=>'<label class="choice"><input type="checkbox" name="'+name+'"'+(on?' checked':'')+'><span>'+label+'</span></label>';
+ return card('勤務開始までにすること',memoOnly?'':'残っていることです。済んだものは自動で消えます。',
+  list+'<form'+formAttrs('em-todo',d)+'>'+
+  (memoOnly?'':'<div class="choices">'+box('insuranceChecked','労働保険（労災保険など）の届出・確認を済ませた',p.insuranceChecked)+(legacy?box('bankConsentChecked','振込先と振込への同意を、紙などで受け取って確認した（本人の画面での登録とは別）',p.bankConsentChecked):'')+'</div>')+
+  fset('メモ（代表だけが見ます）','<textarea name="preparationNote" rows="3" maxlength="500">'+esc(p.preparationNote||'')+'</textarea>'+(p.insuranceNote?'<p class="reg-help">以前のメモ：'+esc(p.insuranceNote)+'</p>':''))+
+  '<button'+ctx.dis()+'>保存</button></form>'+
+  (!memoOnly&&!d.staff.employmentAccess?'<button class="primary wide" style="margin-top:10px" data-action="em-activate"'+(d.checks.length?' disabled':ctx.dis())+'>業務画面を使えるようにする</button>':''));
 }
 function contractCard(ctx,r,owner){
  const {esc}=ctx,a=attrs(r),s=r.snapshot;
@@ -257,18 +288,16 @@ export function employmentPage(ctx,me,id='',opts={}){
   h+='<h1>'+esc(d.staff.name)+' さんの雇用・勤務</h1>';
   h+='<p><a href="#employment">講師一覧へ</a></p>'+stepper(d)+nextStep(ctx,d,true);
   if(d.registration?.pending)return h+ownerReview(ctx,d);
-  h+=invitation(ctx,d)+personalInfo(ctx,d,true)+profile(ctx,d,true);
+  h+=invitation(ctx,d)+personalInfo(ctx,d,true);
   const regOpen=d.registration?.required&&(!d.registration.accepted||d.registration.pending||d.registration.returned);
-  h+='<h2>契約書・締結の控え</h2>'+(regOpen?'<p class="small muted">本人情報の確認が済むと、ここで契約書の案を作れます。</p>':'<p class="small">保存済みの勤務条件から案を作成します。発行・交付・合意をそれぞれ記録し、古い版も残します。</p><form class="stack" data-form="em-create" data-version="'+(d.profile?.version||0)+'">'+select(esc,'method','締結方法',[['','方法を選んでください'],['paper','紙で署名する'],['electronic','電子で同意する']])+'<button'+ctx.dis()+'>保存済みの条件から契約書案を作る</button></form>');
+  if(!regOpen)h+=ownerTerms(ctx,d);
+  h+='<h2>契約書・締結の控え</h2>'+(regOpen?'<p class="small muted">本人情報の確認が済むと、ここで契約書の案を作れます。</p>':'<p class="small">保存した契約の条件から案を作ります。発行・交付・合意をそれぞれ記録し、古い版も残します。</p><form class="stack" data-form="em-create" data-version="'+(d.profile?.version||0)+'">'+select(esc,'method','締結方法',[['','方法を選んでください'],['paper','紙で署名する'],['electronic','電子で同意する']])+'<button'+ctx.dis()+'>保存済みの条件から契約書案を作る</button></form>');
   h+=d.contracts.map(r=>contractCard(ctx,r,true)).join('')||'<p>契約書はまだありません。</p>';
   if(d.events?.length)h+='<details><summary>交付・同意の履歴</summary><ul>'+d.events.map(e=>'<li>'+esc(e.action)+'：'+esc(at(e.actualAt))+'／記録 '+esc(at(e.recordedAt))+' '+esc(e.actorName)+'</li>').join('')+'</ul></details>';
   // 本人情報の確認前は、給与・勤務の準備を出さない（本人の画面と同じ順番。すでに勤務の記録がある場合だけ勤務の欄を残す）
-  if(regOpen)return h+'<h2>給与・勤務の準備</h2><p class="small muted">振込先・給与の設定・勤務予定は、本人情報の確認が済んでから進めます。</p>'+(d.days?.length||d.requests?.length?workSection(ctx,d,true,true):'');
-  h+='<h2>給与の準備</h2>'+linkRow(esc,'#bank='+d.staff.id,'給与の振込先',d.bank?.pending?'確認してください（本人が登録済み）':d.bank?.returned?'本人の登録し直し待ち':d.bank?.accepted?'確認済み':'本人の登録待ち');
-  h+='<p>契約の時給は授業・その他業務とも2,000円、面談は当面担当せず未設定です。</p><form class="stack" data-form="em-payroll">'+check(esc,'agree','確認済みの申告書区分と契約の時給を給与設定へ反映する')+'<button'+ctx.dis()+'>契約に合わせて給与を設定</button></form><p><a href="#rates">時給・源泉徴収の履歴を確認</a></p>';
-  h+='<details><summary>業務画面を利用する前の確認</summary><ul>'+d.checks.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>'+(d.checks.length?'':'準備項目の確認がそろっています。');
-  if(!d.staff.employmentAccess)h+='<button data-action="em-activate"'+ctx.dis()+'>準備を確認して業務画面を利用可能にする</button>';
-  h+='</details>'+workSection(ctx,d,true,true);
+  if(regOpen)return h+ownerTerms(ctx,d)+ownerTodo(ctx,d,{memoOnly:true})+'<h2>給与・勤務の準備</h2><p class="small muted">振込先・給与の設定・勤務予定は、本人情報の確認が済んでから進めます。</p>'+(d.days?.length||d.requests?.length?workSection(ctx,d,true,true):'');
+  h+='<h2>給与</h2>'+linkRow(esc,'#bank='+d.staff.id,'給与の振込先',d.bank?.pending?'確認してください（本人が登録済み）':d.bank?.returned?'本人の登録し直し待ち':d.bank?.accepted?'確認済み':'本人の登録待ち')+ownerPay(ctx,d)+ownerShift(ctx,d)+ownerTodo(ctx,d);
+  h+=workSection(ctx,d,true,true);
   return h;
  }
  // 本人: 段階に合わせて、今の操作に関係するものだけを出す
@@ -370,7 +399,21 @@ export async function employmentSubmit(ctx,kind,el){
   }
   else if(kind==='em-registration-confirm'){if(!regDraft){regStep='input';return true;}route='employment/registration/submit';body={version:Number(el.dataset.version),confirm:true,data:regDraft};msg='登録が完了しました。';}
   else if(kind==='em-registration-accept'||kind==='em-registration-return'){route='employment/registration/review';body={...b,requestId:el.dataset.request,profileVersion:Number(el.dataset.profileVersion),outcome:kind==='em-registration-accept'?'accepted':'returned',confirm:kind==='em-registration-accept',reason:v.reason,nameDecision:v.nameDecision||''};msg=kind==='em-registration-accept'?'本人情報を確認して反映しました。本人と勤務希望を確認し、勤務条件を設定してください。':'修正依頼を記録しました。';}
-  else if(kind==='em-profile'){route='employment/save';body={...b,data:{...v,...Object.fromEntries(['conditionsChecked','bankConsentChecked','insuranceChecked'].map(k=>[k,el.elements.namedItem(k).checked]))}};}
+  else if(kind==='em-terms'){route='employment/save';body={...b,data:Object.fromEntries(['startDate','endDate','weeklyHours','address','otherWork'].filter(k=>k in v).map(k=>[k,v[k]]))};msg='契約の条件を保存しました';}
+  else if(kind==='em-shift'){route='employment/save';body={...b,data:{availability:v.availability}};msg='シフトのメモを保存しました';}
+  else if(kind==='em-todo'){route='employment/save';const data={preparationNote:v.preparationNote};for(const k of ['insuranceChecked','bankConsentChecked']){const e=el.elements.namedItem(k);if(e)data[k]=e.checked;}body={...b,data};}
+  else if(kind==='em-pay'){
+   if(!v.taxDeclaration)throw Error('扶養控除等申告書の区分を選んでください');
+   if(v.taxDeclaration==='submitted'&&v.dependents==='')throw Error('甲欄のときは扶養人数を入れてください（0 人でも）');
+   const p=cache.profile?.data;if(!p?.startDate)throw Error('先に「契約の条件」で契約期間を保存してください');
+   let r=await ctx.call('employment/save',{staffId:cache.staff.id,version:Number(el.dataset.version),data:{taxDeclaration:v.taxDeclaration,dependents:v.taxDeclaration==='submitted'?v.dependents:'',taxCheckedOn:v.taxCheckedOn}});
+   if(!r.ok)throw Error(r.error.message);
+   r=await ctx.call('payroll/rates/save',{staffId:cache.staff.id,startsOn:p.startDate.slice(0,7),lessonHourly:2000,meetingHourly:null});
+   if(!r.ok)throw Error('申告書の区分は保存しました。時給は確認が必要です：'+r.error.message);
+   r=await ctx.call('payroll/withholding',{staffId:cache.staff.id,version:cache.staff.version,taxColumn:v.taxDeclaration==='submitted'?'kou':'otsu',dependents:Number(v.dependents||0)});
+   if(!r.ok)throw Error('時給は保存しました。源泉徴収の区分は確認が必要です：'+r.error.message);
+   drafts.delete(formKey(el));cache=null;ctx.say('給与の設定を保存しました','ok');return true;
+  }
   else if(kind==='em-email'){route='employment/email';msg='メールアドレスを保存しました。メールは送っていません。';}
   else if(kind==='em-create')route='employment/contract/create';
   else if(kind==='em-issue')route='employment/contract/issue';
