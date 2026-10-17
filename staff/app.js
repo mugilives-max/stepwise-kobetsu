@@ -1,5 +1,5 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-bank';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-registration';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-onboarding';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
@@ -61,7 +61,7 @@ const ICON = {
 };
 function navItems() {
   if (!me) return [];
-  if(me.employmentAccess===false)return [['employment','雇用・勤務','settings'],['payroll','給与'],['settings','設定']];
+  if(me.employmentAccess===false)return [['employment','雇用・勤務','settings'],['settings','設定']]; // 入職の手続き中は、手続きの画面だけ（給与明細は契約のあとに雇用・勤務の中から）
   const m = me.roles.includes('manager'), t = me.roles.includes('teacher');
   if (m) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['monthly', '月の仕事'], ['settings', '設定']];
   if (t) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['payroll', '給与'], ['settings', '設定']];
@@ -263,7 +263,12 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && rou
 // ---------- 操作 ----------
 const form = el => Object.fromEntries(new FormData(el).entries());
 const checked = (el, name) => Array.from(el.querySelectorAll(`input[name="${name}"]:checked`)).map(i => i.value);
-function signedIn(r) { store.set(r.auth); me = r.me; inviteInfo = null; staffList = null; say(''); location.hash = me.employmentAccess===false?'#employment':'#home'; }
+function signedIn(r) {
+  store.set(r.auth); me = r.me; inviteInfo = null; staffList = null; say('');
+  const target = me.employmentAccess===false?'#employment':'#home';
+  // 招待・再設定のリンクから入ったときは、その画面を履歴に残さない（戻るで使用済みの招待画面へ戻らないように）
+  if (['invite', 'reset'].includes(route().page)) { trail = []; location.replace(location.pathname + location.search + target); } else location.hash = target;
+}
 
 app.addEventListener('submit', ev => {
   ev.preventDefault();
@@ -342,7 +347,7 @@ window.addEventListener('hashchange', () => {
   if (pg !== lastPage) {
     const i = trail.lastIndexOf(hash);
     if (i >= 0) trail = trail.slice(0, i); // 戻ってきた
-    else if (!parentOf(route())) trail = []; // 入口を開いた
+    else if (!parentOf(route()) || /^#(invite|reset|forgot)/.test(lastHash)) trail = []; // 入口を開いた・ログイン前の画面から来た
     else trail.push(lastHash);
   }
   lastHash = hash; staffOpen = '';
