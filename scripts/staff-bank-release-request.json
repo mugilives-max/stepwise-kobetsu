@@ -1,0 +1,9 @@
+{
+  "operation": "inspect",
+  "source": "d2470ad41af268387520ddafc3ca5249cd8bac34",
+  "checkRuns": [
+    39003179069,
+    39003191465
+  ],
+  "authorization": "2026-10-17: user explicitly requested implementation and production release, preserving existing contract, consent and payroll records."
+}
