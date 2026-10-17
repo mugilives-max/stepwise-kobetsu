@@ -50,7 +50,8 @@ export function docsPage(ctx) {
 // 受講規約（設定 → 受講規約）。2026-10-18 本人「マジで何がどうなっているのか意味が分かりません」→ 作り直し:
 // いま保護者に同意をお願いしている規約（なし／公開中・同意 n/N 家族）→ 公開できる規約（サイトの正式版。terms/versions.json）→ 家族ごとの同意。
 // 公開は「この規約を公開する」→ 公開するとどうなるかの確認 → 公開する、の 2 段階。版の名前や URL を手で打たない
-const jaDay = v => /^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? `${Number(v.slice(0, 4))}年${Number(v.slice(5, 7))}月${Number(v.slice(8, 10))}日` : '';
+// 日付だけ（YYYY-MM-DD）はそのまま、日時（ISO）は日本の日付にする
+const jaDay = v => { let d = String(v || ''); if (d.length > 10 && !Number.isNaN(Date.parse(d))) d = new Date(Date.parse(d) + 9 * 3600e3).toISOString(); return /^\d{4}-\d{2}-\d{2}/.test(d) ? `${Number(d.slice(0, 4))}年${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日` : ''; };
 const kv = (esc, rows) => '<dl class="reg-rows">' + rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('') + '</dl>';
 export function termsPage(ctx) {
   const { esc } = ctx;

@@ -170,6 +170,7 @@ function nextStep(ctx,d,owner){
   else if(stage==='contract'){title=issued.deliveredAt?'届いた契約書を確認してください':issued.preferenceAt?'契約書の交付待ちです':'契約書と受け取り方法を確認してください';body=issued.deliveredAt?'受け取った書面を保存し、内容を確認してから、この版への同意を行ってください。':issued.preferenceAt?'指定した受け取り先に契約書をお送りします。':'下の契約書を開き、電子または紙で受け取る方法を確認してください。';wait=!!issued.preferenceAt&&!issued.deliveredAt;}
   else if(stage==='prepare'){title='契約書を準備しています';body='契約書ができたら、この画面でお知らせします。その間に、給与の振込先を登録できます。';}
   else if(!d.bank?.accepted){title=d.bank?.pending?'振込先を確認しています':'給与の振込先を登録してください';body=d.bank?.pending?'確認が終わると、勤務予定の確認に進みます。':'下の「給与の振込先」から口座を登録してください。';}
+  else if(stage==='start'&&!d.rulesReadAt){title='講師のきまりを読んでください';body='日々の仕事のやり方です。下の「講師のきまり」から読んで、「読みました」を押してください。';}
   else {const plan=d.days?.find(x=>x.planVersion&&x.planVersion!==x.planAgreedVersion);title=plan?'勤務予定を確認してください':d.staff.employmentAccess?'入職の準備が整っています':'初日の勤務予定を準備しています';body=plan?'下に表示された勤務日を開き、予定を確認してください。':'予定が登録されると、この画面で確認できます。実際に働いた時間も勤務日から登録します。';wait=!plan&&!d.staff.employmentAccess;}
  }
  return '<section class="notice" style="overflow-wrap:anywhere"><h2 style="margin-top:0">'+ctx.esc(title)+'</h2><p>'+ctx.esc(body)+'</p>'+'</section>';
@@ -407,7 +408,7 @@ export function employmentPage(ctx,me,id='',opts={}){
   return h+extra();
  }
  if(stage==='start'){
-  h+='<h2>勤務開始の準備</h2>'+bankLink(esc,d)+'<h2>勤務予定</h2>'+plannedDays(ctx,d);
+  h+='<h2>勤務開始の準備</h2>'+bankLink(esc,d)+linkRow(esc,'#rules','講師のきまり',d.rulesReadAt?'読みました':'勤務を始める前に読んでください')+'<h2>勤務予定</h2>'+plannedDays(ctx,d);
   if(d.requests?.length||d.days?.some(x=>x.status!=='draft'||!x.planVersion))h+=workSection(ctx,d,false,false);
   return h+contracts()+extra();
  }
