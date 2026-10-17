@@ -1,9 +1,9 @@
 {
-  "operation": "publish",
-  "source": "f91c7a64202ef7595d17c8d44970ec69d36c88cd",
+  "operation": "inspect",
+  "source": "623410ce41b79ac9a172c1236d871057dfcfad52",
   "checkRuns": [
-    39043929172,
-    39043942831
+    39044224982,
+    39044228605
   ],
-  "authorization": "2026-10-18 the employment contract body should show the contract period as 2026年11月1日から2027年3月31日まで。 (PR #107); agent deploys Worker changes without confirmation (standing permission). Inspection run 39044050138 passed (Worker 53077293 matches PR #105 source, no pending migration, 53 tables). Publish with private backup; no record changes."
+  "authorization": "2026-10-18 the employment contract body should show the contract period as 2026年11月1日から2027年3月31日まで。 (PR #107, merged with main after PR #108); agent deploys Worker changes without confirmation (standing permission). Publish run 39044141242 stopped before any write because main moved; read-only inspection again."
 }
