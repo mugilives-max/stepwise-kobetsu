@@ -1,20 +1,19 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-pending';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-stopped';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-docs';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
 import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261014-names';
-import { migratePage, migrateClick, migrateSubmit, resetMigrate } from '/staff/migrate.js?v=20261008-launch1';
 import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261016-notices';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261016-stages';
 import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261016-notices';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261016-stages';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261016-stages';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261017-employment';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261017-docs';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll } from '/staff/payroll.js?v=20261017-employment';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
-import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261016-notices';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261017-docs';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { billingPick } from '/staff/billing.js?v=20261016-notices';
@@ -27,7 +26,7 @@ let lastPage = '';
 let me = null, busy = false, notice = null, staffList = null, shownLink = null, bootstrap = null, staffOpen = '';
 
 // 上の帯に出す画面の名前（本文には大見出しを置かない）
-const PAGE_TITLE = { bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', migrate: '移行と切り替え', records: '記録', terms: '受講規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信の記録と控え' };
+const PAGE_TITLE = { bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: '受講規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信の記録と控え' };
 const legacyToken = () => { try { return localStorage.getItem('sw_admt') || ''; } catch { return ''; } };
 function route() {
   const h = location.hash;
@@ -76,7 +75,7 @@ function tabOf(page) {
   if (['plans', 'billing'].includes(page)) return 'monthly';
   if (page === 'payroll') return m ? 'monthly' : 'payroll';
   if (me && me.employmentAccess === false && ['bank', 'employment', 'work'].includes(page)) return 'employment'; // 入職の手続き中は、手続きの画面が入口（振込先・勤務の日はその下）
-  if (['bank','employment','work','staff','staff-stopped','employment-stopped','employment-new', 'migrate', 'account', 'rates', 'kinds', 'terms', 'effects'].includes(page)) return 'settings';
+  if (['bank','employment','work','staff','staff-stopped','employment-stopped','employment-new', 'account', 'rates', 'kinds', 'terms', 'effects'].includes(page)) return 'settings';
   return page;
 }
 // 戻る（入口の下の画面の左上）。来た道をたどる。直接開いたときは、その画面の入口へ
@@ -178,7 +177,7 @@ function staffPage(stopped = false) {
   if (shownLink) h += `<div class="notice ok"><p>${esc(shownLink.name)} さんに招待のメールを送りました。届かないときは、このリンクを LINE などで渡してください（7日有効・1回だけ使えます）。</p><p class="copy">${esc(shownLink.url)}</p><button data-action="copy-link"${dis()}>リンクをコピー</button></div>`;
   if (list.length) h += '<div class="group" style="margin-top:12px">' + list.map(s => rowButton(esc, 'st-open', { id: s.id }, `${esc(s.name)} <span class="tag ${s.status === 'active' ? '' : s.status === 'invited' ? 'warn' : 'gray'}">${STATUS_LABEL[s.status] || s.status}</span>`,
     esc(s.roles.map(r => ROLE_LABEL[r] || r).join('・') + (s.email ? '・' + s.email : '')))).join('') + '</div>';
-  if (!stopped && stoppedCount) h += `<div class="group" style="margin-top:12px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#staff-stopped"><span class="v"><span class="lbl">停止中のアカウント</span><small>${stoppedCount}件・ふだんの一覧には出しません</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
+  if (!stopped && stoppedCount) h += `<div class="group" style="margin-top:12px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#staff-stopped"><span class="v"><span class="lbl">停止中のアカウント</span><small>${stoppedCount}件</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
   if (!stopped) h += `<p style="margin-top:12px"><button data-action="st-open" data-id="new"${dis()}>＋ スタッフを招待する</button></p><p class="small muted">講師は担当の授業と生徒だけ、教室管理者は運営のすべて、システム管理者は設定とアカウントを扱えます。</p>`;
   if (staffOpen === 'new') {
     h += sheet(esc, 'スタッフを招待する', `<form class="stack" data-form="invite-staff"><div class="row"><label style="flex:1">姓<input name="familyName" maxlength="30" required></label><label style="flex:1">名<input name="givenName" maxlength="30"></label></div>
@@ -199,8 +198,8 @@ async function loadStaff() {
   if (!r.ok) { if (r.error.code === 'needLogin') return signedOut(); say(r.error.message, 'error'); staffList = []; } else staffList = r.staff;
   render();
 }
-function signedOut() { store.set(''); me = null; resetBank(); resetEmployment(); resetExtras(); resetFamilies(); resetMigrate(); resetSchedule(); resetRecords(); resetBilling(); resetGrades(); resetPayroll(); resetToday(); resetStudents(); say('ログインし直してください', 'error'); render(); }
-// 各ページ（families.js・migrate.js）に渡す共通の道具
+function signedOut() { store.set(''); me = null; resetBank(); resetEmployment(); resetExtras(); resetFamilies(); resetSchedule(); resetRecords(); resetBilling(); resetGrades(); resetPayroll(); resetToday(); resetStudents(); say('ログインし直してください', 'error'); render(); }
+// 各ページ（families.js など）に渡す共通の道具
 const ctx = {
   call: (route, body = {}) => call(route, body, store.get()), esc, render: () => render(), dis: () => dis(), notice: () => noticeHtml(),
   say: (m, k) => say(m, k), handleAuth: r => { if (r && r.error && r.error.code === 'needLogin') { signedOut(); return true; } return false; },
@@ -239,7 +238,6 @@ function render() {
   else if (r.page === 'terms' && me.roles.includes('manager')) h = termsPage(ctx);
   else if (r.page === 'docs' && me.roles.includes('manager')) h = docsPage(ctx);
   else if (r.page === 'effects' && me.roles.includes('manager')) h = effectsPage(ctx);
-  else if (r.page === 'migrate' && me.roles.includes('sysadmin')) h = migratePage(ctx);
   else if (r.page === 'monthly' && me.roles.includes('manager')) h = monthlyPage(ctx);
   else if (r.page === 'settings') h = settingsPage(ctx, me);
   else h = r.page === 'account' ? accountPage() : r.page === 'staff' ? staffPage() : r.page === 'staff-stopped' ? staffPage(true) : (me.roles.includes('manager') || me.roles.includes('teacher')) ? todayPage(ctx, me) : settingsPage(ctx, me);
@@ -288,7 +286,7 @@ app.addEventListener('submit', ev => {
   const submitter = ev.submitter;
   captureRecordInputs(); // 記録の画面の書きかけを、描き直す前に覚えておく
   run(async () => {
-    if (await bankSubmit(ctx, kind, el) || await employmentSubmit(ctx, kind, el) || await studentsSubmit(ctx, kind, el) || await extrasSubmit(ctx, kind, el) || await familiesSubmit(ctx, kind, el) || await scheduleSubmit(ctx, kind, el) || await recordsSubmit(ctx, kind, el, { submitter }) || await billingSubmit(ctx, kind, el) || await gradesSubmit(ctx, kind, el) || await payrollSubmit(ctx, kind, el) || await migrateSubmit(ctx, kind, el)) return;
+    if (await bankSubmit(ctx, kind, el) || await employmentSubmit(ctx, kind, el) || await studentsSubmit(ctx, kind, el) || await extrasSubmit(ctx, kind, el) || await familiesSubmit(ctx, kind, el) || await scheduleSubmit(ctx, kind, el) || await recordsSubmit(ctx, kind, el, { submitter }) || await billingSubmit(ctx, kind, el) || await gradesSubmit(ctx, kind, el) || await payrollSubmit(ctx, kind, el)) return;
     let r;
     if (kind === 'login') { r = await call('staff/login', v); if (r.ok) return signedIn(r); }
     else if (kind === 'forgot') { r = await call('staff/reset/request', v); if (r.ok) return say(r.message, 'ok'); }
@@ -327,7 +325,7 @@ document.addEventListener('click', ev => {
   if (a === 'gr-resolve') { const sel = document.querySelector(`[data-resolve-exam="${b.dataset.id}"]`); b.dataset.exam = sel ? sel.value : ''; }
   captureRecordInputs();
   run(async () => {
-    if (await bankClick(ctx,a,b) || await employmentClick(ctx,a,b) || await studentsClick(ctx, a, b) || await todayClick(ctx, a, b) || await extrasClick(ctx, a, b) || await familiesClick(ctx, a, b) || await migrateClick(ctx, a) || await scheduleClick(ctx, a, b) || await recordsClick(ctx, a, b) || await billingClick(ctx, a, b) || await gradesClick(ctx, a, b) || await payrollClick(ctx, a, b)) return;
+    if (await bankClick(ctx,a,b) || await employmentClick(ctx,a,b) || await studentsClick(ctx, a, b) || await todayClick(ctx, a, b) || await extrasClick(ctx, a, b) || await familiesClick(ctx, a, b) || await scheduleClick(ctx, a, b) || await recordsClick(ctx, a, b) || await billingClick(ctx, a, b) || await gradesClick(ctx, a, b) || await payrollClick(ctx, a, b)) return;
     let r;
     if (a === 'bootstrap') {
       r = await call('staff/bootstrap', { legacyToken: legacyToken() });

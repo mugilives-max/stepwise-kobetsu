@@ -12,31 +12,34 @@ const jst = t => t ? new Date(Date.parse(t) + 9 * 3600e3).toISOString().slice(5,
 
 // ---- 書類のひな形（#docs）----
 // 台帳に残す書面の一覧。いつ作られ、誰がどこから開けるか。「見本を開く」で架空の家族（見本家）で描いた書面を新しいタブに出す。
-const DOCS = [
-  { type: 'terms', title: '受講規約', when: '塾が版を決めて公開する。保護者は初めて計画を承認する前に同意する', who: '誰でも（公開ページ）。同意の状態は 設定 → 受講規約', where: '設定 → 受講規約' },
-  { type: 'condition', title: '受講条件書（通常指導）', when: '生徒ごとに条件を決めてお知らせしたとき（案）、保護者が同意したとき（確定）', who: '保護者はお支払い。塾は生徒の画面', where: '家族と生徒 → 生徒 → 受講条件書（通常指導）' },
-  { type: 'special', title: '受講条件書（特殊指導）', when: '特殊指導を提案したとき（案）、保護者が承認したとき（確定）', who: '保護者はお支払い。塾は生徒の画面', where: '家族と生徒 → 生徒 → 特殊指導' },
-  { type: 'agreement', title: '受講合意書', when: '案・承認後の控えを印刷・PDF保存できる。過去の版も履歴から開ける', who: '保護者は受講合意書。塾は受講合意書の画面', where: '受講合意書' },
-  { type: 'invoice', title: '請求書', when: '月の請求を確定したとき', who: '保護者はお支払いの請求。塾は請求の画面', where: '請求 → 家族の月。振込先と備考は 設定 → 請求の下の「請求書の設定」' },
-  { type: 'receipt', title: '領収書', when: '入金を記録したとき', who: '保護者はお支払いの請求。塾は請求の画面', where: '請求 → 家族の月 → 入金を記録' },
+// 書類の一覧: 種類ごとにまとめ、1 行の説明だけ。行を押すと見本（架空の家族で作った書面）が開く
+const DOC_GROUPS = [
+  ['契約の書類', '#2f6fde', [
+    ['terms', '受講規約', '保護者が最初に同意する、塾全体のきまり'],
+    ['condition', '受講条件書（通常指導）', '生徒ごとの授業時間と料金。保護者の同意で確定します'],
+    ['special', '受講条件書（特殊指導）', '通常とは別の料金で行う指導の内容と料金'],
+    ['agreement', '受講合意書', '月ごとの授業の回数と料金。保護者の承認で確定します'],
+  ]],
+  ['お金の書類', '#2e9b5f', [
+    ['invoice', '請求書', '月の請求を確定すると作られます'],
+    ['receipt', '領収書', '入金を記録すると作られます'],
+  ]],
 ];
 export function docsPage(ctx) {
   const { esc } = ctx;
   if (!terms) { terms = { loading: true }; ctx.call('admin/terms/get').then(r => { terms = r.ok ? r : { error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
   const t = terms && terms.terms;
-  let h = ctx.notice();
-  h += '<p class="small muted" style="margin:12px 0 4px">保護者と交わす書面の一覧です。見本は架空の家族（見本家）で描いています。請求書の振込先と備考だけは今の設定のままです。</p>';
-  for (const d of DOCS) {
-    let act = '';
-    if (d.type === 'terms') act = t && t.url ? `<a class="btn" href="${esc(t.url)}" target="_blank" rel="noopener">全文を開く${t.version ? `（${esc(t.version)}）` : ''}</a>` : '<span class="small muted">版がまだ決まっていません（設定 → 受講規約）</span>';
-    else if (d.type === 'agreement') act = '<button data-action="doc-sample" data-type="agreement">見本を開く</button><a class="btn" href="#plans">受講合意書を開く</a>';
-    else act = `<button data-action="doc-sample" data-type="${d.type}">見本を開く</button>`;
-    h += `<div class="pcard" style="margin-top:10px"><div class="pc-head"><strong>${esc(d.title)}</strong></div>
-      <dl class="cond-dl"><dt>いつ</dt><dd>${esc(d.when)}</dd><dt>誰が開ける</dt><dd>${esc(d.who)}</dd><dt>どこから</dt><dd>${esc(d.where)}</dd></dl>
-      <div class="row" style="margin-top:8px">${act}</div></div>`;
-  }
-  h += '<p class="small muted" style="margin-top:14px">見本は印刷（Ctrl+P）で PDF にできます。文面を変えたいときは、どの書類のどの行かを伝えてください。</p>';
-  return h;
+  const icon = color => `<span class="ibox" style="background:${color}">${svg('file')}</span>`;
+  const row = (color, type, title, note) => {
+    const body = `${icon(color)}<span class="v"><span class="lbl">${esc(title)}</span><small>${esc(note)}</small></span>`;
+    if (type === 'terms') return t && t.url
+      ? `<a class="todo-row doc-row" href="${esc(t.url)}" target="_blank" rel="noopener">${body}<span class="go">全文 ›</span></a>`
+      : `<a class="todo-row doc-row" href="#terms">${body}<span class="go">版を決める ›</span></a>`;
+    return `<button type="button" class="todo-row doc-row" data-action="doc-sample" data-type="${type}">${body}<span class="go">見本 ›</span></button>`;
+  };
+  let h = ctx.notice() + '<p class="small muted" style="margin:12px 0 4px">保護者と交わす書類の見本です。押すと、架空の家族で作った見本が開きます。</p>';
+  for (const [name, color, docs] of DOC_GROUPS) h += `<div class="sec-title">${esc(name)}</div><div class="group">${docs.map(([type, title, note]) => row(color, type, title, note)).join('')}</div>`;
+  return h + '<p class="small muted" style="margin-top:14px">見本は印刷（Ctrl+P）で PDF にできます。</p>';
 }
 
 // ---- 受講規約 ----
