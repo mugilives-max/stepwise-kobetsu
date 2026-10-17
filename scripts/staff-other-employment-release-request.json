@@ -1,9 +1,9 @@
 {
-  "operation": "inspect",
+  "operation": "publish",
   "source": "50a3e1641718842a69c4c95d314749d91aa1091c",
   "checkRuns": [
     39026765579,
     39026768857
   ],
-  "authorization": "2026-10-17 user asked to change the other-employment question (\"その形で直してください\"); read-only inspection before publishing PR #94. No migration."
+  "authorization": "2026-10-17 user asked to change the other-employment question; publish the reviewed Worker (PR #94) after a verified private backup. No migration."
 }
