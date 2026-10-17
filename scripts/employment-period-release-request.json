@@ -1,0 +1,10 @@
+{
+  "operation": "pages",
+  "source": "fc252afaa46caf2329d22cee72a4c3c1435ccfa9",
+  "checkRuns": [
+    39044674466,
+    39044677468
+  ],
+  "authorization": "2026-10-18 PR #107 merged after publish run 39044433851 (Worker d11d5f9f from 623410c). Before merging, main (PR #108, #109; staff pages only) was merged into the PR head, giving fc252af with an identical cf/ tree. Verify the published staff pages and the live Worker against fc252af, and records against the private checkpoint. Read-only.",
+  "backupPrefix": "release-backups/employment-period-20261018/39044433851-1"
+}
