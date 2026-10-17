@@ -39,10 +39,10 @@ function profile(ctx,d,owner){
  field(esc,'taxCheckedOn','申告書の確認日',p.taxCheckedOn,'date')+
  area(esc,'preparationNote','勤務条件・未確定事項を確認した内容',p.preparationNote)+
  check(esc,'conditionsChecked','契約ひな形の確認事項と、この講師の勤務条件を確認した',p.conditionsChecked)+
- check(esc,'bankConsentChecked','振込先を別途受領し、本人名義口座への振込の同意を確認した',p.bankConsentChecked)+
+ check(esc,'bankConsentChecked','別途受領した振込先・振込同意を確認した（本人画面での電子提出とは別の記録）',p.bankConsentChecked)+
  area(esc,'insuranceNote','労働保険等の確認状況・次の手続き',p.insuranceNote)+
  check(esc,'insuranceChecked','必要な事業所の届出・保険の確認を済ませた',p.insuranceChecked)+
- '<p class="small muted">口座番号・マイナンバーはここに入力しません。保存だけではメール送信・契約締結を行いません。</p><button class="primary"'+ctx.dis()+'>基本情報を保存</button></form></details>';
+ '<p class="small muted">口座番号は「給与の振込先」で本人が入力します。マイナンバーはこの画面に入力しません。保存だけではメール送信・契約締結を行いません。</p><button class="primary"'+ctx.dis()+'>基本情報を保存</button></form></details>';
 }
 function contractCard(ctx,r,owner){
  const {esc}=ctx,a=attrs(r),s=r.snapshot;
@@ -68,12 +68,13 @@ export function employmentPage(ctx,me,id=''){
  if(cache.loading)return '<p>読み込んでいます…</p>';if(!cache.ok)return ctx.notice();
  const {esc}=ctx;let h=ctx.notice();
  if(owner&&!id){
-  h+='<p>講師ごとに、基本情報・契約・給与・勤務の準備を確認します。</p><div class="group">'+cache.staff.map(s=>'<a class="todo-row" href="#employment='+esc(s.id)+'"><span>'+esc(s.name)+'<br><small>'+esc(s.email||'メール未登録')+'・'+(s.status==='active'?'アカウント利用中':s.invitedAt?'招待済み':'未招待')+(s.pendingWork?'・実績確認 '+s.pendingWork+'件':'')+(s.pendingCorrections?'・訂正申出 '+s.pendingCorrections+'件':'')+'</small></span></a>').join('')+'</div>';
+  h+='<p>講師ごとに、基本情報・契約・給与・勤務の準備を確認します。</p><div class="group">'+cache.staff.map(s=>'<a class="todo-row" href="#employment='+esc(s.id)+'"><span>'+esc(s.name)+'<br><small>'+esc(s.email||'メール未登録')+'・'+(s.status==='active'?'アカウント利用中':s.invitedAt?'招待済み':'未招待')+(s.bank?.pending?'・振込先の確認待ち':'')+(s.pendingWork?'・実績確認 '+s.pendingWork+'件':'')+(s.pendingCorrections?'・訂正申出 '+s.pendingCorrections+'件':'')+'</small></span></a>').join('')+'</div>';
   return h+'<details open><summary>講師を下書き登録</summary><form class="stack" data-form="em-new">'+field(esc,'familyName','姓','','text',true)+field(esc,'givenName','名','','text',true)+field(esc,'email','本人のメールアドレス（下書きでは任意）','','email')+'<p class="small muted">未定の場合は空欄で保存できます。本人への招待時に登録してください。</p>'+'<button class="primary"'+ctx.dis()+'>下書きを保存（メールは送りません）</button></form></details>';
  }
  const d=cache;h+='<h1>'+esc(d.staff.name)+' さんの雇用・勤務</h1>';
  if(owner)h+='<p><a href="#employment">講師一覧へ</a></p><div class="notice"><strong>次に確認すること</strong><ul>'+d.checks.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>'+(d.checks.length?'':'準備項目の確認がそろっています。')+'</div>';
  h+=profile(ctx,d,owner);
+ h+='<p><a class="todo-row" href="'+(owner?'#bank='+esc(d.staff.id):'#bank')+'">給与の振込先'+(d.bank?.pending?'（代表の確認待ち）':d.bank?.returned?'（修正して再提出）':d.bank?.accepted?'（確認済み）':'（登録・同意）')+'</a></p>';
  h+='<h2>'+(owner?'2. ':'')+'契約書・締結の控え</h2><p class="small">案の保存、書面の交付、双方の合意を別々に記録します。古い版と記録は残ります。</p>';
  if(owner)h+='<form class="stack" data-form="em-create" data-version="'+(d.profile?.version||0)+'">'+select(esc,'method','締結方法',[['','方法を選んでください'],['paper','紙で署名する'],['electronic','電子で同意する']])+'<button'+ctx.dis()+'>保存済みの条件から契約書案を作る</button></form>';
  h+=d.contracts.map(r=>contractCard(ctx,r,owner)).join('')||'<p>発行済みの契約書はありません。</p>';
