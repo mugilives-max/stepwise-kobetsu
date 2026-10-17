@@ -1,5 +1,5 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-pending';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-owner';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261017-stopped';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
@@ -27,7 +27,7 @@ let lastPage = '';
 let me = null, busy = false, notice = null, staffList = null, shownLink = null, bootstrap = null, staffOpen = '';
 
 // 上の帯に出す画面の名前（本文には大見出しを置かない）
-const PAGE_TITLE = { bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', migrate: '移行と切り替え', records: '記録', terms: '受講規約', docs: '書類のひな形', effects: '送信の記録と控え' };
+const PAGE_TITLE = { bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', migrate: '移行と切り替え', records: '記録', terms: '受講規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信の記録と控え' };
 const legacyToken = () => { try { return localStorage.getItem('sw_admt') || ''; } catch { return ''; } };
 function route() {
   const h = location.hash;
@@ -76,7 +76,7 @@ function tabOf(page) {
   if (['plans', 'billing'].includes(page)) return 'monthly';
   if (page === 'payroll') return m ? 'monthly' : 'payroll';
   if (me && me.employmentAccess === false && ['bank', 'employment', 'work'].includes(page)) return 'employment'; // 入職の手続き中は、手続きの画面が入口（振込先・勤務の日はその下）
-  if (['bank','employment','work','staff', 'migrate', 'account', 'rates', 'kinds', 'terms', 'effects'].includes(page)) return 'settings';
+  if (['bank','employment','work','staff','staff-stopped','employment-stopped','employment-new', 'migrate', 'account', 'rates', 'kinds', 'terms', 'effects'].includes(page)) return 'settings';
   return page;
 }
 // 戻る（入口の下の画面の左上）。来た道をたどる。直接開いたときは、その画面の入口へ
@@ -167,15 +167,19 @@ function accountPage() {
     <h2>ログアウト</h2><p><button data-action="logout"${dis()}>この端末からログアウト</button></p>`;
 }
 const roleChecks = (name, chosen) => `<div class="checks">${Object.keys(ROLE_LABEL).map(r => `<label><input type="checkbox" name="${name}" value="${r}"${chosen.includes(r) ? ' checked' : ''}> ${ROLE_LABEL[r]}</label>`).join('')}</div>`;
-function staffPage() {
+// 停止したアカウントは、ふだんの一覧に出さず別のページ（#staff-stopped）に分ける。記録は残し、開けば「再開する」で戻せる
+function staffPage(stopped = false) {
   if (!me.roles.includes('sysadmin')) return '<h1>スタッフ</h1><p class="notice error">システム管理者だけが使えます。</p>';
   if (!staffList) { loadStaff(); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
   let h = noticeHtml();
-  if(me.contractType==='owner')h+='<p><a href="#employment">講師の雇用登録・契約・勤務はこちら</a></p>';
+  const list = staffList.filter(x => stopped ? x.status === 'stopped' : x.status !== 'stopped'), stoppedCount = staffList.filter(x => x.status === 'stopped').length;
+  if (stopped) h += '<p class="small muted" style="margin-top:12px">停止中のアカウントはログインできません。記録はそのまま残っています。開いて「再開する」を押すと元に戻せます。</p>' + (list.length ? '' : '<p>停止中のアカウントはありません。</p>');
+  else if(me.contractType==='owner')h+='<p><a href="#employment">講師の雇用登録・契約・勤務はこちら</a></p>';
   if (shownLink) h += `<div class="notice ok"><p>${esc(shownLink.name)} さんに招待のメールを送りました。届かないときは、このリンクを LINE などで渡してください（7日有効・1回だけ使えます）。</p><p class="copy">${esc(shownLink.url)}</p><button data-action="copy-link"${dis()}>リンクをコピー</button></div>`;
-  h += '<div class="group" style="margin-top:12px">' + staffList.map(s => rowButton(esc, 'st-open', { id: s.id }, `${esc(s.name)} <span class="tag ${s.status === 'active' ? '' : s.status === 'invited' ? 'warn' : 'gray'}">${STATUS_LABEL[s.status] || s.status}</span>`,
-    esc(s.roles.map(r => ROLE_LABEL[r] || r).join('・') + '・' + s.email))).join('') + '</div>';
-  h += `<p style="margin-top:12px"><button data-action="st-open" data-id="new"${dis()}>＋ スタッフを招待する</button></p><p class="small muted">講師は担当の授業と生徒だけ、教室管理者は運営のすべて、システム管理者は設定とアカウントを扱えます。</p>`;
+  if (list.length) h += '<div class="group" style="margin-top:12px">' + list.map(s => rowButton(esc, 'st-open', { id: s.id }, `${esc(s.name)} <span class="tag ${s.status === 'active' ? '' : s.status === 'invited' ? 'warn' : 'gray'}">${STATUS_LABEL[s.status] || s.status}</span>`,
+    esc(s.roles.map(r => ROLE_LABEL[r] || r).join('・') + (s.email ? '・' + s.email : '')))).join('') + '</div>';
+  if (!stopped && stoppedCount) h += `<div class="group" style="margin-top:12px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#staff-stopped"><span class="v"><span class="lbl">停止中のアカウント</span><small>${stoppedCount}件・ふだんの一覧には出しません</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
+  if (!stopped) h += `<p style="margin-top:12px"><button data-action="st-open" data-id="new"${dis()}>＋ スタッフを招待する</button></p><p class="small muted">講師は担当の授業と生徒だけ、教室管理者は運営のすべて、システム管理者は設定とアカウントを扱えます。</p>`;
   if (staffOpen === 'new') {
     h += sheet(esc, 'スタッフを招待する', `<form class="stack" data-form="invite-staff"><div class="row"><label style="flex:1">姓<input name="familyName" maxlength="30" required></label><label style="flex:1">名<input name="givenName" maxlength="30"></label></div>
       <label>メールアドレス<input type="email" name="email" required></label><div><div class="small muted">役割</div>${roleChecks('roles', ['teacher'])}</div>
@@ -214,6 +218,8 @@ function render() {
   else if (!me) h = r.page === 'forgot' ? forgotPage() : loginPage();
   else if(r.page==='bank')h=bankPage(ctx,me,r.id||'');
   else if(r.page==='employment')h=employmentPage(ctx,me,r.id||'');
+  else if(r.page==='employment-stopped'&&me.contractType==='owner')h=employmentPage(ctx,me,'',{stopped:true});
+  else if(r.page==='employment-new'&&me.contractType==='owner')h=employmentPage(ctx,me,'',{newForm:true});
   else if(r.page==='work')h=workPage(ctx,me,r.id,r.date);
   else if(me.employmentAccess===false&&!['account','settings','payroll'].includes(r.page))h=employmentPage(ctx,me);
   else if (r.page === 'schedule' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = schedulePage(ctx, me);
@@ -236,7 +242,7 @@ function render() {
   else if (r.page === 'migrate' && me.roles.includes('sysadmin')) h = migratePage(ctx);
   else if (r.page === 'monthly' && me.roles.includes('manager')) h = monthlyPage(ctx);
   else if (r.page === 'settings') h = settingsPage(ctx, me);
-  else h = r.page === 'account' ? accountPage() : r.page === 'staff' ? staffPage() : (me.roles.includes('manager') || me.roles.includes('teacher')) ? todayPage(ctx, me) : settingsPage(ctx, me);
+  else h = r.page === 'account' ? accountPage() : r.page === 'staff' ? staffPage() : r.page === 'staff-stopped' ? staffPage(true) : (me.roles.includes('manager') || me.roles.includes('teacher')) ? todayPage(ctx, me) : settingsPage(ctx, me);
   app.className = !me || ['invite', 'reset', 'forgot'].includes(r.page) ? 'narrow' : r.page === 'schedule' ? 'wide' : '';
   const was = app.querySelector('.bsheet, .panel.open'), wasLabel = was && was.getAttribute('aria-label'), wasBody = was && (was.querySelector('.panel-body') || was), wasTop = wasBody ? wasBody.scrollTop : 0;
   const wasLoading = /^\s*読み込んでいます/.test(app.textContent || '');
@@ -350,7 +356,7 @@ window.addEventListener('hashchange', () => {
     const i = trail.lastIndexOf(hash);
     if (i >= 0) trail = trail.slice(0, i); // 戻ってきた
     else if (!parentOf(route()) || /^#(invite|reset|forgot)/.test(lastHash)) trail = []; // 入口を開いた・ログイン前の画面から来た
-    else trail.push(lastHash);
+    else if (lastHash !== '#employment-new') trail.push(lastHash); // 登録のページには戻さない（登録後の戻るは一覧へ）
   }
   lastHash = hash; staffOpen = '';
   if (pg === 'home') resetToday();

@@ -42,6 +42,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
  try{
   owner=await make(auth,390);
   await owner.goto(origin+'/staff/#employment');
+  await owner.getByRole('link',{name:'＋ 新しい講師を登録する',exact:true}).click(); // 一覧の下のボタンから、登録用の別ページへ
   const f='[data-form="em-new"]';
   await owner.locator(f).waitFor();
   assert.equal(await owner.locator(f+' input[name="email"]').getAttribute('required'),null);
