@@ -1,0 +1,10 @@
+{
+  "operation": "pages",
+  "source": "50a3e1641718842a69c4c95d314749d91aa1091c",
+  "checkRuns": [
+    39026765579,
+    39026768857
+  ],
+  "authorization": "2026-10-17 PR #94 merged; verify the published staff pages and stylesheet against the reviewed source and re-check the Worker and records against the private checkpoint. Read-only.",
+  "backupPrefix": "release-backups/staff-other-employment-20261017/39026964325-1"
+}
