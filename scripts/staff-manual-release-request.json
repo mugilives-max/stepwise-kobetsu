@@ -1,9 +1,9 @@
 {
-  "operation": "inspect",
+  "operation": "publish",
   "source": "c8f6b663ddf9b5116a604def3f9d44a5d947eb38",
   "checkRuns": [
     39081303407,
     39081306305
   ],
-  "authorization": "2026-10-18 owner asked to rename the staff rules to 講師マニュアル ('講師マニュアルに名前を変えてください'); agent deploys Worker changes without confirmation (standing permission). Read-only inspection first."
+  "authorization": "2026-10-18 owner asked to rename the staff rules to 講師マニュアル ('講師マニュアルに名前を変えてください'); agent deploys Worker changes without confirmation (standing permission). Inspection passed (Worker matches PR #119 source, no pending migration). Publish with private backup; no record changes."
 }
