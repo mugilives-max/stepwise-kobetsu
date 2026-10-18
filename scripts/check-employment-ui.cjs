@@ -106,24 +106,24 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   assert.equal(await owner.locator(plan+' input[name="start_0"]').inputValue(),'12:55','adding row retains other fields');
   await owner.locator(plan+' input[name="reason"]').fill('【テスト】初日の見学と指導');
   await owner.locator(plan+' button:not([type="button"])').click();
-  await owner.getByText('保存しました',{exact:true}).waitFor();
+  await owner.getByText('予定を保存しました',{exact:true}).waitFor();
+  await owner.getByText('12:55〜14:35',{exact:true}).waitFor(); // 保存すると、始業〜終業と内訳の表示になる
   await self.goto(origin+'/staff/#work='+staff.id+'/2026-10-17');
   await self.locator('[data-form="wk-agree"] input[name="agree"]').check();
   await self.locator('[data-form="wk-agree"] button').click();
-  await self.getByText('本人の予定確認：確認済み',{exact:true}).waitFor();
-  const actual='[data-form="wk-submit"]';
-  await self.locator(actual+' input[name="reason"]').fill('【テスト】予定どおりに勤務した');
-  await self.locator(actual+' button:not([type="button"])').click();
-  await self.getByText('状態：確認中',{exact:true}).waitFor();
+  await self.getByText('本人確認済み',{exact:true}).waitFor();
+  // 予定どおりなら、ボタン 1 つで実績を出す
+  await self.locator('[data-form="wk-submit"][data-mode="asPlanned"] button').click();
+  await self.getByText('確認中',{exact:true}).waitFor();
   await noOverflow(self);
-  await self.locator('[data-form="wk-submit"] button.primary:not([disabled])').waitFor();
+  await self.locator('[data-action="wk-actual-edit"]:not([disabled])').waitFor();
   await self.screenshot({path:path.join(out,'03-employee-work.png'),fullPage:true,animations:'disabled'});
   await self.screenshot({path:path.join(out,'03-employee-work-screen.png'),fullPage:false,animations:'disabled'});
   await owner.reload();
   await owner.locator('[data-form="wk-confirm"] input[name="reason"]').fill('【テスト】100分の勤務と賃金を確認');
   await owner.locator('[data-form="wk-confirm"] input[name="reviewed"]').check();
   await owner.locator('[data-form="wk-confirm"] button').click();
-  await owner.getByText('状態：確認済み',{exact:true}).waitFor();
+  await owner.locator('.reg-card .tag.ok',{hasText:'確定'}).waitFor(); // 進み具合の「確定」と取り違えない
   let v=(await h.ok('payroll/staff',{auth,staffId:staff.id,month:'2026-10'})).preview;
   assert.equal(v.workMinutes,100);assert.equal(v.gross,3333);assert.equal(v.issues.length,0);
   report.checks.push('structured time inputs retain edits; employee agrees, submits 100 minutes; owner confirms; 3,333 yen without duplicate pay');

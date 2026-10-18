@@ -1,5 +1,5 @@
 // Employment and actual work. Owner manages; each employee sees only their own data.
-let cache=null, key='', dayCache=null, dayKey='', drafts=new Map();
+let cache=null, key='', dayCache=null, dayKey='', drafts=new Map(), dayEdit=''; // dayEdit: 勤務の日の画面で開いている入力欄（'plan'・'actual'）
 const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
 const at=v=>v?new Date(Date.parse(v)+9*3600e3).toISOString().slice(0,16).replace('T',' '):'';
 const STATUS={draft:'案・未発行',issued:'交付・同意待ち',agreed:'締結済み',withdrawn:'取り下げ'};
@@ -19,7 +19,7 @@ export function restoreEmployment(){
 }
 let regStep='input',regMode='new',regDraft=null,regErrors={},regFocus=false; // regMode: new=初めての登録 / edit=登録内容の修正
  // 本人情報の登録: 入力 → 確認 → 登録。regErrors は項目ごとの入力漏れ
-export function resetEmployment(){cache=null;dayCache=null;key='';dayKey='';drafts.clear();regStep='input';regMode='new';regDraft=null;regErrors={};}
+export function resetEmployment(){cache=null;dayCache=null;key='';dayKey='';dayEdit='';drafts.clear();regStep='input';regMode='new';regDraft=null;regErrors={};}
 function load(ctx,want,route,body,work=false){
  const set=r=>{if(work){if(dayKey!==want)return;dayCache=r;}else{if(key!==want)return;cache=r;}if(!r.ok&&!ctx.handleAuth(r))ctx.say(r.error?.message||'読み込めませんでした','error');ctx.render();};
  if(work){dayKey=want;dayCache={loading:true};}else{key=want;cache={loading:true};}
@@ -418,35 +418,82 @@ export function employmentPage(ctx,me,id='',opts={}){
 const linesToText=list=>list.map(x=>x.start+'〜'+x.end+'　'+WORK[x.kind]+(x.label&&x.label!==WORK[x.kind]?'（'+x.label+'）':'')).join('\n');
 const WEEK='日月火水木金土';
 const dayJa=d=>jaDate(d)+'（'+WEEK[new Date(d+'T00:00:00Z').getUTCDay()]+'）';
+// 勤務の日の画面（#work=講師/日付）。2026-10-18 本人「このページが分かりづらい。一般的なシフト管理の UI を参考に」:
+// 日付と前後の日 → 進み具合（予定・本人の確認・実績・確定）→ 予定のカード（始業〜終業・時間・内訳）→ 実績のカード（予定どおりならボタン 1 つ）。
+// 入力は 1 行 1 区間（開始・終了・種類・内容・削除）。説明の欄は任意で、空なら決まった文を記録に残す（API は記録の理由を必須にしている）
+const toMin=t=>t?Number(t.slice(0,2))*60+Number(t.slice(3)):0;
+const workMinutes=list=>(list||[]).filter(x=>x.kind!=='break').reduce((n,x)=>n+toMin(x.end)-toMin(x.start),0);
+const hmJ=n=>n<60?n+'分':Math.floor(n/60)+'時間'+(n%60?n%60+'分':'');
+const shiftSpan=list=>list?.length?list[0].start+'〜'+list[list.length-1].end:'';
+const shiftDay=(d,n)=>{const t=new Date(d+'T00:00:00Z');t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10);};
+const KIND_TAG={lesson:'',prep:'gray',other:'gray',meeting:'',break:'warn'};
+function shiftSummary(esc,list,badge){
+ if(!list?.length)return '';
+ return '<div class="shift-head"><div><div class="shift-time">'+esc(shiftSpan(list))+'</div><div class="small muted">勤務 '+esc(hmJ(workMinutes(list)))+'（休憩を除く）</div></div>'+(badge||'')+'</div>'+
+  '<ul class="shift-list">'+list.map(x=>'<li><span class="t">'+esc(x.start+'〜'+x.end)+'</span><span class="tag '+(KIND_TAG[x.kind]||'')+'">'+esc(WORK[x.kind]||x.kind)+'</span><span class="l">'+esc(x.label&&x.label!==WORK[x.kind]?x.label:'')+'</span></li>').join('')+'</ul>';
+}
 function intervalFields(ctx,kind,list) {
  const prior=drafts.get(location.hash+'|'+kind+'|');
  const count=Number(prior?.find(x=>x.name==='rowCount')?.value||Math.max(1,list.length));
- return '<input type="hidden" name="rowCount" value="'+count+'">'+Array.from({length:count},(_,i)=>{
-  const x=list[i]||{};
-  return '<fieldset style="min-width:0;margin:8px 0;border:1px solid #d5dce1;border-radius:8px;padding:12px"><legend>時間 '+(i+1)+'</legend><div class="row">'+field(ctx.esc,'start_'+i,'開始',x.start||'','time')+field(ctx.esc,'end_'+i,'終了',x.end==='24:00'?'00:00':x.end||'','time')+'</div>'+select(ctx.esc,'kind_'+i,'仕事の種類',Object.entries(WORK),x.kind||'other')+field(ctx.esc,'label_'+i,'内容（任意）',x.label||'')+'</fieldset>';
- }).join('')+'<button type="button" data-action="wk-add">時間の行を追加</button><p class="small muted">不要な行は開始・終了を両方空欄にしてください。</p>';
+ return '<input type="hidden" name="rowCount" value="'+count+'"><div class="shift-rows"><div class="shift-row shift-row-head" aria-hidden="true"><span>開始</span><span></span><span>終了</span><span>種類</span><span>内容（任意）</span><span></span></div>'+Array.from({length:count},(_,i)=>{
+  const x=list[i]||{},e=ctx.esc;
+  return '<div class="shift-row"><input type="time" step="300" name="start_'+i+'" aria-label="開始" value="'+e(x.start||'')+'"><span class="sep">〜</span><input type="time" step="300" name="end_'+i+'" aria-label="終了" value="'+e(x.end==='24:00'?'00:00':x.end||'')+'"><select name="kind_'+i+'" aria-label="仕事の種類">'+Object.entries(WORK).map(([k,t])=>'<option value="'+k+'"'+(k===(x.kind||'lesson')?' selected':'')+'>'+e(t)+'</option>').join('')+'</select><input name="label_'+i+'" aria-label="内容" placeholder="内容（任意）" maxlength="200" value="'+e(x.label||'')+'"><button type="button" class="icon" data-action="wk-del" data-i="'+i+'" aria-label="この行を消す">×</button></div>';
+ }).join('')+'</div><button type="button" class="wide" style="margin-top:8px" data-action="wk-add">＋ 時間を追加</button><p class="reg-help" style="margin:4px 0 0">時間が重なるときは一度だけ入れます。夜 0:00 はその日の終わりです。</p>';
 }
 function readIntervals(v){
  return Array.from({length:Number(v.rowCount||0)},(_,i)=>({start:v['start_'+i],end:v['end_'+i],kind:v['kind_'+i],label:v['label_'+i]})).map(x=>({...x,end:x.end==='00:00'&&x.start&&x.start!=='00:00'?'24:00':x.end})).filter(x=>x.start||x.end);
 }
+const hiddenIntervals=(esc,list)=>'<input type="hidden" name="rowCount" value="'+list.length+'">'+list.map((x,i)=>['start','end','kind','label'].map(k=>'<input type="hidden" name="'+k+'_'+i+'" value="'+esc(x[k]||'')+'">').join('')).join('');
+const memo=(esc,label,ph)=>'<label class="sub" style="margin-top:8px"><span>'+esc(label)+' <span class="opt">任意</span></span><input name="reason" maxlength="500" placeholder="'+esc(ph)+'"></label>';
 export function workPage(ctx,me,id,date){
  const want=id+'/'+date,owner=me.contractType==='owner';
- if(dayKey!==want||!dayCache){load(ctx,want,'work/day',{staffId:id,date},true);return '<p>読み込んでいます…</p>';}
+ if(dayKey!==want||!dayCache){dayEdit='';load(ctx,want,'work/day',{staffId:id,date},true);return '<p>読み込んでいます…</p>';}
  if(dayCache.loading)return '<p>読み込んでいます…</p>';if(!dayCache.ok)return ctx.notice();
  const {esc}=ctx,r=dayCache.day||{version:0,planned:[],actual:[]},a=' data-staff="'+esc(id)+'" data-date="'+esc(date)+'" data-version="'+r.version+'"';
- const future=date>today();
- let h=ctx.notice()+(owner?'<p><a href="#employment='+esc(id)+'">雇用・勤務へ戻る</a></p>':'')+'<h1>'+esc(dayJa(date))+'の勤務</h1>';
- if(owner)h+='<details open><summary>勤務予定</summary><form class="stack" data-form="wk-plan"'+a+'>'+intervalFields(ctx,'wk-plan',r.planVersion?r.planned:dayCache.suggestion)+field(esc,'reason','予定・変更の説明','','text',true)+'<button'+ctx.dis()+'>勤務予定を保存</button></form></details>';
- else h+='<h2>勤務予定</h2><pre style="white-space:pre-wrap">'+esc(linesToText(r.planned))+'</pre>';
- h+='<p>本人の予定確認：'+(r.planAgreedAt&&r.planVersion===r.planAgreedVersion?'確認済み':'未確認')+'</p>';
- if(!owner&&r.planVersion&&r.planVersion!==r.planAgreedVersion)h+='<form class="stack" data-form="wk-agree"'+a+'>'+check(esc,'agree','この勤務予定を確認し、同意します')+'<button class="primary"'+ctx.dis()+'>勤務予定を確認する</button></form>';
- if(!owner&&future&&!r.submittedAt)return h+'<h2>実際の勤務</h2><p class="small muted">実際に働いた時間は、勤務した日のあとにこの画面で記録します。</p>';
- h+='<h2>実際の勤務</h2><p class="small">この日の授業・準備・その他業務をすべて記録してください。授業、見学・研修、準備・記録、休憩の時間を分けて入力します。時間が重なる場合は一度だけ登録し、終了の0:00はその日の終わりを表します。入力した日の給与は、この実績全体で計算します。</p><p>状態：'+esc({draft:'実績未提出',submitted:'確認中',confirmed:'確認済み'}[r.status]||'未登録')+'</p>';
- if(!r.payrollId)h+='<form class="stack" data-form="wk-submit"'+a+'>'+intervalFields(ctx,'wk-submit',r.submittedAt?r.actual:r.planVersion?r.planned:dayCache.suggestion)+area(esc,'note','補足（取消・休業、途中交代など）',r.note||'')+field(esc,'reason','記録・訂正の理由','','text',true)+'<button class="primary"'+ctx.dis()+'>実績を提出する</button></form>';
- else h+='<p>給与に反映済みです。訂正が必要な場合は、下の欄から申し出てください。</p><pre style="white-space:pre-wrap">'+esc(linesToText(r.actual))+'</pre>';
- if(dayCache.warnings?.issues.length)h+='<div class="notice"><ul>'+dayCache.warnings.issues.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p>実際に働いた時間は残します。必要な割増・休業手当等は給与の調整で確認します。</p></div>';
- if(owner&&r.status==='submitted')h+='<form class="stack" data-form="wk-confirm"'+a+'>'+field(esc,'reason','実績・休憩・賃金調整を確認した内容','','text',true)+check(esc,'reviewed','実際の勤務と必要な賃金調整を確認しました')+'<button'+ctx.dis()+'>実績を確認して給与へ反映</button></form>';
- if(r.version)h+='<details><summary>訂正の申し出・履歴</summary><form class="stack" data-form="wk-correction"'+a+'>'+area(esc,'reason','訂正してほしい内容')+'<button'+ctx.dis()+'>訂正の申し出を記録</button></form><ul>'+(dayCache.corrections||[]).map(x=>{
+ const future=date>today(),hasPlan=!!(r.planVersion&&r.planned?.length),agreed=hasPlan&&r.planAgreedAt&&r.planVersion===r.planAgreedVersion;
+ const submitted=r.status==='submitted'||r.status==='confirmed',confirmed=r.status==='confirmed';
+ const name=owner&&cache?.staff?.id===id?cache.staff.name:'';
+ const nav=d=>'<a class="btn" href="#work='+esc(id)+'/'+esc(d)+'">'+(d<date?'‹ ':'')+esc(Number(d.slice(5,7))+'/'+Number(d.slice(8)))+(d>date?' ›':'')+'</a>';
+ let h=ctx.notice()+'<p style="margin:12px 0 4px"><a href="#employment'+(owner?'='+esc(id):'')+'">'+(owner?'雇用・勤務へ戻る':'自分の雇用・勤務へ戻る')+'</a></p>';
+ h+='<div class="day-nav">'+nav(shiftDay(date,-1))+'<h1>'+esc(dayJa(date))+(name?'<small>'+esc(name)+'</small>':'')+'</h1>'+nav(shiftDay(date,1))+'</div>';
+ // 進み具合: 予定 → 本人の確認 → 実績 → 確定
+ const step=!hasPlan?0:!agreed&&!submitted?1:!submitted?2:!confirmed?3:4;
+ h+='<ol class="steps four" aria-label="この日の勤務の進み具合">'+['予定','本人の確認','実績','確定'].map((t,k)=>'<li class="'+(k<step?'done':k===step?'now':'')+'"'+(k===step?' aria-current="step"':'')+'><span class="n">'+(k<step?'✓':k+1)+'</span><span class="t">'+t+'</span></li>').join('')+'</ol>';
+ // 1. 勤務予定
+ const planBadge=hasPlan?(agreed?'<span class="tag ok">本人確認済み</span>':'<span class="tag warn">本人の確認待ち</span>'):'';
+ h+='<section class="reg-card"><div class="reg-card-head"><h2>勤務予定</h2>'+(owner&&hasPlan&&dayEdit!=='plan'&&!submitted&&!r.payrollId?'<button type="button" class="small-btn" data-action="wk-plan-edit"'+ctx.dis()+'>予定を変える</button>':'')+'</div>';
+ if(owner&&(dayEdit==='plan'||!hasPlan)){
+  const base=hasPlan?r.planned:dayCache.suggestion;
+  h+=(!hasPlan&&base?.length?'<p class="reg-help" style="margin:6px 0 0">この日の担当授業から作った案です。直してから保存してください。</p>':'')+
+   '<form class="reg-form" style="margin-top:8px" data-form="wk-plan"'+a+'>'+intervalFields(ctx,'wk-plan',base||[])+memo(esc,'メモ','例：初日なので見学から')+
+   '<div class="stack"><button class="primary wide"'+ctx.dis()+'>予定を保存</button>'+(hasPlan?'<button type="button" class="wide" data-action="wk-edit-cancel"'+ctx.dis()+'>やめる</button>':'')+'<p class="reg-help" style="margin:0">保存すると、本人の画面に出て、本人が確認します。</p></div></form>';
+ } else if(hasPlan){
+  h+=shiftSummary(esc,r.planned,planBadge);
+  if(!owner&&!agreed)h+='<form class="reg-form" style="margin-top:10px" data-form="wk-agree"'+a+'><label class="choice"><input type="checkbox" name="agree" required><span>この予定で働きます</span></label><button class="primary wide"'+ctx.dis()+'>予定を確認しました</button></form>';
+ } else h+='<p class="small muted" style="margin:8px 0 0">この日の勤務予定はありません。</p>';
+ h+='</section>';
+ // 2. 実際の勤務
+ const actualBadge=confirmed?'<span class="tag ok">確定</span>':submitted?'<span class="tag warn">確認中</span>':'';
+ h+='<section class="reg-card"><div class="reg-card-head"><h2>実際の勤務</h2>'+(submitted&&!r.payrollId&&dayEdit!=='actual'?'<button type="button" class="small-btn" data-action="wk-actual-edit"'+ctx.dis()+'>直す</button>':'')+'</div>';
+ if(future&&!submitted)h+='<p class="small muted" style="margin:8px 0 0">勤務した日のあとに入力します。</p>';
+ else if(dayEdit==='actual'||(!submitted&&!hasPlan)||(!submitted&&dayEdit==='actual')){
+  const base=submitted?r.actual:hasPlan?r.planned:dayCache.suggestion;
+  h+='<form class="reg-form" style="margin-top:8px" data-form="wk-submit"'+a+' data-mode="edit">'+intervalFields(ctx,'wk-submit',base||[])+
+   '<label class="sub" style="margin-top:8px"><span>補足 <span class="opt">任意</span></span><textarea name="note" rows="2" maxlength="1500" placeholder="例：授業が取消になり、30分で帰った">'+esc(r.note||'')+'</textarea></label>'+memo(esc,'直した理由','例：終わりが10分のびた')+
+   '<div class="stack"><button class="primary wide"'+ctx.dis()+'>'+(submitted?'直して出す':'実績を出す')+'</button>'+(submitted||hasPlan?'<button type="button" class="wide" data-action="wk-edit-cancel"'+ctx.dis()+'>やめる</button>':'')+'</div></form>';
+ } else if(submitted){
+  h+=shiftSummary(esc,r.actual,actualBadge)+(r.note?'<p class="small" style="margin:6px 0 0">補足：'+esc(r.note)+'</p>':'');
+  if(r.payrollId)h+='<p class="small muted" style="margin:6px 0 0">給与に反映済みです。直すときは、下の「訂正の申し出」から伝えてください。</p>';
+  if(owner&&r.status==='submitted')h+='<form class="reg-form" style="margin-top:10px" data-form="wk-confirm"'+a+'>'+memo(esc,'確認のメモ','例：休憩なしで問題なし')+'<label class="choice"><input type="checkbox" name="reviewed" required><span>実績と休憩、必要な賃金の調整を確かめました</span></label><button class="primary wide"'+ctx.dis()+'>確定して給与に入れる</button></form>';
+ } else {
+  // 予定どおりなら、ボタン 1 つで出す。違ったときだけ入力する
+  h+='<form class="reg-form" style="margin-top:8px" data-form="wk-submit"'+a+' data-mode="asPlanned">'+hiddenIntervals(esc,r.planned)+'<button class="primary wide"'+ctx.dis()+'>予定どおり働いた（'+esc(shiftSpan(r.planned))+'）</button></form>'+
+   '<button type="button" class="wide" style="margin-top:8px" data-action="wk-actual-edit"'+ctx.dis()+'>時間が違ったので入力する</button>';
+ }
+ if(submitted&&dayCache.warnings?.issues.length)h+='<div class="notice" style="margin-top:10px"><ul style="margin:0;padding-left:1.2em">'+dayCache.warnings.issues.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><p class="small" style="margin:6px 0 0">働いた時間はそのまま残します。割増や休業手当は給与の調整で確かめます。</p></div>';
+ h+='</section>';
+ // 3. 訂正の申し出・記録の履歴（めったに使わない）
+ if(r.version)h+='<details style="margin-top:16px"><summary>訂正の申し出・記録の履歴</summary><form class="stack" data-form="wk-correction"'+a+'>'+area(esc,'reason','訂正してほしい内容')+'<button'+ctx.dis()+'>訂正の申し出を記録</button></form><ul>'+(dayCache.corrections||[]).map(x=>{
   const answers=(dayCache.answers||[]).filter(y=>JSON.parse(y.detail).requestId===x.id);
   return '<li>'+esc(at(x.at))+' '+esc(JSON.parse(x.detail).reason)+answers.map(y=>'<p>代表の回答：'+esc(JSON.parse(y.detail).message)+'（'+esc(at(y.at))+'）</p>').join('')+(owner?'<form class="stack" data-form="wk-reply" data-id="'+x.id+'"'+a+'><input type="hidden" name="requestId" value="'+x.id+'">'+area(esc,'message','対応結果（勤務実績や給与の訂正は別途保存）')+'<button'+ctx.dis()+'>対応結果を記録する</button></form>':'')+'</li>';
  }).join('')+'</ul><details><summary>以前の勤務記録</summary>'+dayCache.history.map(x=>'<pre style="white-space:pre-wrap;overflow-wrap:anywhere">第'+x.version+'版 '+esc(at(x.recordedAt))+'\n'+esc(linesToText(JSON.parse(x.snapshot).actual))+'\n'+esc(x.reason)+'</pre>').join('')+'</details></details>';
@@ -514,16 +561,16 @@ export async function employmentSubmit(ctx,kind,el){
    drafts.delete(formKey(el));cache=null;ctx.say('時給と源泉区分を保存しました','ok');return true;
   }
   else if(kind==='wk-open'){drafts.delete(formKey(el));location.hash='#work='+encodeURIComponent(cache.staff.id)+'/'+v.date;return true;}
-  else if(kind==='wk-plan'){route='work/plan';body.intervals=readIntervals(v);}
-  else if(kind==='wk-submit'){route='work/submit';body.intervals=readIntervals(v);}
-  else if(kind==='wk-agree')route='work/plan/agree';
-  else if(kind==='wk-confirm')route='work/confirm';
+  else if(kind==='wk-plan'){route='work/plan';body.intervals=readIntervals(v);body.reason=String(v.reason||'').trim()||(b.version?'勤務予定を変更':'勤務予定を登録');msg='予定を保存しました';}
+  else if(kind==='wk-submit'){route='work/submit';body.intervals=readIntervals(v);body.reason=String(v.reason||'').trim()||(el.dataset.mode==='asPlanned'?'予定どおり勤務':'実績を入力');msg='実績を出しました';}
+  else if(kind==='wk-agree'){route='work/plan/agree';msg='予定を確認しました';}
+  else if(kind==='wk-confirm'){route='work/confirm';body.reason=String(v.reason||'').trim()||'実績を確認';msg='確定しました';}
   else if(kind==='wk-reply'){route='work/correction/respond';msg='対応結果を記録しました。';}
   else if(kind==='wk-correction'){route='work/correction';msg='訂正の申し出を受け付けました。確認してお知らせします。';}
   if(!route)return false;
   const r=await ctx.call(route,body);
   if(!r.ok){if(!ctx.handleAuth(r))ctx.say(r.error.message,'error');return true;}
-  drafts.delete(formKey(el));if(kind==='em-registration-confirm'){regStep='input';regMode='new';regDraft=null;drafts.delete(location.hash+'|em-registration|');scrollTo(0,0);}if(kind==='em-registration-accept'||kind==='em-registration-return'){for(const k of drafts.keys())if(k.startsWith(location.hash+'|em-profile|'))drafts.delete(k);}if(kind==='em-email')drafts.delete(location.hash+'|em-invite|');cache=null;dayCache=null;
+  if(kind.startsWith('wk-'))dayEdit='';drafts.delete(formKey(el));if(kind==='em-registration-confirm'){regStep='input';regMode='new';regDraft=null;drafts.delete(location.hash+'|em-registration|');scrollTo(0,0);}if(kind==='em-registration-accept'||kind==='em-registration-return'){for(const k of drafts.keys())if(k.startsWith(location.hash+'|em-profile|'))drafts.delete(k);}if(kind==='em-email')drafts.delete(location.hash+'|em-invite|');cache=null;dayCache=null;
   if(kind==='em-new')location.hash='#employment='+encodeURIComponent(r.staff.id);
   ctx.say(msg,'ok');return true;
  }catch(e){ctx.say(e.message,'error');return true;}
@@ -532,6 +579,15 @@ export async function employmentClick(ctx,a,b){
  if(a==='em-reg-back'){regStep=regMode==='edit'?'edit':'input';ctx.say('');return true;}
  if(a==='em-reg-edit'){regStep='edit';regMode='edit';regDraft=null;regErrors={};drafts.delete(location.hash+'|em-registration|');ctx.say('');scrollTo(0,0);return true;}
  if(a==='em-reg-cancel'){regStep='input';regMode='new';regDraft=null;regErrors={};drafts.delete(location.hash+'|em-registration|');ctx.say('');return true;}
+ if(a==='wk-plan-edit'||a==='wk-actual-edit'){dayEdit=a==='wk-plan-edit'?'plan':'actual';ctx.say('');return true;}
+ if(a==='wk-edit-cancel'){dayEdit='';for(const k of [...drafts.keys()])if(k.startsWith(location.hash+'|wk-'))drafts.delete(k);ctx.say('');return true;}
+ if(a==='wk-del'){ // 行を消す: 入力中の値を 1 行ずつ詰めて、行の数を 1 つ減らす（最後の 1 行は空にする）
+  const form=b.closest('form');captureEmployment();
+  const rows=drafts.get(formKey(form))||[],get=n=>rows.find(x=>x.name===n),cnt=get('rowCount'),n=Number(cnt?.value||0),i=Number(b.dataset.i);
+  if(n<=1){for(const f of ['start','end','label'])if(get(f+'_0'))get(f+'_0').value='';}
+  else{for(let j=i;j<n-1;j++)for(const f of ['start','end','kind','label']){const to=get(f+'_'+j),from=get(f+'_'+(j+1));if(to&&from)to.value=from.value;}cnt.value=String(n-1);}
+  ctx.render();return true;
+ }
  if(a==='wk-add'){
   const form=b.closest('form');captureEmployment();
   const rows=drafts.get(formKey(form))||[],c=rows.find(x=>x.name==='rowCount');
