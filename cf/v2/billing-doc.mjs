@@ -44,7 +44,8 @@ const STYLE = `
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; } }
 `;
 export const docPage = (title, bar, body) => page(title, bar, body); // 講師マニュアル（staff-rules.mjs）も同じ書面の枠
-const page = (title, bar, body) => `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>${STYLE}</style></head>
+// 書面は A4 のまま。スマホでは表示幅を 860 に固定して、1 ページ全体を縮小して見せる（2026-10-18 本人「書類関係は A4 の PDF で上手く表示できれば十分」）
+const page = (title, bar, body) => `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>${STYLE}</style></head>
 <body><div class="bar"><span>${esc(bar)}</span><button onclick="window.print()">印刷・PDF</button></div><div class="sheet">${body}</div></body></html>`;
 export const DOC_ISSUER = () => issuer;
 const issuer = `<div class="issuer"><div class="name">ステップワイズ個別指導</div><div>代表　麦倉 優輔</div><div>〒343-0002</div><div>埼玉県越谷市袋山1319-9</div><div>電話 080-6259-3025</div><div>mugilives@gmail.com</div></div>`;

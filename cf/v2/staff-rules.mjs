@@ -58,7 +58,7 @@ export function rulesDocHtml() {
   const body = `
   <div class="head"><h1>講師マニュアル</h1><div class="meta">${escH(r.title.replace('講師マニュアル', '').replace(/[（）]/g, ''))}<br>照合番号 ${escH(STAFF_RULES_HASH.slice(0, 12))}</div></div>
   <p style="margin:6mm 0 0;line-height:1.9">${escH(r.intro)}</p>
-  <style>.rsec{break-inside:avoid;page-break-inside:avoid}@media screen and (max-width:820px){.sheet{width:auto;min-height:0;margin:0;padding:6mm 5mm;box-shadow:none}.head{flex-direction:column;gap:2mm}.meta{text-align:left}h1{font-size:22px;letter-spacing:.2em}}</style>
+  <style>.rsec{break-inside:avoid;page-break-inside:avoid}</style>
   ${r.sections.map(([title, items], i) => `<div class="rsec"><h2 style="margin:6mm 0 1mm;font-size:14px;border-bottom:1px solid #b9c0c8;padding-bottom:1mm">${i + 1}. ${escH(title)}</h2><ol style="margin:0;padding-left:1.6em;line-height:1.9">${items.map(x => `<li>${escH(x)}</li>`).join('')}</ol></div>`).join('')}
   <div style="margin-top:9mm;border:1px solid #b9c0c8;padding:4mm 5mm;line-height:2.2;break-inside:avoid"><div style="font-weight:bold">受け取りの記録</div>この「講師マニュアル」を受け取り、内容を確かめました。<br>日付：　　　　年　　月　　日<br>講師の氏名（署名）：</div>
   <div style="margin-top:8mm;display:flex;justify-content:flex-end">${DOC_ISSUER()}</div>`;

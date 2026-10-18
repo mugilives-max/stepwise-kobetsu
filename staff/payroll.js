@@ -53,7 +53,6 @@ const DOC_STYLE = `
   td.num, th.num { text-align: right; white-space: nowrap; }
   tfoot td { font-weight: bold; }
   .memo { margin-top: 6mm; line-height: 1.7; }
-  @media screen and (max-width: 820px) { .sheet { width: auto; min-height: 0; margin: 0; padding: 6mm 5mm; box-shadow: none; } .head, .grid { flex-direction: column; align-items: stretch; } .meta { text-align: left; } h1 { font-size: 22px; letter-spacing: .15em; } .total { width: auto; } .to { min-width: 0; } .detail th, .detail td { padding: 1.5mm 1.5mm; font-size: 11.5px; } .detail .rate { display: none; } }
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; } }
 `;
 const ymdJa = v => { const d = String(v || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? `${Number(d.slice(0, 4))}年${Number(d.slice(5, 7))}月${Number(d.slice(8))}日` : ''; };
@@ -80,7 +79,7 @@ export function statementHtml(esc, s, name, { sample = false } = {}) {
   <table class="detail"><thead><tr><th style="width:11%">日付</th><th>内容</th><th class="num" style="width:13%">時間</th><th class="num rate" style="width:12%">時給</th><th class="num" style="width:14%">金額</th></tr></thead>
   <tbody>${rows}</tbody><tfoot><tr><td colspan="3" class="num">総支給額</td><td class="rate"></td><td class="num">${esc(yen(s.gross))}</td></tr></tfoot></table>
   <div class="memo"><h2 style="margin:0 0 1mm">備考</h2>月末締め・翌月25日払い（金融機関の休業日は前営業日）。${s.taxColumn === 'kou' || s.taxColumn === 'otsu' ? `所得税は源泉徴収税額表の${s.taxColumn === 'otsu' ? '乙欄' : '甲欄'}で計算しています。` : ''}<br><span style="color:#556;font-size:11px">この明細は、講師の画面の「給与明細」からいつでも開けます。</span></div>`;
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>給与明細書 ${esc(label(s.month))}分 ${esc(name)}</title><style>${DOC_STYLE}</style></head>
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex"><title>給与明細書 ${esc(label(s.month))}分 ${esc(name)}</title><style>${DOC_STYLE}</style></head>
 <body><div class="bar"><span>給与明細書（${esc(label(s.month))}分）。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div><div class="sheet">${body}</div></body></html>`;
 }
 // 印刷用の窓に明細書を出す（上の帯のボタンか Ctrl+P で印刷・PDF 保存）
