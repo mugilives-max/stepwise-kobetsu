@@ -1,9 +1,10 @@
 {
-  "operation": "publish",
+  "operation": "pages",
   "source": "0bc23165a32219c8427a57d33d0c31cdbb9b07c8",
   "checkRuns": [
     39086897470,
     39086900942
   ],
-  "authorization": "2026-10-18 owner agreed that documents only need to display well as A4 and asked to show the whole page scaled on phones ('その形で直してください'); agent deploys Worker changes without confirmation (standing permission). Inspection passed (Worker matches PR #123 source, no pending migration). Publish with private backup; no record changes."
+  "authorization": "2026-10-18 PR #125 merged after publish run 39087063385. Verify the published staff pages against the reviewed source and re-check the Worker and records against the private checkpoint. Read-only.",
+  "backupPrefix": "release-backups/docs-a4-20261018/39087063385-1"
 }
