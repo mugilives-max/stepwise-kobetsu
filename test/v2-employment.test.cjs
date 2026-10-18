@@ -130,20 +130,21 @@ test('overlap and breaks are checked; cancelled work records are retained for al
  assert.equal(zero.day.actual.length,0);assert.equal(h.rows('select count(*) n from workDayRevisions')[0].n,2);
 });
 
-test('readiness links agreement, rates, tax and confirmed shift; explicit owner activation only',async()=>{
- const w=await employmentWorld(),{h,auth,staff}=w,ta=await w.invite();let r=await w.issue(await w.create());r=await w.pref(r,ta);r=await w.deliver(r);r=await w.agree(r,ta);
+test('agreement makes the teacher official at once; remaining payroll setup stays an owner checklist',async()=>{
+ const w=await employmentWorld(),{h,auth,staff}=w,ta=await w.invite();
+ assert.equal((await h.ok('staff/me',{auth:ta})).me.employmentAccess,false,'契約の成立までは業務画面を使えない');
+ assert.equal((await h.call('employment/activate',{auth,staffId:staff.id})).error.code,'incomplete','契約が成立していなければ使えるようにできない');
+ let r=await w.issue(await w.create());r=await w.pref(r,ta);r=await w.deliver(r);r=await w.agree(r,ta);
+ assert.equal((await h.ok('staff/me',{auth:ta})).me.employmentAccess,true,'本人の同意で成立したら、そのまま正式な講師（業務画面）');
+ assert.equal(h.rows("select * from auditLog where action='employmentActivated'").length,1);
  await h.ok('payroll/rates/save',{auth,staffId:staff.id,startsOn:'2026-10',lessonHourly:2000,meetingHourly:null});
- let d=(await h.ok('work/plan',{auth,staffId:staff.id,date:'2026-10-17',version:0,intervals:[{start:'13:00',end:'14:30',kind:'other'}],reason:'初日'})).day;
- await h.ok('work/plan/agree',{auth:ta,date:d.date,version:d.version,agree:true});
- assert.deepEqual((await w.get()).checks,['労働保険（労災保険など）の届出・確認','講師マニュアル（本人の確認）'],'代表は労働保険、本人は講師マニュアル');
- const rules=await h.ok('employment/rules/get',{auth:ta});await h.ok('employment/rules/read',{auth:ta,hash:rules.hash,confirm:true});
- assert.deepEqual((await w.get()).checks,['労働保険（労災保険など）の届出・確認'],'代表のやること：労働保険の届出・確認');
+ assert.deepEqual((await w.get()).checks,['労働保険（労災保険など）の届出・確認'],'残りは最初の給与までに代表がすること（勤務予定・講師マニュアルは条件にしない）');
  const pp=(await w.get()).profile,before=pp.data;
  await h.ok('employment/save',{auth,staffId:staff.id,version:pp.version,data:{insuranceChecked:true}});
  const after=(await w.get()).profile.data;assert.equal(after.insuranceChecked,true);assert.deepEqual({...after,insuranceChecked:before.insuranceChecked},before,'一部だけ保存しても、ほかの項目は消えない');
  assert.deepEqual((await w.get()).checks,[]);
- await h.ok('employment/activate',{auth,staffId:staff.id});
- assert.equal((await h.ok('staff/me',{auth:ta})).me.employmentAccess,true);
+ await h.ok('employment/activate',{auth,staffId:staff.id}); // 以前の流れで成立した講師のための手動の入口（何度押しても同じ）
+ assert.equal(h.rows("select * from auditLog where action='employmentActivated'").length,1);
 });
 
 test('pay date uses previous banking day; unknown calendars are not silently confirmed',async()=>{

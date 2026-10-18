@@ -7,13 +7,15 @@ async function fresh(){
  const staff=d.staff,get=()=>h.ok('employment/get',{auth,staffId:staff.id});
  await h.ok('employment/invite',{auth,staffId:staff.id,confirm:true});
  const ta=(await h.ok('staff/invite/accept',{token:h.linkFrom(h.mails().at(-1)),password:'synthetic registration password'})).auth;
- const data={familyName:'【テスト】本人',givenName:'登録',address:'【テスト】本人が入力した住所',otherEmployment:'no',taxSituation:'unknown'};
+ const intent=async()=>h.ok('employment/intent',{auth:ta,rulesHash:(await h.ok('employment/rules/get',{auth:ta})).hash,confirm:true});
+ const data={familyName:'【テスト】本人',givenName:'登録',address:'【テスト】本人が入力した住所',otherEmployment:'no',taxSituation:'unknown',delivery:'email',recipient:'registration@example.invalid'};
  const submit=async(extra={})=>h.ok('employment/registration/submit',{auth:ta,version:(await get()).registration.version,confirm:true,data,...extra});
  const review=async(outcome='accepted',extra={})=>{
   const d=await get(),r=d.registration.requests.find(x=>x.id===d.registration.latestId);
   return h.call('employment/registration/review',{auth,staffId:staff.id,version:d.registration.version,profileVersion:d.profile.version,requestId:r.id,hash:r.contentHash,outcome,confirm:true,reason:'【テスト】住所を再確認',...extra});
  };
- return {...w,staff,get,ta,data,submit,review};
+ await intent(); // 契約の内容を読んで申し込んだあと、本人情報の登録へ
+ return {...w,staff,get,ta,data,submit,review,intent};
 }
 test('new employee starts with name/email only, registers own name and information without availability, owner explicitly adopts personal fields',async()=>{
  const w=await fresh(),{h,auth,staff,ta,get}=w;
@@ -134,11 +136,59 @@ test('legacy signed contract and payroll survive self-service changes; migration
  let r=await w.issue(await w.create());r=await w.pref(r,ta);r=await w.deliver(r);r=await w.agree(r,ta);
  assert.equal((await w.get()).registration.required,false);assert.equal((await w.get()).registration.requests.length,0);
  const contracts=h.rows('select * from employmentContracts'),events=h.rows('select * from employmentEvents'),staffBefore=h.rows('select * from staff'),payroll=h.rows('select * from payrollMonths');
- await h.ok('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{familyName:'【テスト】講師',givenName:'甲',address:'【テスト】転居',availability:'日曜',otherEmployment:'yes',otherWorkHours:'月・水 17時〜21時',taxSituation:'otherEmployer'}});
+ await h.ok('employment/registration/submit',{auth:ta,version:0,confirm:true,data:{familyName:'【テスト】講師',givenName:'甲',address:'【テスト】転居',availability:'日曜',delivery:'paper',otherEmployment:'yes',otherWorkHours:'月・水 17時〜21時',taxSituation:'otherEmployer'}});
  const d=await w.get(),req=d.registration.requests[0];
  await h.ok('employment/registration/review',{auth,staffId:staff.id,version:d.registration.version,profileVersion:d.profile.version,requestId:req.id,hash:req.contentHash,outcome:'accepted',confirm:true});
  assert.deepEqual(h.rows('select * from employmentContracts'),contracts);assert.deepEqual(h.rows('select * from employmentEvents'),events);assert.deepEqual(h.rows('select * from staff'),staffBefore);assert.deepEqual(h.rows('select * from payrollMonths'),payroll);
  const after=(await w.get()).profile.data;
  assert.equal(after.taxDeclaration,w.data.taxDeclaration);assert.equal(after.availability,'日曜','本人が書いた勤務希望は写す');assert.equal(after.address,'【テスト】転居');
  assert.equal(after.otherWork,'あり（雇われて働いている勤務先）。勤務する曜日と時間：月・水 17時〜21時','契約書の申告欄に写す文');
+});
+
+test('new flow: read the contract template and manual, apply, register the delivery choice; issuing emails the full contract and records delivery once sent; agreement makes the teacher official',async()=>{
+ const w=await employmentWorld(),{h,auth}=w;
+ const staff=(await h.ok('employment/save',{auth,familyName:'【テスト】新人',givenName:'乙',email:'newflow@example.invalid'})).staff,get=()=>h.ok('employment/get',{auth,staffId:staff.id});
+ await h.ok('employment/invite',{auth,staffId:staff.id,confirm:true});
+ assert.match(h.mails().at(-1).body,/まず雇用契約の内容/);
+ const ta=(await h.ok('staff/invite/accept',{token:h.linkFrom(h.mails().at(-1)),password:'synthetic new flow password'})).auth;
+ const tpl=(await h.ok('employment/contract/template',{auth:ta})).html;
+ assert.match(tpl,/これは雇用契約書のひな形です/);assert.match(tpl,/【契約のときに決めます】から【契約のときに決めます】まで。/);assert.doesNotMatch(tpl,/<script/);
+ const data={familyName:'【テスト】新人',givenName:'乙',address:'【テスト】住所',otherEmployment:'no',taxSituation:'noneElsewhere',delivery:'email',recipient:'newflow@example.invalid'};
+ assert.equal((await h.call('employment/registration/submit',{auth:ta,version:0,confirm:true,data})).error.code,'needIntent','契約の内容を読んで申し込むまでは、本人情報を登録しない');
+ const rules=await h.ok('employment/rules/get',{auth:ta});
+ assert.equal((await h.call('employment/intent',{auth:ta,rulesHash:'old',confirm:true})).error.code,'staleRules');
+ assert.equal((await h.call('employment/intent',{auth,rulesHash:rules.hash,confirm:true})).error.code,'forbidden','代表は申し込まない');
+ assert.ok((await h.ok('employment/intent',{auth:ta,rulesHash:rules.hash,confirm:true})).intentAt);
+ assert.ok((await h.ok('employment/rules/get',{auth:ta})).readAt,'申し込みと一緒に講師マニュアルを読んだ記録が残る');
+ const reg=(await get()).registration;
+ assert.equal((await h.call('employment/registration/submit',{auth:ta,version:reg.version,confirm:true,data:{...data,delivery:''}})).error.code,'badDelivery');
+ assert.equal((await h.call('employment/registration/submit',{auth:ta,version:reg.version,confirm:true,data:{...data,recipient:'bad'}})).error.code,'badRecipient');
+ await h.ok('employment/registration/submit',{auth:ta,version:reg.version,confirm:true,data});
+ let g=await get();const r0=g.registration.requests[0];
+ await h.ok('employment/registration/review',{auth,staffId:staff.id,version:g.registration.version,profileVersion:g.profile.version,requestId:r0.id,hash:r0.contentHash,outcome:'accepted',confirm:true});
+ g=await get();
+ assert.equal(g.profile.data.deliveryMethod,'electronic');assert.equal(g.profile.data.deliveryRecipient,'newflow@example.invalid');assert.equal(g.profile.data.deliveryWishAt,r0.submittedAt);
+ assert.equal((await h.call('employment/save',{auth,staffId:staff.id,version:g.profile.version,data:{deliveryRecipient:'other@example.invalid'}})).error.code,'selfOnly','受け取り方は本人が決める');
+ await h.ok('employment/save',{auth,staffId:staff.id,version:g.profile.version,data:{startDate:'2026-10-20',endDate:'2027-03-31',weeklyHours:'週5時間',hourly:'2000',employmentInsurance:'no'}});
+ await h.ok('work/plan',{auth,staffId:staff.id,date:'2026-10-24',version:0,intervals:[{start:'13:00',end:'14:30',kind:'lesson',label:'【テスト】初回'}],reason:'【テスト】最初のシフト'});
+ let c=(await h.ok('employment/contract/create',{auth,staffId:staff.id,version:(await get()).profile.version,method:'electronic'})).contract;
+ const before=h.mails().length;
+ c=(await h.ok('employment/contract/issue',{auth,id:c.id,version:c.version,hash:c.contentHash,agree:true})).contract;
+ assert.equal(c.recipient,'newflow@example.invalid');assert.equal(c.preferenceAt,r0.submittedAt,'電子交付の希望は、本人情報の登録のとき（送る前）');
+ const mail=h.mails().at(-1);
+ assert.equal(h.mails().length,before+1);assert.equal(mail.to,'newflow@example.invalid');assert.match(mail.subject,/雇用契約書（第1版）/);
+ assert.match(mail.body,/第9条（守ること）/);assert.match(mail.body,/最初の1か月のシフト表/);assert.doesNotMatch(mail.body,/\*\*/);
+ assert.equal((await get()).contracts[0].deliveredAt,'','送れたと分かるまでは交付にしない');
+ assert.equal((await get()).contracts[0].autoMail.status,'pending','代表の画面に送信の状況が出る');
+ // メールの中継（GAS）が送れたと返したら、その時刻で交付を記録する
+ const {deliverEffects}=await import('../cf/v2/effects.mjs');
+ const row=h.db2._sqlite.prepare("select id,payload from effects where kind='mail' and json_extract(payload,'$.contractDelivery.id')=?").get(c.id);
+ const fetcher=async(url,opt)=>({ok:true,json:async()=>({ok:true,results:JSON.parse(opt.body).items.map(i=>({id:i.deliveryId,status:'sent'}))})});
+ await deliverEffects({GAS_URL:'https://gas.example.invalid',SYNC_KEY:'synthetic'},h.env.DB2,[{id:row.id,item:JSON.parse(row.payload)}],fetcher,h.clock);
+ g=await get();c=g.contracts[0];
+ assert.ok(c.deliveredAt,'送れた時刻で交付を記録');assert.match(c.deliveryNote,/システムのメール/);
+ assert.ok(g.events.some(e=>e.action==='交付を記録'&&e.actorName==='システム'));
+ assert.equal((await h.ok('staff/me',{auth:ta})).me.employmentAccess,false);
+ await h.ok('employment/contract/accept',{auth:ta,id:c.id,version:c.version,hash:c.contentHash,consenterName:'【テスト】新人 乙',agree:true,received:true});
+ assert.equal((await h.ok('staff/me',{auth:ta})).me.employmentAccess,true,'同意で成立し、正式な講師として業務画面が使える');
 });

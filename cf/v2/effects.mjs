@@ -59,6 +59,14 @@ export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now())
       await db.prepare("update effects set status = ?, deliveryState = ?, error = ?, sentAt = ? where id = ? and deliveryState = 'sending'")
         .bind(state==='sent'?'sent':'failed',state,err.slice(0,300),state==='sent'?at:'',q.id).run();
       await scheduleDelivery(db,q.item,state,at);
+      // 雇用契約書のメール（本人がメールでの受け取りを希望）が送れたら、その時刻で交付を記録する。発行した同じ版だけ
+      const cd=q.item.contractDelivery;
+      if(state==='sent'&&cd?.id){
+       const u=await db.prepare("update employmentContracts set deliveredAt=?,deliveryNote=?,updatedAt=?,version=version+1 where id=? and status='issued' and deliveredAt='' and contentHash=? and method='electronic'")
+        .bind(at,'システムのメールで契約書の全文を '+String(cd.recipient||'')+' へ送付',at,String(cd.id),String(cd.hash||'')).run();
+       if(u.meta?.changes)await db.prepare("insert or ignore into employmentEvents(contractId,action,actualAt,recordedAt,actorId,actorName,detail,contractVersion) select id,'交付を記録',?,?,'system','システム',?,version from employmentContracts where id=?")
+        .bind(at,at,JSON.stringify({method:'electronic',recipient:String(cd.recipient||''),note:'システムのメールで送付'}),String(cd.id)).run();
+      }
       if(state==='sent')sent++;else if(state==='unknown')unknown++;else failed++;
       if(err)error=err;
     }

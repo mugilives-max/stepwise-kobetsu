@@ -1,9 +1,9 @@
-import { registrationState, registrationDetail, requireRegistration } from './staff-registration.mjs';
+import { registrationState, registrationDetail, requireRegistration, intentAt } from './staff-registration.mjs';
 import { bankSummary } from './staff-bank.mjs';
 import { fail, newId, normEmail, validEmail, iso, audit, sha256Hex } from './util.mjs';
 import { requireStaff, requireOwner, staffView } from './staff.mjs';
 import { issueChallenge } from './accounts.mjs';
-import { employmentSnapshot, employmentDocument, firstMonthEnd } from './employment-document.mjs';
+import { employmentSnapshot, employmentDocument, firstMonthEnd, templateDocHtml, contractMailText } from './employment-document.mjs';
 import { rulesReadAt } from './staff-rules.mjs';
 export const dateOK = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d||'')) && Number.isFinite(Date.parse(d+'T00:00:00Z')) && new Date(d+'T00:00:00Z').toISOString().slice(0,10)===d;
 const text=(v,max=500)=>{v=String(v||'').trim();if(v.length>max)fail('tooLong','入力が長すぎます');return v;};
@@ -32,7 +32,8 @@ async function change(c,r,me,action,values,at=iso(c.now),detail={}) {
 }
 function profileData(b) {
  const p={};
- for(const k of ['address','startDate','endDate','workWindow','weeklyHours','availability','otherWork','taxDeclaration','dependents','taxCheckedOn','preparationNote','insuranceNote','hourly','employmentInsurance'])p[k]=text(b[k],k==='otherWork'?1500:500);
+ for(const k of ['address','startDate','endDate','workWindow','weeklyHours','availability','otherWork','taxDeclaration','dependents','taxCheckedOn','preparationNote','insuranceNote','hourly','employmentInsurance','deliveryMethod','deliveryRecipient','deliveryWishAt'])p[k]=text(b[k],k==='otherWork'?1500:500);
+ if(p.deliveryMethod&&!['electronic','paper'].includes(p.deliveryMethod))fail('badDelivery','契約書の受け取り方を確かめてください');
  if(p.hourly&&!/^\d{3,5}$/.test(p.hourly))fail('badHourly','時給は円の数字（例：2000）で入れてください');
  if(p.employmentInsurance&&!['yes','no'].includes(p.employmentInsurance))fail('badInsurance','雇用保険に加入するかを選んでください');
  if(p.dependents!==''&&(!/^\d$/.test(p.dependents)||Number(p.dependents)>7))fail('badDependents','扶養人数は0〜7人で確認してください');
@@ -41,12 +42,10 @@ function profileData(b) {
  if(p.taxDeclaration&&!['submitted','notSubmitted'].includes(p.taxDeclaration))fail('badTax','申告書の確認状況を選んでください');
  return p;
 }
+// 最初の給与までに代表が済ませること（2026-10-18 本人の決めた流れ: 契約の成立で正式な講師になり、業務画面は自動で使えるようになる。
+// 振込先・給与の設定・労働保険は、講師が使い始める条件にはしない）
 async function readiness(c,s,p,contracts) {
  const checks=[];
- const reg=await registrationDetail(c,s.id);if(reg.required&&(!reg.accepted||reg.pending||reg.returned))checks.push(reg.pending?'本人情報を代表が確認':'本人情報の登録');
- if(!validEmail(s.email))checks.push('招待先メールアドレスを登録');
- if(!p)checks.push('基本情報を登録');
- if(!contracts.some(r=>r.status==='agreed'))checks.push('契約書の締結');
  if(p) {
   const d=JSON.parse(p.data);
   if(!d.insuranceChecked)checks.push('労働保険（労災保険など）の届出・確認');
@@ -61,11 +60,14 @@ async function readiness(c,s,p,contracts) {
   const r=rates.find(r=>r.startsOn<=agreed.startDate),snap=JSON.parse(agreed.snapshot);
   if(!r||r.lessonHourly!==snap.lessonHourly)checks.push('給与の設定（時給）');
  }
- const shifts=(await c.db.prepare('select id,date,planVersion,planAgreedVersion,planAgreedAt from workDays where staffId=? and planVersion>0 order by date').bind(s.id).all()).results;
- if(!shifts.some(d=>d.planAgreedVersion===d.planVersion&&d.planAgreedAt&&agreed&&d.date>=agreed.startDate&&d.date<=agreed.endDate))checks.push('初日の勤務予定（本人の確認）');
- if(!(await rulesReadAt(c,s.id)))checks.push('講師マニュアル（本人の確認）'); // 雇用契約書 第9条7項
- if(s.status!=='active')checks.push('本人のアカウント設定');
  return checks;
+}
+// 契約書を自動で送ったメールの状況（代表の画面で、送れたか・送れなかったかを出す）
+async function contractMail(c,id){return await c.db.prepare("select status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'$.contractDelivery.id')=? order by id desc limit 1").bind(id).first()||null;}
+// 契約の成立で、正式な講師として業務画面を使えるようにする
+async function activateOnAgreement(c,staffId){
+ const r=await c.db.prepare("update staff set employmentAccess=1,updatedAt=?,version=version+1 where id=? and status='active' and employmentAccess=0").bind(iso(c.now),staffId).run();
+ if(r.meta.changes)await audit(c,'employmentActivated',staffId,{auto:'contractAgreed'});
 }
 async function detail(c,id,me) {
  const s=await employee(c,id),p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();
@@ -75,7 +77,8 @@ async function detail(c,id,me) {
  const mail=(await c.db.prepare("select id,status,deliveryState,error,sentAt,createdAt from effects where json_extract(payload,'$.notice.type')='challenge' and json_extract(payload,'$.to')=? order by id desc limit 1").bind(s.email).all()).results[0]||null;
  const days=(await c.db.prepare("select id,date,status,planned,planVersion,planAgreedVersion,payrollId from workDays where staffId=? order by date desc limit 60").bind(s.id).all()).results;
  const requests=(await c.db.prepare("select a.id,w.date,a.at,a.detail from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id) order by a.id").bind(s.id).all()).results;
- return {rulesReadAt:await rulesReadAt(c,s.id),registration:await registrationDetail(c,s.id),bank:await bankSummary(c,s.id),days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map(rowView),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
+ const mailOf=me.contractType==='owner'?await Promise.all(visible.map(r=>contractMail(c,r.id))):[];
+ return {intentAt:await intentAt(c,s.id),rulesReadAt:await rulesReadAt(c,s.id),registration:await registrationDetail(c,s.id),bank:await bankSummary(c,s.id),days,requests,staff:staffView(s),profile:profileView(p),contracts:visible.map((r,i)=>({...rowView(r),...(mailOf[i]?{autoMail:mailOf[i]}:{})})),events,inviteDelivery:mail,checks:await readiness(c,s,p,contracts)};
 }
 export const employmentRoutes={
  'employment/list':async(c,b)=>{
@@ -83,7 +86,8 @@ export const employmentRoutes={
   const rows=(await c.db.prepare("select s.id,s.name,s.email,s.status,s.employmentAccess,p.invitedAt,p.version from staff s left join employmentProfiles p on p.staffId=s.id where s.contractType='employee' order by s.createdAt").all()).results;
   for(const s of rows){
    s.bank=await bankSummary(c,s.id);
-   const reg=await registrationDetail(c,s.id);s.registration={required:reg.required,submitted:!!reg.latestId,pending:reg.pending,returned:reg.returned,accepted:reg.accepted};
+   const reg=await registrationDetail(c,s.id);s.registration={required:reg.required,submitted:!!reg.latestId,pending:reg.pending,returned:reg.returned,accepted:reg.accepted,intent:!!(await intentAt(c,s.id))};
+   s.contract=await c.db.prepare("select status,method,deliveredAt from employmentContracts where staffId=? and status<>'withdrawn' order by revision desc limit 1").bind(s.id).first()||null; // 一覧の状態（契約書の準備・同意待ち・成立）
    s.pendingWork=Number((await c.db.prepare("select count(*) n from workDays where staffId=? and status='submitted'").bind(s.id).first()).n);
    s.pendingCorrections=Number((await c.db.prepare("select count(*) n from auditLog a join workDays w on w.id=a.target where w.staffId=? and a.action='workCorrectionRequested' and not exists(select 1 from auditLog z where z.target=w.id and z.action='workCorrectionAnswered' and json_extract(z.detail,'$.requestId')=a.id)").bind(s.id).first()).n);
   }
@@ -99,8 +103,8 @@ export const employmentRoutes={
    if(old) {
     const reg=await registrationState(c,s.id),prior=JSON.parse(old.data);
     if(reg.required){
-     for(const k of ['address','otherWork'])if(Object.hasOwn(b.data||{},k)&&data[k]!==String(prior[k]||''))fail('selfOnly','住所・他の勤務先は本人が登録し、代表が確認する手順で更新してください',409);
-     data=profileData({...prior,...b.data,address:prior.address,otherWork:prior.otherWork}); // 勤務希望（availability）は代表が本人と確認して保存できる
+     for(const k of ['address','otherWork','deliveryMethod','deliveryRecipient','deliveryWishAt'])if(Object.hasOwn(b.data||{},k)&&data[k]!==String(prior[k]||''))fail('selfOnly','住所・他の勤務先・契約書の受け取り方は本人が登録し、代表が確認する手順で更新してください',409);
+     data=profileData({...prior,...b.data,address:prior.address,otherWork:prior.otherWork,deliveryMethod:prior.deliveryMethod,deliveryRecipient:prior.deliveryRecipient,deliveryWishAt:prior.deliveryWishAt}); // 勤務希望（availability）は代表が本人と確認して保存できる
     } else data=profileData({...prior,...b.data}); // 送られた項目だけを変える
     checkVersion(old,b);const r=await c.db.prepare('update employmentProfiles set data=?,updatedAt=?,version=version+1 where staffId=? and version=?').bind(JSON.stringify(data),now,s.id,old.version).run();if(r.meta.changes!==1)fail('conflict','読み直してください',409);}
    else {if(Number(b.version)!==0)fail('conflict','読み直してください',409);await c.db.prepare('insert into employmentProfiles(staffId,data,createdAt,updatedAt) values(?,?,?,?)').bind(s.id,JSON.stringify(data),now,now).run();}
@@ -137,7 +141,7 @@ export const employmentRoutes={
   if(b.email!==undefined&&normEmail(b.email)!==s.email)fail('conflict','招待先が変わっています。読み直して確認してください',409);
   const p=await c.db.prepare('select * from employmentProfiles where staffId=?').bind(s.id).first();if(!p)fail('needProfile','先に雇用情報を登録してください');
   if(b.confirm!==true)fail('needConfirm','宛先を確認してから招待してください');
-  const inviteUrl=await issueChallenge(c,'staff','staffInvite',s,{subject:'【ステップワイズ】雇用契約の確認・アカウント設定',body:url=>'入職の手続きを進めるアカウントをご用意しました。7日以内に、ご本人がリンクからパスワードを設定してください。\n\n'+url+'\n\n設定後は「雇用・勤務」の案内に沿って、氏名・住所などの本人情報を登録してください。代表が確認して勤務条件を整えたあと、契約書をご案内します。アカウントの設定だけでは契約への同意にはなりません。リンクを再送した場合、前のリンクは使えません。\n届かない・開けない場合は代表へご連絡ください。'});
+  const inviteUrl=await issueChallenge(c,'staff','staffInvite',s,{subject:'【ステップワイズ】雇用契約の確認・アカウント設定',body:url=>'入職の手続きを進めるアカウントをご用意しました。7日以内に、ご本人がリンクからパスワードを設定してください。\n\n'+url+'\n\n設定後は画面の案内に沿って、まず雇用契約の内容（契約書のひな形と講師マニュアル）をお読みください。この条件で働きたいときは、画面から申し込み、契約書に載せる情報と受け取り方を登録します。代表が確認したあと、契約書をお送りします。アカウントの設定だけでは契約への同意にはなりません。リンクを再送した場合、前のリンクは使えません。\n届かない・開けない場合は代表へご連絡ください。'});
   await c.db.prepare('update employmentProfiles set invitedAt=?,updatedAt=?,version=version+1 where staffId=?').bind(iso(c.now),iso(c.now),s.id).run();
   await audit(c,'employmentInvite',s.id);return {inviteUrl,...await detail(c,s.id,me)};
  },
@@ -161,7 +165,12 @@ export const employmentRoutes={
   if(r.status!=='draft'||b.agree!==true||b.hash!==r.contentHash)fail('needReview','この版の全文を確認し、代表として合意する操作が必要です');
   const pending=(await c.db.prepare("select * from employmentContracts where staffId=? and status='issued' and startDate<=? and endDate>=?").bind(r.staffId,r.endDate,r.startDate).all()).results;
   if(pending.length)fail('pendingVersion','対象期間が重なる未締結の版があります。先に取り下げてください',409);
-  return {contract:await change(c,r,me,'代表の発行・合意',{status:'issued',issuedAt:iso(c.now),issuedBy:me.name})};
+  const s=await employee(c,r.staffId),p=await c.db.prepare('select data from employmentProfiles where staffId=?').bind(s.id).first(),d=p?JSON.parse(p.data):{};
+  const auto=r.method==='electronic'&&d.deliveryMethod==='electronic'&&validEmail(d.deliveryRecipient)&&d.deliveryWishAt;
+  const values={status:'issued',issuedAt:iso(c.now),issuedBy:me.name,...(auto?{preferenceAt:d.deliveryWishAt,recipient:d.deliveryRecipient}:{})};
+  const out=await change(c,r,me,'代表の発行・合意',values,iso(c.now),auto?{autoDelivery:true,recipient:d.deliveryRecipient,wishAt:d.deliveryWishAt}:{});
+  if(auto){const snap=JSON.parse(r.snapshot);c.effects.push({kind:'mail',to:d.deliveryRecipient,name:'ステップワイズ個別指導',replyTo:'mugilives@gmail.com',testOnly:!!s.testOnly,audience:'staff',subject:'【ステップワイズ】雇用契約書（第'+r.revision+'版）をお送りします',body:contractMailText(snap,r.revision),contractDelivery:{id:r.id,hash:r.contentHash,recipient:d.deliveryRecipient}});}
+  return {contract:out};
  },
  'employment/contract/withdraw':async(c,b)=>{
   const me=await requireOwner(c,b),r=await contractRow(c,b.id);checkVersion(r,b);
@@ -189,7 +198,8 @@ export const employmentRoutes={
   if(r.status!=='issued'||r.method!=='paper'||!r.deliveredAt||b.hash!==r.contentHash)fail('closed','紙の発行・交付を確認してから署名を記録してください',409);
   const at=actualTime(c,b.agreedAt),name=text(b.consenterName,100),ref=text(b.evidenceRef,500);
   if(at<r.issuedAt||!name||!ref||b.signed!==true)fail('needEvidence','双方の署名・実際の署名日時・講師氏名・署名済み控えの非公開保管先を確認してください');
-  return {contract:await change(c,r,me,'紙の署名を記録',{status:'agreed',agreedAt:at,consenterName:name,evidenceRef:ref},at,{evidenceRef:ref,consenterName:name})};
+  const out=await change(c,r,me,'紙の署名を記録',{status:'agreed',agreedAt:at,consenterName:name,evidenceRef:ref},at,{evidenceRef:ref,consenterName:name});
+  await activateOnAgreement(c,r.staffId);return {contract:out};
  },
  'employment/contract/accept':async(c,b)=>{
   const me=await requireStaff(c,b),r=await contractRow(c,b.id);checkVersion(r,b);
@@ -197,8 +207,10 @@ export const employmentRoutes={
   if(r.status!=='issued'||r.method!=='electronic'||!r.deliveredAt||!r.preferenceAt||b.hash!==r.contentHash)fail('needDelivery','同じ版の交付が済んでから同意してください',409);
   const name=text(b.consenterName,100);
   if(b.agree!==true||b.received!==true||!name)fail('needAgree','交付された書面を受け取り保存できること、全文への同意、氏名を確認してください');
-  return {contract:await change(c,r,me,'本人の電子同意',{status:'agreed',agreedAt:iso(c.now),consenterName:name})};
+  const out=await change(c,r,me,'本人の電子同意',{status:'agreed',agreedAt:iso(c.now),consenterName:name});
+  await activateOnAgreement(c,r.staffId);return {contract:out};
  },
+ 'employment/contract/template':async(c,b)=>{const me=await requireStaff(c,b);return {html:templateDocHtml(me.contractType==='owner'?'':me.name)};},
  'employment/contract/document':async(c,b)=>{
   const r=await contractRow(c,b.id),me=await access(c,b,r.staffId);
   if(me.contractType!=='owner'&&r.status==='draft')fail('notFound','書面はまだ発行されていません',404);
@@ -207,8 +219,8 @@ export const employmentRoutes={
  },
  'employment/activate':async(c,b)=>{
   const me=await requireOwner(c,b),d=await detail(c,b.staffId,me);
-  if(d.checks.length)fail('incomplete','次の確認が必要です：'+d.checks.join(' / '),409);
-  await c.db.prepare('update staff set employmentAccess=1,updatedAt=?,version=version+1 where id=?').bind(iso(c.now),b.staffId).run();
-  await audit(c,'employmentActivated',b.staffId);return detail(c,b.staffId,me);
+  if(!d.contracts.some(r=>r.status==='agreed'))fail('incomplete','契約が成立してから使えるようにします',409);
+  if(!d.staff.employmentAccess){await c.db.prepare('update staff set employmentAccess=1,updatedAt=?,version=version+1 where id=?').bind(iso(c.now),b.staffId).run();await audit(c,'employmentActivated',b.staffId);}
+  return detail(c,b.staffId,me);
  }
 };
