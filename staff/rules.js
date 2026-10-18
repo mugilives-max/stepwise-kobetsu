@@ -1,4 +1,4 @@
-// 講師のきまり（#rules）。中身は Worker（cf/v2/staff-rules.mjs）が持つ。
+// 講師マニュアル（#rules）。中身は Worker（cf/v2/staff-rules.mjs）が持つ。
 // 講師: 全文を読んで「読みました」。代表: 全文と、今の版を読んだ講師の一覧
 let data = null;
 export function resetRules() { data = null; }
@@ -19,7 +19,7 @@ export function rulesPage(ctx, me) {
   } else if (data.readAt) {
     h += `<p class="small muted" style="margin:12px 2px 0">${esc(jaDay(data.readAt))}に読みました。</p>`;
   } else {
-    h += `<form class="reg-form" data-form="rules-read"><label class="choice"><input type="checkbox" name="confirm" required><span>講師のきまりを読み、このとおりに仕事をします</span></label><button class="primary wide"${ctx.dis()}>読みました</button></form>`;
+    h += `<form class="reg-form" data-form="rules-read"><label class="choice"><input type="checkbox" name="confirm" required><span>講師マニュアルを読み、このとおりに仕事をします</span></label><button class="primary wide"${ctx.dis()}>読みました</button></form>`;
   }
   return h;
 }
