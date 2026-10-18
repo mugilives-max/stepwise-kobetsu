@@ -1,0 +1,10 @@
+{
+  "operation": "pages",
+  "source": "0bc23165a32219c8427a57d33d0c31cdbb9b07c8",
+  "checkRuns": [
+    39086897470,
+    39086900942
+  ],
+  "authorization": "2026-10-18 PR #125 merged after publish run 39087063385. Verify the published staff pages against the reviewed source and re-check the Worker and records against the private checkpoint. Read-only.",
+  "backupPrefix": "release-backups/docs-a4-20261018/39087063385-1"
+}
