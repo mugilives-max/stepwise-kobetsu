@@ -12,7 +12,7 @@ import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBi
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261016-stages';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261016-stages';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261018-manual';
-import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261018-payslip';
+import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261018-issuer';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261018-manual';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';

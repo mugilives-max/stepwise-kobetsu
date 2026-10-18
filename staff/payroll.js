@@ -37,7 +37,8 @@ const DOC_STYLE = `
   .meta { text-align: right; line-height: 1.8; }
   .to { margin-top: 8mm; font-size: 17px; border-bottom: 1px solid #1e2630; display: inline-block; min-width: 85mm; padding-bottom: 1mm; }
   .grid { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 6mm; }
-  .issuer { line-height: 1.7; }
+  .issuer { line-height: 1.7; flex: none; }
+  .issuer > div { white-space: nowrap; }
   .issuer .name { font-size: 15px; font-weight: bold; }
   .total { margin-top: 4mm; display: flex; gap: 6mm; align-items: baseline; padding: 3mm 5mm; border: 2px solid #1e2630; width: 100mm; }
   .total .yen { font-size: 24px; font-weight: bold; }
@@ -56,7 +57,7 @@ const DOC_STYLE = `
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; } }
 `;
 const ymdJa = v => { const d = String(v || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? `${Number(d.slice(0, 4))}年${Number(d.slice(5, 7))}月${Number(d.slice(8))}日` : ''; };
-const ISSUER = '<div class="issuer"><div class="name">ステップワイズ個別指導</div>代表　麦倉 優輔<br>〒343-0002　埼玉県越谷市袋山1319-9<br>080-6259-3025　／　mugilives@gmail.com</div>';
+const ISSUER = '<div class="issuer"><div class="name">ステップワイズ個別指導</div><div>代表　麦倉 優輔</div><div>〒343-0002</div><div>埼玉県越谷市袋山1319-9</div><div>電話 080-6259-3025</div><div>mugilives@gmail.com</div></div>';
 // 横に並ぶ枠（上が項目、下が値）。値が 0 の任意の欄は出さない
 const box = (esc, cols) => `<table class="box"><tr>${cols.map(([k, , , sum]) => `<th${sum ? ' class="sum"' : ''}>${esc(k)}</th>`).join('')}</tr><tr>${cols.map(([, v, , sum]) => `<td${sum ? ' class="sum"' : ''}>${esc(v)}</td>`).join('')}</tr></table>`;
 export function statementHtml(esc, s, name, { sample = false } = {}) {

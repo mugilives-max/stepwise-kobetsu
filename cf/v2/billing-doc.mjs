@@ -27,7 +27,8 @@ const STYLE = `
   .meta { text-align: right; line-height: 1.8; }
   .to { margin-top: 8mm; font-size: 17px; border-bottom: 1px solid #1e2630; display: inline-block; min-width: 85mm; padding-bottom: 1mm; }
   .grid { display: flex; justify-content: space-between; gap: 10mm; margin-top: 6mm; }
-  .issuer { line-height: 1.7; text-align: left; }
+  .issuer { line-height: 1.7; text-align: left; flex: none; }
+  .issuer > div { white-space: nowrap; } /* 住所や電話を行の途中で折り返さない */
   .issuer .name { font-size: 15px; font-weight: bold; }
   .total { margin-top: 6mm; display: flex; gap: 6mm; align-items: baseline; padding: 3mm 5mm; border: 2px solid #1e2630; width: 110mm; }
   .total .yen { font-size: 24px; font-weight: bold; }
@@ -46,7 +47,7 @@ export const docPage = (title, bar, body) => page(title, bar, body); // 講師�
 const page = (title, bar, body) => `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>${STYLE}</style></head>
 <body><div class="bar"><span>${esc(bar)}</span><button onclick="window.print()">印刷・PDF</button></div><div class="sheet">${body}</div></body></html>`;
 export const DOC_ISSUER = () => issuer;
-const issuer = `<div class="issuer"><div class="name">ステップワイズ個別指導</div>代表　麦倉 優輔<br>〒343-0002　埼玉県越谷市袋山1319-9<br>080-6259-3025　／　mugilives@gmail.com</div>`;
+const issuer = `<div class="issuer"><div class="name">ステップワイズ個別指導</div><div>代表　麦倉 優輔</div><div>〒343-0002</div><div>埼玉県越谷市袋山1319-9</div><div>電話 080-6259-3025</div><div>mugilives@gmail.com</div></div>`;
 
 // 請求書。inv: invoices の行、items: invoiceItems（studentName つき）、family、settings { bank, note }
 export function invoiceDocHtml({ inv, items, family, settings }) {
