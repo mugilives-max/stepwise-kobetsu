@@ -42,7 +42,7 @@ const STYLE = `
   .stamp { display: inline-block; border: 2px solid #2e7d32; color: #2e7d32; padding: 2px 10px; border-radius: 4px; font-weight: bold; }
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; } }
 `;
-export const docPage = (title, bar, body) => page(title, bar, body); // 講師のきまり（staff-rules.mjs）も同じ書面の枠
+export const docPage = (title, bar, body) => page(title, bar, body); // 講師マニュアル（staff-rules.mjs）も同じ書面の枠
 const page = (title, bar, body) => `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>${STYLE}</style></head>
 <body><div class="bar"><span>${esc(bar)}</span><button onclick="window.print()">印刷・PDF</button></div><div class="sheet">${body}</div></body></html>`;
 export const DOC_ISSUER = () => issuer;

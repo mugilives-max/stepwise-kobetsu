@@ -63,7 +63,7 @@ async function readiness(c,s,p,contracts) {
  }
  const shifts=(await c.db.prepare('select id,date,planVersion,planAgreedVersion,planAgreedAt from workDays where staffId=? and planVersion>0 order by date').bind(s.id).all()).results;
  if(!shifts.some(d=>d.planAgreedVersion===d.planVersion&&d.planAgreedAt&&agreed&&d.date>=agreed.startDate&&d.date<=agreed.endDate))checks.push('初日の勤務予定（本人の確認）');
- if(!(await rulesReadAt(c,s.id)))checks.push('講師のきまり（本人の確認）'); // 雇用契約書 第9条7項
+ if(!(await rulesReadAt(c,s.id)))checks.push('講師マニュアル（本人の確認）'); // 雇用契約書 第9条7項
  if(s.status!=='active')checks.push('本人のアカウント設定');
  return checks;
 }

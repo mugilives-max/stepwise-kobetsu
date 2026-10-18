@@ -1,7 +1,7 @@
-// 講師のきまり（雇用契約書 第9条7項）。2026-10-18 本人「運用の決まりは別で作ったほうがよいか」→ 契約には働く条件と重い約束だけ、
+// 講師マニュアル（雇用契約書 第9条7項）。2026-10-18 本人「運用の決まりは別で作ったほうがよいか」→ 契約には働く条件と重い約束だけ、
 // 日々のやり方はここ。本人「その案で進めてください。その日の授業中に、その日のうち、LINE」（docs/STAFF_RULES_DRAFT.md）。
 // - 中身はここに固定して持つ。変えるときは版（version）を上げる。講師は「読みました」を押し、その版の照合番号（hash）と一緒に auditLog に残す
-// - 講師の画面と代表の画面（読んだ講師の一覧）は staff/rules.js。勤務開始までにすることに「講師のきまり（本人の確認）」が入る（employment.mjs）
+// - 講師の画面と代表の画面（読んだ講師の一覧）は staff/rules.js。勤務開始までにすることに「講師マニュアル（本人の確認）」が入る（employment.mjs）
 // - 入職の手続き中の講師も読めるように、経路は employment/ の下に置く
 import { fail, audit, sha256Hex } from './util.mjs';
 import { requireStaff } from './staff.mjs';
@@ -9,7 +9,7 @@ import { docPage, DOC_ISSUER } from './billing-doc.mjs';
 
 export const STAFF_RULES = {
   version: '2026-11',
-  title: '講師のきまり（2026年11月版）',
+  title: '講師マニュアル（2026年11月版）',
   intro: 'ステップワイズ個別指導で働くときの、日々の仕事のやり方です。雇用契約書の第9条7項にもとづきます。変えるときは、前もって講師の画面でお知らせします。',
   sections: [
     ['授業', [
@@ -56,11 +56,11 @@ const escH = v => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<'
 export function rulesDocHtml() {
   const r = STAFF_RULES;
   const body = `
-  <div class="head"><h1>講師のきまり</h1><div class="meta">${escH(r.title.replace('講師のきまり', '').replace(/[（）]/g, ''))}<br>照合番号 ${escH(STAFF_RULES_HASH.slice(0, 12))}</div></div>
+  <div class="head"><h1>講師マニュアル</h1><div class="meta">${escH(r.title.replace('講師マニュアル', '').replace(/[（）]/g, ''))}<br>照合番号 ${escH(STAFF_RULES_HASH.slice(0, 12))}</div></div>
   <p style="margin:6mm 0 0;line-height:1.9">${escH(r.intro)}</p>
   <style>.rsec{break-inside:avoid;page-break-inside:avoid}@media screen and (max-width:820px){.sheet{width:auto;min-height:0;margin:0;padding:6mm 5mm;box-shadow:none}.head{flex-direction:column;gap:2mm}.meta{text-align:left}h1{font-size:22px;letter-spacing:.2em}}</style>
   ${r.sections.map(([title, items], i) => `<div class="rsec"><h2 style="margin:6mm 0 1mm;font-size:14px;border-bottom:1px solid #b9c0c8;padding-bottom:1mm">${i + 1}. ${escH(title)}</h2><ol style="margin:0;padding-left:1.6em;line-height:1.9">${items.map(x => `<li>${escH(x)}</li>`).join('')}</ol></div>`).join('')}
-  <div style="margin-top:9mm;border:1px solid #b9c0c8;padding:4mm 5mm;line-height:2.2;break-inside:avoid"><div style="font-weight:bold">受け取りの記録</div>この「講師のきまり」を受け取り、内容を確かめました。<br>日付：　　　　年　　月　　日<br>講師の氏名（署名）：</div>
+  <div style="margin-top:9mm;border:1px solid #b9c0c8;padding:4mm 5mm;line-height:2.2;break-inside:avoid"><div style="font-weight:bold">受け取りの記録</div>この「講師マニュアル」を受け取り、内容を確かめました。<br>日付：　　　　年　　月　　日<br>講師の氏名（署名）：</div>
   <div style="margin-top:8mm;display:flex;justify-content:flex-end">${DOC_ISSUER()}</div>`;
   return docPage(r.title, `${r.title}。印刷（Ctrl+P）で PDF に保存できます。`, body);
 }
@@ -86,7 +86,7 @@ export const staffRulesRoutes = {
   'employment/rules/read': async (c, b) => {
     const me = await requireStaff(c, b);
     if (me.contractType !== 'employee') fail('forbidden', '講師が読んだことを残す操作です', 403);
-    if (b.hash !== STAFF_RULES_HASH) fail('staleRules', '講師のきまりが新しくなっています。画面を読み直してください', 409);
+    if (b.hash !== STAFF_RULES_HASH) fail('staleRules', '講師マニュアルが新しくなっています。画面を読み直してください', 409);
     if (b.confirm !== true) fail('needConfirm', '読んだことを確かめる印を付けてください');
     if (!(await rulesReadAt(c, me.id))) await audit(c, 'staffRulesRead', me.id, { version: STAFF_RULES.version, hash: STAFF_RULES_HASH });
     return { readAt: await rulesReadAt(c, me.id) };

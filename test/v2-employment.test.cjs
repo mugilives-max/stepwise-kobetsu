@@ -135,7 +135,7 @@ test('readiness links agreement, rates, tax and confirmed shift; explicit owner 
  await h.ok('payroll/rates/save',{auth,staffId:staff.id,startsOn:'2026-10',lessonHourly:2000,meetingHourly:null});
  let d=(await h.ok('work/plan',{auth,staffId:staff.id,date:'2026-10-17',version:0,intervals:[{start:'13:00',end:'14:30',kind:'other'}],reason:'初日'})).day;
  await h.ok('work/plan/agree',{auth:ta,date:d.date,version:d.version,agree:true});
- assert.deepEqual((await w.get()).checks,['労働保険（労災保険など）の届出・確認','講師のきまり（本人の確認）'],'代表は労働保険、本人は講師のきまり');
+ assert.deepEqual((await w.get()).checks,['労働保険（労災保険など）の届出・確認','講師マニュアル（本人の確認）'],'代表は労働保険、本人は講師マニュアル');
  const rules=await h.ok('employment/rules/get',{auth:ta});await h.ok('employment/rules/read',{auth:ta,hash:rules.hash,confirm:true});
  assert.deepEqual((await w.get()).checks,['労働保険（労災保険など）の届出・確認'],'代表のやること：労働保険の届出・確認');
  const pp=(await w.get()).profile,before=pp.data;

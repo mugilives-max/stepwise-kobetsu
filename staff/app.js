@@ -1,6 +1,6 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-pending';
-import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261018-doc';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261018-rules';
+import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261018-manual';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261018-manual';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
@@ -11,10 +11,10 @@ import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetR
 import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261016-notices';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261016-stages';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261016-stages';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261018-rules';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261018-manual';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261018-payslip';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
-import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261018-rulesdoc';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261018-manual';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { billingPick } from '/staff/billing.js?v=20261016-notices';
@@ -27,7 +27,7 @@ let lastPage = '';
 let me = null, busy = false, notice = null, staffList = null, shownLink = null, bootstrap = null, staffOpen = '';
 
 // 上の帯に出す画面の名前（本文には大見出しを置かない）
-const PAGE_TITLE = { rules:'講師のきまり', bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: '受講規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信の記録と控え' };
+const PAGE_TITLE = { rules:'講師マニュアル', bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: '受講規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信の記録と控え' };
 const legacyToken = () => { try { return localStorage.getItem('sw_admt') || ''; } catch { return ''; } };
 function route() {
   const h = location.hash;
