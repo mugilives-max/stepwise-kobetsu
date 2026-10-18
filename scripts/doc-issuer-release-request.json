@@ -1,9 +1,9 @@
 {
-  "operation": "inspect",
+  "operation": "publish",
   "source": "3985c74911f9e30237bc77a4b30594d7d716cf2b",
   "checkRuns": [
     39082220045,
     39082223222
   ],
-  "authorization": "2026-10-18 owner asked to fix the awkward line break in the school address on invoices and receipts; agent deploys Worker changes without confirmation (standing permission). Read-only inspection first."
+  "authorization": "2026-10-18 owner asked to fix the awkward line break in the school address on invoices and receipts; agent deploys Worker changes without confirmation (standing permission). Inspection passed (Worker matches PR #121 source, no pending migration). Publish with private backup; no record changes."
 }
