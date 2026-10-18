@@ -84,8 +84,11 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
   await noOverflow(self);
   await self.screenshot({path:path.join(out,'02-employee-agreement.png'),fullPage:true,animations:'disabled'});
   await self.locator(accept+' button').click();
-  await self.getByText('第2版（電子）・締結済み',{exact:true}).waitFor();
+  // 同意で契約が成立したら、そのまま正式な講師として業務画面が使える（2026-10-18）
+  await self.getByText('同意しました。契約が成立し、講師として授業や勤務の画面が使えるようになりました。',{exact:true}).waitFor();
+  await self.locator('#nav a[href="#students"]').first().waitFor();
   r=await w.contract(r.id);assert.equal(r.status,'agreed');
+  await self.goto(origin+'/staff/#employment');await self.getByText('第2版（電子）・締結済み',{exact:true}).waitFor();
   report.checks.push('employee restricted entry, electronic preference, separate receipt and exact-version acceptance on mobile');
 
   h.clock=Date.parse('2026-10-17T15:00:00+09:00');

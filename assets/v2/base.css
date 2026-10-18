@@ -833,3 +833,4 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
   .shift-list li { grid-template-columns: 7em auto; }
   .shift-list .l { grid-column: 1 / -1; }
 }
+.reg-field:has(input[name="delivery"][value="paper"]:checked) .dl-mail, .reg-field:not(:has(input[name="delivery"]:checked)) .dl-mail { display: none; }

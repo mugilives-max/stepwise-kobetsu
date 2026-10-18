@@ -52,8 +52,7 @@ const {employmentWorld}=require('../test/helpers/employment-fixture.cjs');
  try{
   const ta=await w.invite(),before={profiles:h.rows('select * from employmentProfiles'),contracts:h.rows('select * from employmentContracts'),payroll:h.rows('select * from payrollMonths'),mails:h.mails().length};
   employee=await make(ta,390);owner=await make(auth,1280);
-  await employee.goto(origin+'/staff/#employment');
-  await employee.locator('a[href="#bank"]').click();
+  await employee.goto(origin+'/staff/#bank'); // 画面の案内に出るのは契約の成立後。ここでは振込先の画面そのものを確かめる
   await employee.getByRole('heading',{name:'給与の振込先',exact:true}).waitFor();
   await employee.getByRole('button',{name:'振込先を登録する',exact:true}).click();
   await fill(employee,'0123456');

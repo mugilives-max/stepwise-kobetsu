@@ -1,6 +1,6 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-pending';
 import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261018-manual';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261018-shift';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261018-flow';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
@@ -205,6 +205,7 @@ const ctx = {
   call: (route, body = {}) => call(route, body, store.get()), esc, render: () => render(), dis: () => dis(), notice: () => noticeHtml(),
   say: (m, k) => say(m, k), handleAuth: r => { if (r && r.error && r.error.code === 'needLogin') { signedOut(); return true; } return false; },
   afterMigrate: () => { resetFamilies(); resetSchedule(); resetRecords(); resetBilling(); resetGrades(); resetToday(); resetStudents(); },
+  refreshMe: async () => { const r = await call('staff/me', {}, store.get()); if (r.ok) me = r.me; }, // 契約が成立したら、講師のメニュー（業務画面）に切り替える
   get isOwner(){return !!me && me.contractType==='owner';},
   get isManager() { return !!me && me.roles.includes('manager'); },
 };
@@ -316,6 +317,7 @@ document.addEventListener('click', ev => {
   // 成績票は、待たずに新しいタブを開いてから読む（あとから開くと止められる）
   if (a === 'doc-sample' && b.dataset.type === 'payslip') { const url = URL.createObjectURL(new Blob([sampleStatementHtml(esc)], { type: 'text/html' })); if (!window.open(url, '_blank')) location.href = url; return; }
   if (a === 'doc-sample') { const win = window.open('', '_blank'); run(async () => { const r = await ctx.call('admin/docs/sample', { type: b.dataset.type }); if (!r.ok) { if (win) win.close(); return say(r.error.message, 'error'); } const url = URL.createObjectURL(new Blob([r.html], { type: 'text/html' })); if (win && !win.closed) win.location.href = url; else location.href = url; }); return; }
+  if (a === 'em-template') { openAgreementDocument(() => ctx.call('employment/contract/template', {}), message => { say(message, 'error'); render(); }); return; }
   if (a === 'rules-doc') { openAgreementDocument(() => ctx.call('employment/rules/document', {}), message => { say(message, 'error'); render(); }); return; }
   if (a === 'em-doc') { openAgreementDocument(() => ctx.call('employment/contract/document',{id:b.dataset.id}),message=>{say(message,'error');render();}); return; }
   if (a === 'agreement-doc') { openAgreementDocument(() => ctx.call('billing/plans/document', { refs: JSON.parse(b.dataset.refs) }), message => { say(message, 'error'); render(); }); return; }

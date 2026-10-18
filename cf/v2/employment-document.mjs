@@ -36,6 +36,26 @@ function blocks(text) {
  }).join('\n');
 }
 const japanTime=v=>v?new Date(Date.parse(v)+9*3600e3).toISOString().slice(0,16).replace('T',' '):'';
+// 申し込む前に講師が読む、雇用契約書のひな形（全員共通の条件の全文。講師ごとの欄は【　】）。2026-10-18 本人の決めた流れ
+export function templateDocHtml(name='') {
+ const blank=t=>'【'+t+'】';
+ let text=TEMPLATE.replace('【講師の氏名】',name||blank('講師の氏名'))
+  .replace('2026年10月17日から2027年3月31日まで。',blank('契約のときに決めます')+'から'+blank('契約のときに決めます')+'まで。')
+  .replace('週5〜6時間ほど。',blank('契約のときに決めます（例：週5〜6時間ほど）'))
+  .replaceAll('【時給】',blank('契約のときに決めます（例：2,000円）'))
+  .replace('【雇用保険】',blank('勤務時間によって決まります'));
+ text+='\n\n**最初の1か月のシフト表（第4条2項）**\n\n'+blank('契約のときに、契約の始まりから1か月分の勤務の日と時刻を載せます')+'\n\n**他の勤務先の申告（第9条6項）**\n\n'+blank('本人情報の登録で申告します');
+ return '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>雇用契約書のひな形</title><style>'+
+ '@page{size:A4;margin:16mm 17mm}*{box-sizing:border-box}body{font-family:"Noto Sans CJK JP","Yu Gothic",sans-serif;font-size:10pt;line-height:1.7;color:#18232d;max-width:760px;margin:24px auto;padding:0 16px}h1{font-size:18pt;margin:12px 0}h2{font-size:11pt;margin:18px 0 6px;break-after:avoid}p{margin:7px 0;overflow-wrap:anywhere}.note{border:1px solid #b9c0c8;background:#f6f8fa;padding:8px 12px;border-radius:6px}.toolbar{margin-bottom:12px}@media print{.toolbar{display:none}}'+
+ '</style></head><body><div class="toolbar"><button onclick="window.print()">印刷・PDF保存</button></div>'+
+ '<p class="note">これは雇用契約書のひな形です。【　】の所は、契約のときに一人ずつ決めます。ほかの条件は全員共通です。実際の契約書は、本人情報の登録のあとに作ってお送りします。</p>'+
+ blocks(text)+'</body></html>';
+}
+// 雇用契約書をメールで送るときの本文（全文。保存・印刷できる）。本人がメールでの受け取りを希望したときだけ送る
+export function contractMailText(snap,revision) {
+ const body=String(snap.text||'').replace(/^### /mg,'').replace(/\*\*/g,'');
+ return snap.staffName+' 様\n\nステップワイズ個別指導です。雇用契約書（第'+revision+'版）をお送りします。全文は下のとおりです。このメールは保存・印刷できます。\n\n内容を確かめて、講師の画面（https://www.stepwise-education.jp/staff/）で同意してください。同意すると雇用契約が成立します。\n\n――――――――――――――――\n'+body+'\n――――――――――――――――\n\nご不明な点は、代表 麦倉までご連絡ください（このメールに返信できます）。\nステップワイズ個別指導';
+}
 export function employmentDocument(r,events=[]) {
  const s=JSON.parse(r.snapshot),state={draft:'案・未締結',issued:'交付・同意待ち',agreed:'締結記録の控え',withdrawn:'取り下げた案'}[r.status];
  const hist=events.map(e=>'<tr><td>'+esc(e.action)+'</td><td>'+esc(japanTime(e.actualAt))+'</td><td>'+esc(japanTime(e.recordedAt))+'</td><td>'+esc(e.actorName)+'</td></tr>').join('');

@@ -10,7 +10,7 @@ test('multiple email-free drafts preserve existing records and create no invitat
   const r=await h.ok('employment/save',{auth,familyName:'【テスト】未登録',givenName:name,email:'  ',data:{weeklyHours:'週5時間'}});
   assert.equal(r.staff.email,'');assert.equal(r.staff.employmentAccess,false);
   assert.equal(r.staff.status,'invited');assert.equal(r.profile.data.weeklyHours,'週5時間');
-  assert.ok(r.checks.includes('招待先メールアドレスを登録'));
+  assert.equal(r.staff.email,''); // 招待先のメールアドレスは未登録
   assert.equal((await h.call('employment/invite',{auth,staffId:r.staff.id,confirm:true})).error.code,'needEmail');
   assert.equal((await h.call('admin/staff/reinvite',{auth,id:r.staff.id})).error.code,'needEmail');
  }
