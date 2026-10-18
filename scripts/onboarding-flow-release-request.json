@@ -1,9 +1,9 @@
 {
-  "operation": "inspect",
+  "operation": "publish",
   "source": "2ca29ad9d505af6cc0fb778d5a0f7a714dfada4a",
   "checkRuns": [
     39098424311,
     39098437428
   ],
-  "authorization": "2026-10-18 owner approved the onboarding flow (\"その案で進めてください\"). Read-only inspection of PR #128 against the deployed Worker (source 0bc23165, PR #125)."
+  "authorization": "2026-10-18 inspect run 39098536666 passed (baseline modules match, no pending migration). Back up privately, publish PR #128 Worker, verify records unchanged."
 }
