@@ -2,6 +2,8 @@
 // - students/list: 家族ごとの生徒の一覧（次の授業・連絡・記録待ちの印つき）。講師は担当の生徒だけ（家族の連絡先は出さない）
 // - students/hub: 1人の生徒の概要・予定・記録と宿題・成績・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出さない
 import { studentConditions } from './conditions.mjs';
+import { studentEnrollment, enrollmentStates } from './enrollment.mjs';
+import { currentTerms } from './terms.mjs';
 import { fail } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { todayJst, addDays } from './schedule.mjs';
@@ -24,11 +26,12 @@ export const studentHubRoutes = {
     const requests = Object.fromEntries((await c.db.prepare("select studentId, count(*) n from lessonRequests where status = 'open' group by studentId").all()).results.map(r => [r.studentId, r.n]));
     const pending = Object.fromEntries((await c.db.prepare(`select l.studentId, count(*) n from lessons l left join lessonRecords r on r.lessonId = l.id
       where l.status in ('decided', 'done') and l.date <= ? and l.date >= ? and (r.id is null or r.status = 'draft') ${manager ? '' : 'and l.staffId = ?'} group by l.studentId`).bind(...[today, addDays(today, -60)].concat(manager ? [] : [me.id])).all()).results.map(r => [r.studentId, r.n]));
+    const offered = manager ? await enrollmentStates(c.db) : {};
     const families = [];
     for (const s of students) {
       let f = families.find(x => x.id === s.familyId);
       if (!f) families.push(f = { id: manager ? s.familyId : '', name: manager ? s.familyLabel : '', students: [] });
-      f.students.push({ id: s.id, name: fullName(s), kana: [s.familyKana, s.givenKana].filter(Boolean).join(' '), grade: s.grade, status: s.status, testOnly: !!s.testOnly, trial: !!s.trial, next: next[s.id] || '', requests: manager ? requests[s.id] || 0 : 0, pendingRecords: pending[s.id] || 0 });
+      f.students.push({ id: s.id, name: fullName(s), kana: [s.familyKana, s.givenKana].filter(Boolean).join(' '), grade: s.grade, status: s.status, testOnly: !!s.testOnly, trial: !!s.trial, offered: !!offered[s.id], next: next[s.id] || '', requests: manager ? requests[s.id] || 0 : 0, pendingRecords: pending[s.id] || 0 });
     }
     // 講師には家族をまとめず、生徒だけを並べる
     return { manager, families: manager ? families : [{ id: '', name: '', students: families.flatMap(f => f.students) }] };
@@ -67,6 +70,7 @@ export const studentHubRoutes = {
       const nextMonthEnd = addDays(addDays(month + '-01', 62).slice(0, 7) + '-01', -1);
       out.plans = sb.lines.filter(l => l.endDate >= month + '-01' && l.startDate <= nextMonthEnd).map(l => ({ id: l.id, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, count: l.count, cap: lineCap(l), minutes: l.minutes, fee: l.fee, status: l.status, used: sb.used[l.id] || 0, parentId: l.parentId }));
       out.invoices = (await c.db.prepare("select * from invoices where familyId = ? and status <> 'void' order by month desc limit 6").bind(s.familyId).all()).results.map(v => ({ id: v.id, month: v.month, total: v.total, status: v.status }));
+      if (s.trial || await studentEnrollment(c.db, s.id)) out.enrollment = { offer: await studentEnrollment(c.db, s.id), termsReady: !!(await currentTerms(c.db)).version, email: s.familyEmail, familyActive: s.familyStatus === 'active' };
       out.basic = { familyId: s.familyId, familyName: s.familyLabel, guardianName: s.guardianName, email: s.familyEmail, phone: s.familyPhone, familyStatus: s.familyStatus, school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, note: s.note, enrolledOn: s.enrolledOn, subjects: s.subjects, condition: await studentConditions(c.db, s.id) };
     }
     return out;
