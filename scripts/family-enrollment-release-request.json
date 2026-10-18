@@ -1,8 +1,8 @@
 {
-  "operation": "inspect",
+  "operation": "publish",
   "source": "8b3fa9d8f08aafa235c92011a2cc7468e61d7190",
   "checkRuns": [
     39103422822
   ],
-  "authorization": "2026-10-18 owner asked to design and implement the new family enrollment route (decisions: enroll at once on application, conditions set at offer time, ask guardian name/kana, phone, address and confirm student info). Read-only inspection of PR #130 against the deployed Worker (source 2ca29ad, PR #128)."
+  "authorization": "2026-10-18 inspect run 39103524836 passed (baseline modules match, only 0032 pending). Back up privately, apply additive migration 0032, publish PR #130 Worker, verify existing records unchanged."
 }
