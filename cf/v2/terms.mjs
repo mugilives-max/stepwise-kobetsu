@@ -37,6 +37,14 @@ export async function familyTerms(db, f) {
 export async function needsTerms(db, f) { return (await familyTerms(db, f)).needs; }
 const validDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
 
+// 規約の同意を書く文（入塾の申込みは、ほかの記録と同じ batch で書く。enrollment.mjs）
+export async function termsConsentStatements(c, familyId, version, { at, via, actorKind, actorId, note, evidence }) {
+  const fixed = await termsForVersion(c.db, version);
+  return [
+    c.db.prepare('update families set termsVersion = ?, termsAcceptedAt = ?, updatedAt = ?, version = version + 1 where id = ?').bind(version, at, iso(c.now), familyId),
+    c.db.prepare('insert into termsConsents (familyId, version, acceptedAt, via, actorKind, actorId, note, consenterName, recordedAt, recordedByName, termsSnapshot) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(familyId, version, at, via, actorKind, actorId, note, evidence.consenterName, evidence.recordedAt, evidence.recordedByName, JSON.stringify(fixed)),
+  ];
+}
 async function recordConsent(c, familyId, version, { at, via, actorKind, actorId, note, evidence }) {
   const fixed = await termsForVersion(c.db, version);
   await c.db.batch([

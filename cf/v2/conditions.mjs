@@ -37,7 +37,7 @@ export async function studentConditions(db, studentId) {
   return { latest: await withDoc(db, conditionView(latest)), agreed: await withDoc(db, conditionView(agreed)), needs: !!latest && latest.status === 'proposed', history: await Promise.all(rows.map(r => withDoc(db, conditionView(r)))) };
 }
 // 条件書の書面を作って置く（案 → 同意したら確定の版）。請求書と同じ A4 の HTML。保護者はいつでも保護者ページから開ける
-async function storeDoc(c, condId) {
+export async function storeDoc(c, condId) {
   const cond = await c.db.prepare('select * from conditions where id = ?').bind(condId).first();
   const student = await c.db.prepare('select * from students where id = ?').bind(cond.studentId).first();
   const family = await c.db.prepare('select * from families where id = ?').bind(student.familyId).first();
@@ -59,7 +59,7 @@ export async function familyNeedsConditions(db, familyId) {
   return (await familyConditions(db, students)).needs;
 }
 
-function fields(b) {
+export function conditionFields(b) {
   const minutes = Number(b.minutes), fee = Number(b.fee), deliveryMode = String(b.deliveryMode || ''), groupSize = String(b.groupSize || '').trim().slice(0, 80);
   const subjects = String(b.subjects || '').trim().slice(0, 100), note = String(b.note || '').trim(), fromMonth = String(b.fromMonth || '').trim();
   if (!Number.isInteger(minutes) || minutes < 15 || minutes > 300) fail('badMinutes', '基本の授業時間は15〜300分で入れてください');
@@ -77,6 +77,25 @@ async function markAgreed(c, row, { at, via, by, note, evidence }) {
   if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
 }
 
+// 条件の新しい版を作る（前の proposed は replaced）。生徒の登録（基準単価・形式・生徒本人の連絡）にも写し、書面の案を置く。
+// お知らせのメールは呼ぶ側で（入塾の案内は、招待のメールにまとめる。enrollment.mjs）
+export async function proposeCondition(c, me, s, f) {
+  const now = iso(c.now), terms = await currentTerms(c.db);
+  const last = await c.db.prepare('select max(no) no from conditions where studentId = ?').bind(s.id).first();
+  const no = Number(last && last.no || 0) + 1, id = newId('cd');
+  let perms = {}; try { perms = JSON.parse(s.permissions || '{}'); } catch {}
+  perms.reschedule = !!f.studentContact;
+  await c.db.batch([
+    c.db.prepare("update conditions set status = 'replaced', updatedAt = ? where studentId = ? and status = 'proposed'").bind(now, s.id),
+    c.db.prepare('insert into conditions (id, studentId, no, minutes, fee, deliveryMode, groupSize, studentContact, subjects, note, fromMonth, termsVersion, status, proposedAt, proposedBy, createdAt, updatedAt, templateVersion) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, s.id, no, f.minutes, f.fee, f.deliveryMode, f.groupSize, f.studentContact, f.subjects, f.note, f.fromMonth, terms.version, 'proposed', now, 'staff:' + me.id, now, now, '20261014-r5'),
+    c.db.prepare('update students set baseRate30 = ?, baseFee90 = ?, deliveryMode = ?, subjects = ?, permissions = ?, updatedAt = ?, version = version + 1 where id = ?')
+      .bind(Math.round(f.fee * 30 / f.minutes), Math.round(f.fee * 90 / f.minutes), f.deliveryMode === 'both' ? s.deliveryMode : f.deliveryMode, f.subjects || s.subjects || '', JSON.stringify(perms), now, s.id),
+  ]);
+  await storeDoc(c, id);
+  return { id, no };
+}
+
 export const conditionRoutes = {
   'admin/conditions/get': async (c, b) => {
     await requireStaff(c, b, 'manager');
@@ -89,19 +108,7 @@ export const conditionRoutes = {
     const me = await requireStaff(c, b, 'manager');
     const s = await studentRow(c, b.studentId); if (!s) fail('notFound', '生徒が見つかりません', 404);
     if (s.status === 'left') fail('left', '退会した生徒には条件を作れません');
-    const f = fields(b), now = iso(c.now), terms = await currentTerms(c.db);
-    const last = await c.db.prepare('select max(no) no from conditions where studentId = ?').bind(s.id).first();
-    const no = Number(last && last.no || 0) + 1, id = newId('cd');
-    let perms = {}; try { perms = JSON.parse(s.permissions || '{}'); } catch {}
-    perms.reschedule = !!f.studentContact;
-    await c.db.batch([
-      c.db.prepare("update conditions set status = 'replaced', updatedAt = ? where studentId = ? and status = 'proposed'").bind(now, s.id),
-      c.db.prepare('insert into conditions (id, studentId, no, minutes, fee, deliveryMode, groupSize, studentContact, subjects, note, fromMonth, termsVersion, status, proposedAt, proposedBy, createdAt, updatedAt, templateVersion) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .bind(id, s.id, no, f.minutes, f.fee, f.deliveryMode, f.groupSize, f.studentContact, f.subjects, f.note, f.fromMonth, terms.version, 'proposed', now, 'staff:' + me.id, now, now, '20261014-r5'),
-      c.db.prepare('update students set baseRate30 = ?, baseFee90 = ?, deliveryMode = ?, permissions = ?, updatedAt = ?, version = version + 1 where id = ?')
-        .bind(Math.round(f.fee * 30 / f.minutes), Math.round(f.fee * 90 / f.minutes), f.deliveryMode === 'both' ? s.deliveryMode : f.deliveryMode, JSON.stringify(perms), now, s.id),
-    ]);
-    await storeDoc(c, id);
+    const f = conditionFields(b), { id, no } = await proposeCondition(c, me, s, f);
     await familyNotice(c, s.id, '受講条件書（通常指導）のお知らせ', `${fullName(s)}さんの受講条件書（通常指導）（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書（通常指導））を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.'+no}),{type:'condition',targets:[{id,version:no}]});
     await audit(c, 'conditionPropose', id, { studentId: s.id, no, minutes: f.minutes, fee: f.fee, fromMonth: f.fromMonth });
     return { condition: await withDoc(c.db, conditionView(await c.db.prepare('select * from conditions where id = ?').bind(id).first())) };

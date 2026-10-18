@@ -3,7 +3,7 @@ import { fail } from './util.mjs';
 import { isPreviewToken, previewSubject } from './preview.mjs';
 import { login, logout, changePassword, requestReset, confirmReset, acceptInvite, inviteInfo, readSession } from './accounts.mjs';
 
-export function familyView(f) { return { id: f.id, name: f.name, email: f.email, version: f.version }; }
+export function familyView(f) { return { id: f.id, name: f.name, email: f.email, guardianName: f.guardianName || '', version: f.version }; } // guardianName: 同意・承認の氏名の欄に最初から入れる
 
 export async function requireFamily(c, body) {
   // スタッフのプレビュー（読むだけ。書き込みは index.mjs の入口で断る）

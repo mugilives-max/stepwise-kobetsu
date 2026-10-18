@@ -1,6 +1,7 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
-import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261016-notices';
+import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261018-enroll';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261018-enroll';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
@@ -30,7 +31,7 @@ const specialChecked = {}; // 特殊指導の「承認します」の印
 
 // ログインしていないときに開いた画面（メール・LINE のリンク。例 #confirm）。ログインや再設定のあと、その画面へ戻す
 const NEXT_KEY = 'sw2_family_next';
-const PAGES = ['home', 'schedule', 'confirm', 'learning', 'money', 'account', 'events', 'grades'];
+const PAGES = ['home', 'schedule', 'confirm', 'learning', 'money', 'account', 'events', 'grades', 'enroll'];
 const decodeLink = v => {try{return decodeURIComponent(v);}catch{return '';}};
 function route() {
   const h = location.hash;
@@ -82,7 +83,7 @@ const ICON = {
   money: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
 };
 const TABS = [['home', 'ホーム'], ['schedule', '予定'], ['learning', '学習'], ['money', 'お支払い']];
-const TITLE = { home: 'ホーム', schedule: '予定', confirm: '日程の確認', learning: '学習', money: 'お支払い', account: 'アカウント' };
+const TITLE = { home: 'ホーム', schedule: '予定', confirm: '日程の確認', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み' };
 // 前の URL（#events・#grades）も開けるように
 const pageOf = p => p === 'events' ? 'schedule' : p === 'grades' ? 'learning' : p;
 
@@ -123,8 +124,9 @@ function homePage() {
   h += nextLessonHero(next[0], { names: names(), today: sched.today });
   // やること（押すとその画面へ）
   const todo = [], { asks, acks } = planGroups(money.plans);
-  if (money.terms && money.terms.needs) todo.push(['#money', 'file', '#c98a00', '受講規約への同意', (money.terms.current.title || '受講規約') + '・全文を読んで同意してください', 1]);
-  const needConds = money.conditions ? money.conditions.items.filter(x => x.needs) : [];
+  const enroll = enrollTodo(ectx()), covers = enrollCovers(ectx()); if (enroll) todo.push(enroll); // 入塾のお申込み（いちばん上）。申込みで規約・条件書にもまとめて同意する
+  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#money', 'file', '#c98a00', '受講規約への同意', (money.terms.current.title || '受講規約') + '・全文を読んで同意してください', 1]);
+  const needConds = money.conditions ? money.conditions.items.filter(x => x.needs && !covers.students.has(x.studentId)) : [];
   if (needConds.length) todo.push(['#money', 'file', '#c98a00', '受講条件書（通常指導）への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
   if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特殊指導の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・') + '・内容と料金を確かめて承認してください', needSpecials.length]);
@@ -264,11 +266,12 @@ function moneyPage() {
   let h = noticeHtml();
   const selected=moneySelection(); h+=selected.header;
   const { asks, acks, others } = planGroups(selected.plans), needTerms = !!(money.terms && money.terms.needs);
-  const needConds = selected.conds.filter(x => x.needs), blocked = needTerms || (money.conditions?.items||[]).some(x=>x.needs);
+  const covers = enrollCovers(ectx()), needConds = selected.conds.filter(x => x.needs && !covers.students.has(x.studentId)), blocked = needTerms || (money.conditions?.items||[]).some(x=>x.needs);
   const needSpecials = selected.specials.filter(x=>x.status==='proposed');
   if (asks.length || acks.length || blocked || needSpecials.length) {
     h += secTitle('確かめていただきたいこと');
-    if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
+    if (covers.terms) h += `<div class="group" style="margin-bottom:12px"><a class="todo-row" href="#enroll">${ibox('file', '#c0392b', '入塾のお申込み')}<span class="v"><span class="lbl">入塾のお申込み</span><small>受講規約と受講条件書は、お申込みの画面でまとめてご確認いただけます</small></span><span class="go">›</span></a></div>`;
+    else if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
     h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id], consenterName: consentNames[x.latest.id] || me.guardianName || '' })).join('');
     h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id], consenterName: consentNames[x.id] || me.guardianName || '' })).join('');
     if(blocked && asks.length) h += '<p class="notice">受講合意書の承認には、先に上の受講規約・受講条件書への同意が必要です。</p>';
@@ -320,7 +323,7 @@ function render() {
   if (r.page === 'invite') h = invitePage(r.token);
   else if (r.page === 'reset') h = `<h1>新しいパスワード</h1>${noticeHtml()}${newPasswordForm('reset', 'パスワードを変える')}${helpLinks}`;
   else if (!me) h = r.page === 'forgot' ? `<h1>パスワードの再設定</h1>${noticeHtml()}<form class="stack" data-form="forgot"><label>メールアドレス<input type="email" name="email" required></label><button class="primary"${dis()}>再設定のメールを送る</button></form><p><a href="#">ログインに戻る</a></p>` : loginPage();
-  else h = page === 'schedule' ? schedulePage() : page === 'confirm' ? confirmPage() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'account' ? accountPage() : homePage();
+  else h = page === 'schedule' ? schedulePage() : page === 'confirm' ? confirmPage() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'account' ? accountPage() : page === 'enroll' ? enrollPage(ectx()) : homePage();
   app.className = !me ? 'narrow' : '';
   renderBar(me ? page : '');
   keepSheet(app, () => { app.innerHTML = previewBar() + h + sheetHtml(); });
@@ -329,7 +332,7 @@ function render() {
   if (box && notice && notice.k === 'error') box.querySelector('.bsheet-body').insertAdjacentHTML('afterbegin', noticeHtml()); // 下から出る画面の中でも見えるように
 }
 function signedIn(r) {
-  store.set(r.auth); me = r.me; sched = null; calData = {}; cal = null; learning = null; money = null; contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; grades = null; say('');
+  store.set(r.auth); me = r.me; resetEnroll(); sched = null; calData = {}; cal = null; learning = null; money = null; contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; grades = null; say('');
   let next = ''; try { next = sessionStorage.getItem(NEXT_KEY) || ''; sessionStorage.removeItem(NEXT_KEY); } catch {}
   location.hash = '#' + (safeFamilyTarget(r.returnTo) || safeFamilyTarget(next) || 'home');
 }
@@ -341,11 +344,17 @@ function captureSheetInputs() {
   if (el) s.note = el.value;
 }
 // 失敗したとき: ログインが切れていればログイン画面へ。それ以外は文を出す
+// 入塾のお申込み（family/enroll.js）に渡す道具
+function ectx() {
+  return { esc, call: (route, body) => call(route, body, store.get()), render, run, say, dis, noticeHtml, failed: r => { failed(r); },
+    applied: name => { me = { ...me, guardianName: name }; money = null; sched = null; contracts = null; } };
+}
 function failed(r) { if (r.error.code === 'needLogin' && me) { store.set(''); me = null; } say(r.error.message, 'error'); }
 
 app.addEventListener('submit', ev => {
   ev.preventDefault();
   const el = ev.target, kind = el.dataset.form, v = Object.fromEntries(new FormData(el).entries());
+  if (enrollSubmit(ectx(), kind)) return;
   if ((kind === 'invite' || kind === 'reset') && v.password !== v.confirm) { say('2つのパスワードが一致しません', 'error'); return render(); }
   if (kind === 'password' && v.next !== v.confirm) { say('2つのパスワードが一致しません', 'error'); return render(); }
   run(async () => {
@@ -382,13 +391,14 @@ app.addEventListener('submit', ev => {
     failed(r);
   });
 });
-app.addEventListener('input', ev => { if (ev.target.dataset?.consenter) consentNames[ev.target.dataset.consenter] = ev.target.value; });
-app.addEventListener('change', ev => { if (ev.target.id === 'terms-agree') { termsChecked = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.condAgree) { condChecked[ev.target.dataset.condAgree] = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.specialAgree) { specialChecked[ev.target.dataset.specialAgree] = ev.target.checked; return; } const id = ev.target.dataset && ev.target.dataset.planCount; if (id) { planCounts[id] = Number(ev.target.value); render(); } });
+app.addEventListener('input', ev => { if (enrollInput(ev)) return; if (ev.target.dataset?.consenter) consentNames[ev.target.dataset.consenter] = ev.target.value; });
+app.addEventListener('change', ev => { if (enrollChange(ev)) return; if (ev.target.id === 'terms-agree') { termsChecked = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.condAgree) { condChecked[ev.target.dataset.condAgree] = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.specialAgree) { specialChecked[ev.target.dataset.specialAgree] = ev.target.checked; return; } const id = ev.target.dataset && ev.target.dataset.planCount; if (id) { planCounts[id] = Number(ev.target.value); render(); } });
 app.addEventListener('click', ev => {
   const b = ev.target.closest('[data-action]'); if (!b) return;
   const a = b.dataset.action;
   if (cal && cal.click(a, b)) return render();
   if (gradesClickShared(a, b)) return render();
+  if (enrollClick(ectx(), a)) { ev.preventDefault(); return; }
   if (a === 'kid') { kid = b.dataset.id; try { sessionStorage.setItem(KID_KEY, kid); } catch {} ev.preventDefault(); return render(); }
   if (a === 'lesson') { sheetState = { kind: 'lesson', id: b.dataset.id, pick: '', note: '' }; return render(); }
   if (a === 'pick') { captureSheetInputs(); sheetState.pick = b.dataset.c; return render(); }
@@ -436,7 +446,7 @@ app.addEventListener('click', ev => {
     else if (a === 'inv-report') { if (!confirm('振り込んだことを先生に知らせますか？')) return; r = await call('family/invoices/report', { id: b.dataset.id, version: Number(b.dataset.version) }, store.get()); if (r.ok) { closeSheet(); money = null; return say('振込のご連絡を受け付けました。ありがとうございます', 'ok'); } }
     else if (a === 'send-relief') { const s = sheetState; const reason = (s.note || '').trim(); if (!reason) return say('事情を書いてください', 'error'); r = await call('family/fees/relief', { id: b.dataset.id, version: Number(b.dataset.version), reason }, store.get()); if (r.ok) { closeSheet(); money = null; return say('申請を受け付けました。先生が確かめて返事をします', 'ok'); } }
     else if (a === 'del-event') { r = await call('family/events/delete', { id: b.dataset.id }, store.get()); if (r.ok) { sched = null; calData = {}; return say('消しました', 'ok'); } }
-    else if (a === 'logout') { await call('family/logout', {}, store.get()); store.set(''); me = null; money = contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; location.hash = ''; return say('ログアウトしました', 'ok'); }
+    else if (a === 'logout') { await call('family/logout', {}, store.get()); store.set(''); me = null; money = contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; resetEnroll(); location.hash = ''; return say('ログアウトしました', 'ok'); }
     if (r) failed(r);
   });
 });

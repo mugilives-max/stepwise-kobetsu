@@ -1,7 +1,7 @@
 name: Contract history checks
 on:
   pull_request:
-    paths: ['scripts/check-contract-ui.cjs', 'cf/v2/**', 'cf/migrations-v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'test/v2-*', '.github/workflows/contract-checks.yml']
+    paths: ['scripts/check-contract-ui.cjs', 'scripts/check-enrollment-ui.cjs', 'cf/v2/**', 'cf/migrations-v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'test/v2-*', '.github/workflows/contract-checks.yml']
 permissions:
   contents: read
 jobs:
@@ -28,9 +28,12 @@ jobs:
           npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
           npx playwright install --with-deps chromium
           node scripts/check-contract-ui.cjs
+          node scripts/check-enrollment-ui.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: contract-ui-checks
-          path: contract-ui-output/
+          path: |
+            contract-ui-output/
+            enrollment-ui-output/
           retention-days: 14
