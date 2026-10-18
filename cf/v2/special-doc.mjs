@@ -29,7 +29,7 @@ export function specialDocHtml({ sp, student, family, terms, proposer, now }) {
     ? `<div class="sign ok"><strong>保護者の承認</strong>　${esc(sp.consenterName || '記録なし')} 様　${esc(jstMin(sp.agreedAt))}　（${esc(sp.agreedVia)}${sp.agreedBy && sp.agreedBy.startsWith('staff:') ? '・塾が記録' : ''}）${sp.agreedNote ? `　<span class="sub">${esc(sp.agreedNote)}</span>` : ''}</div>`
     : `<div class="sign"><strong>保護者の承認</strong>　まだ承認いただいていません。保護者ページで内容を確かめて承認してください。承認がない場合、この料金は適用しません。</div>`;
   return `<!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex">
 <title>受講条件書（特殊指導） ${esc(sp.title)} 第${sp.no}版${final ? '' : '（案）'} ${esc(name)}</title>
 <style>
   @page { size: A4; margin: 15mm; }
