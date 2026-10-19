@@ -13,7 +13,7 @@ import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/a
 import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261008-launch1';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
 import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
-import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261014-names';
+import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261020-r9';
 
 export const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 export const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));

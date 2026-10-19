@@ -25,7 +25,7 @@ test('legacy and r3 templates remain byte-identical for both pending and agreed 
  }
 });
 
-test('new condition proposals use r6 (specials r5); an r3 pending proposal keeps its old title on later approval', async () => {
+test('new condition proposals use r6 and specials r9 (受講規約 r9 の名称); an r3 pending proposal keeps its old title on later approval', async () => {
  const h=await createV2(), auth=await h.owner();
  const f=(await h.ok('admin/families/create',{auth,name:'【テスト】家庭',email:'parent@example.invalid'})).family;
  const s=(await h.ok('admin/students/create',{auth,familyId:f.id,familyName:'【テスト】',givenName:'生徒',baseRate30:1500})).student;
@@ -38,7 +38,7 @@ test('new condition proposals use r6 (specials r5); an r3 pending proposal keeps
  const oldFile=h.rows("select * from files where refId=? order by rowid desc",c.id)[0];
  assert.match(oldFile.name,/基本指導条件書/);
  const sp=(await h.ok('admin/specials/propose',{auth,studentId:s.id,title:'【テスト】個別解説',purpose:'試験対策',content:'解説',reason:'専用準備',prep:'問題確認',minutes:90,fee:6000,fromDate:'2026-11-01',toDate:'2026-11-30'})).special;
- assert.equal(h.rows('select templateVersion from specials where id=?',sp.id)[0].templateVersion,'20261014-r5');
+ assert.equal(h.rows('select templateVersion from specials where id=?',sp.id)[0].templateVersion,'20261020-r9');
  h.db2._sqlite.prepare("update specials set templateVersion='20261012-r3' where id=?").run(sp.id);
  await h.ok('family/specials/agree',{auth:parent,id:sp.id,agree:true,consenterName:'【テスト】保護者'});
  assert.match(h.rows("select * from files where refId=? order by rowid desc",sp.id)[0].name,/特殊指導条件書/);

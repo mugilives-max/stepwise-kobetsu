@@ -3,7 +3,7 @@ import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=202
 // 受講合意書は月ごとに生徒の行を並べる。請求は月ごとに家族の行を並べ、開くと内訳。
 import { sheet, rowButton } from '/staff/ui.js?v=20261008-launch1';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
-import { formOf, partsOf, planSets, subjectGroups, planTotals, formsText, amountText, periodText, planPreviewHtml, STATUS_LABEL } from '/assets/v2/plan-view.js?v=20261014-names';
+import { formOf, partsOf, planSets, subjectGroups, planTotals, formsText, amountText, periodText, planPreviewHtml, STATUS_LABEL } from '/assets/v2/plan-view.js?v=20261020-r9';
 // 下から出る画面: lineOpen（受講合意書の行）・editing（直す）・consentFor（承諾を記録）・addFor（足す）・openFamily（請求の内訳）・feeOpen（キャンセル料）
 let plans = null, planMonth = '', editing = '', consentFor = '', addFor = '', kindOpen = null, lineOpen = '', feeOpen = '';
 const unpicked = new Set(); // お知らせから外した下書き（チェックを外したもの）
