@@ -1,8 +1,9 @@
 {
-  "operation": "publish",
+  "operation": "pages",
   "source": "6d04b61e882765c1dc1b940eebb8d891f2460ff5",
   "checkRuns": [
     39274186343
   ],
-  "authorization": "2026-10-20 inspect run 39274444630 passed (baseline modules match, only 0033 pending). Back up privately, apply additive migration 0033, publish PR #136 Worker, verify existing records unchanged."
+  "authorization": "2026-10-20 PR #136 merged after publish run 39274623860. Verify the published staff and family pages against the reviewed source and re-check the Worker, migration and records against the private checkpoint. Read-only.",
+  "backupPrefix": "release-backups/enroll-fixes-20261020/39274623860-1"
 }
