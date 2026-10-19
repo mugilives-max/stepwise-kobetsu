@@ -1,0 +1,8 @@
+{
+  "operation": "inspect",
+  "source": "6d04b61e882765c1dc1b940eebb8d891f2460ff5",
+  "checkRuns": [
+    39274186343
+  ],
+  "authorization": "2026-10-20 owner checked PR #136 on staging and asked to release it (\"検証環境で確かめたので本番に出してください\"). Read-only inspection against the deployed Worker (source 8b3fa9d, PR #130)."
+}
