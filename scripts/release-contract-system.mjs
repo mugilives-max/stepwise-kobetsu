@@ -64,6 +64,57 @@ export function activeDeployment(result) {
 export function assertPreserved(before, after) {
   ensure(JSON.stringify(before) === JSON.stringify(after), 'Existing records changed during migration; stop before publication and investigate.');
 }
+// Tables that normal use of the live site changes at any time (see cf/v2/accounts.mjs, preview.mjs, files.mjs,
+// effects.mjs, util.mjs). A release must not stop because people keep using the site after publication.
+//  any:        rows may be added, changed or removed (logins, hourly lastSeenAt/expiresAt, logouts, expiry clean-up)
+//  keepRows:   rows may be added and changed, but no earlier row (by key) may disappear (usedAt, delivery status)
+//  appendOnly: rows may only be added; every earlier row must remain exactly as it was
+// Every other table, including all business records, must stay identical.
+export const LIVE_ACTIVITY_TABLES = Object.freeze({
+  sessions: Object.freeze({mode: 'any'}),
+  previewSessions: Object.freeze({mode: 'any'}),
+  fileTokens: Object.freeze({mode: 'any'}),
+  authChallenges: Object.freeze({mode: 'keepRows', key: 'id'}),
+  effects: Object.freeze({mode: 'keepRows', key: 'id'}),
+  auditLog: Object.freeze({mode: 'appendOnly'}),
+});
+// before/after: {table: [row, ...]} where a row is a JSON string (or array) of the values in columns[table] order.
+// Returns counts only, never row contents, so the result is safe for public logs.
+export function compareRecords(columns, before, after, live = LIVE_ACTIVITY_TABLES) {
+  const text = r => typeof r === 'string' ? r : JSON.stringify(r);
+  const counts = rows => { const m = new Map(); for (const r of rows) m.set(text(r), (m.get(text(r)) || 0) + 1); return m; };
+  const changed = [], activity = [];
+  for (const table of [...new Set([...Object.keys(before), ...Object.keys(after)])].sort()) {
+    const a = before[table], b = after[table];
+    if (!Array.isArray(a) || !Array.isArray(b)) { changed.push({table, reason: 'tableMissing'}); continue; }
+    const info = {table, beforeCount: a.length, afterCount: b.length};
+    const rule = Object.hasOwn(live, table) ? live[table] : {mode: 'strict'};
+    let reason = '';
+    if (rule.mode === 'keepRows') {
+      const i = (columns[table] || []).indexOf(rule.key);
+      if (i < 0) reason = 'keyColumnMissing';
+      else {
+        const key = r => JSON.stringify((typeof r === 'string' ? JSON.parse(r) : r)[i]);
+        const now = new Set(b.map(key));
+        if (!a.every(r => now.has(key(r)))) reason = 'rowsRemoved';
+      }
+    } else if (rule.mode !== 'any') {
+      const now = counts(b);
+      for (const [row, n] of counts(a)) if ((now.get(row) || 0) < n) { reason = 'rowsChangedOrRemoved'; break; }
+      if (!reason && rule.mode !== 'appendOnly' && b.length !== a.length) reason = 'rowsAdded';
+    }
+    if (reason) changed.push({...info, reason});
+    else if (rule.mode !== 'strict' && JSON.stringify(a) !== JSON.stringify(b)) activity.push({...info, mode: rule.mode});
+  }
+  return {changed, activity};
+}
+export function assertRecordsPreserved(columns, before, after, message, live = LIVE_ACTIVITY_TABLES) {
+  const {changed, activity} = compareRecords(columns, before, after, live);
+  for (const a of activity) console.log(JSON.stringify({liveActivity: a.table, mode: a.mode, beforeCount: a.beforeCount, afterCount: a.afterCount}));
+  for (const c of changed) console.log(JSON.stringify({recordDrift: c.table, reason: c.reason, beforeCount: c.beforeCount, afterCount: c.afterCount}));
+  ensure(changed.length === 0, message || 'Existing records changed. Stop for review.');
+  return {activity};
+}
 export async function release(io) {
   await io.checkSource();
   const state = await io.preflight();
