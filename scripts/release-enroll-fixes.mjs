@@ -1,11 +1,12 @@
 // Authorized GitHub-only release of PR #136 (enrollment fixes: guardian family/given names and kana, grade choices and required school, documents on the confirm page, condition document r6). Applies the additive migration 0033 after a private backup; no user notifications or contract writes during release.
 // Modelled on release-onboarding-flow.mjs and the migration steps of release-staff-registration.mjs: inspect → publish → verify → pages, each triggered by a push of the request file on the release branch.
+// Template for the next release: record checks use assertRecordsPreserved, so logins, logouts and mail delivery by people using the live site do not stop a release; business records must stay identical.
 import {readFile,writeFile,readdir,mkdtemp,rm} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-import {ensure as check,runWrangler,compareModule,activeDeployment,assertPrivateBucket} from './release-contract-system.mjs';
+import {ensure as check,runWrangler,compareModule,activeDeployment,assertPrivateBucket,assertRecordsPreserved} from './release-contract-system.mjs';
 const repo='mugilives-max/stepwise-kobetsu',base='8b3fa9d8f08aafa235c92011a2cc7468e61d7190'; // base: source of the Worker published on 2026-10-18 (PR #130)
 const sourceSha='6d04b61e882765c1dc1b940eebb8d891f2460ff5',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
 const mainBeforePublish='a263fe145fcc9fd922003f021078e30b821b83bf',pullNumber=136,releaseLabel='2026-10-20-enroll-fixes',branch='claude/enroll-fixes-release-20261020',backupRoot='release-backups/enroll-fixes-20261020/';
@@ -75,7 +76,8 @@ try{
  }
  const localMigrations=(await readdir(join(source,'cf/migrations-v2'))).filter(n=>n.endsWith('.sql')).sort();
  const applied=async()=> (await rows('SELECT name FROM d1_migrations ORDER BY name')).map(r=>r.name);
- // One additive migration (0033): only the four new family columns may appear; every existing record (read by the old columns) must be identical.
+ // One additive migration (0033): only the four new family columns may appear; every existing business record (read by the old columns) must be identical.
+ // Sessions, sign-in links, file links, mail delivery and the audit log may change by normal use of the live site (LIVE_ACTIVITY_TABLES).
  async function assertMigrated(state){
   same(await applied(),localMigrations,'Migration set differs from reviewed source.');
   const migrationRows=await rows('SELECT * FROM d1_migrations ORDER BY id');
@@ -86,11 +88,7 @@ try{
   for(const table of Object.keys(state.columns))same(current[table],[...state.columns[table],...(addedColumns[table]||[])],'Existing columns changed: '+table);
   for(const table of addedTables)check((await rows('SELECT count(*) n FROM '+q(table)))[0].n===0,'New table has unexpected records.');
   for(const col of addedColumns.families)check((await rows('SELECT count(*) n FROM families WHERE '+q(col)+" <> ''"))[0].n===0,'New family column has unexpected values.');
-  const now=await snapshot(state.columns);
-  for(const table of Object.keys(state.columns)){
-   if(JSON.stringify(state.data[table])!==JSON.stringify(now[table]))console.log(JSON.stringify({recordDrift:table,beforeCount:state.data[table].length,afterCount:now[table].length}));
-  }
-  same(state.data,now,'Existing contract, consent, payroll, registration or other records changed. Stop for review.');
+  return assertRecordsPreserved(state.columns,state.data,await snapshot(state.columns),'Existing contract, consent, payroll, registration or other records changed. Stop for review.').activity.map(a=>a.table);
  }
  stage='source and check verification';
  const pr=await gh('/pulls/'+pullNumber);check(pr.head.sha===sourceSha&&pr.head.repo.full_name===repo,'PR source changed.');
@@ -126,7 +124,7 @@ try{
    manifest={source:sourceSha,base,prefix,before,workerContentType:raw.type,workerHash:hash(raw.bytes),dbHash:hash(sql),recordsHash:hash(JSON.stringify(state))};
    await save('manifest-before.json',Buffer.from(JSON.stringify(manifest)));
    same(before,await deployed(),'Concurrent Worker deployment.');
-   same(state.data,await snapshot(state.columns),'Records changed before migration; stop.');
+   assertRecordsPreserved(state.columns,state.data,await snapshot(state.columns),'Records changed before migration; stop.');
    same(state.migrationRows,await rows('SELECT * FROM d1_migrations ORDER BY id'),'Migrations changed before publication.');
    stage='apply additive guardian name migration 0033';
    runWrangler(source,['d1','migrations','apply','DB2','--remote','--config','cf/wrangler.jsonc']);
@@ -141,7 +139,7 @@ try{
  if(request.operation!=='inspect'){
   stage='verify published Worker and records';const after=await deployed();check(after.versionId!==before.versionId,'No new active Worker.');
   await modulesMatch(await rawWorker(),source,'published');
-  await assertMigrated(state);
+  const liveActivityTables=await assertMigrated(state);
   const r=await fetch('https://stepwise-api.stepwise-edu.workers.dev/',{signal:AbortSignal.timeout(30000)}),health=await r.json();check(r.ok&&health.ok&&health.release===releaseLabel,'Public API health failed.');
   for(const route of ['employment/registration/submit','employment/registration/review','employment/bank/get','employment/bank/submit','employment/bank/review','employment/list','employment/get','employment/mine','employment/save','employment/invite','employment/contract/document','work/list','payroll/month','billing/plans/document','family/plans/document','admin/docs/sample','work/plan','employment/rules/get','employment/rules/read','employment/rules/document','employment/intent','employment/contract/template','employment/activate','admin/enrollment/offer','admin/enrollment/resend','admin/enrollment/withdraw','family/enrollment','family/enrollment/apply','students/hub']){
    const rr=await fetch('https://stepwise-api.stepwise-edu.workers.dev/v2/'+route,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(30000)});
@@ -167,7 +165,7 @@ try{
    }
   }
   same(after,await deployed(),'Concurrent deployment during verification.');
-  const summary={source:sourceSha,operation:request.operation,backupPrefix:prefix,beforeVersion:before.versionId,workerVersion:after.versionId,privateBackupVerified:true,modulesMatch:true,migration,newEnrollmentTableEmpty:true,tablesChecked:Object.keys(state.columns).length,allExistingRecordsUnchanged:true,existingContractConsentPayrollRegistrationRecordsUnchanged:true,runtimeSettingsPreserved:true,anonymousRequestsReturnNoData:true,missingEmploymentDocumentReturns404:true,publicAssetsMatch:assets,termsActivated:false,messagesSent:false};
+  const summary={source:sourceSha,operation:request.operation,backupPrefix:prefix,beforeVersion:before.versionId,workerVersion:after.versionId,privateBackupVerified:true,modulesMatch:true,migration,newEnrollmentTableEmpty:true,tablesChecked:Object.keys(state.columns).length,existingBusinessRecordsUnchanged:true,liveActivityTables,existingContractConsentPayrollRegistrationRecordsUnchanged:true,runtimeSettingsPreserved:true,anonymousRequestsReturnNoData:true,missingEmploymentDocumentReturns404:true,publicAssetsMatch:assets,termsActivated:false,messagesSent:false};
   await save('manifest-'+request.operation+'.json',Buffer.from(JSON.stringify({...manifest,after,summary})));
   console.log(JSON.stringify(summary));await writeFile(process.env.GITHUB_STEP_SUMMARY,'## Enrollment fixes release verified\n\n'+JSON.stringify(summary,null,2)+'\n');
  }
