@@ -2,6 +2,7 @@
 // ctx は app.js から渡す共通の道具（call / say / render / run / esc / busy / notice）。
 // 一覧はすっきり、直す・足す・生徒ごとの操作は押すと下から出る画面で（famSheet = { mode, id }）。
 import { sheet, rowButton, rowLink } from '/staff/ui.js?v=20261008-launch1';
+import { gradeOptions } from '/assets/v2/grade-options.js?v=20261019-grade';
 const STATUS = { invited: ['warn', '招待前・登録待ち'], active: ['', '利用中'], stopped: ['gray', '停止'] };
 const STUDENT_STATUS = { enrolled: ['', '在籍'], paused: ['warn', '休会'], left: ['gray', '退会'] };
 const MODE = { '': '未設定', in_person: '対面', online: 'オンライン' };
@@ -30,9 +31,17 @@ export function familiesPage(ctx) {
   return h;
 }
 
+// 保護者の氏名は姓・名・ふりがなに分ける（2026-10-19 本人）。分ける前の家族は「姓 名」の空白で分けて最初の値にする
+function guardianInputs(esc, f) {
+  const split = v => { const m = /^(\S+)[\s　]+(.+)$/.exec(String(v || '').trim()); return m ? [m[1], m[2]] : [String(v || '').trim(), '']; };
+  const [nf, ng] = f.guardianFamilyName || f.guardianGivenName ? [f.guardianFamilyName, f.guardianGivenName] : split(f.guardianName);
+  const [kf, kg] = f.guardianFamilyKana || f.guardianGivenKana ? [f.guardianFamilyKana, f.guardianGivenKana] : split(f.guardianKana);
+  return `<div class="row"><label style="flex:1 1 140px">保護者の姓<input name="guardianFamilyName" maxlength="30" value="${esc(nf || '')}"></label><label style="flex:1 1 140px">保護者の名<input name="guardianGivenName" maxlength="30" value="${esc(ng || '')}"></label></div>
+    <div class="row"><label style="flex:1 1 140px">ふりがな（姓）<input name="guardianFamilyKana" maxlength="30" value="${esc(kf || '')}"></label><label style="flex:1 1 140px">ふりがな（名）<input name="guardianGivenKana" maxlength="30" value="${esc(kg || '')}"></label></div>`;
+}
 function familyInputs(esc, f) {
   return `<label>家族の表示名（例: 山田家）<input name="name" maxlength="60" required value="${esc(f.name || '')}"></label>
-    <label>保護者の名前<input name="guardianName" maxlength="60" value="${esc(f.guardianName || '')}"></label>
+    ${guardianInputs(esc, f)}
     <label>保護者のメールアドレス（保護者ページのログインと連絡に使う）<input type="email" name="email" value="${esc(f.email || '')}"></label>
     <label>電話<input name="phone" maxlength="30" value="${esc(f.phone || '')}"></label>
     <label>メモ（教室だけが見る）<input name="note" maxlength="1000" value="${esc(f.note || '')}"></label>`;
@@ -41,7 +50,7 @@ function studentInputs(esc, s) {
   const opt = (map, v) => Object.entries(map).map(([k, x]) => `<option value="${k}"${k === v ? ' selected' : ''}>${Array.isArray(x) ? x[1] : x}</option>`).join('');
   return `<div class="row"><label style="flex:1">姓<input name="familyName" maxlength="40" value="${esc(s.familyName || '')}"></label><label style="flex:1">名<input name="givenName" maxlength="40" value="${esc(s.givenName || '')}"></label></div>
     <div class="row"><label style="flex:1">せい<input name="familyKana" maxlength="40" value="${esc(s.familyKana || '')}"></label><label style="flex:1">めい<input name="givenKana" maxlength="40" value="${esc(s.givenKana || '')}"></label></div>
-    <div class="row"><label style="flex:1">学年<input name="grade" maxlength="20" value="${esc(s.grade || '')}"></label><label style="flex:2">学校<input name="school" maxlength="60" value="${esc(s.school || '')}"></label></div>
+    <div class="row"><label style="flex:1">学年<select name="grade">${gradeOptions(esc, s.grade)}</select></label><label style="flex:2">学校<input name="school" maxlength="60" value="${esc(s.school || '')}"></label></div>
     <label>受講科目（メモ）<input name="subjects" maxlength="100" value="${esc(s.subjects || '')}"></label>
     <div class="row"><label style="flex:1">通常指導の基準単価（90分・円）<input type="number" name="baseFee90" min="0" max="300000" step="10" value="${esc((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}"></label>
       <label style="flex:1">授業の形式（初期値）<select name="deliveryMode">${opt(MODE, s.deliveryMode || '')}</select></label></div>

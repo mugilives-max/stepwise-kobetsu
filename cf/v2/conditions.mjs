@@ -46,7 +46,7 @@ export async function storeDoc(c, condId) {
   const html = conditionDocHtml({ cond, student, family, terms: await termsForVersion(c.db, cond.termsVersion), proposer: proposer ? proposer.name : '', now: iso(c.now) });
   const final = cond.status === 'agreed';
   return putGenerated(c, { category: 'contract', familyId: family.id, studentId: student.id, refType: 'condition', refId: cond.id,
-    name: `${cond.templateVersion === '20261014-r5' ? '受講条件書（通常指導）' : cond.templateVersion === '20261012-r3' ? '基本指導条件書' : '個別指導条件書'}_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
+    name: `${['20261014-r5', '20261019-r6'].includes(cond.templateVersion) ? '受講条件書（通常指導）' : cond.templateVersion === '20261012-r3' ? '基本指導条件書' : '個別指導条件書'}_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
 }
 // 家族: 子どもごとの条件。同意していない条件があれば needs
 export async function familyConditions(db, students) {
@@ -88,7 +88,7 @@ export async function proposeCondition(c, me, s, f) {
   await c.db.batch([
     c.db.prepare("update conditions set status = 'replaced', updatedAt = ? where studentId = ? and status = 'proposed'").bind(now, s.id),
     c.db.prepare('insert into conditions (id, studentId, no, minutes, fee, deliveryMode, groupSize, studentContact, subjects, note, fromMonth, termsVersion, status, proposedAt, proposedBy, createdAt, updatedAt, templateVersion) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, s.id, no, f.minutes, f.fee, f.deliveryMode, f.groupSize, f.studentContact, f.subjects, f.note, f.fromMonth, terms.version, 'proposed', now, 'staff:' + me.id, now, now, '20261014-r5'),
+      .bind(id, s.id, no, f.minutes, f.fee, f.deliveryMode, f.groupSize, f.studentContact, f.subjects, f.note, f.fromMonth, terms.version, 'proposed', now, 'staff:' + me.id, now, now, '20261019-r6'),
     c.db.prepare('update students set baseRate30 = ?, baseFee90 = ?, deliveryMode = ?, subjects = ?, permissions = ?, updatedAt = ?, version = version + 1 where id = ?')
       .bind(Math.round(f.fee * 30 / f.minutes), Math.round(f.fee * 90 / f.minutes), f.deliveryMode === 'both' ? s.deliveryMode : f.deliveryMode, f.subjects || s.subjects || '', JSON.stringify(perms), now, s.id),
   ]);

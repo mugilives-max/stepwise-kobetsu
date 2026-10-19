@@ -7,7 +7,7 @@ const { createV2 } = require('./helpers/v2-harness.cjs');
 
 const TERMS = { version: '2026-11-r9', title: '受講規約（2026年11月版）', url: 'https://www.stepwise-education.jp/terms/2026-11-20261015-r9/', from: '2026-11-01' };
 const COND = { minutes: 90, fee: 4500, deliveryMode: 'in_person', subjects: '英語・数学', fromMonth: '2026-11', studentContact: true };
-const APP = { guardianName: '【テスト】高橋 花子', guardianKana: 'たかはし はなこ', phone: '090-1234-5678', zip: '3430002', address: '【テスト】越谷市1-2-3',
+const APP = { guardianFamilyName: '【テスト】高橋', guardianGivenName: '花子', guardianFamilyKana: 'たかはし', guardianGivenKana: 'はなこ', phone: '090-1234-5678', zip: '3430002', address: '【テスト】越谷市1-2-3',
   student: { familyName: '【テスト】高橋', givenName: '夏帆', familyKana: 'たかはし', givenKana: 'かほ', grade: '中3', school: '【テスト】第一中学校' } };
 
 async function world() {
@@ -52,9 +52,11 @@ test('enrollment: offer → password → one application with consents → enrol
   const base = { auth: parent, offerId: o.enrollment.id, termsVersion: TERMS.version, conditionId: cond.id, ...APP };
   assert.equal((await h.call('family/enrollment/apply', { ...base })).error.code, 'needAgree');
   assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, termsVersion: 'old' })).error.code, 'staleVersion');
-  assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, guardianKana: 'Takahashi' })).error.code, 'badKana');
+  assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, guardianGivenKana: 'Hanako' })).error.code, 'badKana');
   assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, phone: '12' })).error.code, 'badPhone');
   assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, zip: '12' })).error.code, 'badZip');
+  assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, student: { ...APP.student, grade: '中学3年' } })).error.code, 'badGrade', '学年は選択肢から');
+  assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, student: { ...APP.student, school: '' } })).error.code, 'needField', '学校は必須');
   h.db2._sqlite.prepare("update students set linkCode = 'off.mcp' where id = ?").run(sid); // MCP で登録した体験生の使えない鍵
   const staffMails = h.mails().filter(m => m.audience === 'staff').length;
   const done = await h.ok('family/enrollment/apply', { ...base, agree: true });
@@ -65,6 +67,7 @@ test('enrollment: offer → password → one application with consents → enrol
   assert.deepEqual([s.trial, s.enrolledOn, s.familyKana, s.givenKana, s.school], [0, '2026-11-01', 'たかはし', 'かほ', '【テスト】第一中学校']);
   assert.ok(!s.linkCode.startsWith('off.') && s.linkCode.length > 20, '入塾したら生徒の専用リンクが使えるように');
   assert.deepEqual([f.name, f.guardianName, f.guardianKana, f.phone, f.address, f.termsVersion], ['【テスト】高橋家', '【テスト】高橋 花子', 'たかはし はなこ', '090-1234-5678', '〒343-0002 【テスト】越谷市1-2-3', TERMS.version]);
+  assert.deepEqual([f.guardianFamilyName, f.guardianGivenName, f.guardianFamilyKana, f.guardianGivenKana], ['【テスト】高橋', '花子', 'たかはし', 'はなこ'], '保護者の氏名は姓・名に分けても持つ');
   const tc = h.rows('select * from termsConsents where familyId = ?', fid);
   assert.deepEqual([tc.length, tc[0].consenterName, tc[0].via], [1, '【テスト】高橋 花子', '保護者ページ（入塾の申込み）']);
   const agreed = h.rows('select * from conditions where id = ?', cond.id)[0];
@@ -106,5 +109,9 @@ test('enrollment: a new offer replaces the old one, withdraw closes it, resend r
   assert.match(h.mails().at(-1).body, /family\/#enroll/);
   assert.equal((await h.call('admin/enrollment/offer', { auth, studentId: sid, email: 'other@example.invalid', ...COND })).error.code, 'emailFixed');
   assert.equal((await h.ok('family/enrollment', { auth: parent })).offers.length, 1);
-  void a; void fid;
+  // 代表の家族の画面でも、保護者の氏名は姓・名で入れ、「姓 名」も合わせて持つ
+  const fam = h.rows('select version from families where id = ?', fid)[0];
+  const up = (await h.ok('admin/families/update', { auth, id: fid, version: fam.version, name: '【テスト】高橋家', guardianFamilyName: '【テスト】高橋', guardianGivenName: '一郎', guardianFamilyKana: 'たかはし', guardianGivenKana: 'いちろう' })).family;
+  assert.deepEqual([up.guardianName, up.guardianFamilyName, up.guardianGivenName, up.guardianKana], ['【テスト】高橋 一郎', '【テスト】高橋', '一郎', 'たかはし いちろう']);
+  void a;
 });

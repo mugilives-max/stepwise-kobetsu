@@ -37,7 +37,7 @@ export async function sampleDocHtml(db, type, now) {
   const terms = await currentTerms(db);
   const at = iso(now);
   if (type === 'condition') {
-    const cond = { id: 'cond_sample', templateVersion: '20261014-r5', consenterName: '見本 花子', recordedAt: at, recordedByName: '見本 花子', no: 1, minutes: 90, fee: 4500, deliveryMode: 'in_person', groupSize: '講師1名につき生徒最大2名', studentContact: 1, subjects: '英語・数学', note: '', fromMonth: '2026-11', termsVersion: terms.version, status: 'agreed', proposedAt: at, agreedAt: at, agreedVia: '保護者ページ', agreedBy: 'family:fam_sample', agreedNote: '' };
+    const cond = { id: 'cond_sample', templateVersion: '20261019-r6', status: 'agreed', proposedAt: at, agreedAt: at, agreedVia: '保護者ページ', agreedBy: 'family:sample', consenterName: '見本 花子', recordedAt: at, recordedByName: '見本 花子', no: 1, minutes: 90, fee: 4500, deliveryMode: 'in_person', groupSize: '講師1名につき生徒最大2名', studentContact: 1, subjects: '英語・数学', note: '', fromMonth: '2026-11', termsVersion: terms.version, status: 'agreed', proposedAt: at, agreedAt: at, agreedVia: '保護者ページ', agreedBy: 'family:fam_sample', agreedNote: '' };
     return conditionDocHtml({ cond, student, family, terms, proposer: '麦倉 優輔', now: at });
   }
   if (type === 'special') {

@@ -13,6 +13,7 @@ import { familyNotice, staffNotice, todayJst } from './schedule.mjs';
 import { currentTerms, termsConsentStatements } from './terms.mjs';
 import { conditionFields, proposeCondition, studentConditions, storeDoc, MODE_LABEL } from './conditions.mjs';
 import { consentEvidence } from './consent-evidence.mjs';
+import { GRADES, normGrade } from '../../assets/v2/grade-options.js';
 
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
 const monthText = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
@@ -60,8 +61,11 @@ function text(v, max, label, required = false) {
 }
 // 保護者の申込みの中身（受講申込書）。住所は郵便番号と合わせて「〒…」の 1 つの文で残す
 function applicationFields(b) {
-  const guardianName = text(b.guardianName, 60, '保護者の氏名', true), guardianKana = text(b.guardianKana, 60, '保護者のふりがな', true);
-  if (!KANA.test(guardianKana)) fail('badKana', 'ふりがなは、ひらがなかカタカナで入れてください');
+  // 保護者の氏名は姓・名に分けて受け取る（2026-10-19 本人）。書面・同意の氏名は「姓 名」
+  const gFamily = text(b.guardianFamilyName, 30, '保護者の姓', true), gGiven = text(b.guardianGivenName, 30, '保護者の名', true);
+  const gFamilyKana = text(b.guardianFamilyKana, 30, '保護者の姓のふりがな', true), gGivenKana = text(b.guardianGivenKana, 30, '保護者の名のふりがな', true);
+  if (!KANA.test(gFamilyKana + gGivenKana)) fail('badKana', 'ふりがなは、ひらがなかカタカナで入れてください');
+  const guardianName = gFamily + ' ' + gGiven, guardianKana = gFamilyKana + ' ' + gGivenKana;
   const phone = text(b.phone, 20, '電話番号', true), digits = phone.replace(/\D/g, '');
   if (!/^[0-9+\-() ]+$/.test(phone) || digits.length < 10 || digits.length > 11) fail('badPhone', '電話番号を確かめてください（例：090-1234-5678）');
   const zip = text(b.zip, 8, '郵便番号', true).replace(/^(\d{3})(\d{4})$/, '$1-$2');
@@ -70,9 +74,10 @@ function applicationFields(b) {
   const st = b.student || {};
   const student = { familyName: text(st.familyName, 40, '生徒の名字', true), givenName: text(st.givenName, 40, '生徒の名前', true),
     familyKana: text(st.familyKana, 40, '生徒の名字のふりがな', true), givenKana: text(st.givenKana, 40, '生徒の名前のふりがな', true),
-    grade: text(st.grade, 20, '学年', true), school: text(st.school, 60, '学校') };
+    grade: normGrade(text(st.grade, 20, '学年', true)), school: text(st.school, 60, '学校', true) };
+  if (!GRADES.includes(student.grade)) fail('badGrade', '学年を選んでください');
   if (!KANA.test(student.familyKana + student.givenKana)) fail('badKana', 'ふりがなは、ひらがなかカタカナで入れてください');
-  return { guardian: { name: guardianName, kana: guardianKana, phone, address: '〒' + zip + ' ' + addr }, student };
+  return { guardian: { familyName: gFamily, givenName: gGiven, familyKana: gFamilyKana, givenKana: gGivenKana, name: guardianName, kana: guardianKana, phone, address: '〒' + zip + ' ' + addr }, student };
 }
 
 export const enrollmentRoutes = {
@@ -143,8 +148,12 @@ export const enrollmentRoutes = {
       offers.push({ ...offerView(r), student: { id: s.id, familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana, grade: s.grade, school: s.school, name: fullName(s) }, condition: cond });
     }
     const zip = /^〒(\d{3}-\d{4}) ?(.*)$/.exec(me.address || '');
+    // 姓・名を分けて持つ前の家族は、「姓 名」の空白で分けて最初の値にする
+    const split = v => { const m = /^(\S+)[\s　]+(.+)$/.exec(String(v || '').trim()); return m ? [m[1], m[2]] : [String(v || '').trim(), '']; };
+    const [nf, ng] = me.guardianFamilyName || me.guardianGivenName ? [me.guardianFamilyName, me.guardianGivenName] : split(me.guardianName);
+    const [kf, kg] = me.guardianFamilyKana || me.guardianGivenKana ? [me.guardianFamilyKana, me.guardianGivenKana] : split(me.guardianKana);
     return { offers, terms: await currentTerms(c.db),
-      guardian: { name: me.guardianName || '', kana: me.guardianKana || '', phone: me.phone || '', zip: zip ? zip[1] : '', address: zip ? zip[2] : (me.address || ''), email: me.email } };
+      guardian: { familyName: nf || '', givenName: ng || '', familyKana: kf || '', givenKana: kg || '', phone: me.phone || '', zip: zip ? zip[1] : '', address: zip ? zip[2] : (me.address || ''), email: me.email } };
   },
   // ③ 申し込む（受講規約と受講条件書への同意を含む）→ ④ そのまま入塾
   'family/enrollment/apply': async (c, b) => {
@@ -164,14 +173,14 @@ export const enrollmentRoutes = {
     const snapshot = { appliedAt: now, guardian: { ...app.guardian, email: me.email }, student: app.student,
       condition: { id: cond.id, no: cond.no, minutes: cond.minutes, fee: cond.fee, deliveryMode: cond.deliveryMode, subjects: cond.subjects, note: cond.note, fromMonth: cond.fromMonth },
       terms: { version: terms.version, title: terms.title, url: terms.url }, enrolledOn };
-    const json = JSON.stringify(snapshot), surname = app.guardian.name.split(/[\s　]/)[0];
+    const json = JSON.stringify(snapshot), surname = app.guardian.familyName;
     // 体験のときの「◯◯さん」の表示名は、保護者の名字の「◯◯家」にする（代表が付けた名前は変えない）
     const familyLabel = me.name === s.familyName + 'さん' && surname ? surname + '家' : me.name;
     await c.db.batch([
       c.db.prepare("update enrollmentOffers set status = 'applied', appliedAt = ?, application = ?, contentHash = ?, termsVersion = ?, consenterName = ?, version = version + 1 where id = ? and status = 'offered'")
         .bind(now, json, sha256Hex(json), terms.version, evidence.consenterName, r.id),
-      c.db.prepare('update families set name = ?, guardianName = ?, guardianKana = ?, phone = ?, address = ?, updatedAt = ?, version = version + 1 where id = ?')
-        .bind(familyLabel, app.guardian.name, app.guardian.kana, app.guardian.phone, app.guardian.address, now, me.id),
+      c.db.prepare('update families set name = ?, guardianName = ?, guardianKana = ?, guardianFamilyName = ?, guardianGivenName = ?, guardianFamilyKana = ?, guardianGivenKana = ?, phone = ?, address = ?, updatedAt = ?, version = version + 1 where id = ?')
+        .bind(familyLabel, app.guardian.name, app.guardian.kana, app.guardian.familyName, app.guardian.givenName, app.guardian.familyKana, app.guardian.givenKana, app.guardian.phone, app.guardian.address, now, me.id),
       c.db.prepare("update students set familyName = ?, givenName = ?, familyKana = ?, givenKana = ?, grade = ?, school = ?, trial = 0, enrolledOn = ?, linkCode = case when linkCode like 'off.%' then ? else linkCode end, updatedAt = ?, version = version + 1 where id = ?")
         .bind(app.student.familyName, app.student.givenName, app.student.familyKana, app.student.givenKana, app.student.grade, app.student.school, enrolledOn, newLinkCode(), now, s.id),
       c.db.prepare("update conditions set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'")

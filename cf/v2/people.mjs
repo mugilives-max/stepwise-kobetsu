@@ -7,6 +7,7 @@ import { currentTerms } from './terms.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { issueChallenge, revokeSessions, SITE } from './accounts.mjs';
+import { normGrade } from '../../assets/v2/grade-options.js';
 
 // 生徒の専用リンクの鍵。推測できない長さにする（今の鍵もそのまま使える）
 function newLinkCode() {
@@ -17,7 +18,7 @@ export const studentLink = code => SITE + '/student/?k=' + encodeURIComponent(co
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
 
 export function familyAdminView(f) {
-  return { id: f.id, name: f.name, guardianName: f.guardianName, email: f.email, phone: f.phone, note: f.note, status: f.status, hasPassword: !!f.passHash, testOnly: !!f.testOnly, legacyId: f.legacyId, termsVersion: f.termsVersion || '', termsAcceptedAt: f.termsAcceptedAt || '', version: f.version };
+  return { id: f.id, name: f.name, guardianName: f.guardianName, guardianFamilyName: f.guardianFamilyName || '', guardianGivenName: f.guardianGivenName || '', guardianFamilyKana: f.guardianFamilyKana || '', guardianGivenKana: f.guardianGivenKana || '', guardianKana: f.guardianKana || '', address: f.address || '', email: f.email, phone: f.phone, note: f.note, status: f.status, hasPassword: !!f.passHash, testOnly: !!f.testOnly, legacyId: f.legacyId, termsVersion: f.termsVersion || '', termsAcceptedAt: f.termsAcceptedAt || '', version: f.version };
 }
 export function studentAdminView(s) {
   return { id: s.id, familyId: s.familyId, name: fullName(s), familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana,
@@ -32,7 +33,7 @@ const TEXT_LIMITS = { familyName: 40, givenName: 40, familyKana: 40, givenKana: 
 function studentFields(b, base = {}) {
   const out = { ...base };
   for (const [k, max] of Object.entries(TEXT_LIMITS)) if (b[k] !== undefined) {
-    const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = v;
+    const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = k === 'grade' ? normGrade(v) : v;
   }
   // 通常指導の基準単価は 90 分の授業料（baseFee90）。baseRate30（30 分）は互換のために一緒に書く。baseRate30 だけ送られたら × 3
   if (b.baseFee90 !== undefined) { const n = Number(b.baseFee90); if (!Number.isInteger(n) || n < 0 || n > 300000) fail('badRate', '通常指導の基準単価（90分）は0〜300,000円の整数で入れてください'); out.baseFee90 = n; out.baseRate30 = Math.round(n / 3); }
@@ -45,9 +46,12 @@ function studentFields(b, base = {}) {
 }
 function familyFields(b, base = {}) {
   const out = { ...base };
-  for (const [k, max] of Object.entries({ name: 60, guardianName: 60, phone: 30, note: 1000 })) if (b[k] !== undefined) {
+  for (const [k, max] of Object.entries({ name: 60, guardianName: 60, guardianFamilyName: 30, guardianGivenName: 30, guardianFamilyKana: 30, guardianGivenKana: 30, phone: 30, note: 1000 })) if (b[k] !== undefined) {
     const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = v;
   }
+  // 保護者の氏名は姓・名で受け取り、「姓 名」の 1 つの文も合わせて持つ（書面・同意の氏名に使う。2026-10-19）
+  if (b.guardianFamilyName !== undefined || b.guardianGivenName !== undefined) out.guardianName = [out.guardianFamilyName, out.guardianGivenName].filter(Boolean).join(' ');
+  if (b.guardianFamilyKana !== undefined || b.guardianGivenKana !== undefined) out.guardianKana = [out.guardianFamilyKana, out.guardianGivenKana].filter(Boolean).join(' ');
   if (b.email !== undefined) { const e = normEmail(b.email); if (e && !validEmail(e)) fail('badEmail', 'メールアドレスを確かめてください'); out.email = e; }
   if (!out.name) fail('needName', '家族の表示名を入れてください（例: 山田家）');
   return out;
@@ -77,11 +81,11 @@ export const peopleRoutes = {
   },
   'admin/families/create': async (c, b) => {
     await requireStaff(c, b, 'manager');
-    const f = familyFields(b, { name: '', guardianName: '', email: '', phone: '', note: '' });
+    const f = familyFields(b, { name: '', guardianName: '', guardianFamilyName: '', guardianGivenName: '', guardianFamilyKana: '', guardianGivenKana: '', guardianKana: '', email: '', phone: '', note: '' });
     await emailFree(c, f.email);
     const id = newId('fa'), test = b.testOnly ? 1 : 0;
-    await c.db.prepare('insert into families (id, name, guardianName, email, phone, note, status, testOnly, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, f.name, f.guardianName, f.email, f.phone, f.note, 'invited', test, iso(c.now), iso(c.now)).run();
+    await c.db.prepare('insert into families (id, name, guardianName, guardianFamilyName, guardianGivenName, guardianFamilyKana, guardianGivenKana, guardianKana, email, phone, note, status, testOnly, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, f.name, f.guardianName, f.guardianFamilyName, f.guardianGivenName, f.guardianFamilyKana, f.guardianGivenKana, f.guardianKana, f.email, f.phone, f.note, 'invited', test, iso(c.now), iso(c.now)).run();
     await audit(c, 'familyCreate', id);
     return { family: familyAdminView(await getFamily(c, id)) };
   },
@@ -97,8 +101,8 @@ export const peopleRoutes = {
       else if (b.status === 'invited' && f.status === 'stopped' && !f.passHash) status = 'invited';
       else fail('badStatus', '状態を確かめてください');
     }
-    await c.db.prepare('update families set name = ?, guardianName = ?, email = ?, phone = ?, note = ?, status = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?')
-      .bind(next.name, next.guardianName, next.email, next.phone, next.note, status, iso(c.now), f.id, f.version).run();
+    await c.db.prepare('update families set name = ?, guardianName = ?, guardianFamilyName = ?, guardianGivenName = ?, guardianFamilyKana = ?, guardianGivenKana = ?, guardianKana = ?, email = ?, phone = ?, note = ?, status = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?')
+      .bind(next.name, next.guardianName, next.guardianFamilyName || '', next.guardianGivenName || '', next.guardianFamilyKana || '', next.guardianGivenKana || '', next.guardianKana || '', next.email, next.phone, next.note, status, iso(c.now), f.id, f.version).run();
     // 停止・ログインのメールの変更では、今のログインを切る
     if (status === 'stopped' || next.email !== f.email) await revokeSessions(c, 'family', f.id);
     await audit(c, 'familyUpdate', f.id, { status, emailChanged: next.email !== f.email });

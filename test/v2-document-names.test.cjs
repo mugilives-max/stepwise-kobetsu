@@ -25,13 +25,13 @@ test('legacy and r3 templates remain byte-identical for both pending and agreed 
  }
 });
 
-test('new proposals use r5; an r3 pending proposal keeps its old title on later approval', async () => {
+test('new condition proposals use r6 (specials r5); an r3 pending proposal keeps its old title on later approval', async () => {
  const h=await createV2(), auth=await h.owner();
  const f=(await h.ok('admin/families/create',{auth,name:'【テスト】家庭',email:'parent@example.invalid'})).family;
  const s=(await h.ok('admin/students/create',{auth,familyId:f.id,familyName:'【テスト】',givenName:'生徒',baseRate30:1500})).student;
  const parent=(await h.ok('family/invite/accept',{token:h.linkFrom((await h.ok('admin/families/invite',{auth,id:f.id}),h.mails().at(-1))),password:'family password 1'})).auth;
  const c=(await h.ok('admin/conditions/propose',{auth,studentId:s.id,minutes:90,fee:4500,deliveryMode:'in_person',fromMonth:'2026-11'})).condition;
- assert.equal(h.rows('select templateVersion from conditions where id=?',c.id)[0].templateVersion,'20261014-r5');
+ assert.equal(h.rows('select templateVersion from conditions where id=?',c.id)[0].templateVersion,'20261019-r6');
  const before=new Map([...h.env.FILES._m].map(([k,v])=>[k,Buffer.from(v.b)]));
  h.db2._sqlite.prepare("update conditions set templateVersion='20261012-r3' where id=?").run(c.id);
  await h.ok('family/conditions/agree',{auth:parent,id:c.id,agree:true,consenterName:'【テスト】保護者'});
