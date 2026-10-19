@@ -234,8 +234,8 @@ Google Apps Script Web アプリ (/exec)  … gas/*.gs が本体
 - 仕組み：Worker `stepwise-staging`（`cf/staging/`）が画面（staff・family・student）と API（`/v2/`）を同じ場所から出す。台帳は D1 `stepwise-staging`、ファイルは R2 `stepwise-staging-files` で、本番の `stepwise-v2`・`stepwise-files` とは別。Apps Script の住所と鍵を持たせないので、メール・カレンダーは本当には送らない。定期の処理も動かさない。
 - 画面の上の帯：「送ったメール」（本番なら届くメールの控え。招待などのリンクはこの検証環境の住所にして開ける）・「ログインの一覧」・「最初の状態に戻す」（記録をすべて消して架空のデータを入れ直す。数回に分けて行う）。
 - 架空のデータ：`scripts/demo-seed.mjs`（手元のプレビュー `scripts/dev-v2-preview.mjs` と同じもの）を `scripts/build-staging.mjs` がメモリの台帳で作り、`cf/staging/snapshot.json`（生成物）にする。
-- 公開：今は手元のパソコンから `npm run staging:deploy`（試したいブランチを開いた状態で。本人の Cloudflare のログインで出す。画面の作り直し → マイグレーション → Worker → 初めてだけ架空のデータ）。最初の状態に戻すだけなら `npm run staging:reset`。
-- 自動で出す（`.github/workflows/staging-deploy.yml`）：GitHub の鍵（CLOUDFLARE_API_TOKEN）は本番の Worker（stepwise-api）だけに使える設定のため、2026-10-19 の時点では検証環境の Worker を出せない（「No access to the specified service」）。本人が Cloudflare でこの鍵に `stepwise-staging` も足したら、リポジトリの変数 `STAGING_AUTO_DEPLOY` を `true` にすると、main に入るたびに自動で出す。ブランチは Actions の「Staging deploy」を Run workflow（ブランチ名・最初の状態に戻すか）。
+- 公開：`.github/workflows/staging-deploy.yml`。main に入るたびに自動で出す（データはそのまま。初めてだけ架空のデータを入れる）。本番に出す前のブランチを試すときは、Actions の「Staging deploy」を Run workflow（ブランチ名・最初の状態に戻すか）。AI からは `gh workflow run staging-deploy.yml -f ref=<ブランチ> -f reset=true`。手元のパソコンからは `npm run staging:deploy`、最初の状態に戻すだけなら `npm run staging:reset`。
+- GitHub の鍵（CLOUDFLARE_API_TOKEN、Cloudflare の名前は「Stepwise contract release GitHub 20261013」）：2026-10-19 に本人が Worker の編集の対象へ `stepwise-staging` を足し、期限を延ばした。この鍵はアカウント全体の workers.dev の設定を読めないので、公開は `wrangler deploy` ではなく「版を上げて切り替える」（versions upload → versions deploy）で行う。自動の公開はリポジトリの変数 `STAGING_AUTO_DEPLOY=true` のとき。
 - 本番を指さないことは、公開の手順の最初に設定ファイルで確かめる（本番の台帳・ファイル置き場・Worker の名前・Apps Script の住所・定期の処理が書かれていたら止まる）。
 - 架空のアカウントのパスワードは公開のリポジトリにも書いてある見本の値で、中のデータもすべて架空。だれでも開ける場所なので、本物の個人情報は入れない。
 
