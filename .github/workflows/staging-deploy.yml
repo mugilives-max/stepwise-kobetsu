@@ -49,6 +49,11 @@ jobs:
           WRANGLER_SEND_METRICS: "false"
         run: |
           npx wrangler d1 migrations apply DB2 --remote --config cf/staging/wrangler.jsonc
-          npx wrangler deploy --config cf/staging/wrangler.jsonc
+          # wrangler deploy はアカウント全体の workers.dev の設定を読みに行き、この鍵では断られるため、版を上げてから切り替える
+          # （workers.dev の住所は最初の公開のときに有効にしてある）
+          npx wrangler versions upload --config cf/staging/wrangler.jsonc --message "staging ${GITHUB_SHA::7}" | tee upload.log
+          vid=$(grep -oE 'Worker Version ID: [0-9a-f-]{36}' upload.log | awk '{print $4}')
+          test -n "$vid"
+          npx wrangler versions deploy "$vid@100%" --config cf/staging/wrangler.jsonc --yes
       - name: Fill with fake data (first time, or when asked)
         run: node scripts/staging-reset.mjs https://stepwise-staging.stepwise-edu.workers.dev ${{ inputs.reset && '--force' || '--if-empty' }}
