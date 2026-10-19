@@ -13,6 +13,7 @@ import { familyNotice, staffNotice, todayJst } from './schedule.mjs';
 import { currentTerms, termsConsentStatements } from './terms.mjs';
 import { conditionFields, proposeCondition, studentConditions, storeDoc, MODE_LABEL } from './conditions.mjs';
 import { consentEvidence } from './consent-evidence.mjs';
+import { GRADES, normGrade } from '../../assets/v2/grade-options.js';
 
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
 const monthText = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
@@ -73,7 +74,8 @@ function applicationFields(b) {
   const st = b.student || {};
   const student = { familyName: text(st.familyName, 40, '生徒の名字', true), givenName: text(st.givenName, 40, '生徒の名前', true),
     familyKana: text(st.familyKana, 40, '生徒の名字のふりがな', true), givenKana: text(st.givenKana, 40, '生徒の名前のふりがな', true),
-    grade: text(st.grade, 20, '学年', true), school: text(st.school, 60, '学校') };
+    grade: normGrade(text(st.grade, 20, '学年', true)), school: text(st.school, 60, '学校', true) };
+  if (!GRADES.includes(student.grade)) fail('badGrade', '学年を選んでください');
   if (!KANA.test(student.familyKana + student.givenKana)) fail('badKana', 'ふりがなは、ひらがなかカタカナで入れてください');
   return { guardian: { familyName: gFamily, givenName: gGiven, familyKana: gFamilyKana, givenKana: gGivenKana, name: guardianName, kana: guardianKana, phone, address: '〒' + zip + ' ' + addr }, student };
 }

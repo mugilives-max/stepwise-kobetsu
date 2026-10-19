@@ -767,7 +767,7 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .choice small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
 .choice:has(input:checked) { border-color: var(--primary); background: var(--soft); }
 .reg-confirm .cond-dl { background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-.reg-form input[aria-invalid="true"] { border-color: #b42318; background: #fff6f5; }
+.reg-form input[aria-invalid="true"], .reg-form select[aria-invalid="true"] { border-color: #b42318; background: #fff6f5; }
 .reg-error { margin: 0; font-size: 12px; font-weight: 700; color: #b42318; }
 .reg-field.has-error input:not([type="radio"]):placeholder-shown { border-color: #b42318; background: #fff6f5; }
 .reg-field.has-error .choice { border-color: #e7a59d; }

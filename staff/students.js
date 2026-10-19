@@ -4,6 +4,7 @@ import { hwSubject } from '/assets/v2/learning-view.js?v=20261008-launch1';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261016-stages';
 import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { ICON } from '/staff/ui.js?v=20261008-launch1';
+import { gradeOptions } from '/assets/v2/grade-options.js?v=20261019-grade';
 
 let list = null, query = '', hub = null, hubFor = '';
 export function resetStudents() { list = null; hub = null; hubFor = ''; }
@@ -29,7 +30,7 @@ export function studentsPage(ctx) {
   h += `<label class="search"><svg viewBox="0 0 24 24" aria-hidden="true">${SEARCH}</svg><input type="search" data-input="stu-query" value="${esc(query)}" placeholder="名前・ふりがなで探す" aria-label="生徒を探す"></label>`;
   // 体験生（まだ入塾していない人）を臨時で登録する。登録すると予定表で授業を入れられる（種類「体験」・無料）
   if (list.manager) h += `<details class="trial-new"><summary>＋ 体験生を登録（まだ入塾していない人）</summary><form class="stack" data-form="trial-create">
-    <div class="row"><label style="flex:1">名字<input name="familyName" maxlength="40" required placeholder="高橋"></label><label style="flex:1">名前<input name="givenName" maxlength="40" placeholder="香帆"></label><label style="flex:1">学年<input name="grade" maxlength="20" placeholder="中3"></label></div>
+    <div class="row"><label style="flex:1">名字<input name="familyName" maxlength="40" required placeholder="高橋"></label><label style="flex:1">名前<input name="givenName" maxlength="40" placeholder="香帆"></label><label style="flex:1">学年<select name="grade">${gradeOptions(esc, '')}</select></label></div>
     <label>学校<input name="school" maxlength="60" placeholder="〇〇中学校"></label>
     <label>メモ（紹介・志望など）<input name="note" maxlength="1000"></label>
     <p class="small muted">家族は「◯◯さん」で作ります。メールは入れないので、お知らせは届きません。授業は予定表から入れ、種類「体験」（無料）でそのまま決定になります。続けることになったら、その生徒の画面の「入塾の案内を送る」から、保護者に申込みをお願いします。</p>

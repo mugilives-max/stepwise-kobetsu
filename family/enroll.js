@@ -1,6 +1,7 @@
 // 保護者の「入塾のお申込み」（#enroll。2026-10-18 本人決定。cf/v2/enrollment.mjs）。
 // 1 つの画面で: 保護者さまの情報 → 生徒さんの情報の確認 → 受講条件書・受講規約 → 確認 → 「同意して入塾を申し込む」。
 // 入力 → 確認 → 完了 の 3 画面（一般的な申込みの形）。同意者名は入れた保護者の氏名。申し込むとそのまま入塾。
+import { gradeOptions, normGrade } from '/assets/v2/grade-options.js?v=20261019-grade';
 let data = null, step = 'input', draft = null, agree = false, missing = [];
 export function resetEnroll() { data = null; step = 'input'; draft = null; agree = false; missing = []; }
 const jaMonth = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
@@ -28,10 +29,10 @@ export function enrollTodo(ctx) {
 function initDraft(o) {
   const g = data.guardian || {}, s = o.student;
   draft = { offerId: o.id, guardianFamilyName: g.familyName || '', guardianGivenName: g.givenName || '', guardianFamilyKana: g.familyKana || '', guardianGivenKana: g.givenKana || '', phone: g.phone || '', zip: g.zip || '', address: g.address || '',
-    familyName: s.familyName || '', givenName: s.givenName || '', familyKana: s.familyKana || '', givenKana: s.givenKana || '', grade: s.grade || '', school: s.school || '' };
+    familyName: s.familyName || '', givenName: s.givenName || '', familyKana: s.familyKana || '', givenKana: s.givenKana || '', grade: normGrade(s.grade), school: s.school || '' };
 }
 const FIELDS = [['guardianFamilyName', '保護者さまの姓'], ['guardianGivenName', '保護者さまの名'], ['guardianFamilyKana', '保護者さまの姓のふりがな'], ['guardianGivenKana', '保護者さまの名のふりがな'], ['phone', '電話番号'], ['zip', '郵便番号'], ['address', '住所'],
-  ['familyName', '生徒さんの姓'], ['givenName', '生徒さんの名'], ['familyKana', '生徒さんの姓のふりがな'], ['givenKana', '生徒さんの名のふりがな'], ['grade', '学年']];
+  ['familyName', '生徒さんの姓'], ['givenName', '生徒さんの名'], ['familyKana', '生徒さんの姓のふりがな'], ['givenKana', '生徒さんの名のふりがな'], ['grade', '学年'], ['school', '学校']];
 function check() {
   missing = FIELDS.filter(([k]) => !String(draft[k] || '').trim()).map(([k]) => k);
   for (const k of ['guardianFamilyKana', 'guardianGivenKana']) if (draft[k] && !KANA.test(draft[k])) missing.push(k);
@@ -68,7 +69,7 @@ function inputPage(ctx, o) {
       <p class="reg-help">体験のときに伺った内容です。違うところがあれば直してください。</p>
       <div class="row">${field(esc, 'familyName', '姓', { max: 40 })}${field(esc, 'givenName', '名', { max: 40 })}</div>
       <div class="row">${field(esc, 'familyKana', 'ふりがな（姓）', { max: 40 })}${field(esc, 'givenKana', 'ふりがな（名）', { max: 40 })}</div>
-      <div class="row">${field(esc, 'grade', '学年', { ph: '例：中3', max: 20 })}${field(esc, 'school', '学校', { req: false, ph: '例：〇〇中学校' })}</div></fieldset>
+      <div class="row"><label style="flex:1 1 140px;min-width:0"><span>学年</span><select name="grade" data-enroll="grade"${missing.includes('grade') ? ' aria-invalid="true"' : ''}>${gradeOptions(esc, draft.grade)}</select></label>${field(esc, 'school', '学校', { ph: '例：〇〇中学校' })}</div></fieldset>
     <section class="reg-card"><div class="reg-card-head"><h2>受講条件書（通常指導）</h2></div><p class="reg-help" style="margin-top:2px">授業の時間と、1回の授業料の上限（基準単価）です。毎月の回数と料金は、別に受講合意書でご確認いただきます。</p>${condRows(esc, o)}
       ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>受講規約</h2></div><p class="reg-help" style="margin-top:2px">授業・お休み・キャンセル・お支払いなどの決まりです。</p>

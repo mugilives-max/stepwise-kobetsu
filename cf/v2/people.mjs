@@ -7,6 +7,7 @@ import { currentTerms } from './terms.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { issueChallenge, revokeSessions, SITE } from './accounts.mjs';
+import { normGrade } from '../../assets/v2/grade-options.js';
 
 // 生徒の専用リンクの鍵。推測できない長さにする（今の鍵もそのまま使える）
 function newLinkCode() {
@@ -32,7 +33,7 @@ const TEXT_LIMITS = { familyName: 40, givenName: 40, familyKana: 40, givenKana: 
 function studentFields(b, base = {}) {
   const out = { ...base };
   for (const [k, max] of Object.entries(TEXT_LIMITS)) if (b[k] !== undefined) {
-    const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = v;
+    const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = k === 'grade' ? normGrade(v) : v;
   }
   // 通常指導の基準単価は 90 分の授業料（baseFee90）。baseRate30（30 分）は互換のために一緒に書く。baseRate30 だけ送られたら × 3
   if (b.baseFee90 !== undefined) { const n = Number(b.baseFee90); if (!Number.isInteger(n) || n < 0 || n > 300000) fail('badRate', '通常指導の基準単価（90分）は0〜300,000円の整数で入れてください'); out.baseFee90 = n; out.baseRate30 = Math.round(n / 3); }
