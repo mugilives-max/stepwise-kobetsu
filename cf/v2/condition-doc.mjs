@@ -1,4 +1,5 @@
 import { conditionDocHtml as priorDocHtml } from './condition-doc-r3.mjs';
+import { conditionDocR6 } from './condition-doc-r6.mjs';
 // 受講条件書（通常指導）（規約 第2条）の書面。請求書のひな形（Kura/塾/書類のひな形）と同じ A4 の見た目で、印刷（Ctrl+P）すれば PDF になる。
 // 条件をお知らせしたとき（案）と、保護者が同意したとき（確定）に、この HTML を R2 に置く（files 表 category=contract、refType=condition）。
 // 保護者はいつでも保護者ページから開ける（写しの交付）。中身はこの関数が作り、文字は全部エスケープする。
@@ -12,6 +13,7 @@ const MODES = { in_person: '教室指導', online: 'オンライン指導', both
 
 // cond: conditions の行。student: students の行。family: families の行。terms: 今の規約（version/title/url）。proposer: 提案したスタッフの名前
 export function conditionDocHtml({ cond, student, family, terms, proposer, now }) {
+  if (cond.templateVersion === '20261019-r6') return conditionDocR6({ cond, student, family, terms }); // 2026-10-19 本人「その形で入れて」。読む人の目線で並べ直した版
   if (cond.templateVersion !== '20261014-r5') return priorDocHtml({ cond, student, family, terms, proposer, now });
   const final = cond.status === 'agreed';
   const name = `${student.familyName} ${student.givenName}`.trim();
