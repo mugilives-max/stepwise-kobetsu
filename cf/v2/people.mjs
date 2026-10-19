@@ -35,8 +35,8 @@ function studentFields(b, base = {}) {
   for (const [k, max] of Object.entries(TEXT_LIMITS)) if (b[k] !== undefined) {
     const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = k === 'grade' ? normGrade(v) : v;
   }
-  // 通常指導の基準単価は 90 分の授業料（baseFee90）。baseRate30（30 分）は互換のために一緒に書く。baseRate30 だけ送られたら × 3
-  if (b.baseFee90 !== undefined) { const n = Number(b.baseFee90); if (!Number.isInteger(n) || n < 0 || n > 300000) fail('badRate', '通常指導の基準単価（90分）は0〜300,000円の整数で入れてください'); out.baseFee90 = n; out.baseRate30 = Math.round(n / 3); }
+  // 通常の基準単価は 90 分の授業料（baseFee90）。baseRate30（30 分）は互換のために一緒に書く。baseRate30 だけ送られたら × 3
+  if (b.baseFee90 !== undefined) { const n = Number(b.baseFee90); if (!Number.isInteger(n) || n < 0 || n > 300000) fail('badRate', '通常の基準単価（90分）は0〜300,000円の整数で入れてください'); out.baseFee90 = n; out.baseRate30 = Math.round(n / 3); }
   else if (b.baseRate30 !== undefined) { const n = Number(b.baseRate30); if (!Number.isInteger(n) || n < 0 || n > 100000) fail('badRate', '基本単価（30分）は0〜100,000円の整数で入れてください'); out.baseRate30 = n; out.baseFee90 = n * 3; }
   if (b.deliveryMode !== undefined) { if (!['', 'in_person', 'online'].includes(b.deliveryMode)) fail('badMode', '授業の形式を選んでください'); out.deliveryMode = b.deliveryMode; }
   if (b.status !== undefined) { if (!['enrolled', 'paused', 'left'].includes(b.status)) fail('badStatus', '在籍の状態を選んでください'); out.status = b.status; }
@@ -76,7 +76,7 @@ export const peopleRoutes = {
     await requireStaff(c, b, 'manager');
     const f = await getFamily(c, b.id);
     const studs = (await c.db.prepare('select * from students where familyId = ? order by createdAt').bind(f.id).all()).results;
-    const students = []; for (const s of studs) students.push({ ...studentAdminView(s), condition: await studentConditions(c.db, s.id), specials: await studentSpecials(c.db, s.id) }); // 個別指導条件・特殊指導の状態も
+    const students = []; for (const s of studs) students.push({ ...studentAdminView(s), condition: await studentConditions(c.db, s.id), specials: await studentSpecials(c.db, s.id) }); // 個別指導条件・特別単価の状態も
     return { terms: await currentTerms(c.db), family: { ...familyAdminView(f), students } };
   },
   'admin/families/create': async (c, b) => {

@@ -243,9 +243,9 @@ export const billingRoutes = {
     const base = base90(s);
     const ceiling = condition ? Math.floor(condition.fee * n.minutes / condition.minutes) : Math.floor(base * n.minutes / 90);
     const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
-    if (sp && n.endDate > sp.toDate) fail('needSpecial', '計画の対象期間全体が、承認済みの特殊指導の対象期間に含まれる必要があります');
+    if (sp && n.endDate > sp.toDate) fail('needSpecial', '計画の対象期間全体が、承認済みの特別単価の対象期間に含まれる必要があります');
     if ((sp && n.fee > Math.floor(sp.fee * n.minutes / sp.minutes)) || ((condition || base > 0) && n.fee > ceiling && !sp))
-      fail('needSpecial', '通常指導の基準単価を超える適用単価は、対象期間全体の受講条件書（特殊指導）について事前に承認を得て、その基準単価以内で設定してください');
+      fail('needSpecial', '通常の基準単価を超える適用単価は、対象期間全体の特別単価合意書について事前に承認を得て、その基準単価以内で設定してください');
     n.conditionId = condition ? condition.id : ''; n.specialId = sp ? sp.id : ''; n.instructionType = sp ? 'special' : 'regular';
     const now = iso(c.now);
     if (old) {
@@ -526,7 +526,7 @@ export const billingRoutes = {
     // 受講規約の今の版に同意していなければ、承認できない（統合3 D07。見送りは同意がなくてもよい）
     const terms = await familyTerms(c.db, me);
     if (count > 0 && terms.needs) fail('needTerms', '受講規約への同意が必要です。「お支払い」の画面で規約を確かめて、同意してから承認してください', 409);
-    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '受講条件書（通常指導）への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
+    if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '受講条件書への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
     const now = iso(c.now), evidence = consentEvidence(c, b, me, me);
     if (count > 0) await assertPriorConsent(c, l, evidence.consentedAt);
     const saved = await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")

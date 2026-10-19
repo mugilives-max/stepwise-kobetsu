@@ -1,4 +1,5 @@
 import { specialDocHtml as priorDocHtml } from './special-doc-r3.mjs';
+import { specialDocR9 } from './special-doc-r9.mjs';
 // 受講条件書（特殊指導）（規約 第6条）の書面。受講条件書（通常指導）と同じ A4 の見た目。提案したとき（案）と承認されたとき（確定）に R2 に置く。
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const jst = t => { if (!t) return ''; const d = new Date(Date.parse(t) + 9 * 3600e3); return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日`; };
@@ -8,6 +9,7 @@ const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const br = s => esc(s).replace(/\n/g, '<br>');
 
 export function specialDocHtml({ sp, student, family, terms, proposer, now }) {
+  if (sp.templateVersion === '20261020-r9') return specialDocR9({ sp, student, family, terms }); // 受講規約 r9 の名称と、読む人の目線の並べ方
   if (sp.templateVersion !== '20261014-r5') return priorDocHtml({ sp, student, family, terms, proposer, now });
   const final = sp.status === 'agreed';
   const name = `${student.familyName} ${student.givenName}`.trim();
