@@ -11,7 +11,7 @@ import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetR
 import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261016-notices';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261019-grade';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261016-stages';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261018-manual';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261020-staging';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261018-a4';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261018-manual';
