@@ -54,6 +54,14 @@ function field(esc, key, label, opts = {}) {
   const bad = missing.includes(key);
   return `<label style="flex:1 1 140px;min-width:0"><span>${label}${opts.req === false ? ' <span class="opt">任意</span>' : ''}</span><input name="${key}" data-enroll="${key}" value="${esc(draft[key] || '')}" ${opts.type ? `type="${opts.type}"` : ''} ${opts.mode ? `inputmode="${opts.mode}"` : ''} ${opts.auto ? `autocomplete="${opts.auto}"` : ''} placeholder="${esc(opts.ph || '')}" maxlength="${opts.max || 60}"${bad ? ' aria-invalid="true"' : ''}></label>`;
 }
+// 受講条件書と受講規約（入力と確認の両方の画面に出す。同意の前に、いつでも全文を開ける）
+function docCards(esc, o) {
+  return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書（通常指導）</h2></div><p class="reg-help" style="margin-top:2px">授業の時間と、1回の授業料の上限（基準単価）です。毎月の回数と料金は、別に受講合意書でご確認いただきます。</p>${condRows(esc, o)}
+      ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
+    <section class="reg-card"><div class="reg-card-head"><h2>受講規約</h2></div><p class="reg-help" style="margin-top:2px">授業・お休み・キャンセル・お支払いなどの決まりです。</p>
+      <p style="margin:6px 0 0">${esc(data.terms.title || '受講規約')}</p>
+      ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener">受講規約の全文を開く</a></div>` : ''}</section>`;
+}
 function inputPage(ctx, o) {
   const { esc } = ctx, bad = () => '';
   return `${steps(1)}<p>${esc(o.student.name)}さんの入塾のお手続きです。保護者さまの情報を入れ、受講条件書と受講規約をご確認ください。</p>${ctx.noticeHtml()}
@@ -70,11 +78,7 @@ function inputPage(ctx, o) {
       <div class="row">${field(esc, 'familyName', '姓', { max: 40 })}${field(esc, 'givenName', '名', { max: 40 })}</div>
       <div class="row">${field(esc, 'familyKana', 'ふりがな（姓）', { max: 40 })}${field(esc, 'givenKana', 'ふりがな（名）', { max: 40 })}</div>
       <div class="row"><label style="flex:1 1 140px;min-width:0"><span>学年</span><select name="grade" data-enroll="grade"${missing.includes('grade') ? ' aria-invalid="true"' : ''}>${gradeOptions(esc, draft.grade)}</select></label>${field(esc, 'school', '学校', { ph: '例：〇〇中学校' })}</div></fieldset>
-    <section class="reg-card"><div class="reg-card-head"><h2>受講条件書（通常指導）</h2></div><p class="reg-help" style="margin-top:2px">授業の時間と、1回の授業料の上限（基準単価）です。毎月の回数と料金は、別に受講合意書でご確認いただきます。</p>${condRows(esc, o)}
-      ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
-    <section class="reg-card"><div class="reg-card-head"><h2>受講規約</h2></div><p class="reg-help" style="margin-top:2px">授業・お休み・キャンセル・お支払いなどの決まりです。</p>
-      <p style="margin:6px 0 0">${esc(data.terms.title || '受講規約')}</p>
-      ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener">受講規約の全文を開く</a></div>` : ''}</section>
+    ${docCards(esc, o)}
     <div class="row"><button class="primary">入力内容を確認する</button></div></form>`;
 }
 function confirmPage(ctx, o) {
@@ -84,7 +88,7 @@ function confirmPage(ctx, o) {
   return `${steps(1)}<h1>入力内容の確認</h1><p>内容に間違いがなければ、受講規約と受講条件書に同意のうえ「同意して入塾を申し込む」を押してください。</p>${ctx.noticeHtml()}
     <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div><dl class="reg-rows">${row('氏名', d.guardianFamilyName + ' ' + d.guardianGivenName)}${row('ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana)}${row('電話番号', d.phone)}${row('住所', '〒' + zip + ' ' + d.address)}</dl></section>
     <section class="reg-card"><div class="reg-card-head"><h2>生徒さんの情報</h2></div><dl class="reg-rows">${row('氏名', d.familyName + ' ' + d.givenName)}${row('ふりがな', d.familyKana + ' ' + d.givenKana)}${row('学年', d.grade)}${row('学校', d.school)}</dl></section>
-    <section class="reg-card"><div class="reg-card-head"><h2>受講条件書（通常指導）</h2></div>${condRows(esc, o)}</section>
+    ${docCards(esc, o)}
     <form class="reg-form" data-form="enroll-apply" novalidate>
       <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}><span>受講規約と受講条件書の内容を確認し、同意します<small>同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）</small></span></label>
       <div class="row"><button class="primary"${ctx.dis()}>同意して入塾を申し込む</button></div>

@@ -77,6 +77,8 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await parent.locator('[data-form="enroll-input"] button.primary').click();
   await parent.getByRole('heading',{name:'入力内容の確認',exact:true}).waitFor();
   await parent.getByText('〒343-0002 【テスト】越谷市1-2-3',{exact:true}).waitFor();
+  await parent.getByRole('button',{name:'受講条件書の全文を開く',exact:true}).waitFor(); // 同意の前に全文を開ける（確認の画面にも）
+  await parent.getByRole('link',{name:'受講規約の全文を開く',exact:true}).waitFor();
   assert.equal(h.rows('select count(*) n from termsConsents')[0].n,0,'確認の画面ではまだ何も記録しない');
   await parent.locator('[data-form="enroll-apply"] button.primary').click();
   await parent.getByText('「同意します」に印を付けてください',{exact:false}).waitFor();
