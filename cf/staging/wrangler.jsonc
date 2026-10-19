@@ -7,7 +7,6 @@
   "main": "index.mjs",
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true,
   "observability": { "enabled": true },
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
   "d1_databases": [
