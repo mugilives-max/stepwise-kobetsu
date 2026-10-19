@@ -47,7 +47,11 @@ export default {
     if (url.pathname === '/v2/staging/mails' && request.method === 'POST') return mails(env, origin);
     if (url.pathname === '/v2/staging/info' && request.method === 'POST') {
       const n = await env.DB2.prepare('select count(*) n from staff').first().catch(() => ({ n: 0 }));
-      return json({ ok: true, seeded: Number(n && n.n) > 0, builtAt: snapshot.builtAt, links: Object.fromEntries(Object.entries(snapshot.links).map(([k, v]) => [k, origin + '/student/?k=' + encodeURIComponent(v)])) });
+      // 生徒の専用リンクは、いま台帳にある鍵から作る（公開のたびに作り直す snapshot の鍵とは、戻すまで一致しない）
+      const kid = async given => (await env.DB2.prepare("select linkCode from students where familyName = '架空' and givenName = ? and linkCode not like 'off.%'").bind(given).first().catch(() => null))?.linkCode || '';
+      const links = {};
+      for (const [k, given] of [['taro', '太郎'], ['hana', '花']]) { const code = await kid(given); if (code) links[k] = origin + '/student/?k=' + encodeURIComponent(code); }
+      return json({ ok: true, seeded: Number(n && n.n) > 0, builtAt: snapshot.builtAt, links });
     }
     if (url.pathname.startsWith('/v2/')) {
       const res = await handleV2(request, env, ctx, NOINDEX);
