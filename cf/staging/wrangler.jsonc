@@ -1,0 +1,24 @@
+{
+  // 検証環境（ステージング）の Worker（2026-10-19）。本番（cf/wrangler.jsonc の stepwise-api）とは別の名前・別の台帳・別のファイル置き場。
+  // 画面のファイル（public/）と最初の状態（snapshot.json）は scripts/build-staging.mjs が作る。公開は .github/workflows/staging-deploy.yml。
+  // メール・カレンダーを頼む先（Apps Script の住所）と鍵は持たせない: 本当には送らない。定期の処理（cron）も動かさない。
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "stepwise-staging",
+  "main": "index.mjs",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  "d1_databases": [
+    {
+      // 検証環境だけの台帳。本番の stepwise-v2（91ea045c-…）とは別
+      "binding": "DB2",
+      "database_name": "stepwise-staging",
+      "database_id": "561b0fef-f06a-4d82-b473-9039ad372d93",
+      "migrations_dir": "../migrations-v2"
+    }
+  ],
+  // 検証環境だけのファイル置き場（公開しない）。本番の stepwise-files とは別
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "stepwise-staging-files" }]
+}

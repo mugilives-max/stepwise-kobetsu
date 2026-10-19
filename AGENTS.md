@@ -18,6 +18,7 @@ Claude / Codex 共通。塾のホームページと予約・管理システム�
 | 作業 | 正本・参照先 |
 |---|---|
 | 構成、台帳、画面、API、デプロイ | [SYSTEM.md](docs/SYSTEM.md) |
+| 本人が自分で試す検証環境（ステージング。架空のデータ・メールは送らない・最初の状態に戻せる） | [SYSTEM.md 6-0](docs/SYSTEM.md#6-0-検証環境ステージング2026-10-19) |
 | 未完了事項、次の作業、運用上の判断 | [FUTURE_WORK.md](docs/FUTURE_WORK.md) |
 | UI・UXの目的、合意した方針、課題・改善候補・未決事項 | [UI_UX_REVIEW.md](docs/UI_UX_REVIEW.md) |
 | 保護者認証の変更・検証・復旧 | [PARENT_AUTH.md](docs/PARENT_AUTH.md) |

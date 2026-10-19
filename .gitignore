@@ -11,3 +11,7 @@ cf/worker/generated/
 
 # 通知の鍵の一時ファイル（登録したら消す）
 .vapid/
+
+# 検証環境の生成物（scripts/build-staging.mjs）
+cf/staging/public/
+cf/staging/snapshot.json

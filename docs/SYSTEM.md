@@ -226,6 +226,18 @@ Google Apps Script Web アプリ (/exec)  … gas/*.gs が本体
 
 画面は対象コミットのrevert→pushで戻す。GASは既存デプロイの版を戻せるが、スキーマや認証の互換性を確認して選ぶ。コードの差し戻しと台帳の復旧は分け、無関係の授業・入金まで巻き戻さない。保護者認証の旧版復帰の制約は [戻し方](PARENT_AUTH.md#戻し方)。
 
+### 6-0. 検証環境（ステージング、2026-10-19）
+
+本番とは別の、本人が自分で触って試すための場所（本人「テスト用の仕組みを整えたい。今は記録を削除できなかったりしてややこしい」）。本番の記録（同意・契約など）は消さない作りのままにし、試すのはこちらで行う。
+
+- 住所：https://stepwise-staging.stepwise-edu.workers.dev 。入口のページに、架空の代表・新しい講師・保護者・生徒で押すだけで入れるボタンと、自分で入れるときのメールアドレス・パスワードがある。
+- 仕組み：Worker `stepwise-staging`（`cf/staging/`）が画面（staff・family・student）と API（`/v2/`）を同じ場所から出す。台帳は D1 `stepwise-staging`、ファイルは R2 `stepwise-staging-files` で、本番の `stepwise-v2`・`stepwise-files` とは別。Apps Script の住所と鍵を持たせないので、メール・カレンダーは本当には送らない。定期の処理も動かさない。
+- 画面の上の帯：「送ったメール」（本番なら届くメールの控え。招待などのリンクはこの検証環境の住所にして開ける）・「ログインの一覧」・「最初の状態に戻す」（記録をすべて消して架空のデータを入れ直す。数回に分けて行う）。
+- 架空のデータ：`scripts/demo-seed.mjs`（手元のプレビュー `scripts/dev-v2-preview.mjs` と同じもの）を `scripts/build-staging.mjs` がメモリの台帳で作り、`cf/staging/snapshot.json`（生成物）にする。
+- 公開：`.github/workflows/staging-deploy.yml`。main に入ると自動で出す（データはそのまま。初めてだけ架空のデータを入れる）。本番に出す前のブランチを試すときは、Actions の「Staging deploy」を Run workflow（ブランチ名・最初の状態に戻すか）。AI からは `gh workflow run staging-deploy.yml -f ref=<ブランチ> -f reset=true`。
+- 本番を指さないことは、公開の手順の最初に設定ファイルで確かめる（本番の台帳・ファイル置き場・Worker の名前・Apps Script の住所・定期の処理が書かれていたら止まる）。
+- 架空のアカウントのパスワードは公開のリポジトリにも書いてある見本の値で、中のデータもすべて架空。だれでも開ける場所なので、本物の個人情報は入れない。
+
 ### 6-1. v46の反映と検証
 
 - 2026-09-08 01:36 JST、既存のWebアプリURLを維持してGAS v46を公開。`/exec` のhealth応答で `release: 2026-09-08-lessons-billing` を確認。対応コードはmainの `f861fbb` へpush済み。
