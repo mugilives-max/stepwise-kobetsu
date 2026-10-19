@@ -23,7 +23,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
-    if: github.repository == 'mugilives-max/stepwise-kobetsu'
+    # 自動で出すのは、GitHub の鍵（CLOUDFLARE_API_TOKEN）で検証環境の Worker を出せるようにしてから（リポジトリの変数 STAGING_AUTO_DEPLOY = true）。
+    # それまでは手元の `npm run staging:deploy`（本人の Cloudflare のログインで出す）を使う
+    if: github.repository == 'mugilives-max/stepwise-kobetsu' && (github.event_name == 'workflow_dispatch' || vars.STAGING_AUTO_DEPLOY == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

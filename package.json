@@ -17,6 +17,8 @@
     "cf:migrate:remote": "wrangler d1 migrations apply DB --config cf/wrangler.jsonc --remote",
     "cf:migrate:v2:remote": "wrangler d1 migrations apply DB2 --config cf/wrangler.jsonc --remote",
     "cf:deploy": "wrangler deploy --config cf/wrangler.jsonc",
+    "staging:deploy": "node scripts/build-staging.mjs && wrangler d1 migrations apply DB2 --remote --config cf/staging/wrangler.jsonc && wrangler deploy --config cf/staging/wrangler.jsonc && node scripts/staging-reset.mjs https://stepwise-staging.stepwise-edu.workers.dev --if-empty",
+    "staging:reset": "node scripts/staging-reset.mjs https://stepwise-staging.stepwise-edu.workers.dev --force",
     "vapid": "node scripts/vapid-keys.mjs"
   },
   "devDependencies": {
