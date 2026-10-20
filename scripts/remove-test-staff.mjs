@@ -46,11 +46,12 @@ const same = (a, b, msg) => check(JSON.stringify(a) === JSON.stringify(b), msg);
 let dir, stage = 'authorization';
 try {
   check(process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF === 'refs/heads/' + branch && process.env.GITHUB_REPOSITORY === repo, 'Use the authorized removal branch.');
-  check(['inspect', 'remove'].includes(request.operation), 'Unexpected request.');
+  check(['inspect', 'remove', 'verify'].includes(request.operation), 'Unexpected request.');
   const token = process.env.CLOUDFLARE_API_TOKEN, account = process.env.CLOUDFLARE_ACCOUNT_ID;
   check(token?.length > 20 && /^[a-f0-9]{32}$/.test(account || ''), 'Deployment credentials unavailable.');
   dir = await mkdtemp(join(tmpdir(), 'stepwise-test-staff-'));
-  const prefix = backupRoot + process.env.GITHUB_RUN_ID + '-' + process.env.GITHUB_RUN_ATTEMPT;
+  const prefix = request.operation === 'verify' ? request.backupPrefix : backupRoot + process.env.GITHUB_RUN_ID + '-' + process.env.GITHUB_RUN_ATTEMPT;
+  check(new RegExp('^' + backupRoot.replaceAll('/', '\\/') + '\\d+-\\d+$').test(prefix || ''), 'Invalid private checkpoint.');
   async function cf(path, body) {
     const r = await fetch('https://api.cloudflare.com/client/v4/accounts/' + account + path, { method: body === undefined ? 'GET' : 'POST', headers: { Authorization: 'Bearer ' + token, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(60000) });
     const j = await r.json().catch(() => ({}));
@@ -80,8 +81,44 @@ try {
     }
     return out;
   }
-  const triggers = async () => Object.fromEntries((await rows(`SELECT name, sql FROM sqlite_master WHERE type='trigger' AND name IN (${RETAIN.map(n => `'${n}'`).join(',')})`)).map(r => [r.name, r.sql]));
+  const triggers = async () => Object.fromEntries((await rows(`SELECT name, sql FROM sqlite_master WHERE type='trigger' AND name IN (${RETAIN.map(n => `'${n}'`).join(',')}) ORDER BY name`)).map(r => [r.name, r.sql])); // sorted: recreating changes sqlite_master order
 
+  if (request.operation === 'verify') {
+    // The removal run stopped at its trigger check (key order only). Finish its checks from the private checkpoint it saved.
+    stage = 'verify from checkpoint';
+    await privacy();
+    const f = join(dir, 'records-before.json');
+    runWrangler(control, ['r2', 'object', 'get', bucket + '/' + prefix + '/records-before.json', '--file', f, '--remote', '--config', 'cf/wrangler.jsonc']);
+    const saved = JSON.parse(await readFile(f, 'utf8')), cols = saved.columns, before = saved.data;
+    same(Object.keys(saved.triggers).sort(), RETAIN.slice().sort(), 'Checkpoint has no trigger copy.');
+    const sortedSaved = Object.fromEntries(Object.keys(saved.triggers).sort().map(k => [k, saved.triggers[k]]));
+    same(await triggers(), sortedSaved, 'Retention triggers differ from before.');
+    // Rows of the test teachers in the checkpoint, found by column values.
+    const col = (t, c) => cols[t].indexOf(c), val = (t, r, c) => JSON.parse(r)[col(t, c)];
+    const set = new Set(ids);
+    const contracts = new Set(before.employmentContracts.filter(r => set.has(val('employmentContracts', r, 'staffId'))).map(r => val('employmentContracts', r, 'id')));
+    const workDays = new Set(before.workDays.filter(r => set.has(val('workDays', r, 'staffId'))).map(r => val('workDays', r, 'id')));
+    const requests = new Set(before.staffRegistrationRequests.filter(r => set.has(val('staffRegistrationRequests', r, 'staffId'))).map(r => val('staffRegistrationRequests', r, 'id')));
+    const isDoomed = {
+      workDayRevisions: r => workDays.has(val('workDayRevisions', r, 'workDayId')), workDays: r => set.has(val('workDays', r, 'staffId')),
+      employmentEvents: r => contracts.has(val('employmentEvents', r, 'contractId')), employmentContracts: r => set.has(val('employmentContracts', r, 'staffId')),
+      employmentProfiles: r => set.has(val('employmentProfiles', r, 'staffId')), staffRegistrationReviews: r => requests.has(val('staffRegistrationReviews', r, 'requestId')),
+      staffRegistrationRequests: r => set.has(val('staffRegistrationRequests', r, 'staffId')), staffRegistrationState: r => set.has(val('staffRegistrationState', r, 'staffId')),
+      sessions: r => set.has(val('sessions', r, 'subjectId')), authChallenges: r => set.has(val('authChallenges', r, 'subjectId')),
+      previewSessions: r => set.has(val('previewSessions', r, 'staffId')) || set.has(val('previewSessions', r, 'subjectId')), staff: r => set.has(val('staff', r, 'id')),
+    };
+    const expected = {}, removed = {};
+    for (const t of Object.keys(before)) { const d = isDoomed[t]; expected[t] = d ? before[t].filter(r => !d(r)) : before[t]; if (d) removed[t] = before[t].length - expected[t].length; }
+    for (const [t, where] of PLAN) check((await rows(`SELECT count(*) n FROM ${q(t)} WHERE ${where}`))[0].n === 0, 'Rows remain: ' + t);
+    same(await columnsNow(), cols, 'Schema changed.');
+    check((await rows("SELECT count(*) n FROM auditLog WHERE action = 'testStaffRemoved'"))[0].n === 1, 'Removal not recorded once in the audit log.');
+    const live = assertRecordsPreserved(cols, expected, await snapshot(cols), 'Records other than the test teachers changed. Stop for review.').activity.map(a => a.table);
+    const summary = { operation: 'verify', backupPrefix: prefix, rowsRemoved: removed, retentionTriggersRestored: true, otherRecordsUnchanged: true, liveActivityTables: live, messagesSent: false };
+    await save('manifest-verify.json', Buffer.from(JSON.stringify(summary)));
+    console.log(JSON.stringify(summary));
+    await writeFile(process.env.GITHUB_STEP_SUMMARY, '## Test teacher removal verified\n\n' + JSON.stringify(summary, null, 2) + '\n');
+    await rm(dir, { recursive: true, force: true }); process.exit(0);
+  }
   stage = 'read-only preflight';
   await privacy();
   const staff = await rows(`SELECT id, name, roles, testOnly FROM staff WHERE id IN ${inIds} ORDER BY id`);
