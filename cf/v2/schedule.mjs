@@ -23,6 +23,7 @@ const DAY = 86400e3;
 
 // ---- 日本時間の日付と時刻 ----
 export const todayJst = now => new Date(now + 9 * 3600e3).toISOString().slice(0, 10);
+export const nowHmJst = now => new Date(now + 9 * 3600e3).toISOString().slice(11, 16); // 今の時刻（日本時間、HH:MM）
 export const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY).toISOString().slice(0, 10);
 const nextMonthStart = d => { const [y, m] = d.split('-').map(Number); return (m === 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0')) + '-01'; };
 const toMin = hm => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + m; };

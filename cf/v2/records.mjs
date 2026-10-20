@@ -6,7 +6,7 @@
 import { fail, newId, iso, audit } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { requireFamily } from './family.mjs';
-import { todayJst, addDays, studentByLink } from './schedule.mjs';
+import { todayJst, nowHmJst, addDays, studentByLink } from './schedule.mjs';
 
 const STAFF_NOTE_KEYS = ['plannedUnit', 'understanding', 'pace', 'homeworkReview', 'homeworkAccuracy', 'nextFocus', 'memo'];
 // 選ぶ項目の値（表記がずれないように）。写した記録の自由な文字は、直さない限りそのまま残す
@@ -190,12 +190,12 @@ export const recordRoutes = {
     await audit(c, 'recordVoid', r.id, { reason });
     return {};
   },
-  // 記録待ち（日が来た決定・実施済みの授業で、公開した記録がないもの）。講師は自分の担当だけ
+  // 記録待ち（始まった決定・実施済みの授業で、公開した記録がないもの。今日の授業は開始の時刻から）。講師は自分の担当だけ
   'records/pending': async (c, b) => {
     const me = await requireStaff(c, b, 'manager', 'teacher');
     const today = todayJst(c.now);
     const rows = (await c.db.prepare(`select l.*, s.familyName, s.givenName, r.status recordStatus from lessons l join students s on s.id = l.studentId left join lessonRecords r on r.lessonId = l.id
-      where l.status in ('decided', 'done') and l.date <= ? and l.date >= ? and (r.id is null or r.status = 'draft') order by l.date desc, l.start desc`).bind(today, addDays(today, -60)).all()).results
+      where l.status in ('decided', 'done') and (l.status = 'done' or l.date < ? or (l.date = ? and l.start <= ?)) and l.date >= ? and (r.id is null or r.status = 'draft') order by l.date desc, l.start desc`).bind(today, today, nowHmJst(c.now), addDays(today, -60)).all()).results
       .filter(l => isManager(me) || l.staffId === me.id);
     const unread = (await c.db.prepare("select count(*) n from handoverNotes n where n.status = 'open' and n.authorId <> ? and (n.toStaffId = '' or n.toStaffId = ?) and not exists (select 1 from handoverReads r where r.noteId = n.id and r.staffId = ?)").bind(me.id, me.id, me.id).first()).n;
     const reported = (await c.db.prepare("select count(*) n from homework where status = 'reported'").first()).n;

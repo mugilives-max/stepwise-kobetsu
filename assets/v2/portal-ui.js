@@ -43,6 +43,8 @@ export function daysText(date, today) {
 }
 
 // ---- 授業 ----
+// まだ終わっていない授業か（日本時間）。今日の授業は、終わりの時刻までは「次の授業」に出し、終わったら次の授業に移す
+export const notOver = (l, today) => l.date > today || (l.date === today && (!l.minutes || endOf(l.start, l.minutes) > new Date(Date.now() + 9 * 3600e3).toISOString().slice(11, 16)));
 const openRequest = l => (l.requests || []).find(r => r.status === 'open');
 const statusText = l => {
   const r = openRequest(l);
