@@ -6,6 +6,8 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* 上で指を下に引いても、ブラウザの「引っ張って再読み込み」を起こさない（上に戻ってヘッダーを見ようとしただけで画面が読み直されないように） */
+html, body { overscroll-behavior-y: none; }
 body { background: var(--paper); color: var(--ink); font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif; font-size: 15px; line-height: 1.65; }
 a { color: var(--primary); }
 .top { position: sticky; top: 0; z-index: 10; background: var(--white); border-bottom: 1px solid var(--line); }
@@ -138,7 +140,7 @@ button.small-btn.warn { background: var(--warn-soft); border-color: #f1d9ad; col
 
 /* ---- 下から出る画面（パソコンでは真ん中） ---- */
 .overlay { position: fixed; inset: 0; background: rgba(15, 22, 30, .35); z-index: 40; }
-.bsheet { position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow: auto; background: var(--white); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, .18); padding: 0 16px calc(20px + env(safe-area-inset-bottom)); animation: sheet-up .3s cubic-bezier(.32, .72, 0, 1); }
+.bsheet { position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow: auto; overscroll-behavior: contain; background: var(--white); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, .18); padding: 0 16px calc(20px + env(safe-area-inset-bottom)); animation: sheet-up .3s cubic-bezier(.32, .72, 0, 1); }
 .bsheet .grab { width: 40px; height: 4px; border-radius: 4px; background: #d3dae2; margin: 8px auto 2px; }
 .bsheet-head { display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--white); padding: 6px 0 8px; z-index: 1; }
 .bsheet-head strong { font-size: 16px; }
@@ -288,7 +290,7 @@ form.rec > textarea { margin: 8px 0; }
 .panel.still { animation: none; }
 @keyframes drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--line); }
-.panel-body { flex: 1; overflow: auto; padding: 10px 16px; display: grid; gap: 8px; align-content: start; }
+.panel-body { flex: 1; overflow: auto; overscroll-behavior: contain; padding: 10px 16px; display: grid; gap: 8px; align-content: start; }
 .panel-body > * { min-width: 0; }
 .panel-foot { padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
 .panel-foot button { width: 100%; }

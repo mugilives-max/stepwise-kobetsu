@@ -7,7 +7,7 @@
   .stg-bar a,.stg-bar button{all:unset;cursor:pointer;color:#fff;border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:3px 10px;font-weight:600}
   .stg-bar a:focus-visible,.stg-bar button:focus-visible{outline:2px solid #fff;outline-offset:1px}
   .stg-sheet{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.45);display:flex;justify-content:center;align-items:flex-end}
-  .stg-panel{background:#fff;color:#18232d;width:min(720px,100%);max-height:86vh;overflow:auto;border-radius:14px 14px 0 0;padding:16px;box-sizing:border-box;font:14px/1.6 system-ui,sans-serif}
+  .stg-panel{background:#fff;color:#18232d;width:min(720px,100%);max-height:86vh;overflow:auto;overscroll-behavior:contain;border-radius:14px 14px 0 0;padding:16px;box-sizing:border-box;font:14px/1.6 system-ui,sans-serif}
   .stg-panel h2{font-size:16px;margin:0 0 4px}
   .stg-panel .stg-x{all:unset;cursor:pointer;float:right;font-size:14px;border:1px solid #cbd5e1;border-radius:999px;padding:2px 12px}
   .stg-mail{border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:10px 0}
