@@ -88,7 +88,7 @@ export const enrollmentRoutes = {
     if (!s.trial) fail('notTrial', 'この生徒はもう入塾しています');
     if (s.status === 'left') fail('left', '退会した生徒には案内できません');
     const terms = await currentTerms(c.db);
-    if (!terms.version) fail('needTerms', '先に「設定 → 受講規約」で受講規約を公開してください。保護者は申込みのときに規約に同意します', 409);
+    if (!terms.version) fail('needTerms', '先に「設定 → 受講規約」で、使う受講規約を決めてください。保護者は申込みのときに規約に同意します', 409);
     let f = await getFamily(c, s.familyId);
     if (f.status === 'stopped') fail('stopped', '停止中の家族には案内できません');
     const email = normEmail(b.email || f.email);

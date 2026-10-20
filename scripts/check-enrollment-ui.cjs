@@ -44,7 +44,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await owner.goto(origin+'/staff/#student='+trial.studentId+'/summary');
   await owner.getByRole('heading',{name:'入塾の手続き',exact:true}).waitFor();
   assert.equal(await owner.locator('[data-form="enroll-offer"] button.primary').isDisabled(),true,'規約が無いうちは案内できない');
-  await owner.getByText('受講規約がまだ公開されていません',{exact:false}).waitFor();
+  await owner.getByText('使う受講規約がまだ決まっていません',{exact:false}).waitFor();
   await h.ok('admin/terms/set',{auth,version:'2026-11-r9',title:'受講規約（2026年11月版）',url:'https://example.invalid/terms',from:'2026-11-01'});
   await owner.reload();
   const f='[data-form="enroll-offer"]';

@@ -125,6 +125,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   assert.equal(await page.getByText('この提案は対応済み、または変更されています。',{exact:false}).count(),0);
   report.checks.push('condition and special-condition links show the exact proposed document number');
   await h.ok('admin/terms/set',{auth,version:'synthetic-new',title:'【テスト】規約',url:'https://example.invalid/terms'});
+  await h.ok('admin/terms/request',{auth,familyIds:[fam.id]});
   await page.goto(origin+'/family/#money');
   await page.getByText('受講合意書の承認には、先に上の受講規約・受講条件書への同意が必要です。',{exact:true}).waitFor();
   assert.equal(await page.locator('[data-form="plan-approve"] button.primary:enabled').count(),0);

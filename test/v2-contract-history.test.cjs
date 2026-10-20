@@ -19,6 +19,7 @@ test('contract versions: old consent opens its own immutable text, and unknown l
   await h.ok('admin/terms/set',{auth,version:'old',title:'旧規約',url:'https://example.invalid/old',from:'2026-10-01',note:'旧説明'});
   await h.ok('family/terms/accept',{ consenterName:'架空 保護者',auth:parent,version:'old',agree:true,consenterName:'架空 保護者'});
   await h.ok('admin/terms/set',{auth,version:'new',title:'新規約',url:'https://example.invalid/new',from:'2026-11-01'});
+  await h.ok('admin/terms/request',{auth,familyIds:[fam.id]});
   const t = (await h.ok('family/contracts',{auth:parent})).terms;
   assert.equal(t.agreed.url,'https://example.invalid/old');
   assert.equal(t.history[0].consenterName,'架空 保護者');
