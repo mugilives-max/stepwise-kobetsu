@@ -9,7 +9,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261016-notices';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261020-r9';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261020-next';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -113,7 +113,7 @@ function need(...what) {
   return what.some(w => { const v = { sched, learning, money, grades }[w]; return !v || v.loading; });
 }
 const loading = '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
-const upcoming = () => sched.lessons.filter(l => l.date >= sched.today && ['proposed', 'decided'].includes(l.status));
+const upcoming = () => sched.lessons.filter(l => notOver(l, sched.today) && ['proposed', 'decided'].includes(l.status));
 const secTitle = (t, extra = '') => `<div class="sec-title">${t}${extra}</div>`;
 
 // ホーム: 次の授業（大きく）・やること・近い授業・テスト・新しい記録
@@ -452,6 +452,8 @@ app.addEventListener('click', ev => {
 });
 wireSheets(app);
 // 画面の移り変わり: ふわっと入れ替える（対応しているブラウザだけ。「視差効果を減らす」では付けない）
+// 画面に戻ってきたとき: ホームなら描き直す（開いたまま授業が終わったとき、次の授業に移すため）。入力中・下から出る画面を開いているときはそのまま
+document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible' || !sched || sched.error || route().page !== 'home' || document.querySelector('.bsheet, .panel.open') || app.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return; render(); });
 window.addEventListener('hashchange', () => {
   if(route().page==='money' || targetParts(route().target||'').refs.length){ money=null; contracts=null; }
   say(''); closeSheet(); appliedTarget='';openedTarget='';

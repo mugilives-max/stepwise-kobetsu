@@ -6,7 +6,7 @@ import { call, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261016-notices';
-import { lessonRows, dayRows, nextLessonHero, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261020-r9';
+import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261020-next';
 
 const app = document.getElementById('app'), nav = document.getElementById('nav');
 const KEY = 'sw2_student_k';
@@ -45,7 +45,7 @@ const loadingHtml = '<p class="muted" style="margin-top:20px">読み込んでい
 const secTitle = (t, extra = '') => `<div class="sec-title">${t}${extra}</div>`;
 function needLearning() { if (!learning) { learning = { loading: true }; call('student/learning', { k }).then(r => { learning = r.ok ? r : { records: [], homework: [] }; if (!r.ok) say(r.error.message, 'error'); render(); }); } return learning.loading; }
 function needGrades() { if (!grades) { grades = { loading: true }; call('student/grades', { k }).then(r => { grades = r.ok ? r : { exams: [], files: [] }; if (!r.ok) say(r.error.message, 'error'); render(); }); } return grades.loading; }
-const upcoming = () => sched.lessons.filter(l => l.date >= sched.today && ['proposed', 'decided'].includes(l.status));
+const upcoming = () => sched.lessons.filter(l => notOver(l, sched.today) && ['proposed', 'decided'].includes(l.status));
 
 function sheetHtml() {
   const s = sheetState; if (!s || !sched || sched.error) return '';
@@ -144,6 +144,8 @@ app.addEventListener('click', ev => {
 });
 wireSheets(app);
 // 画面の移り変わり: ふわっと入れ替える（対応しているブラウザだけ。「視差効果を減らす」では付けない）
+// 画面に戻ってきたとき: ホームなら描き直す（開いたまま授業が終わったとき、次の授業に移すため）。入力中・下から出る画面を開いているときはそのまま
+document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible' || !sched || sched.error || (location.hash.slice(1) || 'home') !== 'home' || document.querySelector('.bsheet, .panel.open') || app.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return; render(); });
 window.addEventListener('hashchange', () => {
   say(''); closeSheet();
   if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return render();
