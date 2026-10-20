@@ -175,7 +175,7 @@ function offerForm(ctx, x, again) {
       <label>科目<input name="subjects" value="${esc((cond && cond.subjects) || b.subjects || '')}" maxlength="100" placeholder="英語・数学"></label>
       <label class="choice"><input type="checkbox" name="studentContact"${!cond || cond.studentContact ? ' checked' : ''}><span>生徒本人からのお休みの連絡を受け付ける<small>前日23時までの無料のお休みを、生徒ページからも連絡できます。</small></span></label>
     </fieldset>
-    ${ready ? '' : '<p class="notice error" style="margin:0">受講規約がまだ公開されていません。保護者は申込みのときに規約に同意するので、先に <a href="#terms">設定 → 受講規約</a> で公開してください。</p>'}
+    ${ready ? '' : '<p class="notice error" style="margin:0">使う受講規約がまだ決まっていません。保護者は申込みのときに規約に同意するので、先に <a href="#terms">設定 → 受講規約</a> で決めてください。</p>'}
     <div class="row"><button class="primary"${ready ? ctx.dis() : ' disabled'}>${again ? 'この条件で送り直す' : '入塾の案内を送る'}</button></div>
     <p class="small muted" style="margin:0">送ると保護者にメールが届きます。保護者がパスワードを決めて申し込むと、そのまま入塾になります（受講規約と、この受講条件書への同意も記録されます）。</p></form>`;
 }

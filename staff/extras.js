@@ -3,9 +3,9 @@
 // 送信の記録: 送れなかったメール・カレンダー（失敗・止まっているもの）を送り直す・取り下げる。最近送ったものも見える。
 import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
 
-let termsStep = '', termsFams = null, termsSite = null; // 受講規約: '' | 'publish'（公開の確認）| 'stop'（やめる確認）
+let termsStep = '', termsFams = null, termsSite = null, termsPick = []; // 受講規約: '' | 'decide'（使う規約を決める確認）| 'request'（同意をお願いする確認）。termsPick: お願いする家族
 let terms = null, effects = null, effOpen = 0, backups = null;
-export function resetExtras() { termsStep = ''; termsFams = null; termsSite = null; terms = null; effects = null; effOpen = 0; backups = null; }
+export function resetExtras() { termsStep = ''; termsPick = []; termsFams = null; termsSite = null; terms = null; effects = null; effOpen = 0; backups = null; }
 export function leaveExtras() { effOpen = 0; termsStep = ''; }
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ''}</svg>`;
 const jst = t => t ? new Date(Date.parse(t) + 9 * 3600e3).toISOString().slice(5, 16).replace('T', ' ').replace('-', '/') : '';
@@ -48,9 +48,9 @@ export function docsPage(ctx) {
 }
 
 // ---- 受講規約 ----
-// 受講規約（設定 → 受講規約）。2026-10-18 本人「マジで何がどうなっているのか意味が分かりません」→ 作り直し:
-// いま保護者に同意をお願いしている規約（なし／公開中・同意 n/N 家族）→ 公開できる規約（サイトの正式版。terms/versions.json）→ 家族ごとの同意。
-// 公開は「この規約を公開する」→ 公開するとどうなるかの確認 → 公開する、の 2 段階。版の名前や URL を手で打たない
+// 受講規約（設定 → 受講規約）。2026-10-18 作り直し、2026-10-20 本人「決定するのと、同意をお願いするのが同時…気持ち悪い」→ 2 つに分けた:
+// 1. 使う規約（サイトの正式版 terms/versions.json から「この規約に決める」→ 確認 → 決める）。決めただけでは今の家族に何も出ない
+// 2. 保護者への同意のお願い（家族を選ぶ → 確認（一言・メール）→ お願いする）。家族ごとに 同意済み／お願い中／まだ。版の名前や URL を手で打たない
 // 日付だけ（YYYY-MM-DD）はそのまま、日時（ISO）は日本の日付にする
 const jaDay = v => { let d = String(v || ''); if (d.length > 10 && !Number.isNaN(Date.parse(d))) d = new Date(Date.parse(d) + 9 * 3600e3).toISOString(); return /^\d{4}-\d{2}-\d{2}/.test(d) ? `${Number(d.slice(0, 4))}年${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日` : ''; };
 const kv = (esc, rows) => '<dl class="reg-rows">' + rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('') + '</dl>';
@@ -66,58 +66,84 @@ export function termsPage(ctx) {
   let h = ctx.notice();
   if (terms.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
   if (terms.error) return h + `<p class="notice error">${esc(terms.error)}</p>`;
-  const t = terms.terms, f = terms.families, latest = termsSite?.versions?.[0], n = f.total;
+  const t = terms.terms, latest = termsSite?.versions?.[0];
   const open = (url, label) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`;
-  // 公開の確認（別の画面）
-  if (termsStep === 'publish' && latest) {
-    return h + `<p style="margin-top:12px">次の規約を公開して、保護者に同意をお願いします。</p>
+  const asked = id => terms.requests.find(r => r.familyId === id);
+  const state = fm => fm.termsVersion === t.version ? 'agreed' : asked(fm.id) ? 'asked' : 'not';
+  // 規約を決める確認（別の画面）
+  if (termsStep === 'decide' && latest) {
+    return h + `<p style="margin-top:12px">次の規約を、これから使う受講規約に決めます。</p>
       <section class="reg-card"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>${kv(esc, [['適用日', esc(jaDay(latest.from))], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}</section>
-      <section class="reg-card"><div class="reg-card-head"><h2>公開するとどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
-        <li>${n} 家族の保護者ページに、規約の全文と「同意する」が出ます。</li>
-        <li>同意するまで、その家族は新しい授業の計画を承認できません。</li>
-        <li>書面や LINE でもらった同意は、家族の画面の「規約の同意を記録」で残せます。</li>
-        <li>公開した規約の名前・全文・適用日・一言は、あとから変えられません。直すときは新しい版を公開します。</li></ul></section>
-      <form class="reg-form" data-form="terms-publish">
+      <section class="reg-card"><div class="reg-card-head"><h2>決めるとどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
+        <li>これから作る受講条件書・特別単価合意書は、この規約によります。</li>
+        <li>新しく入塾する家族は、申込みのときにこの規約に同意します。</li>
+        <li>今通っている家族には、まだ何も出ません。同意のお願いは、このあと家族を選んで行います。</li>
+        <li>決めた規約の名前・全文・適用日は、あとから変えられません。直すときは新しい版を決めます。</li></ul></section>
+      <form class="reg-form" data-form="terms-decide">
+        <label class="choice"><input type="checkbox" name="confirm" required><span>全文を読み、この規約を使うことを確かめました</span></label>
+        <div class="stack"><button class="primary wide"${ctx.dis()}>この規約に決める</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
+  }
+  // 同意をお願いする確認（別の画面）
+  if (termsStep === 'request' && t.version && termsFams) {
+    const picked = termsFams.filter(fm => termsPick.includes(fm.id) && state(fm) === 'not');
+    if (!picked.length) { termsStep = ''; return termsPage(ctx); }
+    const noPage = picked.filter(fm => !fm.hasPassword);
+    return h + `<p style="margin-top:12px">次の${picked.length}家族に、「${esc(t.title || t.version)}」への同意をお願いします。</p>
+      <div class="group">${picked.map(fm => `<div class="evrow"><span class="b"><span class="nm">${esc(fm.name)}</span>${fm.hasPassword ? '' : '<small>保護者ページに未登録</small>'}</span></div>`).join('')}</div>
+      <section class="reg-card"><div class="reg-card-head"><h2>お願いするとどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
+        <li>選んだ家族の保護者ページに、規約の全文と「同意する」が出ます。</li>
+        <li>同意するまで、その家族は次の受講合意書を承認できません（見送りはできます）。</li>
+        ${noPage.length ? `<li>保護者ページに登録していない家族（${noPage.map(fm => esc(fm.name)).join('・')}）は、お願いを見られません。書面や LINE でもらった同意は、家族の画面の「規約の同意を記録」で残せます。</li>` : ''}
+        <li>間違えたときは、お願いを取り下げられます。</li></ul></section>
+      <form class="reg-form" data-form="terms-request">
         <fieldset class="reg-field"><legend>保護者への一言 <span class="opt">任意</span></legend><textarea name="note" rows="3" maxlength="500" placeholder="例：11月からの受講のきまりをまとめました。全文をお読みいただき、同意をお願いします。"></textarea><p class="reg-help">同意のお願いと一緒に、保護者ページに出ます。</p></fieldset>
-        <label class="choice"><input type="checkbox" name="confirm" required><span>全文を読み、この規約で同意をお願いすることを確かめました</span></label>
-        <div class="stack"><button class="primary wide"${ctx.dis()}>公開する</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
+        <label class="choice"><input type="checkbox" name="mail" checked><span>メールでも知らせる（保護者ページに登録している家族だけ）</span></label>
+        <label class="choice"><input type="checkbox" name="confirm" required><span>この家族に同意をお願いすることを確かめました</span></label>
+        <div class="stack"><button class="primary wide"${ctx.dis()}>同意をお願いする</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
-  // 同意のお願いをやめる確認（めったに使わない）
-  if (termsStep === 'stop' && t.version) {
-    return h + `<p style="margin-top:12px">保護者に規約の同意をお願いするのをやめます。</p>
-      <section class="reg-card"><div class="reg-card-head"><h2>やめるとどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
-        <li>保護者ページから、同意のお願いが消えます。</li><li>同意していなくても、授業の計画を承認できるようになります。</li><li>これまでの同意の記録は残ります。</li></ul></section>
-      <form class="reg-form" data-form="terms-stop"><label class="choice"><input type="checkbox" name="confirm" required><span>同意のお願いをやめます</span></label>
-        <div class="stack"><button class="primary wide"${ctx.dis()}>やめる</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>戻る</button></div></form>`;
-  }
-  // 1. いま保護者に同意をお願いしている規約
+  // 1. 使う規約
   if (t.version) {
-    h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>保護者に同意をお願いしている規約</h2><span class="tag ok">公開中</span></div>
-      ${kv(esc, [['規約', esc(t.title || t.version) + (t.url ? '<br>' + open(t.url, '全文を読む') : '')], ['適用日', esc(jaDay(t.from) || '—')], ['同意', `<strong>${f.agreed}</strong> / ${n} 家族`]])}</section>`;
+    const reg = terms.catalogue.find(x => x.version === t.version);
+    h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>使う規約</h2><span class="tag ok">決定</span></div>
+      ${kv(esc, [['規約', esc(t.title || t.version) + (t.url ? '<br>' + open(t.url, '全文を読む') : '')], ['適用日', esc(jaDay(t.from) || '—')], ...(reg && reg.registeredAt ? [['決めた日', esc(jaDay(reg.registeredAt))]] : [])])}
+      <p class="reg-help" style="margin:6px 0 0">これから作る受講条件書・特別単価合意書と、新しく入塾する家族の申込みは、この規約によります。</p></section>`;
   } else {
-    h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>まだ規約を公開していません</h2></div>
-      <p class="reg-help" style="margin:6px 0 0">いまは保護者ページに規約は出ておらず、同意をお願いしていません。下の規約を公開すると、同意をお願いできます。</p></section>`;
+    h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>まだ使う規約を決めていません</h2></div>
+      <p class="reg-help" style="margin:6px 0 0">使う規約を決めると、入塾の案内を送れるようになります。決めただけでは、今通っている家族には何も出ません。</p></section>`;
   }
-  // 2. 公開できる規約（サイトの正式版）
   if (latest && latest.version !== t.version) {
-    h += `<div class="sec-title">${t.version ? '新しい規約があります' : '公開できる規約'}</div>
+    h += `<div class="sec-title">${t.version ? '新しい規約があります' : '決められる規約'}</div>
       <section class="reg-card" style="margin-top:0"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>
       ${kv(esc, [['適用日', esc(jaDay(latest.from))], ['内容', esc(latest.summary || '')], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}
-      <button class="primary wide" style="margin-top:10px" data-action="terms-publish-start"${ctx.dis()}>この規約を公開する</button>
-      <p class="reg-help" style="margin:6px 0 0">押しても、まだ公開されません。次の画面で、公開するとどうなるかを確かめてから公開します。</p></section>`;
+      <button class="primary wide" style="margin-top:10px" data-action="terms-decide-start"${ctx.dis()}>この規約に決める</button>
+      <p class="reg-help" style="margin:6px 0 0">押しても、まだ決まりません。次の画面で、決めるとどうなるかを確かめてから決めます。</p></section>`;
   } else if (!latest) h += '<p class="small muted">サイトの規約の一覧を読み込めませんでした。画面を読み直してください。</p>';
-  // 3. 家族ごとの同意
+  // 2. 保護者への同意のお願い
   if (t.version && termsFams) {
-    const via = name => terms.history.find(x => x.familyName === name && x.version === t.version);
-    h += '<div class="sec-title">家族ごとの同意</div>' + (termsFams.length ? '<div class="group">' + termsFams.map(fm => {
-      const ok = fm.termsVersion === t.version, v = ok && via(fm.name);
-      return `<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#family=${esc(fm.id)}"><span class="v"><span class="lbl">${esc(fm.name)}</span><small>${ok ? `同意済み・${esc(jaDay(fm.termsAcceptedAt))}${v ? '（' + esc(v.via) + '）' : ''}` : 'まだ同意していません'}</small></span><span class="go" aria-hidden="true">›</span></a>`;
-    }).join('') + '</div><p class="small muted" style="margin:6px 2px 0">書面や LINE でもらった同意は、家族を開いて「規約の同意を記録」で残せます。</p>' : '<p class="small muted">家族がまだいません。</p>');
+    const n = { agreed: 0, asked: 0, not: 0 }; termsFams.forEach(fm => n[state(fm)]++);
+    h += `<div class="sec-title">保護者への同意のお願い</div>
+      <p class="small muted" style="margin:0 2px 8px">同意済み ${n.agreed}・お願い中 ${n.asked}・まだお願いしていない ${n.not}（${termsFams.length}家族）</p>`;
+    if (!termsFams.length) h += '<p class="small muted">家族がまだいません。</p>';
+    else {
+      const rowOf = fm => {
+        const s = state(fm), r = asked(fm.id);
+        const sub = s === 'agreed' ? `同意済み・${esc(jaDay(fm.termsAcceptedAt))}` : s === 'asked' ? `お願い中・${esc(jaDay(r.requestedAt))}${r.mailed ? '（メールでも知らせた）' : ''}` : `まだお願いしていません${fm.hasPassword ? '' : '・保護者ページに未登録'}`;
+        return s === 'not'
+          ? `<label class="todo-row" style="grid-template-columns:auto minmax(0,1fr);cursor:pointer"><input type="checkbox" name="fam" value="${esc(fm.id)}"${termsPick.includes(fm.id) ? ' checked' : ''}><span class="v"><span class="lbl">${esc(fm.name)}</span><small>${sub}</small></span></label>`
+          : `<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#family=${esc(fm.id)}"><span class="v"><span class="lbl">${esc(fm.name)}</span><small>${s === 'agreed' ? '<span class="tag ok">同意済み</span> ' : '<span class="tag warn">お願い中</span> '}${sub}</small></span><span class="go" aria-hidden="true">›</span></a>`;
+      };
+      const order = { not: 0, asked: 1, agreed: 2 }, list = termsFams.slice().sort((a, b) => order[state(a)] - order[state(b)]);
+      h += `<form data-form="terms-pick"><div class="group">${list.map(rowOf).join('')}</div>`;
+      if (n.not) h += `<div class="stack" style="margin-top:10px"><button type="button" class="wide" data-action="terms-pick-all"${ctx.dis()}>まだの家族をすべて選ぶ</button><button class="primary wide"${ctx.dis()}>選んだ家族に同意をお願いする</button></div>
+        <p class="reg-help" style="margin:6px 0 0">押しても、まだお願いしません。次の画面で、お願いするとどうなるかを確かめてからお願いします。</p>`;
+      h += '</form><p class="small muted" style="margin:8px 2px 0">書面や LINE でもらった同意は、家族を開いて「規約の同意を記録」で残せます。</p>';
+    }
   }
-  // 4. めったに使わないもの
+  // 3. めったに使わないもの
   h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトの受講規約</span><small>サイトの受講規約のページを開きます</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
   if (terms.history.length) h += `<details style="margin-top:12px"><summary>同意の記録（新しい${terms.history.length}件）</summary><div class="group">` + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(jaDay(x.acceptedAt))}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}・同意者：${esc(x.consenterName || '記録なし')}${x.actorKind === 'staff' ? `（${esc(x.recordedByName || '教室')}が記録）` : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div></details>';
-  if (t.version) h += `<details style="margin-top:12px"><summary>同意のお願いをやめる</summary><p class="small muted">保護者ページから同意のお願いを外します。ふつうは使いません。</p><button type="button" data-action="terms-stop-start"${ctx.dis()}>同意のお願いをやめる</button></details>`;
+  const openReq = termsFams ? termsFams.filter(fm => state(fm) === 'asked') : [];
+  if (openReq.length) h += `<details style="margin-top:12px"><summary>同意のお願いを取り下げる</summary><p class="small muted">間違えてお願いしたときに使います。お願いした記録は残ります。</p><div class="group">${openReq.map(fm => `<div class="evrow"><span class="b"><span class="nm">${esc(fm.name)}</span></span><button type="button" class="small-btn" data-action="terms-withdraw" data-id="${esc(fm.id)}"${ctx.dis()}>取り下げる</button></div>`).join('')}</div></details>`;
   return h;
 }
 
@@ -157,20 +183,35 @@ function backupHtml(ctx) {
 
 // ---- 操作 ----
 export async function extrasSubmit(ctx, kind, el) {
-  if (kind !== 'terms-publish' && kind !== 'terms-stop') return false;
-  const v = Object.fromEntries(new FormData(el).entries());
+  if (!['terms-decide', 'terms-pick', 'terms-request'].includes(kind)) return false;
+  const fd = new FormData(el), v = Object.fromEntries(fd.entries());
+  if (kind === 'terms-pick') {
+    termsPick = fd.getAll('fam').map(String);
+    if (!termsPick.length) { ctx.say('同意をお願いする家族を選んでください', 'error'); return true; }
+    termsStep = 'request'; ctx.say(''); scrollTo(0, 0); return true;
+  }
   if (!v.confirm) { ctx.say('確かめたことに印を付けてください', 'error'); return true; }
+  if (kind === 'terms-request') {
+    const r = await ctx.call('admin/terms/request', { familyIds: termsPick, note: String(v.note || '').trim(), mail: !!v.mail });
+    if (r.ok) { terms = null; termsStep = ''; termsPick = []; scrollTo(0, 0); ctx.say(`${r.requested}家族に同意をお願いしました${r.mailed ? `（メール ${r.mailed}通）` : ''}`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   const latest = termsSite?.versions?.[0];
-  if (kind === 'terms-publish' && !latest) { ctx.say('公開できる規約を読み込めませんでした。画面を読み直してください', 'error'); return true; }
-  const body = kind === 'terms-publish' ? { version: latest.version, title: latest.title, url: latest.url, from: latest.from, note: String(v.note || '').trim() } : { version: '', title: '', url: '', from: '', note: '' };
-  const r = await ctx.call('admin/terms/set', body);
-  if (r.ok) { terms = null; termsStep = ''; scrollTo(0, 0); ctx.say(kind === 'terms-publish' ? '規約を公開しました。保護者ページに同意のお願いが出ています。' : '同意のお願いをやめました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+  if (!latest) { ctx.say('決められる規約を読み込めませんでした。画面を読み直してください', 'error'); return true; }
+  const r = await ctx.call('admin/terms/set', { version: latest.version, title: latest.title, url: latest.url, from: latest.from, note: '' });
+  if (r.ok) { terms = null; termsStep = ''; scrollTo(0, 0); ctx.say('使う規約を決めました。今通っている家族への同意のお願いは、下で家族を選んで行います。', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;
 }
 export async function extrasClick(ctx, a, b) {
   let r;
-  if (a === 'terms-publish-start') { termsStep = 'publish'; ctx.say(''); scrollTo(0, 0); return true; }
-  if (a === 'terms-stop-start') { termsStep = 'stop'; ctx.say(''); scrollTo(0, 0); return true; }
+  if (a === 'terms-decide-start') { termsStep = 'decide'; ctx.say(''); scrollTo(0, 0); return true; }
+  if (a === 'terms-pick-all') { termsPick = [...b.closest('form').querySelectorAll('input[name="fam"]')].map(x => x.value); ctx.say(''); return true; }
+  if (a === 'terms-withdraw') {
+    if (!confirm('この家族への同意のお願いを取り下げますか？')) return true;
+    r = await ctx.call('admin/terms/request/withdraw', { familyId: b.dataset.id });
+    if (r.ok) { terms = null; ctx.say('同意のお願いを取り下げました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   if (a === 'terms-back') { termsStep = ''; ctx.say(''); return true; }
   if (a.startsWith('eff-resolve-')) {
     const note=prompt('受信状況を確認した方法・日時・結果を記録してください');
