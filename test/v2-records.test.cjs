@@ -77,6 +77,20 @@ test('teachers write only their own lessons; records wait until the lesson day; 
   assert.equal((await h.call('records/save', { auth, lessonId: mine.id, version: r.version + 1, comment: 'x' })).error.code, 'void');
 });
 
+test('today\'s lessons wait for a record only from their start time (Japan time)', async () => {
+  const { h, auth, kid, teacherAuth, make } = await world(); // 時計は 2026-10-02 12:00（日本時間）
+  await make('2026-10-02', '09:00'); await make('2026-10-02', '15:00');
+  const starts = async a => (await h.ok('records/pending', { auth: a })).lessons.map(l => l.start).sort();
+  const listCount = async () => (await h.ok('students/list', { auth })).families.flatMap(f => f.students).find(s => s.id === kid.id).pendingRecords;
+  const hub = async () => (await h.ok('students/hub', { auth, studentId: kid.id })).pendingRecords.map(l => l.start);
+  assert.deepEqual(await starts(teacherAuth), ['09:00'], 'まだ始まっていない今日の授業は、記録待ちに出さない');
+  assert.deepEqual(await starts(auth), ['09:00']);
+  assert.equal(await listCount(), 1); assert.deepEqual(await hub(), ['09:00']);
+  h.clock = Date.parse('2026-10-02T15:00:00+09:00');
+  assert.deepEqual(await starts(teacherAuth), ['09:00', '15:00'], '開始の時刻になったら記録待ちに出す');
+  assert.equal(await listCount(), 2); assert.deepEqual((await hub()).sort(), ['09:00', '15:00']);
+});
+
 test('handover notes reach the next teacher, who can mark them read', async () => {
   const { h, auth, kid, teacherAuth, make } = await world();
   const l = await make('2026-10-09', '17:00');

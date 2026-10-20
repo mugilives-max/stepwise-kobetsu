@@ -6,7 +6,7 @@ import { studentEnrollment, enrollmentStates } from './enrollment.mjs';
 import { currentTerms } from './terms.mjs';
 import { fail } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
-import { todayJst, addDays } from './schedule.mjs';
+import { todayJst, nowHmJst, addDays } from './schedule.mjs';
 import { gradesRoutes } from './grades.mjs';
 import { studentBilling, lineCap } from './plan-calc.mjs';
 
@@ -25,7 +25,7 @@ export const studentHubRoutes = {
     const next = Object.fromEntries((await c.db.prepare("select studentId, min(date || ' ' || start) n from lessons where status in ('proposed', 'decided') and date >= ? group by studentId").bind(today).all()).results.map(r => [r.studentId, r.n]));
     const requests = Object.fromEntries((await c.db.prepare("select studentId, count(*) n from lessonRequests where status = 'open' group by studentId").all()).results.map(r => [r.studentId, r.n]));
     const pending = Object.fromEntries((await c.db.prepare(`select l.studentId, count(*) n from lessons l left join lessonRecords r on r.lessonId = l.id
-      where l.status in ('decided', 'done') and l.date <= ? and l.date >= ? and (r.id is null or r.status = 'draft') ${manager ? '' : 'and l.staffId = ?'} group by l.studentId`).bind(...[today, addDays(today, -60)].concat(manager ? [] : [me.id])).all()).results.map(r => [r.studentId, r.n]));
+      where l.status in ('decided', 'done') and (l.status = 'done' or l.date < ? or (l.date = ? and l.start <= ?)) and l.date >= ? and (r.id is null or r.status = 'draft') ${manager ? '' : 'and l.staffId = ?'} group by l.studentId`).bind(...[today, today, nowHmJst(c.now), addDays(today, -60)].concat(manager ? [] : [me.id])).all()).results.map(r => [r.studentId, r.n]));
     const offered = manager ? await enrollmentStates(c.db) : {};
     const families = [];
     for (const s of students) {
@@ -49,7 +49,8 @@ export const studentHubRoutes = {
     const past = all.filter(l => l.date < today || ['done', 'rested', 'cancelled'].includes(l.status)).slice(-30).reverse().map(lessonView);
     const recs = (await c.db.prepare("select r.*, l.date, l.start, l.subject from lessonRecords r join lessons l on l.id = r.lessonId where r.studentId = ? and r.status <> 'void' order by l.date desc, l.start desc limit 30").bind(s.id).all()).results
       .map(r => ({ lessonId: r.lessonId, date: r.date, start: r.start, subject: r.subject, status: r.status, range: r.range, comment: r.comment, staffNotes: parse(r.staffNotes, {}), authorName: staff[r.authorId] || '' }));
-    const pendingRecords = all.filter(l => ['decided', 'done'].includes(l.status) && l.date <= today && l.date >= addDays(today, -60) && (manager || l.staffId === me.id) && !recs.some(r => r.lessonId === l.id && r.status === 'published')).map(lessonView);
+    const started = l => l.status === 'done' || l.date < today || (l.date === today && l.start <= nowHmJst(c.now)); // 記録待ちは、今日の授業なら開始の時刻から
+    const pendingRecords = all.filter(l => ['decided', 'done'].includes(l.status) && started(l) && l.date >= addDays(today, -60) && (manager || l.staffId === me.id) && !recs.some(r => r.lessonId === l.id && r.status === 'published')).map(lessonView);
     const homework = (await c.db.prepare("select * from homework where studentId = ? and status in ('open', 'reported') order by createdAt desc").bind(s.id).all()).results
       .map(h => ({ id: h.id, kind: h.kind, title: h.title, material: h.material, dueMode: h.dueMode, dueDate: h.dueDate, dueSubject: h.dueSubject, status: h.status, version: h.version }));
     const handover = (await c.db.prepare("select * from handoverNotes where studentId = ? and status = 'open' order by createdAt desc limit 10").bind(s.id).all()).results
