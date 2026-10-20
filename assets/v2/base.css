@@ -6,6 +6,10 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* iPhone の Chrome（2026-10 時点）: ページ全体がスクロールすると、アドレスバーの高さの分だけページの上が隠れたまま戻らない。
+   Chrome のときだけ（html.crios、各ページの head で付ける）ページ全体は動かさず、body の中でスクロールする。Safari ではこの不具合はない */
+html.crios, html.crios body { height: 100%; overflow: hidden; }
+html.crios body { overflow-y: auto; }
 body { background: var(--paper); color: var(--ink); font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif; font-size: 15px; line-height: 1.65; }
 a { color: var(--primary); }
 .top { position: sticky; top: 0; z-index: 10; background: var(--white); border-bottom: 1px solid var(--line); }
