@@ -1,10 +1,10 @@
 import { familyTarget } from '../../assets/v2/family-target.js';
-// 受講条件書（通常指導）（規約 第2条の「受講条件書（通常指導）」。migrations-v2/0018_conditions.sql）
-// - 教室管理者が生徒ごとに「条件を決めてお知らせ」する（admin/conditions/propose）。基本の授業時間と1回の税込通常指導の基準単価、形式、人数、
+// 受講条件書（受講規約の「受講条件書」。migrations-v2/0018_conditions.sql）
+// - 教室管理者が生徒ごとに「条件を決めてお知らせ」する（admin/conditions/propose）。基本の授業時間と1回の税込の通常の基準単価、形式、人数、
 //   生徒本人の連絡の可否、科目、特記、適用開始月。お知らせすると保護者にメールが届き、保護者ページに同意のお願いが出る
 // - 保護者は保護者ページで内容を見て同意する（family/conditions/agree）。同意していない条件がある家族は、計画を承認できない（規約と同じ）
 // - 書面・LINE でもらった承諾は、教室管理者が記録する（admin/conditions/record）
-// - お知らせした内容は生徒の登録（通常指導の基準単価・形式・生徒本人の連絡の許可）にも写す。見込みの料金や生徒ページの連絡がそのまま合う
+// - お知らせした内容は生徒の登録（通常の基準単価・形式・生徒本人の連絡の許可）にも写す。見込みの料金や生徒ページの連絡がそのまま合う
 import { fail, newId, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
@@ -46,7 +46,7 @@ export async function storeDoc(c, condId) {
   const html = conditionDocHtml({ cond, student, family, terms: await termsForVersion(c.db, cond.termsVersion), proposer: proposer ? proposer.name : '', now: iso(c.now) });
   const final = cond.status === 'agreed';
   return putGenerated(c, { category: 'contract', familyId: family.id, studentId: student.id, refType: 'condition', refId: cond.id,
-    name: `${['20261014-r5', '20261019-r6'].includes(cond.templateVersion) ? '受講条件書（通常指導）' : cond.templateVersion === '20261012-r3' ? '基本指導条件書' : '個別指導条件書'}_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
+    name: `${cond.templateVersion === '20261019-r6' ? '受講条件書' : cond.templateVersion === '20261014-r5' ? '受講条件書（通常指導）' : cond.templateVersion === '20261012-r3' ? '基本指導条件書' : '個別指導条件書'}_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
 }
 // 家族: 子どもごとの条件。同意していない条件があれば needs
 export async function familyConditions(db, students) {
@@ -63,7 +63,7 @@ export function conditionFields(b) {
   const minutes = Number(b.minutes), fee = Number(b.fee), deliveryMode = String(b.deliveryMode || ''), groupSize = String(b.groupSize || '').trim().slice(0, 80);
   const subjects = String(b.subjects || '').trim().slice(0, 100), note = String(b.note || '').trim(), fromMonth = String(b.fromMonth || '').trim();
   if (!Number.isInteger(minutes) || minutes < 15 || minutes > 300) fail('badMinutes', '基本の授業時間は15〜300分で入れてください');
-  if (!Number.isInteger(fee) || fee < 0 || fee > 100000) fail('badFee', '1回の通常指導の基準単価は0〜100,000円の整数で入れてください');
+  if (!Number.isInteger(fee) || fee < 0 || fee > 100000) fail('badFee', '1回の通常の基準単価は0〜100,000円の整数で入れてください');
   if (!MODES[deliveryMode]) fail('badMode', '指導の形式（教室・オンライン・両方）を選んでください');
   if (note.length > 1000) fail('tooLong', '特記事項は1000文字以内にしてください');
   if (!validMonth(fromMonth)) fail('badMonth', '適用開始月を YYYY-MM で入れてください');
@@ -109,7 +109,7 @@ export const conditionRoutes = {
     const s = await studentRow(c, b.studentId); if (!s) fail('notFound', '生徒が見つかりません', 404);
     if (s.status === 'left') fail('left', '退会した生徒には条件を作れません');
     const f = conditionFields(b), { id, no } = await proposeCondition(c, me, s, f);
-    await familyNotice(c, s.id, '受講条件書（通常指導）のお知らせ', `${fullName(s)}さんの受講条件書（通常指導）（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書（通常指導））を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.'+no}),{type:'condition',targets:[{id,version:no}]});
+    await familyNotice(c, s.id, '受講条件書のお知らせ', `${fullName(s)}さんの受講条件書（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書）を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.'+no}),{type:'condition',targets:[{id,version:no}]});
     await audit(c, 'conditionPropose', id, { studentId: s.id, no, minutes: f.minutes, fee: f.fee, fromMonth: f.fromMonth });
     return { condition: await withDoc(c.db, conditionView(await c.db.prepare('select * from conditions where id = ?').bind(id).first())) };
   },

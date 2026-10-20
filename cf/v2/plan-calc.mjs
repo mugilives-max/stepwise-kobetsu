@@ -14,7 +14,7 @@ export const shiftMonth = (m, n) => { const [y, mo] = m.split('-').map(Number); 
 export const lineCap = l => (l.approvedCount === null || l.approvedCount === undefined ? Number(l.count) : Number(l.approvedCount));
 // 遅刻で行わなかった分（lostMinutes）は授業料に入れない
 export const lessonAmount = (line, lesson) => { const m = Number(lesson.minutes) - Number(lesson.lostMinutes || 0); return Number(line.minutes) === m ? Number(line.fee) : Math.floor(Number(line.fee) * m / Number(line.minutes)); };
-// 通常指導の基準単価（90分の授業料。0025_base_fee90.sql。古い行・古い呼び出しは baseRate30 × 3）
+// 通常の基準単価（90分の授業料。0025_base_fee90.sql。古い行・古い呼び出しは baseRate30 × 3）
 export const base90 = s => Number((s && s.baseFee90) || 0) || Number((s && s.baseRate30) || 0) * 3;
 export const baseAmount = (student, minutes) => Math.floor(base90(student) * Number(minutes) / 90);
 const kindOf = k => String(k || '') || '通常';

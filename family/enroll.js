@@ -56,7 +56,7 @@ function field(esc, key, label, opts = {}) {
 }
 // 受講条件書と受講規約（入力と確認の両方の画面に出す。同意の前に、いつでも全文を開ける）
 function docCards(esc, o) {
-  return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書（通常指導）</h2></div><p class="reg-help" style="margin-top:2px">授業の時間と、1回の授業料の上限（基準単価）です。毎月の回数と料金は、別に受講合意書でご確認いただきます。</p>${condRows(esc, o)}
+  return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書</h2></div><p class="reg-help" style="margin-top:2px">授業の時間と、1回の授業料の上限（基準単価）です。毎月の回数と料金は、別に受講合意書でご確認いただきます。</p>${condRows(esc, o)}
       ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>受講規約</h2></div><p class="reg-help" style="margin-top:2px">授業・お休み・キャンセル・お支払いなどの決まりです。</p>
       <p style="margin:6px 0 0">${esc(data.terms.title || '受講規約')}</p>

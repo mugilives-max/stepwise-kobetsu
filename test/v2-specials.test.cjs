@@ -33,7 +33,7 @@ test('specials: a plan above the base rate needs an agreed special of that kind;
   assert.deepEqual([after.needs, after.items[0].status, after.items[0].agreedVia], [false, 'agreed', '保護者ページ']);
   assert.notEqual(after.items[0].docFileId, sp.docFileId, '承認で確定の書面');
   const html = await (await h.raw('GET', (await h.ok('files/link', { auth: parent, id: after.items[0].docFileId })).url)).text();
-  assert.match(html, /受講条件書（特殊指導）/); assert.match(html, /7,000円/); assert.match(html, /保護者の承認/); assert.doesNotMatch(html, /<script/);
+  assert.match(html, /特別単価合意書/); assert.doesNotMatch(html, /特殊指導/); assert.match(html, /7,000円/); assert.match(html, /保護者の承認/); assert.doesNotMatch(html, /<script/);
   const line = (await h.ok('billing/plans/save', { auth, studentId: kid.id, kind: '英検準1級対策', fee: 7000, ...PLAN })).line;
   assert.equal(line.fee, 7000, '承認後は作れる');
   assert.equal((await h.call('billing/plans/save', { auth, studentId: kid.id, kind: '英検準1級対策', fee: 7000, ...PLAN, startDate: '2027-02-01', endDate: '2027-02-28' })).error.code, 'needSpecial', '期間の外は作れない');

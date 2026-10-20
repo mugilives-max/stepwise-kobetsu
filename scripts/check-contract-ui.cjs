@@ -77,7 +77,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
    await page.setViewportSize({width:1000,height:1400});
    await page.setContent(await sampleDocHtml(h.db2,type,h.clock));await page.emulateMedia({media:'print'});
    const bad=await page.locator('table').evaluateAll(ts=>ts.filter(t=>t.scrollWidth>t.clientWidth+1).length);assert.equal(bad,0,type+' table fits');
-   assert.match(await page.locator('body').innerText(),type==='condition'?/受講条件書（通常指導）/:/指導の目的/);
+   assert.match(await page.locator('body').innerText(),type==='condition'?/受講条件書/:/特別単価合意書[\s\S]*指導の目的/);
    await page.screenshot({path:path.join(out,type+'.png'),fullPage:true}); report.checks.push(type+' printable layout');
   }
   assert.deepEqual(errors,[],'browser errors');assert.deepEqual(report.externalRequests,[],'all requests stay in synthetic test server');

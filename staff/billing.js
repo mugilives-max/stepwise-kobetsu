@@ -3,7 +3,7 @@ import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=202
 // 受講合意書は月ごとに生徒の行を並べる。請求は月ごとに家族の行を並べ、開くと内訳。
 import { sheet, rowButton } from '/staff/ui.js?v=20261008-launch1';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
-import { formOf, partsOf, planSets, subjectGroups, planTotals, formsText, amountText, periodText, planPreviewHtml, STATUS_LABEL } from '/assets/v2/plan-view.js?v=20261014-names';
+import { formOf, partsOf, planSets, subjectGroups, planTotals, formsText, amountText, periodText, planPreviewHtml, STATUS_LABEL } from '/assets/v2/plan-view.js?v=20261020-r9';
 // 下から出る画面: lineOpen（受講合意書の行）・editing（直す）・consentFor（承諾を記録）・addFor（足す）・openFamily（請求の内訳）・feeOpen（キャンセル料）
 let plans = null, planMonth = '', editing = '', consentFor = '', addFor = '', kindOpen = null, lineOpen = '', feeOpen = '';
 const unpicked = new Set(); // お知らせから外した下書き（チェックを外したもの）
@@ -54,7 +54,7 @@ export function plansPage(ctx) {
 }
 function studentPlans(ctx, s) {
   const { esc } = ctx;
-  let h = `<div class="group"><div class="sub-head"><strong>${esc(s.name)}</strong><small class="muted">通常指導の基準単価 90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}${s.status === 'paused' ? '・休会' : ''}</small><button class="mini-btn" data-action="pl-add" data-id="${esc(s.id)}" aria-label="${esc(s.name)} の受講合意書を足す"${ctx.dis()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
+  let h = `<div class="group"><div class="sub-head"><strong>${esc(s.name)}</strong><small class="muted">通常の基準単価 90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}${s.status === 'paused' ? '・休会' : ''}</small><button class="mini-btn" data-action="pl-add" data-id="${esc(s.id)}" aria-label="${esc(s.name)} の受講合意書を足す"${ctx.dis()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
   h += `<p class="small"><button type="button" data-action="pl-history" data-student="${esc(s.id)}">過去の版・控えを開く</button></p>`;
   if (s.unplanned) h += `<p class="small notice" style="margin:6px 0">受講合意書に入っていない授業が ${s.unplanned}件あります（承認がないと請求できません）。</p>`;
   if (s.lines.length) h += planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('');
@@ -123,7 +123,7 @@ function planSheet(ctx) {
 function remindButton(ctx, familyId, n, last) {
   return `<button data-action="pl-remind" data-family="${ctx.esc(familyId)}"${ctx.dis()}>承認のお願いを送る（${n}件）</button>${last ? `<span class="small muted">前回 ${md(new Date(Date.parse(last) + 9 * 3600e3).toISOString().slice(0, 10))}</span>` : ''}`;
 }
-// 受講合意書の行の入力欄（新しく足す・直す）。初期値は授業の種類の標準 → 通常指導の基準単価
+// 受講合意書の行の入力欄（新しく足す・直す）。初期値は授業の種類の標準 → 通常の基準単価
 function lineForm(ctx, s, l) {
   const { esc } = ctx, kinds = plans.kinds.filter(k => k.active || (l && k.name === l.kind));
   if (l && !kinds.some(k => k.name === l.kind)) kinds.push({ name: l.kind }); // 種類の一覧に無い種類でも、直すときに勝手に変えない
@@ -137,7 +137,7 @@ function lineForm(ctx, s, l) {
     <label>回数<input type="number" name="count" min="1" max="60" value="${l ? l.count : 4}" style="width:5em" required></label>
     <label>1回の時間（分）<input type="number" name="minutes" min="15" max="300" step="15" value="${minutes}" style="width:6em" required></label>
     <label>1回の授業料（円）<input type="number" name="fee" min="0" max="100000" value="${fee}" style="width:7em" required></label></div>
-    <div class="small muted">通常指導の基準単価（90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}）なら 60分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 60 / 90))}・120分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 120 / 90))}</div>
+    <div class="small muted">通常の基準単価（90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}）なら 60分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 60 / 90))}・120分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 120 / 90))}</div>
     <div class="row"><label>期間<input type="date" name="startDate" value="${l ? l.startDate : plans.month + '-01'}" required></label><label>〜<input type="date" name="endDate" value="${l ? l.endDate : monthEnd(plans.month)}" required></label>
     <label>追加の受講合意書（テスト前など）<select name="parentId"><option value="">ふつうの受講合意書</option>${parents.map(p => `<option value="${esc(p.id)}"${l && l.parentId === p.id ? ' selected' : ''}>${esc(p.subject)}（${md(p.startDate)}〜${md(p.endDate)}）への追加</option>`).join('')}</select></label></div>
     <label>保護者への説明（任意）<input name="comment" maxlength="500" value="${esc(l ? l.comment : '')}" placeholder="例: 2学期中間テストに向けて計算の復習"></label>
@@ -156,8 +156,8 @@ export function kindsPage(ctx) {
   let h = ctx.notice();
   if (plans.loading) return h + '<p class="muted">読み込んでいます…</p>';
   h += '<div class="group" style="margin-top:12px">' + plans.kinds.map(k => rowButton(esc, 'kind-open', { name: k.name }, `${esc(k.name)}${k.active ? '' : ' <span class="tag gray">使わない</span>'}`,
-    `標準 ${k.standardMinutes ? k.standardMinutes + '分' : '時間なし'}・${k.standardFee ? yen(k.standardFee) : '生徒の通常指導の基準単価'}`)).join('') + '</div>';
-  h += `<p style="margin-top:12px"><button data-action="kind-open" data-name=""${ctx.dis()}>＋ 種類を足す</button></p><p class="small muted">受講合意書を作るときの初期値です。標準の料金が0円なら、生徒の通常指導の基準単価で計算します。</p>`;
+    `標準 ${k.standardMinutes ? k.standardMinutes + '分' : '時間なし'}・${k.standardFee ? yen(k.standardFee) : '生徒の通常の基準単価'}`)).join('') + '</div>';
+  h += `<p style="margin-top:12px"><button data-action="kind-open" data-name=""${ctx.dis()}>＋ 種類を足す</button></p><p class="small muted">受講合意書を作るときの初期値です。標準の料金が0円なら、生徒の通常の基準単価で計算します。</p>`;
   if (kindOpen !== null) {
     const k = plans.kinds.find(x => x.name === kindOpen);
     const body = `<form class="stack" data-form="kind-save">${k ? `<input type="hidden" name="name" value="${esc(k.name)}">` : '<label>名前<input name="name" maxlength="20" placeholder="例: 講習" required></label>'}
