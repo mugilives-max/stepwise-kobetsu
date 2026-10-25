@@ -138,8 +138,8 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
 # r10 (2026-10-25 本人「顧客からしてもわかりやすい名前が良い」→「ご利用規約」): r9 から名前と版の参照だけを変えた版。
 # r9 の本文に決まった置き換えだけをしたものと、今の本文が一字一句同じであることを確かめる（条文・表・例は変わらない）
 PRIOR_COMMIT = "994f6c956127d073c6ee4e9a9c8b29415081db70"
-TERMS_REPLACEMENTS = [('# ご利用規約（2026年11月版）', '# ご利用規約（2026年11月版）'), ('2026年10月25日改訂・共通の受講条件と特別単価の合意を整理', '2026年10月25日改訂・規約の名前を「ご利用規約」に変更'), ('20261025-r10', '20261025-r10')]
-RELATED_REPLACEMENTS = [('ご利用規約', 'ご利用規約'), ('20261025-r10', '20261025-r10'), ('（r9）', '（r10）'), ('2026年10月25日改訂', '2026年10月25日改訂')]
+TERMS_REPLACEMENTS = [('# 受講規約（2026年11月版）', '# ご利用規約（2026年11月版）'), ('2026年10月15日改訂・共通の受講条件と特別単価の合意を整理', '2026年10月25日改訂・規約の名前を「ご利用規約」に変更'), ('20261015-r9', '20261025-r10')]
+RELATED_REPLACEMENTS = [('受講規約', 'ご利用規約'), ('20261015-r9', '20261025-r10'), ('（r9）', '（r10）'), ('2026年10月15日改訂', '2026年10月25日改訂')]
 prior_source = subprocess.check_output(["git","show",PRIOR_COMMIT+":docs/terms-restructure-2026-11/TERMS.md"],text=True)
 expected_source = prior_source
 for old,new in TERMS_REPLACEMENTS:
@@ -156,7 +156,7 @@ assert all("20261025-r10" in new_clauses[k] for k in changes) and len(changes)<=
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
 assert old_tables==new_tables, "Tables changed"
-for phrase in ["特殊指導","通常指導","受講条件書（","ご利用規約"]:
+for phrase in ["特殊指導","通常指導","受講条件書（","受講規約"]:
     assert phrase not in source,phrase
 assert len(ids)==196
 for link in body.select('a[href^="#article-"]'):
@@ -171,7 +171,7 @@ for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.m
     for old,new in RELATED_REPLACEMENTS:
         before=before.replace(old,new)
     after=(SOURCE.parent/filename).read_text(encoding="utf-8")
-    assert before==after and not any(phrase in after for phrase in ["特殊指導","通常指導","受講条件書（","ご利用規約"]),filename
+    assert before==after and not any(phrase in after for phrase in ["特殊指導","通常指導","受講条件書（","受講規約"]),filename
 
 html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>ご利用規約（2026年11月版・10月25日改訂）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">ご利用規約と書類の一覧</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
 (OUT / "index.html").write_text(html, encoding="utf-8")
