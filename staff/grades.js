@@ -1,7 +1,7 @@
 // スタッフの画面: 成績（6段目）。#grades（一覧・届いた成績票・結果の入力待ち）と #grades=<生徒>（試験の記録・入力）。
 // 講師は担当の生徒の担当科目だけ入力でき、ほかの科目は合計だけ見える。成績票は教室管理者だけ。
-import { examCard, trendBox, examPager, gradeSel, seriesPick, seriesOf, SERIES_FIRST, fileList, uploadForm, uploadFile, openFile, jst } from '/assets/v2/grades-view.js?v=20261008-launch1';
-import { sheet, rowButton, rowLink } from '/staff/ui.js?v=20261008-launch1';
+import { examCard, trendBox, examPager, gradeSel, seriesPick, seriesOf, SERIES_FIRST, fileList, uploadForm, uploadFile, openFile, jst } from '/assets/v2/grades-view.js?v=20261025-layout';
+import { sheet, rowButton, rowLink } from '/staff/ui.js?v=20261025-layout';
 
 let overview = null, student = null, studentFor = '', editing = '', prefill = null, pick = null; // pick: 下から出る画面 { kind: 'file'|'test'|'resolve', id }
 export function leaveGrades() { pick = null; if (!prefill) editing = ''; }
@@ -15,9 +15,9 @@ export function gradesOverviewPage(ctx) {
   let h = ctx.notice();
   if (overview.loading) return h + '<p class="muted">読み込んでいます…</p>';
   const by = k => k === 'family' ? '保護者' : k === 'student' ? '生徒' : 'スタッフ';
-  if (ctx.isManager) h += `<div class="sec-title">届いた成績票${overview.files.length ? ` <span class="count">${overview.files.length}</span>` : ''}</div>` + (overview.files.length ? '<div class="group">' + overview.files.map(f => rowButton(esc, 'gr-pick', { kind: 'file', id: f.id }, `${esc(f.studentName)} ${esc(f.name)}`, `${esc(jst(f.createdAt).slice(5))}・${by(f.uploadedByKind)}${f.note ? '・' + esc(f.note) : ''}`)).join('') + '</div>' : '<p class="small muted">取り込み待ちの成績票はありません。</p>');
+  if (ctx.isManager) h += `<div class="sec-title">届いた成績票${overview.files.length ? ` <span class="count">${overview.files.length}</span>` : ''}</div>` + (overview.files.length ? '<div class="group">' + overview.files.map(f => rowButton(esc, 'gr-pick', { kind: 'file', id: f.id }, `${esc(f.studentName)} ${esc(f.name)}`, `${esc(jst(f.createdAt).slice(5))}・${by(f.uploadedByKind)}${f.note ? '・' + esc(f.note) : ''}`)).join('') + '</div>' : '<p class="small muted">ありません。</p>');
   h += `<div class="sec-title">結果の入力待ちのテスト${overview.pendingTests.length ? ` <span class="count">${overview.pendingTests.length}</span>` : ''}</div>` + pendingList(ctx, overview.pendingTests, true);
-  h += '<div class="sec-title">生徒</div><div class="group">' + overview.students.map(s => rowLink('#grades=' + encodeURIComponent(s.id), `${esc(s.name)} <span class="small muted" style="font-weight:400">${esc(s.grade || '')}</span>`, `${s.subjects ? '担当 ' + s.subjects.map(esc).join('・') + '・' : ''}${s.latest ? `記録 ${s.latest.count}件・最新 ${esc(md(s.latest.date))}` : 'まだ記録がありません'}`)).join('') + '</div>';
+  h += '<div class="sec-title">生徒</div><div class="group">' + overview.students.map(s => rowLink('#grades=' + encodeURIComponent(s.id), `${esc(s.name)} <span class="small muted" style="font-weight:400">${esc(s.grade || '')}</span>`, `${s.subjects ? '担当 ' + s.subjects.map(esc).join('・') + '・' : ''}${s.latest ? `記録 ${s.latest.count}件・最新 ${esc(md(s.latest.date))}` : '記録なし'}`)).join('') + '</div>';
   if (pick && pick.kind === 'file') {
     const f = overview.files.find(x => x.id === pick.id);
     if (f) h += sheet(esc, f.studentName + ' の成績票', `<p style="margin-top:0"><strong>${esc(f.name)}</strong><br><span class="small muted">${esc(jst(f.createdAt).slice(5))}・${by(f.uploadedByKind)}から${f.note ? '・' + esc(f.note) : ''}</span></p>
@@ -35,7 +35,7 @@ function pendingList(ctx, tests, withName) {
 function testSheet(ctx, tests) {
   const { esc } = ctx, t = pick && pick.kind === 'test' && tests.find(x => x.eventId === pick.id);
   if (!t) return '';
-  return sheet(esc, (t.studentName ? t.studentName + ' ' : '') + (t.title || 'テスト'), `<p class="small muted" style="margin-top:0">${esc(md(t.date))}${t.dateTo !== t.date ? '〜' + esc(md(t.dateTo)) : ''}。受けなかった・記録しないときは「結果なし」にします。</p>
+  return sheet(esc, (t.studentName ? t.studentName + ' ' : '') + (t.title || 'テスト'), `<p class="small muted" style="margin-top:0">${esc(md(t.date))}${t.dateTo !== t.date ? '〜' + esc(md(t.dateTo)) : ''}</p>
     <div class="row"><button class="primary" data-action="gr-from-test" data-student="${esc(t.studentId)}" data-event="${esc(t.eventId)}" data-title="${esc(t.title)}" data-date="${esc(t.dateTo)}">結果を入れる</button><button data-action="gr-skip" data-event="${esc(t.eventId)}"${ctx.dis()}>結果なし</button></div>`, 'gr-unpick');
 }
 
@@ -50,14 +50,14 @@ export function gradesStudentPage(ctx, studentId) {
   if (!student) return h + '<p class="muted">読み込んでいます…</p>';
   if (student.error) return h + `<p class="notice error">${esc(student.error)}</p>`;
   const st = student;
-  h += `${st.subjects ? `<p class="small muted" style="margin-top:12px">あなたの担当: ${st.subjects.map(esc).join('・')}（ほかの科目は合計だけ）</p>` : ''}${ctx.notice()}`;
+  h += `${st.subjects ? `<p class="small muted" style="margin-top:12px">担当 ${st.subjects.map(esc).join('・')}</p>` : ''}${ctx.notice()}`;
   if (st.nextTest) h += `<p class="small">次のテスト: ${esc(st.nextTest.title || '')}（${esc(md(st.nextTest.date))}、あと${st.nextTest.days}日）</p>`;
   if (st.pendingTests.length) h += `<div class="sec-title">結果の入力待ち <span class="count">${st.pendingTests.length}</span></div>${pendingList(ctx, st.pendingTests, false)}`;
   // 階層: 何の試験か（定期テスト・北辰テスト …）のタブ → 推移（一覧とグラフ）→ 試験ごと（‹ › で 1 つずつ。実際の成績票はカードから開く）
   const addBtn = `<button class="small-btn primary" data-action="gr-new"${ctx.dis()}>＋ 結果を入れる</button>`;
   const pk = seriesPick(st.exams, studentId);
   h += pk.bar;
-  if (!st.exams.length) h += `<p><button class="primary" data-action="gr-new"${ctx.dis()}>＋ 試験の結果を入れる</button></p><p class="muted">まだ記録がありません。成績票（PDF・写真）があれば、下の「この成績票の結果を入れる」から点数と偏差値を入れます。</p>`;
+  if (!st.exams.length) h += `<p><button class="primary" data-action="gr-new"${ctx.dis()}>＋ 試験の結果を入れる</button></p><p class="muted">まだ記録がありません。</p>`;
   const trend = trendBox(pk.list, studentId, addBtn);
   h += trend || (st.exams.length ? `<p style="margin:10px 0 0">${addBtn}</p>` : '');
   const attachForm = e => st.manager ? `<form class="gattach" data-form="gr-attach" data-exam="${esc(e.id)}"><label class="gsheet-btn as-label"><span class="ic">＋</span><span class="nm">成績票（PDF・写真）をつける</span><input type="file" name="file" accept="image/*,application/pdf" hidden></label></form>` : '';
@@ -66,14 +66,14 @@ export function gradesStudentPage(ctx, studentId) {
     // 試験にひもづいていない成績票: ここから結果を入れる（入れると自動でひもづく）か、できている試験にひもづける
     const loose = st.files.filter(f => !f.examId && f.status !== 'dismissed'), dismissed = st.files.filter(f => f.status === 'dismissed');
     h += '<div class="sec-title" style="margin-top:22px">成績票</div>';
-    if (loose.length) h += `<p class="small muted" style="margin:0 2px 6px">試験にひもづいていないもの。押して結果を入れるか、できている試験にひもづけます。</p><div class="group">` + loose.map(f => rowButton(esc, 'gr-pick', { kind: 'resolve', id: f.id }, esc(f.name), `${esc(jst(f.createdAt).slice(5, 10))}${f.note ? '・' + esc(f.note) : ''}${f.status === 'new' ? '・<span class="tag warn">確かめ待ち</span>' : ''}`)).join('') + '</div>';
+    if (loose.length) h += `<p class="small muted" style="margin:0 2px 6px">試験にひもづいていないもの</p><div class="group">` + loose.map(f => rowButton(esc, 'gr-pick', { kind: 'resolve', id: f.id }, esc(f.name), `${esc(jst(f.createdAt).slice(5, 10))}${f.note ? '・' + esc(f.note) : ''}${f.status === 'new' ? '・<span class="tag warn">確かめ待ち</span>' : ''}`)).join('') + '</div>';
     const f = pick && pick.kind === 'resolve' && loose.find(x => x.id === pick.id);
     if (f) h += sheet(esc, f.name, `<div class="stack"><button data-action="gr-open" data-id="${esc(f.id)}">成績票を開く</button>
       <button class="primary" data-action="gr-from-file" data-id="${esc(f.id)}" data-name="${esc(f.name)}"${ctx.dis()}>この成績票の結果を入れる</button>
       ${st.exams.length ? `<label>できている試験にひもづける<select data-resolve-exam="${esc(f.id)}"><option value="">（選ぶ）</option>${st.exams.slice().reverse().map(e => `<option value="${esc(e.id)}">${esc(e.name)}（${esc(md(e.date))}）</option>`).join('')}</select></label>
       <div class="row"><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="imported"${ctx.dis()}>ひもづける</button><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="dismissed"${ctx.dis()}>取り込まない</button></div>` : `<div class="row"><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="dismissed"${ctx.dis()}>取り込まない</button></div>`}</div>`, 'gr-unpick');
     if (dismissed.length) h += `<details class="small muted" style="margin:8px 0"><summary>取り込まない成績票 ${dismissed.length}件</summary>${fileList(dismissed, 'gr-open')}</details>`;
-    h += `<details class="gupload"><summary>成績票を残す（試験をあとでひもづける）</summary>${uploadForm(ctx.dis())}</details>`;
+    h += `<details class="gupload"><summary>成績票だけを残す</summary>${uploadForm(ctx.dis())}</details>`;
   }
   h += testSheet(ctx, st.pendingTests);
   if (editing) { const e = editing === 'new' ? null : st.exams.find(x => x.id === editing); if (e || editing === 'new') h += sheet(esc, e ? e.name + ' を直す' : '試験の結果を入れる', examForm(ctx, e), 'gr-close', { wide: true }); }
@@ -101,11 +101,10 @@ function examForm(ctx, e) {
     <label class="c-newseries">試験の名前<input name="seriesNew" maxlength="20" placeholder="例: 東部地区テスト"></label>
     <label style="flex:1">回<input name="name" maxlength="40" required value="${esc(e ? e.name : p ? p.title : '')}" placeholder="例: 2学期中間、3年4回"></label>
     <label>実施日<input type="date" name="date" required max="${today()}" value="${esc(e ? e.date : p ? p.date : '')}"></label><label>学年<input name="grade" maxlength="20" style="width:5em" value="${esc(e ? e.grade : st.student.grade || '')}"></label></div>
-    <div class="small muted">科目ごと。分かる項目だけでよい（点数と偏差値だけ、など）。空の行は飛ばします</div>
     <div style="overflow-x:auto"><table class="small gform"><tr><th>科目</th>${['score', 'max', 'average', 'rank', 'rankOf', 'deviation'].map(k => `<th${colClass(k)}>${COL[k]}</th>`).join('')}</tr>
     ${subjects.map((s, i) => `<tr><td><input name="s.${i}.subject" maxlength="20" value="${esc(s.subject)}" style="width:6em"${manager ? '' : ' readonly'}><input type="hidden" name="s.${i}.orig" value="${esc(s.score !== undefined || s.max !== undefined ? s.subject : '')}"></td>
       ${['score', 'max', 'average', 'rank', 'rankOf', 'deviation'].map(k => `<td${colClass(k)}><input name="s.${i}.${k}" value="${v(s, k)}" ${numAttrs}${k === 'max' && !e && s.subject ? ` placeholder="${s.subject === '3教科' ? 300 : 100}"` : ''}></td>`).join('')}</tr>`).join('')}</table></div>
-    ${manager ? `<div class="small muted">全体（${kind0 === 'mock' && middle ? '5 教科。' : ''}空なら科目の合計を出します）</div><div class="row">${field('totalScore', '合計', v(e && t.fromSubjects ? null : t, 'score'), numAttrs)}${field('totalMax', '満点', v(e && t.fromSubjects ? null : t, 'max'), numAttrs)}${field('totalRank', '順位', v(t, 'rank'), numAttrs)}${field('totalRankOf', '人数', v(t, 'rankOf'), numAttrs)}<span class="c-dev">${field('totalDeviation', '偏差値', v(t, 'deviation'), numAttrs)}</span></div>` : ''}
+    ${manager ? `<div class="small muted">全体（${kind0 === 'mock' && middle ? '5教科・' : ''}空なら科目の合計）</div><div class="row">${field('totalScore', '合計', v(e && t.fromSubjects ? null : t, 'score'), numAttrs)}${field('totalMax', '満点', v(e && t.fromSubjects ? null : t, 'max'), numAttrs)}${field('totalRank', '順位', v(t, 'rank'), numAttrs)}${field('totalRankOf', '人数', v(t, 'rankOf'), numAttrs)}<span class="c-dev">${field('totalDeviation', '偏差値', v(t, 'deviation'), numAttrs)}</span></div>` : ''}
     <div class="small muted">振り返り</div>${manager ? `<label>良かった点<textarea name="good" maxlength="1000" rows="2">${esc(r.good || '')}</textarea></label>` : ''}
     <label>課題<textarea name="issues" maxlength="1000" rows="2">${esc(r.issues || '')}</textarea></label><label>次の対策<textarea name="nextSteps" maxlength="1000" rows="2" placeholder="生徒にも見えます">${esc(r.nextSteps || '')}</textarea></label>
     <div class="row"><button class="primary"${ctx.dis()}>保存</button><button type="button" data-action="gr-close"${ctx.dis()}>やめる</button></div></form>`;

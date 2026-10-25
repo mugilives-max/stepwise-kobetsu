@@ -1,6 +1,6 @@
 // 作り直し（v2）の「学習」の部品（保護者・生徒で共通）。公開した授業記録と宿題。
 import { esc } from '/assets/v2/api.js';
-import { mdw } from '/assets/v2/schedule-view.js?v=20261008-launch1';
+import { mdw } from '/assets/v2/schedule-view.js?v=20261025-layout';
 
 const HW_STATUS = { open: ['warn', '未完了'], reported: ['', 'できたと報告（先生の確認待ち）'], confirmed: ['ok', '先生が確認'] };
 // 宿題の1行: 「教材 範囲」（例: Keywork p.10-12）。科目は授業の科目、期限は次のその科目の授業（docs/REQUIREMENTS.md 宿題）
@@ -23,6 +23,6 @@ export function learningView(data, { names = {} } = {}) {
       <div>${w.status === 'open' ? `<button class="primary" data-action="hw-done" data-id="${esc(w.id)}">できた</button>` : w.status === 'reported' ? `<button data-action="hw-undo" data-id="${esc(w.id)}">取り消す</button>` : ''}</div></div>`).join('') + '</div>' : '<p class="muted">未完了の宿題はありません。</p>';
   h += `<h2>授業の記録</h2>`;
   h += data.records.length ? '<div class="list">' + data.records.map(r => `<div><div><strong>${mdw(r.date)} ${esc(r.subject)}</strong>${r.kind && r.kind !== '通常' ? '（' + esc(r.kind) + '）' : ''} ${names[r.studentId] ? '<span class="small muted">' + esc(names[r.studentId]) + '</span>' : ''}
-      ${r.range ? `<div class="small"><span class="muted">扱った範囲</span> ${esc(r.range)}</div>` : ''}<div style="white-space:pre-wrap">${esc(r.comment)}</div>${r.parentMessage ? `<div class="small" style="white-space:pre-wrap"><span class="muted">保護者の方へ</span> ${esc(r.parentMessage)}</div>` : ''}${checkedIn(data, r)}</div><div></div></div>`).join('') + '</div>' : '<p class="muted">公開された授業の記録はまだありません。</p>';
+      ${r.range ? `<div class="small"><span class="muted">扱った範囲</span> ${esc(r.range)}</div>` : ''}<div style="white-space:pre-wrap">${esc(r.comment)}</div>${r.parentMessage ? `<div class="small" style="white-space:pre-wrap"><span class="muted">保護者の方へ</span> ${esc(r.parentMessage)}</div>` : ''}${checkedIn(data, r)}</div><div></div></div>`).join('') + '</div>' : '<p class="muted">授業の記録はまだありません。</p>';
   return h;
 }

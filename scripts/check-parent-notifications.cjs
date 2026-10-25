@@ -68,7 +68,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await form.getByRole('button',{name:'この内容で承認する',exact:true}).click();
   await page.getByRole('status').filter({hasText:'PDF保存できます'}).waitFor();
   assert.equal(row(p.id).status,'approved');assert.equal(row(p2.id).status,'proposed');
-  await page.reload();await page.getByText('メールでお知らせした対象を表示しています。',{exact:false}).waitFor();
+  await page.reload();await page.getByText('すべての書類・料金を見る',{exact:false}).waitFor();
   assert.equal(await page.locator('[data-form="plan-approve"]').count(),0);
   assert.ok(await page.locator('[data-action="agreement-doc"]').count()>0,'approved PDF action retained');
   report.checks.push('agreement link excludes new proposal; completion, return visit and PDF copy');
@@ -102,7 +102,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   assert.equal(resetBody.ok,true,JSON.stringify(resetBody.error));
   assert.equal(resetBody.returnTo,target);
   await cp.waitForFunction(t=>location.hash==='#'+t,target);
-  await cp.getByText('メールでお知らせした対象を表示しています。',{exact:false}).waitFor();
+  await cp.getByText('すべての書類・料金を見る',{exact:false}).waitFor();
   report.checks.push('login context and cross-browser password-reset return');
   await cp.goto(origin+'/family/#invite=invalid');
   await cp.getByRole('link',{name:'mugilives@gmail.com',exact:true}).waitFor();

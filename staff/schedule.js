@@ -1,9 +1,9 @@
-import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 // スタッフの画面: 予定（3段目）。月の予定表・選んだ日の授業・連絡への対応・授業を作る・休み・面談。
 // 授業の段階（2026-10-14 本人決定）: 下書き → 調整中（見せるだけ・メールなし）→ 確認待ち（締め切りとメール 1 通・LINE に貼る文）→ 確定
 // 教室管理者はすべて、講師は自分の担当の授業と自分の休みだけ。
-import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261016-notices';
-import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
+import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261025-layout';
+import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 
 let month = null, data = null, sel = null, sheet = null, families = null, loadedFor = '';
 // スマホ（ライフベアの形）: はじめは月全体。日付を押すと、その週が一番上まで滑り上がり、下から一覧が出る（2週分）。同じ日をもう一度押すか取っ手で月全体に戻る
@@ -64,7 +64,7 @@ export function schedulePage(ctx, me) {
     <button class="small-btn" data-action="sch-today">今日</button><span style="flex:1"></span>
     ${todo ? `<button class="small-btn warn" data-action="sch-sheet" data-k="todo">対応すること ${todo}</button>` : ''}
     <button class="small-btn primary" data-action="sch-sheet" data-k="${manager ? 'create' : 'off'}">＋ ${manager ? '授業' : '休み'}</button></div>`;
-  if (!data.live) h += '<p class="small muted" style="margin:2px 0 6px">切り替え前のため、ここでの操作では Google カレンダーへの登録と保護者へのメールは行いません。</p>';
+  if (!data.live) h += '<p class="small muted" style="margin:2px 0 6px">切り替え前：Google カレンダーへの登録と保護者へのメールはしません。</p>';
   h += ctx.notice();
   h += '<div class="sch">';
   // 月の表
@@ -185,7 +185,7 @@ function dayPanel(ctx, me, manager, nameOf, staffOf) {
 function oneDay(ctx, me, manager, nameOf, staffOf, d, first) {
   const { esc } = ctx;
   const ls = data.lessons.filter(l => l.date === d).sort((a, b) => a.start.localeCompare(b.start)), offs = data.unavailability.filter(o => o.date === d), evs = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo)), mts = data.meetings.filter(m => m.date === d);
-  let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span class="muted small">授業 ${ls.filter(l => l.status in RANK).length}件</span><span style="flex:1"></span>${manager ? `<button class="small-btn" data-action="sch-sheet" data-k="create">${d < data.today ? '＋ 実施した授業を登録' : '＋ この日に授業'}</button>` : ''}</div>`
+  let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span style="flex:1"></span>${manager ? `<button class="small-btn" data-action="sch-sheet" data-k="create">${d < data.today ? '＋ 実施した授業を登録' : '＋ この日に授業'}</button>` : ''}</div>`
     : `<button class="day-band" data-action="sch-day" data-date="${d}">${mdw(d)}</button>`;
   if (!ls.length && !offs.length && !evs.length && !mts.length) return h + `<p class="muted small"${first ? '' : ' style="margin:4px 2px 8px"'}>予定はありません。</p>`;
   h += '<div class="rows">';
@@ -210,8 +210,7 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
     title = `${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)}`;
     body = `<div class="stack" style="margin:0"><div><strong style="font-size:17px">${esc(nameOf[l.studentId] || '')}</strong> ${esc(l.subject)}${l.kind !== '通常' ? '（' + esc(l.kind) + '）' : ''}</div>
       <div>${statusTag(l)}${requestTags(l)}${l.lateStart ? '<span class="tag gray">当日の時間変更</span>' : ''}${l.lostMinutes ? `<span class="tag warn">遅刻 ${l.lostMinutes}分</span>` : ''}</div>
-      <div class="small muted">担当 ${esc(staffOf[l.staffId] || '未定')}・${l.deliveryMode === 'online' ? 'オンライン' : '対面'}${l.meetUrl ? `・<a href="${esc(l.meetUrl)}" target="_blank" rel="noopener">Meet を開く</a>` : ''}${l.note ? '<br>メモ：' + esc(l.note) : ''}${['decided', 'done'].includes(l.status) && l.agreement ? '<br>確定のもと：' + esc(l.agreement) : ''}</div>
-      ${manager ? `<p class="small muted" style="margin:0">${STAGE_HELP[l.status === 'proposed' ? (l.asked ? 'asking' : 'adjusting') : l.status] || ''}</p>` : ''}`;
+      <div class="small muted">担当 ${esc(staffOf[l.staffId] || '未定')}・${l.deliveryMode === 'online' ? 'オンライン' : '対面'}${l.meetUrl ? `・<a href="${esc(l.meetUrl)}" target="_blank" rel="noopener">Meet を開く</a>` : ''}${l.note ? '<br>メモ：' + esc(l.note) : ''}${['decided', 'done'].includes(l.status) && l.agreement ? '<br>確定のもと：' + esc(l.agreement) : ''}</div>`;
     if (sheet.edit) body += editForm(ctx, l);
     else if (sheet.decide) body += decideForm(ctx, l);
     else if (sheet.cancel) body += cancelForm(ctx, l);
@@ -220,7 +219,7 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
       const main = [], sub = [], danger = [];
       const future = l.date >= data.today;
       if (manager && future && l.status === 'held') main.push(`<button data-action="sch-show-one" data-id="${esc(l.id)}"${ctx.dis()}>調整中として見せる</button>`);
-      if(manager && future && l.status==='proposed' && l.asked && (!['sent','external'].includes(l.noticeState) || (l.confirmBy && !automaticDeadline(l)))) main.push('<p class="notice">通知の確認が済むまで自動確定を保留しています。</p><button data-action="sch-renotify" data-id="'+esc(l.id)+'">再案内・回答期間を確認</button>');
+      if(manager && future && l.status==='proposed' && l.asked && (!['sent','external'].includes(l.noticeState) || (l.confirmBy && !automaticDeadline(l)))) main.push('<p class="notice">自動確定を保留中（通知の確認待ち）</p><button data-action="sch-renotify" data-id="'+esc(l.id)+'">再案内・回答期間を確認</button>');
       if (manager && future && (l.status === 'held' || (l.status === 'proposed' && !l.asked))) main.push(`<button class="primary" data-action="sch-ask-one" data-id="${esc(l.id)}"${ctx.dis()}>確認をお願いする</button>`);
       if (manager && ['held', 'proposed'].includes(l.status)) main.push(`<button${l.status === 'proposed' && l.asked ? ' class="primary"' : ''} data-action="sch-decide" data-id="${esc(l.id)}"${ctx.dis()}>確定する</button>`);
       if (l.status === 'decided' && past && mine) main.push(`<button class="primary" data-action="sch-done" data-id="${esc(l.id)}"${ctx.dis()}>実施済みにする</button>`);
@@ -242,13 +241,13 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
     title = '対応すること';
     body = (data.openRequests.length ? `<h2 style="margin-top:0">生徒・保護者からの連絡（${data.openRequests.length}件）</h2><div class="list">` + data.openRequests.map(r => `<div><div><span class="tag ${r.kind === 'cancel' ? 'danger' : 'warn'}">${REQUEST[r.kind]}</span> <strong>${esc(r.studentName)}</strong> ${mdw(r.date)} ${r.start} ${esc(r.subject)}
       <div class="small">${esc(r.note || '')}<span class="muted">（${r.fromKind === 'family' ? '保護者' : r.fromKind === 'student' ? '生徒' : 'スタッフ'}・${esc(r.receivedAt.slice(5, 16).replace('T', ' '))}）</span></div>
-      <div class="small muted">${r.kind === 'move' ? '授業を開いて「日時・内容を直す」で日時を変えると、済みになります。' : r.kind === 'late' ? (rateRule(r) ? '応じるときは「日時・内容を直す」で開始時刻を変え、「生徒の申し出で開始を遅らせる」に印を付けてください（遅らせた分の取消料）。応じないときは「済みにする」。' : '応じるときは「日時・内容を直す」で開始時刻を変えてください（料金は変わりません）。') : r.kind === 'cancel' ? (rateRule(r) ? 'キャンセル料は連絡の時刻で自動に計算しました（「請求」で確かめられます）。' : 'キャンセル料は「請求」で決めます。') : ''}</div></div>
+      ${r.kind === 'cancel' ? `<div class="small muted">${rateRule(r) ? 'キャンセル料は連絡の時刻で計算済み（請求）' : 'キャンセル料は請求で決める'}</div>` : ''}</div>
       <div class="row"><button data-action="sch-goto" data-date="${r.date}" data-id="${esc(r.lessonId || '')}">授業を開く</button><button data-action="sch-resolve" data-id="${esc(r.id)}"${ctx.dis()}>済みにする</button></div></div>`).join('') + '</div>' : '')
-      + (Object.keys(held).length ? `<h2>下書き</h2><p class="small muted" style="margin-top:-4px">塾だけに見えています。進める授業に印を付けてください（印を外した授業は下書きのまま）。「調整中として見せる」はメールなしで保護者・生徒のページに出します。「確認をお願いする」は締め切りを付けて保護者にメール 1 通です。</p>` + Object.keys(held).map(sid => stageGroup(ctx, sid, nameOf, 'held')).join('') : '')
-      + (Object.keys(adjusting).length ? `<h2>調整中</h2><p class="small muted" style="margin-top:-4px">保護者・生徒に見えていますが、まだ決まっていません（締め切りなし）。日時が固まったら確認をお願いしてください。</p>` + Object.keys(adjusting).map(sid => stageGroup(ctx, sid, nameOf, 'adjusting')).join('') : '');
+      + (Object.keys(held).length ? `<h2>下書き</h2>` + Object.keys(held).map(sid => stageGroup(ctx, sid, nameOf, 'held')).join('') : '')
+      + (Object.keys(adjusting).length ? `<h2>調整中</h2>` + Object.keys(adjusting).map(sid => stageGroup(ctx, sid, nameOf, 'adjusting')).join('') : '');
   } else if (sheet.kind === 'line') {
     title = sheet.title || 'LINE に貼る文';
-    body = `<p class="small" style="margin:0 0 6px">保護者にメールを送りました。LINE でも知らせるときは、この文をそのまま貼ってください（リンクを開くと、ログインのあと「日程の確認」の画面になります）。</p>
+    body = `<p class="small" style="margin:0 0 6px">保護者にメールを送りました。LINE に貼る文：</p>
       <textarea class="line-copy" readonly>${esc(sheet.text)}</textarea><div class="row" style="margin-top:8px"><button class="primary" data-action="sch-copy">コピーする</button><button data-action="sch-close">閉じる</button></div>`;
   }
   const tabs = (manager && ['create', 'off', 'meeting'].includes(sheet.kind)) ? `<div class="seg">${[['create', '授業'], ['off', '休み'], ['meeting', '面談']].map(([k, lb]) => `<button class="${sheet.kind === k ? 'on' : ''}" data-action="sch-sheet" data-k="${k}">${lb}</button>`).join('')}</div>` : '';
@@ -256,12 +255,6 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
 }
 
 // 下書き・調整中（生徒ごと）。授業ごとに印を付けて、印のある授業だけを進める
-const STAGE_HELP = {
-  held: '下書き：塾だけに見えています（保護者・生徒には見えません）。',
-  adjusting: '調整中：保護者・生徒に見えています。締め切りはなく、自動では確定しません。日時を直してもメールは出ません。',
-  asking: '確認待ち：保護者に確認をお願いしています。保護者の「この日程で大丈夫」か、締め切り（あれば）までに連絡がなければ確定します。日時を直すと調整中に戻ります（メールなし）。',
-  decided: '確定：予約です。カレンダーに入っています。日時を直すと保護者にお知らせが届きます。',
-};
 function stageGroup(ctx, sid, nameOf, stage) {
   const { esc } = ctx, mine = (stage === 'held' ? heldLessons() : adjustingLessons()).filter(l => l.studentId === sid), picked = mine.filter(l => !unpicked.has(l.id));
   const trial = !!(data.students.find(x => x.id === sid) || {}).trial;
@@ -271,14 +264,14 @@ function stageGroup(ctx, sid, nameOf, stage) {
   const buttons = trial ? `<button class="primary" data-action="sch-ask" data-sid="${esc(sid)}" data-stage="${stage}"${dis}>選んだ ${n}件を確定にする</button>`
     : (stage === 'held' ? `<button data-action="sch-show" data-sid="${esc(sid)}"${dis}>選んだ ${n}件を調整中として見せる</button>` : '')
       + `<button class="primary" data-action="sch-ask" data-sid="${esc(sid)}" data-stage="${stage}"${dis}>選んだ ${n}件の確認をお願いする</button>`;
-  return `<div class="held-group" style="margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px"><div style="display:flex;align-items:center;gap:8px"><strong>${esc(nameOf[sid] || '')}</strong>${trial ? ' <span class="tag gray">体験</span>' : ''}<span class="small muted">${stage === 'held' ? '下書き' : '調整中'} ${mine.length}件</span></div>${rows}
+  return `<div class="held-group" style="margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px"><div style="display:flex;align-items:center;gap:8px"><strong>${esc(nameOf[sid] || '')}</strong>${trial ? ' <span class="tag gray">体験</span>' : ''}</div>${rows}
     <div class="row" style="margin-top:6px">${buttons}</div></div>`;
 }
 // 確定する: 合意の記録（LINE・電話・面談で合意したとき。規約 r9 第14条1項）
 function decideForm(ctx, l) {
   return `<form class="stack" data-form="sch-decide" data-id="${ctx.esc(l.id)}" data-version="${l.version}" style="margin:8px 0 0">
-    <label>合意の記録（手段・日時・相手）<input name="agreement" maxlength="200" placeholder="例: LINE 10/16 お母さんと合意"></label>
-    <p class="small muted" style="margin:0">確定するとカレンダーに入り、予約になります（保護者へのメールは送りません）。${l.status === 'proposed' && l.asked ? '確認待ちの授業は、保護者の「この日程で大丈夫」や締め切りでも確定します。' : ''}</p>
+    <label>合意の記録<input name="agreement" maxlength="200" placeholder="例: LINE 10/16 お母さんと合意"></label>
+    <p class="small muted" style="margin:0">カレンダーに入ります。保護者へのメールは送りません。</p>
     <div class="row"><button class="primary"${ctx.dis()}>確定する</button><button type="button" data-action="sch-edit-cancel">やめる</button></div></form>`;
 }
 
@@ -289,13 +282,13 @@ function createForm(ctx, me) {
   const { esc } = ctx, past = !!sel && sel < data.today;
   return `<form class="stack" data-form="sch-create" style="margin:0">
     <label>生徒<select name="studentId" required>${data.students.map(s => `<option value="${esc(s.id)}"${s.trial ? ' data-trial="1"' : ''}>${esc(s.name)}${s.trial ? '（体験）' : ''}</option>`).join('')}</select></label>
-    <p class="small muted trial-hint">体験生の授業は種類「体験」（無料）で、下書き以外はそのまま確定になります（お知らせは送りません）。</p>
+    <p class="small muted trial-hint">体験は無料。下書き以外はそのまま確定（お知らせなし）</p>
     <div class="row"><label style="flex:1">日付<input type="date" name="date" value="${sel || ''}" required></label><label style="flex:1">開始<input type="time" name="start" value="17:00" step="300" required></label><label style="flex:1">長さ<select name="minutes">${minutesOptions(90)}</select></label></div>
     <div class="row"><label style="flex:1">科目<input name="subject" maxlength="30" required placeholder="数学"></label><label style="flex:1">種類<select name="kind">${kindOptions(ctx, '通常')}</select></label>
       <label style="flex:1">形式<select name="deliveryMode"><option value="in_person">対面</option><option value="online">オンライン</option></select></label></div>
     <div class="row"><label style="flex:1">担当<select name="staffId">${staffOptions(ctx, me.id)}</select></label><label style="flex:1">くり返し<select name="repeat">${[1, 2, 3, 4, 5, 8, 12].map(n => `<option value="${n}">${n === 1 ? 'この日だけ' : '毎週×' + n + '回'}</option>`).join('')}</select></label></div>
-    <label>段階<select name="send">${past ? '' : '<option value="hold">下書き（塾だけ。あとで見せる・確認をお願いする）</option><option value="show">調整中として見せる（保護者・生徒のページに出す。メールなし）</option><option value="ask">確認をお願いする（締め切りを付けて保護者にメール 1 通）</option>'}<option value="done"${past ? ' selected' : ''}>実施済みとして登録（もう行った授業）</option></select></label>
-    <p class="small muted">${past ? 'もう行った授業を、はじめから実施済みで登録します。お知らせは送りません。授業料は、その月の承認済みの計画（同じ科目・種類）に入ります。記録はあとから「記録」で書けます。' : '何件も作るときは下書きにして、「対応すること」からまとめて見せる・確認をお願いすると、メールが 1 通で済みます。確認の締め切りは、お知らせから3日以上あと（翌月分だけなら今月25日）で、授業の2日前まで。それより近い授業は締め切りを置かず、保護者の「この日程で大丈夫」か、合意を記録して確定します。'}</p>
+    <label>段階<select name="send">${past ? '' : '<option value="hold">下書き（塾だけ）</option><option value="show">調整中として見せる（メールなし）</option><option value="ask">確認をお願いする（締め切りつき・保護者にメール 1 通）</option>'}<option value="done"${past ? ' selected' : ''}>実施済みとして登録</option></select></label>
+    ${past ? '<p class="small muted">お知らせは送りません。授業料はその月の承認済みの計画（同じ科目・種類）に入ります。</p>' : ''}
     <div class="row"><button class="primary"${ctx.dis()}>作る</button></div></form>`;
 }
 function editForm(ctx, l) {
@@ -306,17 +299,17 @@ function editForm(ctx, l) {
       <label style="flex:1">形式<select name="deliveryMode"><option value="in_person"${l.deliveryMode === 'in_person' ? ' selected' : ''}>対面</option><option value="online"${l.deliveryMode === 'online' ? ' selected' : ''}>オンライン</option></select></label></div>
     <label>担当<select name="staffId">${staffOptions(ctx, l.staffId)}</select></label>
     <label>メモ（スタッフだけ）<input name="note" maxlength="1000" value="${ctx.esc(l.note || '')}"></label>
-    ${l.status === 'proposed' && l.asked ? '<p class="small muted" style="margin:0">確認待ちの授業です。日時を変えると調整中に戻ります（締め切りを外します。メールは送りません）。</p>' : l.status === 'proposed' ? '<p class="small muted" style="margin:0">調整中の授業です。日時を変えても保護者へのメールは出ません（ページの表示が変わります）。</p>' : l.status === 'decided' ? '<p class="small muted" style="margin:0">確定した授業です。日時を変えると保護者にお知らせが届きます。</p>' : ''}
+    ${l.status === 'proposed' && l.asked ? '<p class="small muted" style="margin:0">日時を変えると調整中に戻ります（締め切りを外す・メールなし）。</p>' : l.status === 'proposed' ? '<p class="small muted" style="margin:0">日時を変えても保護者へのメールは出ません。</p>' : l.status === 'decided' ? '<p class="small muted" style="margin:0">日時を変えると保護者にお知らせが届きます。</p>' : ''}
     ${l.status === 'decided' && after ? (rateRule(l)
       ? `<label class="checks"><label><input type="checkbox" name="lateStart"> 生徒の申し出で開始を遅らせる（遅らせた分の取消料がかかります）</label></label>
-        <label>申し出を受けた時刻（空なら「開始を遅らせたい」の連絡の時刻、なければ今）<input type="datetime-local" name="receivedAt"></label>`
-      : '<label class="checks"><label><input type="checkbox" name="lateStart"> 当日の開始時刻の変更として記録する（生徒の申し出・料金は変えない）</label></label>') : ''}
+        <label>申し出を受けた時刻（空なら連絡の時刻か今）<input type="datetime-local" name="receivedAt"></label>`
+      : '<label class="checks"><label><input type="checkbox" name="lateStart"> 当日の開始時刻の変更として記録する（料金は変えない）</label></label>') : ''}
     <div class="row"><button class="primary"${ctx.dis()}>保存</button><button type="button" data-action="sch-edit-cancel">やめる</button></div></form>`;
 }
 // キャンセル（新しい決まり）: 連絡を受けた時刻で取消料が決まる。LINE などで受けた時刻を入れる
 function cancelForm(ctx, l) {
   return `<form class="stack" data-form="sch-cancel" data-id="${ctx.esc(l.id)}" data-version="${l.version}" style="margin:8px 0 0">
-    <p class="small" style="margin:0">キャンセル料は、連絡を受けた時刻で決まります（前日23時〜開始3時間前は25%、そこから開始時刻の100%まで上がります）。前日23時までの連絡なら「お休みにする」を使ってください。</p>
+    <p class="small" style="margin:0">キャンセル料は連絡を受けた時刻で決まります（前日23時〜開始3時間前は25%、開始時刻で100%まで上がる）。前日23時までの連絡は「お休みにする」。</p>
     <label>連絡を受けた時刻<input type="datetime-local" name="receivedAt" value="${nowLocal()}"></label>
     <label class="checks"><label><input type="checkbox" name="noNotice"> 連絡がなかった（無断欠席。100%）</label></label>
     <div class="row"><button class="danger"${ctx.dis()}>キャンセルにする</button><button type="button" data-action="sch-edit-cancel">やめる</button></div></form>`;
@@ -324,9 +317,9 @@ function cancelForm(ctx, l) {
 // 遅刻（新しい決まり）: 予定の時刻に終わる。遅れた分は授業料に入れず、遅れるという連絡を受けた時刻の率で取消料
 function tardyForm(ctx, l) {
   return `<form class="stack" data-form="sch-tardy" data-id="${ctx.esc(l.id)}" data-version="${l.version}" style="margin:8px 0 0">
-    <p class="small" style="margin:0">授業は予定の時刻（${endOf(l.start, l.minutes)}）に終わります。遅れた分は授業料に入れず、取消料になります。0分にすると取り消せます。</p>
+    <p class="small" style="margin:0">終わりは予定どおり ${endOf(l.start, l.minutes)}。遅れた分は授業料でなく取消料になります（0分で取り消し）。</p>
     <label>遅れた分数<input type="number" name="lateMinutes" min="0" max="${l.minutes - 1}" step="1" value="${l.lostMinutes || ''}" required inputmode="numeric"></label>
-    <label>遅れるという連絡を受けた時刻（連絡がなければ空）<input type="datetime-local" name="receivedAt"></label>
+    <label>遅れるという連絡を受けた時刻（なければ空）<input type="datetime-local" name="receivedAt"></label>
     <div class="row"><button class="primary"${ctx.dis()}>記録する</button><button type="button" data-action="sch-edit-cancel">やめる</button></div></form>`;
 }
 function offForm(ctx, me, manager) {
@@ -377,14 +370,14 @@ export async function scheduleSubmit(ctx, kind, el) {
     if ((await after(ctx, r, '')) === 'force') r = await ctx.call('schedule/lessons/create', { ...body, force: true });
     if (r.ok) {
       sheet = r.lineText ? { kind: 'line', title: '確認をお願いしました', text: r.lineText } : null; cache = {}; sel = v.date;
-      ctx.say(r.trial ? `体験の授業を${r.created}件、確定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を下書きで作りました（保護者・生徒には見えません）` : r.shown ? `${r.created}件を調整中として見せました（メールなし）` : `${r.created}件の確認をお願いしました${askNote(r)}`, 'ok'); data = null; loadedFor = '';
+      ctx.say(r.trial ? `体験の授業を${r.created}件、確定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を下書きで作りました` : r.shown ? `${r.created}件を調整中として見せました（メールなし）` : `${r.created}件の確認をお願いしました${askNote(r)}`, 'ok'); data = null; loadedFor = '';
     }
     return true;
   }
   if (kind === 'sch-update') {
     const body = { id: el.dataset.id, version: Number(el.dataset.version), date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, note: v.note, lateStart: v.lateStart === 'on', receivedAt: v.receivedAt || '' };
     let r = await ctx.call('schedule/lessons/update', body);
-    const saved = x => x.ok && x.fee ? `保存しました（開始を遅らせた分の取消料 ${yen(x.fee.amount)}）` : x.ok && x.backToAdjusting ? '保存しました（日時を変えたので調整中に戻しました。もう一度確認をお願いしてください）' : '保存しました';
+    const saved = x => x.ok && x.fee ? `保存しました（開始を遅らせた分の取消料 ${yen(x.fee.amount)}）` : x.ok && x.backToAdjusting ? '保存しました（調整中に戻しました）' : '保存しました';
     if ((await after(ctx, r, saved(r))) === 'force') { r = await ctx.call('schedule/lessons/update', { ...body, force: true }); await after(ctx, r, saved(r)); }
     if (r.ok) { sel = v.date; sheet = null; }
     return true;

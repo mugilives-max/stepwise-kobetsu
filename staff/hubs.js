@@ -1,7 +1,7 @@
 // スタッフの「月の仕事」と「設定」（docs/UX_STRUCTURE.md 3）。設定は アカウント・教室の運営（時給・授業の種類）・システム（スタッフ・移行）。
 // 月の仕事は、月の流れの順（前月分の請求 → 翌月の受講合意書 → 翌月の予定表 → 前月分の給与）に、どこまで済んだかを出す（API monthly/overview）。
 // 1 つの仕事が 1 枚の白い枠。上の行（色つきのアイコン・名前・時期）を押すとその画面へ。今の時期の枠は青い縁。
-import { ICON } from '/staff/ui.js?v=20261008-launch1';
+import { ICON } from '/staff/ui.js?v=20261025-layout';
 
 let overview = null;
 export function resetMonthly() { overview = null; }
@@ -23,10 +23,10 @@ export function monthlyPage(ctx) {
   if (overview.error) return h + `<p class="notice error">${esc(overview.error)}</p>`;
   const o = overview, b = o.billing, p = o.planning, s = o.schedule, y = o.payroll;
   // 1 枚の枠: 上の行を押すとその画面へ。中は印と、確かめることの名前
-  const step = (key, icon, color, when, title, href, body) => `<section class="job${o.now === key ? ' now' : ''}"><a class="job-head" href="${href}">${ibox(icon, color, title)}<span class="v"><span class="lbl">${title}</span><small>${when}${o.now === key ? '・<b>今の時期</b>' : ''}</small></span><span class="go">›</span></a>${body ? `<div class="job-body">${body}</div>` : ''}</section>`;
+  const step = (key, icon, color, when, title, href, body) => `<section class="job${o.now === key ? ' now' : ''}"><a class="job-head" href="${href}">${ibox(icon, color, title)}<span class="v"><span class="lbl">${title}</span><small>${when}</small></span><span class="go">›</span></a>${body ? `<div class="job-body">${body}</div>` : ''}</section>`;
   // 1. 前月分の請求
   let bb = chips([['確定', b.confirmed, '', true], ['確定できる', b.ready, 'ok'], ['確かめること', b.check.length, 'danger'], ['入金済み', b.paid, 'ok'], ['振込の連絡', b.reported, 'warn'], ['お支払い待ち', b.waiting, 'gray'], ['キャンセル料の判断', b.fees, 'danger']]);
-  bb += `<div class="small muted">${b.families}家族。${md(b.closeOn)}の0時10分に、確かめることのない家族の分を自動で確定します。</div>`;
+  bb += `<div class="small">${md(b.closeOn)} 0:10 に自動で確定</div>`;
   if (b.check.length) bb += '<div class="small">' + b.check.map(f => `<div><b>${esc(f.name)}</b>：${esc(f.issues.join(' / '))}</div>`).join('') + '</div>';
   if (b.unapproved.length) bb += `<div class="small muted">受講合意書の承認がない授業: ${b.unapproved.map(f => esc(f.name) + ' ' + f.n + '件').join('・')}</div>`;
   h += step('billing', 'yen', '#c0392b', '1〜2日', `${mon(b.month)}分の請求`, '#billing', bb);
@@ -39,11 +39,10 @@ export function monthlyPage(ctx) {
   let sb = chips([['予定なし', s.none.length, 'danger'], ['下書き', s.held.reduce((n, x) => n + x.n, 0), 'gray'], ['調整中・確認待ち', s.proposed, 'warn'], ['確定', s.decided, 'ok', true]]);
   if (s.none.length) sb += `<div class="small">授業がまだない: ${names(esc, s.none)}</div>`;
   if (s.held.length) sb += `<div class="small muted">予定表を送っていない: ${s.held.map(x => esc(x.name) + ' ' + x.n + '件').join('・')}</div>`;
-  sb += '<div class="small muted">締め切りは原則25日。連絡がなければ締め切りの翌日に決定します。</div>';
   h += step('planning', 'calendar', '#e0a100', '〜20日', `${mon(s.month)}の予定表`, '#schedule', sb);
   // 4. 前月分の給与
   let yb = chips([['講師', y.staff, 'gray', true], ['確定できる', y.ready, 'ok'], ['確かめること', y.check.length, 'danger'], ['支払い待ち', y.confirmed, 'warn'], ['支払い済み', y.paid, 'ok']]);
-  yb += `<div class="small muted">支払日 ${md(y.payOn)}。</div>`;
+  yb += `<div class="small">支払日 ${md(y.payOn)}</div>`;
   if (y.check.length) yb += '<div class="small">' + y.check.map(x => `<div><b>${esc(x.name)}</b>：${esc(x.issues.join(' / '))}</div>`).join('') + '</div>';
   if (y.unassigned) yb += `<div class="small" style="color:var(--danger)">担当の講師がいない実施済みの授業が ${y.unassigned}件あります。</div>`;
   if(!y.restricted) h += step('closing', 'payroll', '#2e9b5f', '月末〜25日', `${mon(y.month)}分の給与`, '#payroll', yb);
@@ -51,18 +50,18 @@ export function monthlyPage(ctx) {
 }
 
 // 設定: 色つきのアイコンの行。押すとその画面へ
-const row = (href, icon, color, title, note) => `<a class="todo-row" href="${href}">${ibox(icon, color, title)}<span class="v"><span class="lbl">${title}</span><small>${note}</small></span><span class="go">›</span></a>`;
+const row = (href, icon, color, title) => `<a class="todo-row" href="${href}">${ibox(icon, color, title)}<span class="v"><span class="lbl">${title}</span></span><span class="go">›</span></a>`;
 export function settingsPage(ctx, me) {
   const { esc } = ctx, roles = me.roles;
   let h = ctx.notice();
-  h += '<div class="group" style="margin-top:12px">' + row('#account', 'person', '#2f6fde', esc(me.name) + ' さん', esc(me.email) + '・パスワード・ログアウト') + '</div>';
-  if(me.contractType==='owner')h+='<div class="group">'+row('#employment','person','#2f6fde','講師の雇用・勤務','登録・契約・給与設定・勤務の確認')+'</div>';
-  else if(me.contractType==='employee')h+='<div class="group">'+row('#employment','file','#2f6fde','自分の雇用・勤務','契約書・勤務予定・実績・控え')+'</div>';
-  if(me.contractType==='owner'||me.contractType==='employee')h+='<div class="group">'+row('#rules','file','#7a5bd6','講師マニュアル',me.contractType==='owner'?'日々の仕事のやり方・読んだ講師':'日々の仕事のやり方')+'</div>'; // 雇用契約書 第9条7項
+  h += '<div class="group" style="margin-top:12px">' + row('#account', 'person', '#2f6fde', esc(me.name) + ' さん') + '</div>';
+  if(me.contractType==='owner')h+='<div class="group">'+row('#employment','person','#2f6fde','講師の雇用・勤務')+'</div>';
+  else if(me.contractType==='employee')h+='<div class="group">'+row('#employment','file','#2f6fde','自分の雇用・勤務')+'</div>';
+  if(me.contractType==='owner'||me.contractType==='employee')h+='<div class="group">'+row('#rules','file','#7a5bd6','講師マニュアル')+'</div>'; // 雇用契約書 第9条7項
   if(me.employmentAccess===false)return h;
-  if (roles.includes('manager')) h += '<div class="sec-title">教室の運営</div><div class="group">' + (me.contractType==='owner'?row('#rates', 'yen', '#2e9b5f', '時給と源泉徴収', '講師ごとの授業・面談の時給、甲欄・乙欄'):'') + row('#kinds', 'plan', '#5b6672', '授業の種類と標準料金', '受講合意書を作るときの初期値') + row('#terms', 'file', '#c98a00', '受講規約', '使う規約・保護者への同意のお願い') + row('#docs', 'file', '#5b6672', '書類のひな形', '受講条件書・特別単価合意書・請求書・領収書の見本をすぐ開く') + row('#effects', 'mail', '#d0533c', '送信の記録と控え', '送れなかったメール・カレンダーを送り直す。台帳の控え') + '</div>';
+  if (roles.includes('manager')) h += '<div class="sec-title">教室の運営</div><div class="group">' + (me.contractType==='owner'?row('#rates', 'yen', '#2e9b5f', '時給と源泉徴収'):'') + row('#kinds', 'plan', '#5b6672', '授業の種類と標準料金') + row('#terms', 'file', '#c98a00', '受講規約') + row('#docs', 'file', '#5b6672', '書類のひな形') + row('#effects', 'mail', '#d0533c', '送信の記録と控え') + '</div>';
   // 検証環境（2026-10-19。本番とは別の、架空のデータで試す場所。docs/SYSTEM.md 6-0）は別のタブで開く
-  const staging = `<a class="todo-row" href="https://stepwise-staging.stepwise-edu.workers.dev/" target="_blank" rel="noopener">${ibox('check', '#7a2e0e', '検証環境')}<span class="v"><span class="lbl">検証環境</span><small>本番とは別の、架空のデータで新しい流れを試す場所（別のタブで開きます）</small></span><span class="go">›</span></a>`;
-  if (roles.includes('sysadmin')) h += '<div class="sec-title">システム</div><div class="group">' + row('#staff', 'person', '#7b4fd6', 'スタッフ', '招待・名前と役割・停止') + staging + '</div>';
+  const staging = `<a class="todo-row" href="https://stepwise-staging.stepwise-edu.workers.dev/" target="_blank" rel="noopener">${ibox('check', '#7a2e0e', '検証環境')}<span class="v"><span class="lbl">検証環境</span></span><span class="go">↗</span></a>`;
+  if (roles.includes('sysadmin')) h += '<div class="sec-title">システム</div><div class="group">' + row('#staff', 'person', '#7b4fd6', 'スタッフ') + staging + '</div>';
   return h;
 }

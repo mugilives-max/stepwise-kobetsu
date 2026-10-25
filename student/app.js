@@ -3,10 +3,10 @@
 // 一覧は白い枠に 1 件 1 行、宿題は左の丸を押して「できた」（assets/v2/portal-ui.js）。
 // 鍵は端末に保存して URL から消す。保護者が「保護者だけ」にした操作はできない。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, esc, liveState } from '/assets/v2/api.js';
-import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
-import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
-import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261016-notices';
-import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261020-next';
+import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261025-layout';
+import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
+import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261025-layout';
+import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261025-layout';
 
 const app = document.getElementById('app'), nav = document.getElementById('nav');
 const KEY = 'sw2_student_k';
@@ -29,7 +29,7 @@ const say = (m, kd = '') => { notice = m ? { m, kd } : null; };
 const noticeHtml = () => notice ? `<p class="notice ${notice.kd}" role="${notice.kd === 'error' ? 'alert' : 'status'}">${esc(notice.m)}</p>` : '';
 async function run(task) { if (busy) return; busy = true; render(); try { await task(); } finally { busy = false; render(); } }
 // 切り替える前だけ出す案内（health の cutover.live で決める）
-const prepText = '<p class="notice small">準備中の新しい生徒ページです。今は今までの専用リンク（マイページ）をお使いください。</p>';
+const prepText = '<p class="notice small">準備中です。今は今までの専用リンク（マイページ）をお使いください。</p>';
 const prep = () => { const s = liveState(render); return s.known && !s.live ? prepText : ''; };
 
 async function load() { const r = await call('student/schedule', { k }); if (r.ok) sched = r; else { sched = { error: r.error.message }; } render(); }
@@ -80,7 +80,7 @@ function render() {
     else {
       const d = calData[cal.month], lessons = d.lessons.filter(l => l.status !== 'held'), events = d.events;
       const kari = lessons.filter(l => l.status === 'proposed' && l.confirmBy);
-      if (kari.length) h += `<p class="notice small" style="margin:0 0 6px">調整中（オレンジ）${kari.length}件：${sched.permissions.reschedule ? '都合の悪い授業だけ押して連絡してください。' : '都合が悪いときは保護者の方から連絡してもらってください。'}連絡がなければ締め切りで決まります。</p>`;
+      if (kari.length) h += `<p class="notice small" style="margin:0 0 6px">調整中 ${kari.length}件・連絡がなければ締め切りで決まります</p>`;
       const cell = date => { const ls = lessons.filter(l => l.date === date && l.status in RANK).sort((a, b) => a.start.localeCompare(b.start));
         return { lines: events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`).concat(ls.map(l => `<span class="nm r${RANK[l.status]}">${esc(l.subject)}</span>`)), count: ls.length }; };
       const day = (date, first) => cal.dayHead(date, first, `<span class="muted small">授業 ${lessons.filter(l => l.date === date && l.status in RANK).length}件</span>`) + dayRows(date, lessons, events, { canDelete: e => sched.permissions.events && e.createdByKind === 'student' });
