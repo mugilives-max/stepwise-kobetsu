@@ -1,9 +1,9 @@
-// スタッフの画面: 設定の下の「受講規約」（#terms）と「送信の記録」（#effects）。教室管理者だけ。
-// 受講規約: 今の版（版・名前・全文のリンク・適用日・説明）を決める。家族ごとの同意の状態と記録。
+// スタッフの画面: 設定の下の「ご利用規約」（#terms）と「送信の記録」（#effects）。教室管理者だけ。
+// ご利用規約: 今の版（版・名前・全文のリンク・適用日・説明）を決める。家族ごとの同意の状態と記録。
 // 送信の記録: 送れなかったメール・カレンダー（失敗・止まっているもの）を送り直す・取り下げる。最近送ったものも見える。
 import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
 
-let termsStep = '', termsFams = null, termsSite = null, termsPick = []; // 受講規約: '' | 'decide'（使う規約を決める確認）| 'request'（同意をお願いする確認）。termsPick: お願いする家族
+let termsStep = '', termsFams = null, termsSite = null, termsPick = []; // ご利用規約: '' | 'decide'（使う規約を決める確認）| 'request'（同意をお願いする確認）。termsPick: お願いする家族
 let terms = null, effects = null, effOpen = 0, backups = null;
 export function resetExtras() { termsStep = ''; termsPick = []; termsFams = null; termsSite = null; terms = null; effects = null; effOpen = 0; backups = null; }
 export function leaveExtras() { effOpen = 0; termsStep = ''; }
@@ -15,7 +15,7 @@ const jst = t => t ? new Date(Date.parse(t) + 9 * 3600e3).toISOString().slice(5,
 // 書類の一覧: 種類ごとにまとめ、1 行の説明だけ。行を押すと見本（架空の家族で作った書面）が開く
 const DOC_GROUPS = [
   ['契約の書類', '#2f6fde', [
-    ['terms', '受講規約', '保護者が最初に同意する、塾全体のきまり'],
+    ['terms', 'ご利用規約', '保護者が最初に同意する、塾全体のきまり'],
     ['condition', '受講条件書', '生徒ごとの授業時間と料金。保護者の同意で確定します'],
     ['special', '特別単価合意書', '通常とは別の料金で行う指導の内容と料金'],
     ['agreement', '受講合意書', '月ごとの授業の回数と料金。保護者の承認で確定します'],
@@ -47,8 +47,8 @@ export function docsPage(ctx) {
   return h + '<p class="small muted" style="margin-top:14px">見本は印刷（Ctrl+P）で PDF にできます。</p>';
 }
 
-// ---- 受講規約 ----
-// 受講規約（設定 → 受講規約）。2026-10-18 作り直し、2026-10-20 本人「決定するのと、同意をお願いするのが同時…気持ち悪い」→ 2 つに分けた:
+// ---- ご利用規約 ----
+// ご利用規約（設定 → ご利用規約）。2026-10-18 作り直し、2026-10-20 本人「決定するのと、同意をお願いするのが同時…気持ち悪い」→ 2 つに分けた:
 // 1. 使う規約（サイトの正式版 terms/versions.json から「この規約に決める」→ 確認 → 決める）。決めただけでは今の家族に何も出ない
 // 2. 保護者への同意のお願い（家族を選ぶ → 確認（一言・メール）→ お願いする）。家族ごとに 同意済み／お願い中／まだ。版の名前や URL を手で打たない
 // 日付だけ（YYYY-MM-DD）はそのまま、日時（ISO）は日本の日付にする
@@ -72,16 +72,17 @@ export function termsPage(ctx) {
   const state = fm => fm.termsVersion === t.version ? 'agreed' : asked(fm.id) ? 'asked' : 'not';
   // 規約を決める確認（別の画面）
   if (termsStep === 'decide' && latest) {
-    return h + `<p style="margin-top:12px">次の規約を、これから使う受講規約に決めます。</p>
+    const first = !t.version;
+    return h + `<p style="margin-top:12px">次の版を、すべての家族に共通のご利用規約として${first ? '使い始めます' : '使います（今の版から切り替えます）'}。</p>
       <section class="reg-card"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>${kv(esc, [['適用日', esc(jaDay(latest.from))], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}</section>
-      <section class="reg-card"><div class="reg-card-head"><h2>決めるとどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
+      <section class="reg-card"><div class="reg-card-head"><h2>${first ? '使い始める' : '切り替える'}とどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
         <li>これから作る受講条件書・特別単価合意書は、この規約によります。</li>
         <li>新しく入塾する家族は、申込みのときにこの規約に同意します。</li>
         <li>今通っている家族には、まだ何も出ません。同意のお願いは、このあと家族を選んで行います。</li>
-        <li>決めた規約の名前・全文・適用日は、あとから変えられません。直すときは新しい版を決めます。</li></ul></section>
+        <li>この版の名前・全文・適用日は、あとから変えられません。直すときは新しい版にします。</li></ul></section>
       <form class="reg-form" data-form="terms-decide">
-        <label class="choice"><input type="checkbox" name="confirm" required><span>全文を読み、この規約を使うことを確かめました</span></label>
-        <div class="stack"><button class="primary wide"${ctx.dis()}>この規約に決める</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
+        <label class="choice"><input type="checkbox" name="confirm" required><span>全文を読み、この版を使うことを確かめました</span></label>
+        <div class="stack"><button class="primary wide"${ctx.dis()}>${first ? 'この版を使い始める' : 'この版に切り替える'}</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
   // 同意をお願いする確認（別の画面）
   if (termsStep === 'request' && t.version && termsFams) {
@@ -101,27 +102,30 @@ export function termsPage(ctx) {
         <label class="choice"><input type="checkbox" name="confirm" required><span>この家族に同意をお願いすることを確かめました</span></label>
         <div class="stack"><button class="primary wide"${ctx.dis()}>同意をお願いする</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
-  // 1. 使う規約
+  // 0. 全員共通のきまりであること（家族ごとに違うのは受講条件書と受講合意書）。2026-10-25 本人「受講規約って全員共通のやつじゃないですか。それがもっとわかりやすいといい」
+  h += `<p style="margin:12px 2px 6px">ご利用規約は、<strong>すべての家族に共通</strong>の、塾のきまりです。家族ごとに違うのは、次の書類です。</p>
+    <div class="group">${[['ご利用規約', '全員共通（この画面）'], ['受講条件書', 'お子さまごと（授業の時間・料金など）'], ['受講合意書', '月ごと（その月の回数と料金）']].map(([k, v]) => `<div class="evrow"><span class="b"><span class="nm">${k}</span><small>${v}</small></span></div>`).join('')}</div>`;
+  // 1. 今の版
   if (t.version) {
     const reg = terms.catalogue.find(x => x.version === t.version);
-    h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>使う規約</h2><span class="tag ok">決定</span></div>
-      ${kv(esc, [['規約', esc(t.title || t.version) + (t.url ? '<br>' + open(t.url, '全文を読む') : '')], ['適用日', esc(jaDay(t.from) || '—')], ...(reg && reg.registeredAt ? [['決めた日', esc(jaDay(reg.registeredAt))]] : [])])}
-      <p class="reg-help" style="margin:6px 0 0">これから作る受講条件書・特別単価合意書と、新しく入塾する家族の申込みは、この規約によります。</p></section>`;
+    h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>今の版</h2><span class="tag ok">全員共通</span></div>
+      ${kv(esc, [['規約', esc(t.title || t.version) + (t.url ? '<br>' + open(t.url, '全文を読む') : '')], ['適用日', esc(jaDay(t.from) || '—')], ...(reg && reg.registeredAt ? [['使い始めた日', esc(jaDay(reg.registeredAt))]] : [])])}
+      <p class="reg-help" style="margin:6px 0 0">これから作る受講条件書・特別単価合意書と、新しく入塾する家族の申込みは、この版によります。</p></section>`;
   } else {
-    h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>まだ使う規約を決めていません</h2></div>
-      <p class="reg-help" style="margin:6px 0 0">使う規約を決めると、入塾の案内を送れるようになります。決めただけでは、今通っている家族には何も出ません。</p></section>`;
+    h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>まだ使い始めていません</h2></div>
+      <p class="reg-help" style="margin:6px 0 0">使い始めると、入塾の案内を送れるようになります。使い始めただけでは、今通っている家族には何も出ません。</p></section>`;
   }
   if (latest && latest.version !== t.version) {
-    h += `<div class="sec-title">${t.version ? '新しい規約があります' : '決められる規約'}</div>
+    h += `<div class="sec-title">${t.version ? '新しい版があります' : '使い始められる版'}</div>
       <section class="reg-card" style="margin-top:0"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>
       ${kv(esc, [['適用日', esc(jaDay(latest.from))], ['内容', esc(latest.summary || '')], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}
-      <button class="primary wide" style="margin-top:10px" data-action="terms-decide-start"${ctx.dis()}>この規約に決める</button>
-      <p class="reg-help" style="margin:6px 0 0">押しても、まだ決まりません。次の画面で、決めるとどうなるかを確かめてから決めます。</p></section>`;
+      <button class="primary wide" style="margin-top:10px" data-action="terms-decide-start"${ctx.dis()}>${t.version ? 'この版に切り替える' : 'この版を使い始める'}</button>
+      <p class="reg-help" style="margin:6px 0 0">押しても、まだ${t.version ? '切り替わりません' : '使い始めません'}。次の画面で、どうなるかを確かめてから進めます。</p></section>`;
   } else if (!latest) h += '<p class="small muted">サイトの規約の一覧を読み込めませんでした。画面を読み直してください。</p>';
   // 2. 保護者への同意のお願い
   if (t.version && termsFams) {
     const n = { agreed: 0, asked: 0, not: 0 }; termsFams.forEach(fm => n[state(fm)]++);
-    h += `<div class="sec-title">保護者への同意のお願い</div>
+    h += `<div class="sec-title">この版への同意（家族ごと）</div>
       <p class="small muted" style="margin:0 2px 8px">同意済み ${n.agreed}・お願い中 ${n.asked}・まだお願いしていない ${n.not}（${termsFams.length}家族）</p>`;
     if (!termsFams.length) h += '<p class="small muted">家族がまだいません。</p>';
     else {
@@ -140,7 +144,7 @@ export function termsPage(ctx) {
     }
   }
   // 3. めったに使わないもの
-  h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトの受講規約</span><small>サイトの受講規約のページを開きます</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
+  h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトのご利用規約</span><small>サイトのご利用規約のページを開きます</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
   if (terms.history.length) h += `<details style="margin-top:12px"><summary>同意の記録（新しい${terms.history.length}件）</summary><div class="group">` + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(jaDay(x.acceptedAt))}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}・同意者：${esc(x.consenterName || '記録なし')}${x.actorKind === 'staff' ? `（${esc(x.recordedByName || '教室')}が記録）` : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div></details>';
   const openReq = termsFams ? termsFams.filter(fm => state(fm) === 'asked') : [];
   if (openReq.length) h += `<details style="margin-top:12px"><summary>同意のお願いを取り下げる</summary><p class="small muted">間違えてお願いしたときに使います。お願いした記録は残ります。</p><div class="group">${openReq.map(fm => `<div class="evrow"><span class="b"><span class="nm">${esc(fm.name)}</span></span><button type="button" class="small-btn" data-action="terms-withdraw" data-id="${esc(fm.id)}"${ctx.dis()}>取り下げる</button></div>`).join('')}</div></details>`;
@@ -197,9 +201,9 @@ export async function extrasSubmit(ctx, kind, el) {
     return true;
   }
   const latest = termsSite?.versions?.[0];
-  if (!latest) { ctx.say('決められる規約を読み込めませんでした。画面を読み直してください', 'error'); return true; }
+  if (!latest) { ctx.say('サイトの規約の一覧を読み込めませんでした。画面を読み直してください', 'error'); return true; }
   const r = await ctx.call('admin/terms/set', { version: latest.version, title: latest.title, url: latest.url, from: latest.from, note: '' });
-  if (r.ok) { terms = null; termsStep = ''; scrollTo(0, 0); ctx.say('使う規約を決めました。今通っている家族への同意のお願いは、下で家族を選んで行います。', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+  if (r.ok) { terms = null; termsStep = ''; scrollTo(0, 0); ctx.say('この版を使い始めました。今通っている家族への同意のお願いは、下で家族を選んで行います。', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;
 }
 export async function extrasClick(ctx, a, b) {

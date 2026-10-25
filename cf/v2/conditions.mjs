@@ -1,5 +1,5 @@
 import { familyTarget } from '../../assets/v2/family-target.js';
-// 受講条件書（受講規約の「受講条件書」。migrations-v2/0018_conditions.sql）
+// 受講条件書（ご利用規約の「受講条件書」。migrations-v2/0018_conditions.sql）
 // - 教室管理者が生徒ごとに「条件を決めてお知らせ」する（admin/conditions/propose）。基本の授業時間と1回の税込の通常の基準単価、形式、人数、
 //   生徒本人の連絡の可否、科目、特記、適用開始月。お知らせすると保護者にメールが届き、保護者ページに同意のお願いが出る
 // - 保護者は保護者ページで内容を見て同意する（family/conditions/agree）。同意していない条件がある家族は、計画を承認できない（規約と同じ）

@@ -192,11 +192,11 @@ export function planGroups(plans) {
 }
 export const inquirySheet = (month, note, busy) => sheet(esc, `${monthLabel(month)}の受講合意書について`, `<p class="small muted">違うところや確かめたいことを書いてください。先生に届きます。</p><textarea id="inquiry-note" rows="3" maxlength="500" placeholder="例: 英語は 4 回ではなく 3 回で話していました">${esc(note || '')}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-inquiry" data-month="${esc(month)}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '先生に伝える'}</button></div>`, 'close-sheet');
 
-// ---- 受講規約（同意が要るとき） ----
+// ---- ご利用規約（同意が要るとき） ----
 export function termsCard(terms, { busy = false, checked = false, consenterName = '' } = {}) {
   const t = terms.current;
-  return `<div class="pcard ask" data-terms="${esc(t.version)}"><div class="pc-head"><strong>${esc(t.title || '受講規約')}</strong><span class="tag warn">同意をお願いします</span></div>
-    <p class="small">${t.from ? `${esc(t.from)} から適用されます。` : ''}${t.note ? esc(t.note) : '受講合意書を承認する前に、受講規約をお読みください。'}${terms.agreed.version ? `<br><span class="muted">前の版（${esc(terms.agreed.version)}）には同意いただいています。</span>` : ''}</p>
+  return `<div class="pcard ask" data-terms="${esc(t.version)}"><div class="pc-head"><strong>${esc(t.title || 'ご利用規約')}</strong><span class="tag warn">同意をお願いします</span></div>
+    <p class="small">${t.from ? `${esc(t.from)} から適用されます。` : ''}すべてのご家庭に共通の、当塾のきまりです。${t.note ? esc(t.note) : '受講合意書を承認する前に、ご利用規約をお読みください。'}${terms.agreed.version ? `<br><span class="muted">前の版（${esc(terms.agreed.version)}）には同意いただいています。</span>` : ''}</p>
     ${t.url ? `<a class="btn wide" href="${esc(t.url)}" target="_blank" rel="noopener">${picon('file')} 規約の全文を読む</a>` : '<p class="small muted">全文は教室からお渡しします。</p>'}
     ${consenterField('terms', consenterName)}<label class="agree"><input type="checkbox" id="terms-agree"${checked ? ' checked' : ''}> 全文を読み、内容に同意します</label>
     <button class="primary wide" data-action="terms-accept" data-version="${esc(t.version)}"${busy ? ' disabled' : ''}>同意する</button></div>`;
@@ -225,7 +225,7 @@ export function specialCard(x, { busy = false, checked = false, consenterName = 
     <button class="primary wide" data-action="special-agree" data-id="${esc(x.id)}"${busy ? ' disabled' : ''}>承認する</button></div>`;
 }
 export const specialLine = items => (items || []).filter(x => x.status === 'agreed').map(x => `<p class="small muted">${esc(given(x.studentName))}さんの特別単価「${esc(x.title)}」承認済み（${esc(String(x.agreedAt).slice(0, 10))}）・${x.minutes}分 ${yen(x.fee)}・${ymdJa(x.fromDate)}〜${ymdJa(x.toDate)}${x.docFileId ? `　<button type="button" class="linkish" data-action="gr-open" data-id="${esc(x.docFileId)}">条件書を開く</button>` : ''}</p>`).join('');
-export const termsLine = terms => terms && terms.agreed.version ? `<p class="small muted">受講規約 ${esc(terms.agreed.version)} に同意済み（${esc(String(terms.agreed.at).slice(0, 10))}）${terms.agreed.url ? `・<a href="${esc(terms.agreed.url)}" target="_blank" rel="noopener">同意した版の全文</a>` : ''}</p>` : '';
+export const termsLine = terms => terms && terms.agreed.version ? `<p class="small muted">ご利用規約 ${esc(terms.agreed.version)} に同意済み（${esc(String(terms.agreed.at).slice(0, 10))}）${terms.agreed.url ? `・<a href="${esc(terms.agreed.url)}" target="_blank" rel="noopener">同意した版の全文</a>` : ''}</p>` : '';
 
 // ---- 請求 ----
 const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['入金の確認待ち', ''], paid: ['お支払い済み', 'ok'], void: ['取り消し済み', ''] };

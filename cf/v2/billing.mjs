@@ -523,9 +523,9 @@ export const billingRoutes = {
     const count = Number(b.approvedCount), min = await minCountFor(c, l);
     if (!Number.isInteger(count) || count < 0 || count > l.count) fail('badCount', `回数は0〜${l.count}回で選んでください`);
     if (count < min) fail('badCount', `すでに決まっている授業が${min}回あるため、${min}回より少なくはできません。先生にご相談ください`);
-    // 受講規約の今の版に同意していなければ、承認できない（統合3 D07。見送りは同意がなくてもよい）
+    // ご利用規約の今の版に同意していなければ、承認できない（統合3 D07。見送りは同意がなくてもよい）
     const terms = await familyTerms(c.db, me);
-    if (count > 0 && terms.needs) fail('needTerms', '受講規約への同意が必要です。「お支払い」の画面で規約を確かめて、同意してから承認してください', 409);
+    if (count > 0 && terms.needs) fail('needTerms', 'ご利用規約への同意が必要です。「お支払い」の画面で規約を確かめて、同意してから承認してください', 409);
     if (count > 0 && await familyNeedsConditions(c.db, me.id)) fail('needConditions', '受講条件書への同意が必要です。「お支払い」の画面で条件を確かめて、同意してから承認してください', 409);
     const now = iso(c.now), evidence = consentEvidence(c, b, me, me);
     if (count > 0) await assertPriorConsent(c, l, evidence.consentedAt);
