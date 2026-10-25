@@ -103,7 +103,7 @@ export function termsPage(ctx) {
         <div class="stack"><button class="primary wide"${ctx.dis()}>同意をお願いする</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
   // 0. 全員共通のきまりであること（家族ごとに違うのは受講条件書と受講合意書）。2026-10-25 本人「受講規約って全員共通のやつじゃないですか。それがもっとわかりやすいといい」
-  h += `<p style="margin:12px 2px 6px">ご利用規約は、<strong>すべての家族に共通</strong>の、塾のきまりです。家族ごとに違うのは、次の書類です。</p>
+  h += `<p style="margin:12px 2px 6px">ご利用規約は、<strong>すべての家族に共通</strong>の、塾のきまりです。家族ごとの内容は、受講条件書と受講合意書で決めます。</p>
     <div class="group">${[['ご利用規約', '全員共通（この画面）'], ['受講条件書', 'お子さまごと（授業の時間・料金など）'], ['受講合意書', '月ごと（その月の回数と料金）']].map(([k, v]) => `<div class="evrow"><span class="b"><span class="nm">${k}</span><small>${v}</small></span></div>`).join('')}</div>`;
   // 1. 今の版
   if (t.version) {

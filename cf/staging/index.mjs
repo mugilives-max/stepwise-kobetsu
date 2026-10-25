@@ -62,6 +62,11 @@ export default {
     // 画面が切り替えの状態を確かめる口（assets/v2/api.js の liveState）。検証環境はいつも「切り替えたあと」
     if (url.pathname === '/' && !(request.headers.get('Accept') || '').includes('text/html'))
       return json({ ok: true, service: 'stepwise-staging', release: 'staging', cutover: { live: true, oldReadOnlySince: '' } });
+    // 規約の一覧（設定 → ご利用規約が読む）: 全文・PDF のリンクを検証環境の写しに向ける（本番にまだ無い版も開けるように）
+    if (url.pathname === '/terms/versions.json') {
+      const res = await env.ASSETS.fetch(request);
+      return new Response((await res.text()).replaceAll(PROD, origin), { status: res.status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
+    }
     const res = await env.ASSETS.fetch(request);
     const out = new Response(res.body, res);
     out.headers.set('X-Robots-Tag', 'noindex, nofollow');
