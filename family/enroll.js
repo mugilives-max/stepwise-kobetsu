@@ -59,7 +59,7 @@ function docCards(esc, o) {
   return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書</h2></div>${condRows(esc, o)}
       ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>ご利用規約</h2></div>
-      <p style="margin:6px 0 0">${esc(data.terms.title || 'ご利用規約')}</p>
+      <p style="margin:6px 0 0">すべてのご家庭に共通の、当塾のきまりです。${data.terms.from ? `${Number(data.terms.from.slice(0, 4))}年${Number(data.terms.from.slice(5, 7))}月${Number(data.terms.from.slice(8, 10))}日から適用されます。` : ''}</p>
       ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener">ご利用規約の全文を開く</a></div>` : ''}</section>`;
 }
 function inputPage(ctx, o) {
@@ -68,10 +68,10 @@ function inputPage(ctx, o) {
   <form class="reg-form" data-form="enroll-input" novalidate>
     <fieldset class="reg-field"><legend>保護者さまの情報 <span class="req">必須</span></legend>
       <p class="reg-help">教室からのご連絡と、書類の宛名に使います。</p>
-      <div class="row">${field(esc, 'guardianFamilyName', '姓', { ph: '例：高橋', auto: 'family-name', max: 30 })}${field(esc, 'guardianGivenName', '名', { ph: '例：花子', auto: 'given-name', max: 30 })}</div>
-      <div class="row">${field(esc, 'guardianFamilyKana', 'ふりがな（姓）', { ph: '例：たかはし', max: 30 })}${field(esc, 'guardianGivenKana', 'ふりがな（名）', { ph: '例：はなこ', max: 30 })}</div>
+      <div class="row">${field(esc, 'guardianFamilyName', '姓', { ph: '例：山田', auto: 'family-name', max: 30 })}${field(esc, 'guardianGivenName', '名', { ph: '例：花子', auto: 'given-name', max: 30 })}</div>
+      <div class="row">${field(esc, 'guardianFamilyKana', 'ふりがな（姓）', { ph: '例：やまだ', max: 30 })}${field(esc, 'guardianGivenKana', 'ふりがな（名）', { ph: '例：はなこ', max: 30 })}</div>
       ${field(esc, 'phone', '電話番号', { type: 'tel', mode: 'tel', auto: 'tel', ph: '例：090-1234-5678', max: 20 })}
-      ${field(esc, 'zip', '郵便番号', { mode: 'numeric', auto: 'postal-code', ph: '例：343-0002', max: 8 })}${field(esc, 'address', '住所', { auto: 'street-address', ph: '例：越谷市袋山1-2-3', max: 200 })}
+      ${field(esc, 'zip', '郵便番号', { mode: 'numeric', auto: 'postal-code', ph: '例：343-0002', max: 8 })}${field(esc, 'address', '住所', { auto: 'street-address', ph: '例：越谷市〇〇町1-2-3', max: 200 })}
       <p class="reg-help">メールアドレス（ログイン用）：${esc((data.guardian || {}).email || '')}</p></fieldset>
     <fieldset class="reg-field${bad(['familyName', 'givenName', 'familyKana', 'givenKana', 'grade'])}"><legend>生徒さんの情報 <span class="req">必須</span></legend>
       <div class="row">${field(esc, 'familyName', '姓', { max: 40 })}${field(esc, 'givenName', '名', { max: 40 })}</div>

@@ -152,6 +152,7 @@ function basic(ctx, x) {
 // 体験 → 入塾の案内（代表）→ 保護者の申込み（規約・受講条件書の同意つき）→ 入塾（自動）。概要の先頭に、今すること 1 つだけを出す
 const ESTEPS = ['体験', '入塾の案内', '保護者の申込み', '入塾'];
 let lastInvite = null; // 送った直後だけ出す招待のリンク（保存していないので、あとからは出せない）
+let offerDraft = null; // 入塾の案内の書きかけ（「送りますか？」でキャンセルしたとき・送れなかったときに、入れた内容を残す）
 const nextMonth = today => { const [y, m] = today.split('-').map(Number); return m === 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0'); };
 const jaMonth = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
 const jaAt = t => t ? Number(t.slice(5, 7)) + '月' + Number(t.slice(8, 10)) + '日' : '';
@@ -161,19 +162,20 @@ function enrollSteps(i) {
 }
 function offerForm(ctx, x, again) {
   const { esc } = ctx, e = x.enrollment, b = x.basic, s = x.student, cond = (b.condition && b.condition.latest) || null;
-  const fee = cond ? cond.fee : (b.baseFee90 || ''), minutes = cond ? cond.minutes : 90, mode = cond ? cond.deliveryMode : (s.deliveryMode || 'in_person');
-  const from = cond && again ? cond.fromMonth : nextMonth(x.today.slice(0, 7));
+  const d = offerDraft && offerDraft.studentId === s.id ? offerDraft.v : null;
+  const fee = d ? d.fee : cond ? cond.fee : (b.baseFee90 || ''), minutes = d ? d.minutes : cond ? cond.minutes : 90, mode = d ? d.deliveryMode : cond ? cond.deliveryMode : (s.deliveryMode || 'in_person');
+  const from = d ? d.fromMonth : cond && again ? cond.fromMonth : nextMonth(x.today.slice(0, 7));
   const ready = e.termsReady;
   return `<form class="reg-form" data-form="enroll-offer" data-id="${esc(s.id)}" novalidate>
     <fieldset class="reg-field"><legend>保護者のメールアドレス <span class="req">必須</span></legend>
-      <input type="email" name="email" value="${esc(e.email || '')}" ${e.familyActive ? 'readonly' : ''} autocomplete="off" placeholder="parent@example.com">
+      <input type="email" name="email" value="${esc(d && !e.familyActive ? d.email : e.email || '')}" ${e.familyActive ? 'readonly' : ''} autocomplete="off" placeholder="parent@example.com">
       <p class="reg-help">${e.familyActive ? '登録済み（変えるときは家族の画面で）' : '保護者ページのログインにも使います'}</p></fieldset>
     <fieldset class="reg-field"><legend>受講条件</legend>
       <p class="reg-help">受講条件書になり、保護者が申込みで同意します</p>
       <div class="row"><label style="flex:1">開始月<input type="month" name="fromMonth" value="${esc(from)}" required></label><label style="flex:1">1回の時間（分）<input type="number" name="minutes" value="${esc(minutes)}" min="15" max="300" step="5" required></label><label style="flex:1">1回の基準単価（円・税込）<input type="number" name="fee" value="${esc(fee)}" min="0" max="100000" step="10" required></label></div>
       <div class="choices" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${Object.entries(MODE).map(([k, l]) => `<label class="choice"><input type="radio" name="deliveryMode" value="${k}"${mode === k ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
-      <label>科目<input name="subjects" value="${esc((cond && cond.subjects) || b.subjects || '')}" maxlength="100" placeholder="英語・数学"></label>
-      <label class="choice"><input type="checkbox" name="studentContact"${!cond || cond.studentContact ? ' checked' : ''}><span>生徒本人からのお休みの連絡を受け付ける</span></label>
+      <label>科目<input name="subjects" value="${esc(d ? d.subjects || '' : (cond && cond.subjects) || b.subjects || '')}" maxlength="100" placeholder="英語・数学"></label>
+      <label class="choice"><input type="checkbox" name="studentContact"${d ? (d.studentContact === 'on' ? ' checked' : '') : !cond || cond.studentContact ? ' checked' : ''}><span>生徒本人からのお休みの連絡を受け付ける</span></label>
     </fieldset>
     ${ready ? '' : '<p class="notice error" style="margin:0">ご利用規約をまだ使い始めていません。先に <a href="#terms">設定 → ご利用規約</a> で使い始めてください。</p>'}
     <div class="row"><button class="primary"${ready ? ctx.dis() : ' disabled'}>${again ? 'この条件で送り直す' : '入塾の案内を送る'}</button></div>
@@ -209,9 +211,11 @@ async function enrollDone(ctx, r, okText) {
 export async function studentsSubmit(ctx, kind, el) {
   if (kind === 'enroll-offer') {
     const v = Object.fromEntries(new FormData(el).entries());
+    offerDraft = { studentId: el.dataset.id, v };
     if (!v.email || !v.fromMonth || !v.minutes || v.fee === '' || !v.deliveryMode) { ctx.say('メールアドレス・開始月・1回の時間・基準単価・形式を入れてください', 'error'); return true; }
     if (!confirm(`${v.email} に入塾の案内を送りますか？`)) return true;
     const r = await ctx.call('admin/enrollment/offer', { studentId: el.dataset.id, email: v.email, fromMonth: v.fromMonth, minutes: Number(v.minutes), fee: Number(v.fee), deliveryMode: v.deliveryMode, subjects: v.subjects || '', studentContact: v.studentContact === 'on' });
+    if (r.ok) offerDraft = null;
     await enrollDone(ctx, r, '入塾の案内を送りました');
     return true;
   }
