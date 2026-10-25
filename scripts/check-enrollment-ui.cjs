@@ -44,7 +44,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await owner.goto(origin+'/staff/#student='+trial.studentId+'/summary');
   await owner.getByRole('heading',{name:'入塾の手続き',exact:true}).waitFor();
   assert.equal(await owner.locator('[data-form="enroll-offer"] button.primary').isDisabled(),true,'規約が無いうちは案内できない');
-  await owner.getByText('使う受講規約がまだ決まっていません',{exact:false}).waitFor();
+  await owner.getByText('ご利用規約をまだ使い始めていません',{exact:false}).waitFor();
   await h.ok('admin/terms/set',{auth,version:'2026-11-r9',title:'受講規約（2026年11月版）',url:'https://example.invalid/terms',from:'2026-11-01'});
   await owner.reload();
   const f='[data-form="enroll-offer"]';
@@ -78,7 +78,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await parent.getByRole('heading',{name:'入力内容の確認',exact:true}).waitFor();
   await parent.getByText('〒343-0002 【テスト】越谷市1-2-3',{exact:true}).waitFor();
   await parent.getByRole('button',{name:'受講条件書の全文を開く',exact:true}).waitFor(); // 同意の前に全文を開ける（確認の画面にも）
-  await parent.getByRole('link',{name:'受講規約の全文を開く',exact:true}).waitFor();
+  await parent.getByRole('link',{name:'ご利用規約の全文を開く',exact:true}).waitFor();
   assert.equal(h.rows('select count(*) n from termsConsents')[0].n,0,'確認の画面ではまだ何も記録しない');
   await parent.locator('[data-form="enroll-apply"] button.primary').click();
   await parent.getByText('「同意します」に印を付けてください',{exact:false}).waitFor();
@@ -91,7 +91,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   assert.deepEqual([s.trial,s.enrolledOn],[0,'2026-11-01'],'申し込んだらそのまま入塾');
   assert.equal(h.rows('select consenterName from termsConsents')[0].consenterName,'【テスト】架空 花子','同意者名は入れた氏名');
   await parent.goto(origin+'/family/#home');await parent.getByText('やること',{exact:true}).waitFor();
-  assert.equal((await parent.locator('#app').innerText()).includes('受講規約への同意'),false,'申込みで同意したので、別に求めない');
+  assert.equal((await parent.locator('#app').innerText()).includes('ご利用規約への同意'),false,'申込みで同意したので、別に求めない');
   report.checks.push('parent: password then the application page, required fields marked, confirm records nothing, consent required, enrolled at once with the typed name');
   // 3. 代表: 入塾した
   await owner.goto(origin+'/staff/#student='+trial.studentId+'/summary');

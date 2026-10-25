@@ -1,7 +1,7 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261018-enroll';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
-import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261020-r9';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261025-riyou';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
@@ -9,7 +9,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261016-notices';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261020-next';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261025-riyou2';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -125,7 +125,7 @@ function homePage() {
   // やること（押すとその画面へ）
   const todo = [], { asks, acks } = planGroups(money.plans);
   const enroll = enrollTodo(ectx()), covers = enrollCovers(ectx()); if (enroll) todo.push(enroll); // 入塾のお申込み（いちばん上）。申込みで規約・条件書にもまとめて同意する
-  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#money', 'file', '#c98a00', '受講規約への同意', (money.terms.current.title || '受講規約') + '・全文を読んで同意してください', 1]);
+  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#money', 'file', '#c98a00', 'ご利用規約への同意', (money.terms.current.title || 'ご利用規約') + '・全文を読んで同意してください', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs && !covers.students.has(x.studentId)) : [];
   if (needConds.length) todo.push(['#money', 'file', '#c98a00', '受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
@@ -270,11 +270,11 @@ function moneyPage() {
   const needSpecials = selected.specials.filter(x=>x.status==='proposed');
   if (asks.length || acks.length || blocked || needSpecials.length) {
     h += secTitle('確かめていただきたいこと');
-    if (covers.terms) h += `<div class="group" style="margin-bottom:12px"><a class="todo-row" href="#enroll">${ibox('file', '#c0392b', '入塾のお申込み')}<span class="v"><span class="lbl">入塾のお申込み</span><small>受講規約と受講条件書は、お申込みの画面でまとめてご確認いただけます</small></span><span class="go">›</span></a></div>`;
+    if (covers.terms) h += `<div class="group" style="margin-bottom:12px"><a class="todo-row" href="#enroll">${ibox('file', '#c0392b', '入塾のお申込み')}<span class="v"><span class="lbl">入塾のお申込み</span><small>ご利用規約と受講条件書は、お申込みの画面でまとめてご確認いただけます</small></span><span class="go">›</span></a></div>`;
     else if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
     h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id], consenterName: consentNames[x.latest.id] || me.guardianName || '' })).join('');
     h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id], consenterName: consentNames[x.id] || me.guardianName || '' })).join('');
-    if(blocked && asks.length) h += '<p class="notice">受講合意書の承認には、先に上の受講規約・受講条件書への同意が必要です。</p>';
+    if(blocked && asks.length) h += '<p class="notice">受講合意書の承認には、先に上のご利用規約・受講条件書への同意が必要です。</p>';
     h += asks.map(([m, ls]) => planApprovalCard(m, ls, { multi, counts: planCounts, consenterName: consentNames[m] || me.guardianName || '', dis: dis() || (blocked ? ' disabled' : '') })).join('');
     h += acks.map(([m, ls]) => planAckCard(m, ls, { multi, dis: dis() })).join('');
   }
@@ -442,7 +442,7 @@ app.addEventListener('click', ev => {
       contracts = result.ok ? result : { error: result.error.message };
     } else if (a === 'special-agree') { const id = b.dataset.id; if (!specialChecked[id]) return say('内容を確かめて「承認します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('承認する保護者の氏名を入れてください', 'error'); r = await call('family/specials/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete specialChecked[id]; return say('特別単価を承認いただきました。ありがとうございます', 'ok'); }
     } else if (a === 'cond-agree') { const id = b.dataset.id; if (!condChecked[id]) return say('内容を確かめて「同意します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/conditions/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete condChecked[id]; return say('受講条件書に同意いただきました。ありがとうございます', 'ok'); }
-    } else if (a === 'terms-accept') { if (!termsChecked) return say('全文を読んで「同意します」に印を付けてください', 'error'); if (!(consentNames.terms || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/terms/accept', { version: b.dataset.version, agree: true, consenterName: consentNames.terms || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; termsChecked = false; return say('受講規約に同意いただきました。ありがとうございます', 'ok'); } }
+    } else if (a === 'terms-accept') { if (!termsChecked) return say('全文を読んで「同意します」に印を付けてください', 'error'); if (!(consentNames.terms || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/terms/accept', { version: b.dataset.version, agree: true, consenterName: consentNames.terms || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; termsChecked = false; return say('ご利用規約に同意いただきました。ありがとうございます', 'ok'); } }
     else if (a === 'inv-report') { if (!confirm('振り込んだことを先生に知らせますか？')) return; r = await call('family/invoices/report', { id: b.dataset.id, version: Number(b.dataset.version) }, store.get()); if (r.ok) { closeSheet(); money = null; return say('振込のご連絡を受け付けました。ありがとうございます', 'ok'); } }
     else if (a === 'send-relief') { const s = sheetState; const reason = (s.note || '').trim(); if (!reason) return say('事情を書いてください', 'error'); r = await call('family/fees/relief', { id: b.dataset.id, version: Number(b.dataset.version), reason }, store.get()); if (r.ok) { closeSheet(); money = null; return say('申請を受け付けました。先生が確かめて返事をします', 'ok'); } }
     else if (a === 'del-event') { r = await call('family/events/delete', { id: b.dataset.id }, store.get()); if (r.ok) { sched = null; calData = {}; return say('消しました', 'ok'); } }

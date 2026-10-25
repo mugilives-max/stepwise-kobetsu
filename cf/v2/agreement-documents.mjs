@@ -3,7 +3,7 @@ import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { termsForVersion } from './terms.mjs';
 import { lineView } from './billing.mjs';
-import { agreementDocHtml, AGREEMENT_LAYOUT } from './agreement-doc-20261016.mjs';
+import { agreementDocHtml, agreementLayout } from './agreement-doc-20261016.mjs';
 
 // Exact archived versions only. Never fall back to the current row or current family.
 async function document(c,b,familyId=null) {
@@ -23,8 +23,8 @@ async function document(c,b,familyId=null) {
   records.sort((a,b)=>a.line.id.localeCompare(b.line.id,'en'));
   for(const r of records) r.terms=await termsForVersion(c.db,r.line.termsVersion);
   const key=records.map(r=>r.line.id+':'+r.line.version).join('|');
-  const documentId='AG-'+sha256Hex(AGREEMENT_LAYOUT+'|'+key).slice(0,20);
-  return {documentId,layoutVersion:AGREEMENT_LAYOUT,html:agreementDocHtml({records,documentId})};
+  const layout=agreementLayout(records), documentId='AG-'+sha256Hex(layout+'|'+key).slice(0,20);
+  return {documentId,layoutVersion:layout,html:agreementDocHtml({records,documentId})};
 }
 export const agreementDocumentRoutes={
   'billing/plans/document':async(c,b)=>{await requireStaff(c,b,'manager');return document(c,b);},
