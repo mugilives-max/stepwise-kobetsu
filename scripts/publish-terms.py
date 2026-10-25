@@ -10,13 +10,13 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261015-r9"
+EDITION = "2026-11-20261025-r10"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261015-r9"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261015_R9.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261025-r10"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261025_R10.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "753f3f1c8bf2435c661bb4d1009c3c017e397932"
+EXPECTED_SOURCE_BLOB = "ea6719873df439df51ae9f546b8843b609125f31"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -135,38 +135,29 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:auto; }
 }
 """
-# Check the approved naming/role changes against the fixed prior edition.
-PRIOR_COMMIT = "7724b56155864dbf0be1c3a995e528ae3143b4b5"
+# r10 (2026-10-25 本人「顧客からしてもわかりやすい名前が良い」→「ご利用規約」、「関係ない情報が多すぎませんか（顧客目線に立っていない）版とか、名前を変えただとか」):
+# r9 から、名前・保護者に見せていた版の行・版の参照だけを変えた版。
+# r9 の本文に決まった置き換えだけをしたものと、今の本文が一字一句同じであることを確かめる（条文・表・例は変わらない）
+PRIOR_COMMIT = "994f6c956127d073c6ee4e9a9c8b29415081db70"
+TERMS_REPLACEMENTS = [('# 受講規約（2026年11月版）', '# ご利用規約'), ('**版：2026年11月版（2026年10月15日改訂・共通の受講条件と特別単価の合意を整理）**  \n**適用開始日：2026年11月1日**', '**2026年11月1日から適用します。**'), ('2026年11月版（適用日 2026年11月1日）', '2026年11月1日から適用'), ('20261015-r9', '20261025-r10')]
+RELATED_REPLACEMENTS = [('**ステップワイズ個別指導／2026年10月15日改訂／2026年11月版受講規約（r9）に対応**', '**ステップワイズ個別指導**'), ('受講規約', 'ご利用規約'), ('20261015-r9', '20261025-r10'), ('（r9）', '（r10）'), ('2026年10月15日改訂', '2026年10月25日改訂')]
 prior_source = subprocess.check_output(["git","show",PRIOR_COMMIT+":docs/terms-restructure-2026-11/TERMS.md"],text=True)
-manifest = json.loads((SOURCE.parent / "RATE_DOCUMENT_CHECKS_20261015_R9.json").read_text(encoding="utf-8"))
-assert manifest["prior_commit"] == PRIOR_COMMIT
+expected_source = prior_source
+for old,new in TERMS_REPLACEMENTS:
+    assert old in expected_source, old
+    expected_source = expected_source.replace(old,new)
+assert expected_source==source, "Unexpected changes besides the name and edition references"
 CLAUSE_PATTERN = r'(<a id="(article-\d+-item-\d+)"></a>\n\n\d+\. )([\s\S]*?)(?=\n\n<a id=|$)'
 def clauses(value):
     return {m[2]:m[3].strip() for m in re.finditer(CLAUSE_PATTERN,value)}
 old_clauses,new_clauses = clauses(prior_source),clauses(source)
 assert len(old_clauses)==151 and set(old_clauses)==set(new_clauses)
 changes={k for k in old_clauses if old_clauses[k]!=new_clauses[k]}
-assert changes==set(manifest["clauses"]) and len(changes)==20
-for key, pair in manifest["clauses"].items():
-    assert old_clauses[key]==pair["before"] and new_clauses[key]==pair["after"],key
-for key in old_clauses.keys()-changes:
-    assert old_clauses[key]==new_clauses[key],key
-def revise_clause(m):
-    if m[2] not in manifest["clauses"]: return m[0]
-    trailing=m[3][len(m[3].rstrip()):]
-    return m[1]+manifest["clauses"][m[2]]["after"]+trailing
-expected_source=re.sub(CLAUSE_PATTERN,revise_clause,prior_source)
-for old,new in manifest["outside_replacements"]:
-    expected_source=expected_source.replace(old,new)
-assert expected_source==source, "Unexpected changes outside reviewed clauses"
-# Preparation distribution, fee tables, examples and undecided conditions remain exact.
-for key in ["article-5-item-2","article-7-item-1","article-10-item-2","article-15-item-2","article-17-item-4"]:
-    assert old_clauses[key]==new_clauses[key],key
+assert all("20261025-r10" in new_clauses[k] for k in changes) and len(changes)<=1, changes
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
-assert len(old_tables)==len(new_tables)==5 and old_tables[1:]==new_tables[1:], "Fee/connection tables changed"
-assert prior_source.split('<a id="appendix-cancel"></a>')[1]==source.split('<a id="appendix-cancel"></a>')[1], "Examples changed"
-for phrase in ["特殊指導","通常指導","受講条件書（"]:
+assert old_tables==new_tables, "Tables changed"
+for phrase in ["特殊指導","通常指導","受講条件書（","受講規約"]:
     assert phrase not in source,phrase
 assert len(ids)==196
 for link in body.select('a[href^="#article-"]'):
@@ -174,32 +165,32 @@ for link in body.select('a[href^="#article-"]'):
     if label:
         target="article-"+label[1]+("-item-"+label[2] if label[2] else "")
         assert link["href"]=="#"+target,"Reference label differs from anchor"
-waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261015-r9/waiver/"
+waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261025-r10/waiver/"
 assert [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]] == [waiver_url]
-for filename,pair in manifest["related"].items():
+for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.md","TUITION_AGREEMENT.md","WAIVER_GUIDE.md"]:
     before=subprocess.check_output(["git","show",PRIOR_COMMIT+":"+str(SOURCE.parent.relative_to(ROOT)/filename)],text=True)
-    assert before==pair["before"] and (SOURCE.parent/filename).read_text(encoding="utf-8")==pair["after"],filename
-    assert not any(phrase in pair["after"] for phrase in ["特殊指導","通常指導","受講条件書（"]),filename
-assert manifest["related"]["WAIVER_GUIDE.md"]["before"].replace("20261015-r8","20261015-r9").replace("（r8）","（r9）")==manifest["related"]["WAIVER_GUIDE.md"]["after"]
+    for old,new in RELATED_REPLACEMENTS:
+        before=before.replace(old,new)
+    after=(SOURCE.parent/filename).read_text(encoding="utf-8")
+    assert before==after and not any(phrase in after for phrase in ["特殊指導","通常指導","受講条件書（","受講規約"]),filename
 
-html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約（2026年11月版・10月15日改訂）｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">受講規約と書類の一覧</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
+html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>ご利用規約｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">ご利用規約と書類の一覧</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
 (OUT / "index.html").write_text(html, encoding="utf-8")
 
-# 2026-10-18 本人「過去の受講規約が全部見れちゃうのなんか嫌」: サイトの一覧には正式版だけを出す。旧版は、ご家庭が同意した版だけを残す
-# （同意のない作成途中の版はサイトに載せない。外した版の控えは本人のドライブ Kura/塾/受講規約/旧版_サイトから外した版_20261018）
+# 2026-10-18 本人「過去のご利用規約が全部見れちゃうのなんか嫌」: サイトの一覧には正式版だけを出す。旧版は、ご家庭が同意した版だけを残す
+# （同意のない作成途中の版はサイトに載せない。外した版の控えは本人のドライブ Kura/塾/ご利用規約/旧版_サイトから外した版_20261018）
 index_html = """<!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>受講規約｜ステップワイズ個別指導</title>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>ご利用規約｜ステップワイズ個別指導</title>
 <style>body{font-family:"Yu Gothic","Noto Sans CJK JP",Meiryo,sans-serif;color:#172526;line-height:1.9;margin:36px auto;padding:0 22px;max-width:760px}h1{font-size:1.6rem}h2{font-size:1.2rem;border-bottom:1px solid #b9cdcb;padding-bottom:7px;margin-top:28px}a{color:#126964}li{margin:9px 0}.note{color:#405452}</style></head><body>
-<p><a href="/">ステップワイズ個別指導</a></p><h1>受講規約</h1>
-<p>受講規約の本文とPDFをご確認いただけます。適用されるのは、ご家庭が同意した版です。掲載の更新だけで過去に同意した内容を置き換えることはありません。</p>
-<h2>正式版：2026年11月版（2026年10月15日改訂・受講条件と特別単価の整理）</h2>
-<p>適用開始日：2026年11月1日。全8章・33条。共通の条件を「受講条件書」、準備負担による単価の例外を「特別単価合意書」、月ごとの受講内容を「受講合意書」で定めます。準備負担の判断基準・料金の計算・期限・承認・予約の条件は変えていません。</p>
-<ul><li><a href="2026-11-20261015-r9/">Web版を読む</a></li><li><a href="2026-11-20261015-r9/stepwise-terms-2026-11-20261015-r9.pdf">PDFで開く</a></li></ul>
-<h2>関連書類の空欄様式</h2>
-<ul><li><a href="2026-11-20261015-r9/documents/regular/">受講条件書</a>（<a href="2026-11-20261015-r9/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261015-r9/documents/special/">特別単価合意書</a>（<a href="2026-11-20261015-r9/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261015-r9/documents/agreement/">受講合意書</a>（<a href="2026-11-20261015-r9/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
+<p><a href="/">ステップワイズ個別指導</a></p><h1>ご利用規約</h1>
+<p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「受講条件書」、月ごとの授業の内容は「受講合意書」で定めます。</p>
+<h2>ご利用規約（2026年11月1日から適用）</h2>
+<ul><li><a href="2026-11-20261025-r10/">Web版を読む</a></li><li><a href="2026-11-20261025-r10/stepwise-terms-2026-11-20261025-r10.pdf">PDFで開く</a></li></ul>
+<h2>書類の様式</h2>
+<ul><li><a href="2026-11-20261025-r10/documents/regular/">受講条件書</a>（<a href="2026-11-20261025-r10/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261025-r10/documents/special/">特別単価合意書</a>（<a href="2026-11-20261025-r10/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261025-r10/documents/agreement/">受講合意書</a>（<a href="2026-11-20261025-r10/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
 <h2>キャンセル料金の免除申請</h2>
-<ul><li><a href="2026-11-20261015-r9/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261015-r9/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
-<p class="note">ご自身に適用される版が分からない場合は、当塾との通常連絡に使用しているLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
+<ul><li><a href="2026-11-20261025-r10/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261025-r10/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
+<p class="note">ご不明な点は、いつものLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
 </body></html>
 """
 (ROOT / "terms/index.html").write_text(index_html, encoding="utf-8")
@@ -214,7 +205,7 @@ with sync_playwright() as p:
         path=str(OUT / PDF_NAME), format="A4", print_background=True,
         prefer_css_page_size=True, display_header_footer=True,
         header_template='<span></span>',
-        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">Stepwise / 2026-11-20261015-r9 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+        footer_template='<div style="width:100%;font-size:8px;color:#536563;text-align:center;font-family:sans-serif;">ステップワイズ個別指導　ご利用規約 &nbsp; <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
         tagged=True, outline=True,
     )
     page.emulate_media(media="screen")
@@ -322,12 +313,12 @@ with sync_playwright() as p:
         form_css=css+"\ntable:has(th:nth-child(2):last-child) th:first-child{width:38%} @media print { body{font-size:8.8pt;line-height:1.5} h1{font-size:15pt} h2{margin:8pt 0 5pt;font-size:11pt} p{margin:4pt 0} table{font-size:8.3pt;line-height:1.5;margin:6pt 0} th,td{padding:4pt 5pt} }"
         if slug=="agreement": form_css+="\n@media print { th,td { padding:3pt 5pt; } }"
         if slug=="waiver": form_css=css
-        form_html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>'+title+'｜ステップワイズ個別指導</title><style>'+form_css+'</style></head><body><nav class="tools"><a href="'+slug+'.pdf">PDFで開く</a><a href="../../">受講規約</a><a href="../../../">受講規約と書類の一覧</a></nav><main>'+str(form_body)+'</main></body></html>'
+        form_html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>'+title+'｜ステップワイズ個別指導</title><style>'+form_css+'</style></head><body><nav class="tools"><a href="'+slug+'.pdf">PDFで開く</a><a href="../../">ご利用規約</a><a href="../../../">ご利用規約と書類の一覧</a></nav><main>'+str(form_body)+'</main></body></html>'
         if slug=="waiver":
-            form_html=form_html.replace('href="../../">受講規約','href="../">受講規約').replace('href="../../../">受講規約と書類の一覧','href="../../">受講規約と書類の一覧')
+            form_html=form_html.replace('href="../../">ご利用規約','href="../">ご利用規約').replace('href="../../../">ご利用規約と書類の一覧','href="../../">ご利用規約と書類の一覧')
         (dest/"index.html").write_text(form_html,encoding="utf-8")
         page.goto((dest/"index.html").as_uri());page.evaluate("document.fonts.ready")
-        page.pdf(path=str(dest/(slug+".pdf")),format="A4",prefer_css_page_size=True,print_background=True,display_header_footer=True,header_template="<span></span>",footer_template='<div style="width:100%;font:8px sans-serif;text-align:center">Stepwise / 20261015-r9 / '+slug+'　<span class="pageNumber"></span> / <span class="totalPages"></span></div>',tagged=True)
+        page.pdf(path=str(dest/(slug+".pdf")),format="A4",prefer_css_page_size=True,print_background=True,display_header_footer=True,header_template="<span></span>",footer_template='<div style="width:100%;font:8px sans-serif;text-align:center">ステップワイズ個別指導　'+title+'　<span class="pageNumber"></span> / <span class="totalPages"></span></div>',tagged=True)
         page.set_viewport_size({"width":320,"height":844})
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"),slug
         page.screenshot(path=str(REVIEW/(slug+"-mobile.png")))
