@@ -1,4 +1,4 @@
-// 特別単価合意書の書面（2026-10-20。受講規約 r9 の名称「特別単価合意書」。2026-10-15 本人決定、2026-10-20 本人「名前を変更しないといけない」）。
+// 特別単価合意書の書面（2026-10-20。ご利用規約 r9 の名称「特別単価合意書」。2026-10-15 本人決定、2026-10-20 本人「名前を変更しないといけない」）。
 // 受講条件書 r6 と同じく、読む人の目線で並べる: だれ宛て・だれから → 大事な条件（大きく）→ 内容 → そのほかの約束 → 保護者の承認。
 // 中身（名称・目的・内容と範囲・理由・準備・時間と単価・期間・特記事項）は r5 と同じ。条文の番号・内部の番号は書面に出さない。
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -13,7 +13,7 @@ export function specialDocR9({ sp, student, family, terms }) {
   const name = `${student.familyName} ${student.givenName}`.trim();
   const guardian = family.guardianName || '';
   const to = guardian ? `${esc(guardian)} 様` : `${esc(name)}さんの保護者さま`;
-  const termsTitle = (terms && terms.title) || '受講規約';
+  const termsTitle = (terms && terms.title) || 'ご利用規約';
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
     ['指導の名称', `${esc(sp.title)}`],

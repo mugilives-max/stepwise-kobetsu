@@ -62,7 +62,7 @@ export function invoiceDocHtml({ inv, items, family, settings }) {
   <table><thead><tr><th style="width:14%">日付</th><th style="width:16%">生徒</th><th>内容</th><th class="num" style="width:12%">時間</th><th class="num" style="width:16%">金額（円）</th></tr></thead>
   <tbody>${rows}</tbody><tfoot><tr><td colspan="4" class="num">合計</td><td class="num">${yen(inv.total)}</td></tr></tfoot></table>
   <div class="pay"><h2>お支払いについて</h2>お支払期日：${esc(invoiceDueText(inv))}<br>お振込先：${settings.bank ? esc(settings.bank) : '別途ご案内します'}<br>振込手数料：恐れ入りますが、ご負担をお願いいたします。<br>お振込みのあと、保護者ページか LINE でお知らせください。</div>
-  <div class="memo"><h2>備考</h2>${settings.note ? esc(settings.note).replace(/\n/g, '<br>') : 'キャンセル料は、受講規約に基づき、ご連絡の時刻に応じて計算しています。'}<br><span style="color:#556;font-size:11px">この請求書は保護者ページ（お支払い）からいつでも開けます。免税事業者のため、登録番号と税率ごとの消費税額は記載していません。</span></div>`;
+  <div class="memo"><h2>備考</h2>${settings.note ? esc(settings.note).replace(/\n/g, '<br>') : 'キャンセル料は、ご利用規約に基づき、ご連絡の時刻に応じて計算しています。'}<br><span style="color:#556;font-size:11px">この請求書は保護者ページ（お支払い）からいつでも開けます。免税事業者のため、登録番号と税率ごとの消費税額は記載していません。</span></div>`;
   return page(`請求書 ${monthJa(inv.month)}分 ${family.name}`, `請求書（${monthJa(inv.month)}分）。印刷（Ctrl+P）で PDF に保存できます。`, body);
 }
 

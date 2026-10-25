@@ -126,7 +126,7 @@ function homePage() {
   // やること（押すとその画面へ）。行の下は値（だれ・どの月・締め切り・金額）だけ
   const todo = [], { asks, acks } = planGroups(money.plans);
   const enroll = enrollTodo(ectx()), covers = enrollCovers(ectx()); if (enroll) todo.push(enroll); // 入塾のお申込み（いちばん上）。申込みで規約・条件書にもまとめて同意する
-  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#money', 'file', '#c98a00', '受講規約への同意', money.terms.current.title || '', 1]);
+  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#money', 'file', '#c98a00', 'ご利用規約への同意', money.terms.current.title || '', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs && !covers.students.has(x.studentId)) : [];
   if (needConds.length) todo.push(['#money', 'file', '#c98a00', '受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・'), needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
@@ -278,7 +278,7 @@ function moneyPage() {
     else if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
     h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id], consenterName: consentNames[x.latest.id] || me.guardianName || '' })).join('');
     h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id], consenterName: consentNames[x.id] || me.guardianName || '' })).join('');
-    if(blocked && asks.length) h += '<p class="notice">受講合意書の承認には、先に上の受講規約・受講条件書への同意が必要です。</p>';
+    if(blocked && asks.length) h += '<p class="notice">受講合意書の承認には、先に上のご利用規約・受講条件書への同意が必要です。</p>';
     h += asks.map(([m, ls]) => planApprovalCard(m, ls, { multi, counts: planCounts, consenterName: consentNames[m] || me.guardianName || '', dis: dis() || (blocked ? ' disabled' : '') })).join('');
     h += acks.map(([m, ls]) => planAckCard(m, ls, { multi, dis: dis() })).join('');
   }
@@ -446,7 +446,7 @@ app.addEventListener('click', ev => {
       contracts = result.ok ? result : { error: result.error.message };
     } else if (a === 'special-agree') { const id = b.dataset.id; if (!specialChecked[id]) return say('内容を確かめて「承認します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('承認する保護者の氏名を入れてください', 'error'); r = await call('family/specials/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete specialChecked[id]; return say('特別単価を承認いただきました。ありがとうございます', 'ok'); }
     } else if (a === 'cond-agree') { const id = b.dataset.id; if (!condChecked[id]) return say('内容を確かめて「同意します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/conditions/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete condChecked[id]; return say('受講条件書に同意いただきました。ありがとうございます', 'ok'); }
-    } else if (a === 'terms-accept') { if (!termsChecked) return say('全文を読んで「同意します」に印を付けてください', 'error'); if (!(consentNames.terms || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/terms/accept', { version: b.dataset.version, agree: true, consenterName: consentNames.terms || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; termsChecked = false; return say('受講規約に同意いただきました。ありがとうございます', 'ok'); } }
+    } else if (a === 'terms-accept') { if (!termsChecked) return say('全文を読んで「同意します」に印を付けてください', 'error'); if (!(consentNames.terms || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/terms/accept', { version: b.dataset.version, agree: true, consenterName: consentNames.terms || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; termsChecked = false; return say('ご利用規約に同意いただきました。ありがとうございます', 'ok'); } }
     else if (a === 'inv-report') { if (!confirm('振り込んだことを先生に知らせますか？')) return; r = await call('family/invoices/report', { id: b.dataset.id, version: Number(b.dataset.version) }, store.get()); if (r.ok) { closeSheet(); money = null; return say('振込のご連絡を受け付けました。ありがとうございます', 'ok'); } }
     else if (a === 'send-relief') { const s = sheetState; const reason = (s.note || '').trim(); if (!reason) return say('事情を書いてください', 'error'); r = await call('family/fees/relief', { id: b.dataset.id, version: Number(b.dataset.version), reason }, store.get()); if (r.ok) { closeSheet(); money = null; return say('申請を受け付けました。先生が確かめて返事をします', 'ok'); } }
     else if (a === 'del-event') { r = await call('family/events/delete', { id: b.dataset.id }, store.get()); if (r.ok) { sched = null; calData = {}; return say('消しました', 'ok'); } }

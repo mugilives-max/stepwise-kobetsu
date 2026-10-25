@@ -20,8 +20,11 @@ const parts = l => {
     (mismatch?'。承認回数は提案回数から変更されています。この内訳を承認後の配分として確定するものではありません。':'')+'</p>';
 };
 export const AGREEMENT_LAYOUT = '20261016-r9';
+// 2026-10-25 規約の名前を「ご利用規約」に（r10）。ご利用規約の版を参照する行の書面だけ、名前を変えた様式にする。前に出した書面は同じ文字・同じ書面番号のまま
+export const AGREEMENT_LAYOUT_R10 = '20261025-r10';
+export const agreementLayout = records => records.some(r => /^ご利用規約/.test((r.terms && r.terms.title) || '')) ? AGREEMENT_LAYOUT_R10 : AGREEMENT_LAYOUT;
 export function agreementDocHtml({records,documentId,sample=false}) {
-  const first=records[0], l0=first.line, status=l0.status;
+  const first=records[0], l0=first.line, status=l0.status, layout=agreementLayout(records), kiyaku=layout===AGREEMENT_LAYOUT_R10?'ご利用規約':'受講規約';
   const title=status==='approved'?'受講合意書の控え':status==='declined'?'受講合意書の記録（見送り）':'受講合意書（案）';
   const total=records.reduce((n,r)=>n+amount(r.line),0);
   const rows=records.map((r,i)=>{
@@ -51,10 +54,10 @@ export function agreementDocHtml({records,documentId,sample=false}) {
     '</style></head><body><div class="toolbar"><button type="button" onclick="window.print()">印刷・PDF保存</button><div>印刷画面で「PDFに保存」を選べます。この操作では承認・通知は行いません。</div></div><main>'+
     (sample?'<div class="sample">見本・架空の記録です。実際の契約ではありません。</div>':'')+
     '<div class="brand">ステップワイズ個別指導</div><h1>'+title+'</h1><div class="meta"><div><b>対象生徒</b><br>'+value(first.studentName)+'</div><div><b>対象期間</b><br>'+value(l0.startDate)+' 〜 '+value(l0.endDate)+'</div><div class="status">'+state(status)+'</div></div>'+
-    '<p class="small">書面番号：'+esc(documentId)+'／書類様式：'+AGREEMENT_LAYOUT+'</p>'+
+    '<p class="small">書面番号：'+esc(documentId)+'／書類様式：'+layout+'</p>'+
     (status==='approved'?'<p>以下は、保存されている承認済みの内容です。承認者・日時・経路は、後半の「提案・承認の記録」をご確認ください。</p>':'<p>この書面は承認済みの合意を示すものではありません。授業の実施には、具体的な内容について事前の承認が必要です。</p>')+
     '<h2>授業の内容と料金</h2>'+rows+'<div class="total"><span>予定総額（税込）</span><span>'+money(total)+'</span></div>'+
-    '<div class="notes small"><p>予定総額は、上記の回数を実施した場合の金額であり、請求額の確定や授業の事前購入を示すものではありません。実際の授業料・キャンセル料金は、合意した条件と適用される受講規約に基づき精算します。</p><p>合意した回数は実施可能な上限です。全回数の受講義務、その回数分の受講保証、未実施分の繰越権を意味しません。具体的な日時は日程調整カレンダー等で別途調整します。</p></div>'+
+    '<div class="notes small"><p>予定総額は、上記の回数を実施した場合の金額であり、請求額の確定や授業の事前購入を示すものではありません。実際の授業料・キャンセル料金は、合意した条件と適用される'+kiyaku+'に基づき精算します。</p><p>合意した回数は実施可能な上限です。全回数の受講義務、その回数分の受講保証、未実施分の繰越権を意味しません。具体的な日時は日程調整カレンダー等で別途調整します。</p></div>'+
     '<section class="evidence"><h2>提案・承認の記録と参照書類</h2><p class="small">選択した各行の版をまとめて表示しています。各行の承認日時は同一とは限りません。後の変更・追加分は含みません。「記録なし」は、当時の保存内容から確認できない項目です。入力日時と実際の承認日時は区別しています。</p>'+evidence+
     '<p class="small">参照書類は保存された ID・規約の版を表示しています。過去の書類には旧名称のものがあります。この書面の作成によって、当時の合意内容や適用規約を新しい版へ変更することはありません。</p></section>'+
     '<footer>ステップワイズ個別指導　代表者：麦倉優輔<br>埼玉県越谷市袋山1319-9　電話：080-6259-3025　メール：mugilives@gmail.com</footer></main></body></html>';

@@ -1,5 +1,5 @@
 // 保護者の「入塾のお申込み」（#enroll。2026-10-18 本人決定。cf/v2/enrollment.mjs）。
-// 1 つの画面で: 保護者さまの情報 → 生徒さんの情報の確認 → 受講条件書・受講規約 → 確認 → 「同意して入塾を申し込む」。
+// 1 つの画面で: 保護者さまの情報 → 生徒さんの情報の確認 → 受講条件書・ご利用規約 → 確認 → 「同意して入塾を申し込む」。
 // 入力 → 確認 → 完了 の 3 画面（一般的な申込みの形）。同意者名は入れた保護者の氏名。申し込むとそのまま入塾。
 import { gradeOptions, normGrade } from '/assets/v2/grade-options.js?v=20261025-layout';
 let data = null, step = 'input', draft = null, agree = false, missing = [];
@@ -54,13 +54,13 @@ function field(esc, key, label, opts = {}) {
   const bad = missing.includes(key);
   return `<label style="flex:1 1 140px;min-width:0"><span>${label}${opts.req === false ? ' <span class="opt">任意</span>' : ''}</span><input name="${key}" data-enroll="${key}" value="${esc(draft[key] || '')}" ${opts.type ? `type="${opts.type}"` : ''} ${opts.mode ? `inputmode="${opts.mode}"` : ''} ${opts.auto ? `autocomplete="${opts.auto}"` : ''} placeholder="${esc(opts.ph || '')}" maxlength="${opts.max || 60}"${bad ? ' aria-invalid="true"' : ''}></label>`;
 }
-// 受講条件書と受講規約（入力と確認の両方の画面に出す。同意の前に、いつでも全文を開ける）。説明文は置かず、条件の表と全文のボタンだけ
+// 受講条件書とご利用規約（入力と確認の両方の画面に出す。同意の前に、いつでも全文を開ける）。説明文は置かず、条件の表と全文のボタンだけ
 function docCards(esc, o) {
   return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書</h2></div>${condRows(esc, o)}
       ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
-    <section class="reg-card"><div class="reg-card-head"><h2>受講規約</h2></div>
-      <p style="margin:6px 0 0">${esc(data.terms.title || '受講規約')}</p>
-      ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener">受講規約の全文を開く</a></div>` : ''}</section>`;
+    <section class="reg-card"><div class="reg-card-head"><h2>ご利用規約</h2></div>
+      <p style="margin:6px 0 0">${esc(data.terms.title || 'ご利用規約')}</p>
+      ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener">ご利用規約の全文を開く</a></div>` : ''}</section>`;
 }
 function inputPage(ctx, o) {
   const { esc } = ctx, bad = () => '';
@@ -89,7 +89,7 @@ function confirmPage(ctx, o) {
     <section class="reg-card"><div class="reg-card-head"><h2>生徒さんの情報</h2></div><dl class="reg-rows">${row('氏名', d.familyName + ' ' + d.givenName)}${row('ふりがな', d.familyKana + ' ' + d.givenKana)}${row('学年', d.grade)}${row('学校', d.school)}</dl></section>
     ${docCards(esc, o)}
     <form class="reg-form" data-form="enroll-apply" novalidate>
-      <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}><span>受講規約と受講条件書の内容を確認し、同意します<small>同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）</small></span></label>
+      <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}><span>ご利用規約と受講条件書の内容を確認し、同意します<small>同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）</small></span></label>
       <div class="row"><button class="primary"${ctx.dis()}>同意して入塾を申し込む</button></div>
       <p class="small"><a href="javascript:void 0" data-action="enroll-back">入力画面に戻って直す</a></p></form>`;
 }
@@ -123,7 +123,7 @@ export function enrollSubmit(ctx, kind) {
     step = 'confirm'; agree = false; ctx.say(''); ctx.render(); scrollTo(0, 0); return true;
   }
   if (kind !== 'enroll-apply') return false;
-  if (!agree) { ctx.say('受講規約と受講条件書を確かめて「同意します」に印を付けてください', 'error'); ctx.render(); return true; }
+  if (!agree) { ctx.say('ご利用規約と受講条件書を確かめて「同意します」に印を付けてください', 'error'); ctx.render(); return true; }
   const o = open()[0]; if (!o) return true;
   const d = draft;
   ctx.run(async () => {

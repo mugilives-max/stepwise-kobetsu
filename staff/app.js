@@ -27,7 +27,7 @@ let lastPage = '';
 let me = null, busy = false, notice = null, staffList = null, shownLink = null, bootstrap = null, staffOpen = '';
 
 // 上の帯に出す画面の名前（本文には大見出しを置かない）
-const PAGE_TITLE = { rules:'講師マニュアル', bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: '受講規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信の記録と控え' };
+const PAGE_TITLE = { rules:'講師マニュアル', bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講合意書', billing: '請求', payroll: '給与', grades: '成績', families: '家族と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: 'ご利用規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信の記録と控え' };
 const legacyToken = () => { try { return localStorage.getItem('sw_admt') || ''; } catch { return ''; } };
 function route() {
   const h = location.hash;

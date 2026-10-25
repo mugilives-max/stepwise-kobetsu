@@ -41,7 +41,7 @@ test('terms: deciding the version asks nobody; families asked to agree must agre
   const mails = h.mails().length;
   const asked = await h.ok('admin/terms/request', { auth, familyIds: [fam, fam], note: '11月からのきまりです', mail: true });
   assert.deepEqual([asked.requested, asked.mailed, asked.skipped], [1, 1, 0]);
-  assert.equal(h.mails().length, mails + 1); assert.match(h.mails().at(-1).subject, /受講規約への同意のお願い/); assert.match(h.mails().at(-1).body, /11月からのきまりです/);
+  assert.equal(h.mails().length, mails + 1); assert.match(h.mails().at(-1).subject, /ご利用規約への同意のお願い/); assert.match(h.mails().at(-1).body, /11月からのきまりです/);
   assert.equal((await h.call('admin/terms/request', { auth, familyIds: [fam] })).error.code, 'nothingToRequest', 'お願い中の家族には重ねない');
   const t = (await h.ok('family/money', { auth: parent })).terms;
   assert.deepEqual([t.needs, t.current.note, t.agreed.version, !!t.request], [true, '11月からのきまりです', '', true]);

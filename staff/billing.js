@@ -299,7 +299,7 @@ export function billingSettingsHtml(ctx) {
   if (billSettings.loading) return '';
   return `<details class="gupload" style="margin-top:20px"><summary>請求書の設定（振込先・備考）${billSettings.bank ? '' : ' <span class="tag warn">振込先が未設定</span>'}</summary>
     <form class="stack" data-form="bl-settings" style="margin-top:8px"><label>お振込先（銀行名・支店名・種別・口座番号・口座名義）<textarea name="bank" maxlength="300" rows="2">${esc(billSettings.bank || '')}</textarea></label>
-    <label>備考<textarea name="note" maxlength="500" rows="2" placeholder="空なら「キャンセル料は、受講規約に基づき…」">${esc(billSettings.note || '')}</textarea></label>
+    <label>備考<textarea name="note" maxlength="500" rows="2" placeholder="空なら「キャンセル料は、ご利用規約に基づき…」">${esc(billSettings.note || '')}</textarea></label>
     <p class="small muted">作成済みの請求書・領収書は「書面を作り直す」まで変わりません。</p>
     <button class="primary"${ctx.dis()}>保存</button></form></details>`;
 }

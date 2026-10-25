@@ -194,11 +194,11 @@ export function planGroups(plans) {
 }
 export const inquirySheet = (month, note, busy) => sheet(esc, `${monthLabel(month)}の受講合意書について`, `<textarea id="inquiry-note" rows="3" maxlength="500" placeholder="例: 英語は 4 回ではなく 3 回で話していました">${esc(note || '')}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-inquiry" data-month="${esc(month)}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '先生に伝える'}</button></div>`, 'close-sheet');
 
-// ---- 受講規約（同意が要るとき） ----
+// ---- ご利用規約（同意が要るとき） ----
 export function termsCard(terms, { busy = false, checked = false, consenterName = '' } = {}) {
   const t = terms.current;
-  return `<div class="pcard ask" data-terms="${esc(t.version)}"><div class="pc-head"><strong>${esc(t.title || '受講規約')}</strong><span class="tag warn">同意をお願いします</span></div>
-    <p class="small">${t.from ? `${esc(t.from)} から適用されます。` : ''}${t.note ? esc(t.note) : ''}${terms.agreed.version ? `<br><span class="muted">前の版（${esc(terms.agreed.version)}）に同意済み</span>` : ''}</p>
+  return `<div class="pcard ask" data-terms="${esc(t.version)}"><div class="pc-head"><strong>${esc(t.title || 'ご利用規約')}</strong><span class="tag warn">同意をお願いします</span></div>
+    <p class="small">${t.from ? `${ymdJa(t.from)}から適用されます。` : ''}${t.note ? esc(t.note) : ''}${terms.agreed.version ? '<br><span class="muted">以前の内容に同意済み</span>' : ''}</p>
     ${t.url ? `<a class="btn wide" href="${esc(t.url)}" target="_blank" rel="noopener">${picon('file')} 規約の全文を読む</a>` : '<p class="small muted">全文は教室からお渡しします。</p>'}
     ${consenterField('terms', consenterName)}<label class="agree"><input type="checkbox" id="terms-agree"${checked ? ' checked' : ''}> 全文を読み、内容に同意します</label>
     <button class="primary wide" data-action="terms-accept" data-version="${esc(t.version)}"${busy ? ' disabled' : ''}>同意する</button></div>`;
@@ -227,7 +227,7 @@ export function specialCard(x, { busy = false, checked = false, consenterName = 
     <button class="primary wide" data-action="special-agree" data-id="${esc(x.id)}"${busy ? ' disabled' : ''}>承認する</button></div>`;
 }
 export const specialLine = items => (items || []).filter(x => x.status === 'agreed').map(x => `<p class="small muted">${esc(given(x.studentName))}さんの特別単価「${esc(x.title)}」承認済み（${esc(String(x.agreedAt).slice(0, 10))}）・${x.minutes}分 ${yen(x.fee)}・${ymdJa(x.fromDate)}〜${ymdJa(x.toDate)}${x.docFileId ? `　<button type="button" class="linkish" data-action="gr-open" data-id="${esc(x.docFileId)}">条件書を開く</button>` : ''}</p>`).join('');
-export const termsLine = terms => terms && terms.agreed.version ? `<p class="small muted">受講規約 ${esc(terms.agreed.version)} に同意済み（${esc(String(terms.agreed.at).slice(0, 10))}）${terms.agreed.url ? `・<a href="${esc(terms.agreed.url)}" target="_blank" rel="noopener">同意した版の全文</a>` : ''}</p>` : '';
+export const termsLine = terms => terms && terms.agreed.version ? `<p class="small muted">ご利用規約に同意済み（${ymdJa(String(terms.agreed.at).slice(0, 10))}）${terms.agreed.url ? `・<a href="${esc(terms.agreed.url)}" target="_blank" rel="noopener">同意した版の全文</a>` : ''}</p>` : '';
 
 // ---- 請求 ----
 const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['入金の確認待ち', ''], paid: ['お支払い済み', 'ok'], void: ['取り消し済み', ''] };
@@ -309,7 +309,7 @@ export function contractArchive(data) {
   const status = {proposed:'提案',approved:'承認済み',declined:'見送り',agreed:'同意済み',replaced:'旧提案',ended:'終了'};
   const details = (name,rows) => '<details><summary>'+name+'（'+rows.length+'件）</summary>'+rows.join('')+'</details>';
   let h = '<section class="group" style="padding:12px"><h3>契約・同意の控え</h3>';
-  h += details('規約への同意', terms.map(r=>`<div class="pcard"><strong>${esc(r.version)}</strong><p class="small">${evidenceText(r,r.at)}</p>${/^https:\/\//.test(r.url||'') ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">この版の全文</a>` : '<p class="small muted">当時の全文リンクは未登録です。</p>'}</div>`));
+  h += details('規約への同意', terms.map(r=>`<div class="pcard"><strong>${esc(r.title || 'ご利用規約')}${r.from ? `（${ymdJa(r.from)}から）` : ''}</strong><p class="small">${evidenceText(r,r.at)}</p>${/^https:\/\//.test(r.url||'') ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">この版の全文</a>` : '<p class="small muted">当時の全文リンクは未登録です。</p>'}</div>`));
   h += details('受講条件書',cs.map(c=>`<div class="pcard"><strong>${esc(c.studentName)}・第${c.no}版（${esc(status[c.status]||c.status)}）</strong><p class="small">${esc(c.fromMonth)}から・${c.minutes}分 ${yen(c.fee)}<br>${esc(c.subjects)}・${esc(c.deliveryLabel)}・${esc(c.groupSize)}<br>規約 ${esc(c.termsVersion || '記録なし')}</p><p class="small">${evidenceText(c,c.agreedAt)}</p>${doc(c)}</div>`));
   h += details('特別単価合意書',ss.map(c=>`<div class="pcard"><strong>${esc(c.studentName)}・${esc(c.title)} 第${c.no}版（${esc(status[c.status]||c.status)}）</strong><p class="small">${esc(c.fromDate)}〜${esc(c.toDate)}・${c.minutes}分 ${yen(c.fee)}<br>目的：${esc(c.purpose || '記録なし')}<br>規約 ${esc(c.termsVersion || '記録なし')}</p><p class="small">${evidenceText(c,c.agreedAt)}</p>${doc(c)}</div>`));
   h += details('受講合意書の履歴',(data.plans||[]).map(l=>{
