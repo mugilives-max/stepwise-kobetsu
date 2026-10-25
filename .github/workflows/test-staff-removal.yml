@@ -1,0 +1,33 @@
+name: Test teacher removal (one-time)
+on:
+  push:
+    branches: ['claude/test-staff-removal-20261020']
+    paths: ['scripts/test-staff-removal-request.json', 'scripts/remove-test-staff.mjs', '.github/workflows/test-staff-removal.yml']
+permissions:
+  contents: read
+concurrency:
+  group: stepwise-production-release
+  cancel-in-progress: false
+jobs:
+  remove:
+    if: github.repository == 'mugilives-max/stepwise-kobetsu'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: release-control
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: release-control
+      - name: Check script
+        run: node --check release-control/scripts/remove-test-staff.mjs
+      - name: Remove the two test teachers (or inspect)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: node release-control/scripts/remove-test-staff.mjs
