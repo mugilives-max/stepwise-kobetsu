@@ -1,7 +1,7 @@
 // スタッフの「今日」（docs/UX_STRUCTURE.md 3）。上の帯に「今日」と日付。対応すること（色つきのアイコンと件数）と、今日・明日の授業（1枚の枠）。
 // 始まった決定の授業は右の鉛筆の丸ボタンで「実施済みにして記録」へ。記録が済んだ授業は ✓
-import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261016-stages';
-import { iconBox, ICON } from '/staff/ui.js?v=20261008-launch1';
+import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261025-layout';
+import { iconBox, ICON } from '/staff/ui.js?v=20261025-layout';
 
 let today = null;
 export function resetToday() { today = null; }
@@ -19,15 +19,14 @@ export function todayPage(ctx, me) {
   let h = ctx.notice();
   // 対応すること
   const total = t.todo.reduce((n, x) => n + x.count, 0);
-  h += `<div class="sec-title">対応すること${total ? ` <span class="count">${total}</span>` : ''}</div>`;
-  h += t.todo.length ? '<div class="group">' + t.todo.map(x => { const [ic, color] = TODO_ICON[x.key] || ['memo', '#5b6672'];
-    return `<a class="rec-row" href="${esc(x.link)}"><span class="ibox" style="background:${color}" aria-hidden="true"><svg viewBox="0 0 24 24">${ICON[ic]}</svg></span><span class="v"><span class="lbl">${esc(x.label)}</span>${x.note ? `<small class="muted">${esc(x.note)}</small>` : ''}</span><span class="cnt">${x.count}</span></a>`; }).join('') + '</div>'
-    : '<p class="muted small">対応することはありません。</p>';
+  // 何もなければ枠ごと出さない（空の見出しと「ありません」を置かない）
+  if (t.todo.length) h += `<div class="sec-title">対応すること <span class="count">${total}</span></div><div class="group">` + t.todo.map(x => { const [ic, color] = TODO_ICON[x.key] || ['memo', '#5b6672'];
+    return `<a class="rec-row" href="${esc(x.link)}"><span class="ibox" style="background:${color}" aria-hidden="true"><svg viewBox="0 0 24 24">${ICON[ic]}</svg></span><span class="v"><span class="lbl">${esc(x.label)}</span></span><span class="cnt">${x.count}</span></a>`; }).join('') + '</div>';
   // 今日・明日の授業
   for (const [day, label] of [[t.today, '今日の授業'], [t.tomorrow, '明日の授業']]) {
     const ls = t.lessons.filter(l => l.date === day);
-    h += `<div class="sec-title">${label}${ls.length ? ` <span class="count gray">${ls.length}</span>` : ''}${day === t.tomorrow ? ` <span class="muted small">${mdw(day)}</span>` : ''}</div>`;
-    if (!ls.length) { h += '<p class="muted small">授業はありません。</p>'; continue; }
+    h += `<div class="sec-title">${label}${ls.length ? ` <span class="count gray">${ls.length}</span>` : ''}</div>`;
+    if (!ls.length) { h += '<p class="small">授業はありません。</p>'; continue; }
     h += '<div class="group">' + ls.map(l => {
       const started = Date.parse(l.date + 'T' + l.start + ':00+09:00') <= t.nowMs;
       let act = '';

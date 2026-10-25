@@ -1,23 +1,23 @@
-import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261017-pending';
-import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261018-manual';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261018-flow';
-import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
+import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261025-layout';
+import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261025-layout';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261025-layout';
+import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261025-layout';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
-import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261025-riyou';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261016-notices';
-import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261016-stages';
-import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261025-riyou';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261025-riyou';
-import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261016-stages';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261025-riyou';
-import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261018-a4';
-import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261008-launch1';
-import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261025-riyou2';
-import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261008-launch1';
-import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261008-launch1';
-import { billingPick } from '/staff/billing.js?v=20261025-riyou';
+import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261025-layout';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261025-layout';
+import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261025-layout';
+import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261025-layout';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261025-layout';
+import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261025-layout';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261025-layout';
+import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261025-layout';
+import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261025-layout';
+import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261025-layout';
+import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261025-layout';
+import { billingPick } from '/staff/billing.js?v=20261025-layout';
 
 const store = session('sw2_staff');
 const ROLE_LABEL = { teacher: '講師', manager: '教室管理者', sysadmin: 'システム管理者' };
@@ -120,7 +120,7 @@ function renderNav() {
 
 // ---------- ログインしていないときの画面 ----------
 function loginPage() {
-  let h = `<h1>ログイン</h1><p class="sub">スタッフ（講師・教室管理者・システム管理者）の入口です。</p>${noticeHtml()}`;
+  let h = `<h1>ログイン</h1>${noticeHtml()}`;
   h += `<form class="stack" data-form="login"><label>メールアドレス<input type="email" name="email" autocomplete="username" required></label>
     <label>パスワード<input type="password" name="password" autocomplete="current-password" required></label>
     <button class="primary"${dis()}>${busy ? 'ログインしています…' : 'ログイン'}</button></form>
@@ -134,7 +134,7 @@ function loginPage() {
   return h;
 }
 function forgotPage() {
-  return `<h1>パスワードの再設定</h1><p class="sub">登録しているメールアドレスに、再設定のリンクを送ります（30分有効）。</p>${noticeHtml()}
+  return `<h1>パスワードの再設定</h1>${noticeHtml()}
     <form class="stack" data-form="forgot"><label>メールアドレス<input type="email" name="email" autocomplete="username" required></label>
     <button class="primary"${dis()}>再設定のメールを送る</button></form><p><a href="#">ログインに戻る</a></p>`;
 }
@@ -163,7 +163,7 @@ function accountPage() {
     <label>今のパスワード<input type="password" name="current" autocomplete="current-password" required></label>
     <label>新しいパスワード（12文字以上）<input type="password" name="next" autocomplete="new-password" minlength="12" maxlength="128" required></label>
     <label>もう一度<input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="128" required></label>
-    <button class="primary"${dis()}>変える</button><p class="small muted">変えると、ほかの端末はログインし直しになります。</p></form>
+    <button class="primary"${dis()}>変える</button></form>
     <h2>ログアウト</h2><p><button data-action="logout"${dis()}>この端末からログアウト</button></p>`;
 }
 const roleChecks = (name, chosen) => `<div class="checks">${Object.keys(ROLE_LABEL).map(r => `<label><input type="checkbox" name="${name}" value="${r}"${chosen.includes(r) ? ' checked' : ''}> ${ROLE_LABEL[r]}</label>`).join('')}</div>`;
@@ -173,13 +173,12 @@ function staffPage(stopped = false) {
   if (!staffList) { loadStaff(); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
   let h = noticeHtml();
   const list = staffList.filter(x => stopped ? x.status === 'stopped' : x.status !== 'stopped'), stoppedCount = staffList.filter(x => x.status === 'stopped').length;
-  if (stopped) h += '<p class="small muted" style="margin-top:12px">停止中のアカウントはログインできません。記録はそのまま残っています。開いて「再開する」を押すと元に戻せます。</p>' + (list.length ? '' : '<p>停止中のアカウントはありません。</p>');
-  else if(me.contractType==='owner')h+='<p><a href="#employment">講師の雇用登録・契約・勤務はこちら</a></p>';
+  if (stopped) h += list.length ? '' : '<p style="margin-top:12px">停止中のアカウントはありません。</p>';
+  else if(me.contractType==='owner')h+='<p><a href="#employment">講師の雇用・勤務 ›</a></p>';
   if (shownLink) h += `<div class="notice ok"><p>${esc(shownLink.name)} さんに招待のメールを送りました。届かないときは、このリンクを LINE などで渡してください（7日有効・1回だけ使えます）。</p><p class="copy">${esc(shownLink.url)}</p><button data-action="copy-link"${dis()}>リンクをコピー</button></div>`;
-  if (list.length) h += '<div class="group" style="margin-top:12px">' + list.map(s => rowButton(esc, 'st-open', { id: s.id }, `${esc(s.name)} <span class="tag ${s.status === 'active' ? '' : s.status === 'invited' ? 'warn' : 'gray'}">${STATUS_LABEL[s.status] || s.status}</span>`,
-    esc(s.roles.map(r => ROLE_LABEL[r] || r).join('・') + (s.email ? '・' + s.email : '')))).join('') + '</div>';
-  if (!stopped && stoppedCount) h += `<div class="group" style="margin-top:12px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#staff-stopped"><span class="v"><span class="lbl">停止中のアカウント</span><small>${stoppedCount}件</small></span><span class="go" aria-hidden="true">›</span></a></div>`;
-  if (!stopped) h += `<p style="margin-top:12px"><button data-action="st-open" data-id="new"${dis()}>＋ スタッフを招待する</button></p><p class="small muted">講師は担当の授業と生徒だけ、教室管理者は運営のすべて、システム管理者は設定とアカウントを扱えます。</p>`;
+  if (list.length) h += '<div class="group" style="margin-top:12px">' + list.map(s => rowButton(esc, 'st-open', { id: s.id }, `${esc(s.name)} <span class="tag ${s.status === 'active' ? '' : s.status === 'invited' ? 'warn' : 'gray'}">${STATUS_LABEL[s.status] || s.status}</span>${s.roles.map(r => ` <span class="tag gray">${ROLE_LABEL[r] || r}</span>`).join('')}`, '')).join('') + '</div>';
+  if (!stopped && stoppedCount) h += `<div class="group" style="margin-top:12px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#staff-stopped"><span class="v"><span class="lbl">停止中のアカウント <span class="tag gray">${stoppedCount}</span></span></span><span class="go" aria-hidden="true">›</span></a></div>`;
+  if (!stopped) h += `<p style="margin-top:12px"><button data-action="st-open" data-id="new"${dis()}>＋ スタッフを招待する</button></p>`;
   if (staffOpen === 'new') {
     h += sheet(esc, 'スタッフを招待する', `<form class="stack" data-form="invite-staff"><div class="row"><label style="flex:1">姓<input name="familyName" maxlength="30" required></label><label style="flex:1">名<input name="givenName" maxlength="30"></label></div>
       <label>メールアドレス<input type="email" name="email" required></label><div><div class="small muted">役割</div>${roleChecks('roles', ['teacher'])}</div>
@@ -187,7 +186,7 @@ function staffPage(stopped = false) {
   } else if (staffOpen) {
     const s = staffList.find(x => x.id === staffOpen);
     if (s) h += sheet(esc, s.name, `<p class="small muted" style="margin-top:0">${esc(s.email)}・${STATUS_LABEL[s.status] || s.status}</p>
-      <form class="stack" data-form="roles" data-id="${esc(s.id)}" data-version="${s.version}"><div class="row"><label style="flex:1">姓<input name="familyName" maxlength="30" value="${esc(s.familyName || s.name)}"></label><label style="flex:1">名<input name="givenName" maxlength="30" value="${esc(s.givenName || '')}"></label></div><p class="small muted" style="margin:0">名前は担当の表示と給与明細に出ます。</p>
+      <form class="stack" data-form="roles" data-id="${esc(s.id)}" data-version="${s.version}"><div class="row"><label style="flex:1">姓<input name="familyName" maxlength="30" value="${esc(s.familyName || s.name)}"></label><label style="flex:1">名<input name="givenName" maxlength="30" value="${esc(s.givenName || '')}"></label></div>
       <div><div class="small muted">役割</div>${roleChecks('roles', s.roles)}</div><button class="primary"${dis()}>名前と役割を保存</button></form>
       <div class="row" style="margin-top:14px">${s.status === 'invited' ? `<button data-action="reinvite" data-id="${esc(s.id)}" data-name="${esc(s.name)}"${dis()}>招待をやり直す</button>` : ''}
       ${s.status === 'stopped' ? `<button data-action="status" data-status="active" data-id="${esc(s.id)}" data-version="${s.version}"${dis()}>再開する</button>` : s.id === me.id ? '' : `<button class="danger" data-action="status" data-status="stopped" data-id="${esc(s.id)}" data-version="${s.version}"${dis()}>停止する</button>`}</div>`, 'st-close');

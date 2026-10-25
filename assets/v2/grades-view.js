@@ -143,13 +143,13 @@ export function fileList(files, action) {
   return '<div class="list">' + files.map(f => `<div><div>${esc(f.name)} <span class="tag ${(STATUS[f.status] || ['', 'gray'])[1]}">${(STATUS[f.status] || [f.status])[0]}</span><div class="small muted">${esc(jst(f.createdAt).slice(0, 10))}${f.note ? '・' + esc(f.note) : ''}</div></div><div><button data-action="${action}" data-id="${esc(f.id)}">開く</button></div></div>`).join('') + '</div>';
 }
 export const uploadForm = (dis, extra = '') => `<form class="stack" data-form="gr-upload">${extra}<label>成績票の写真か PDF<input type="file" name="file" accept="image/*,application/pdf" required></label>
-  <label>一言（任意）<input name="note" maxlength="200" placeholder="例: 2学期中間テストの個票"></label><button class="primary"${dis}>送る</button><p class="small muted">写真は読みやすい大きさに縮めて送ります。20MB まで。</p></form>`;
+  <label>一言（任意）<input name="note" maxlength="200" placeholder="例: 2学期中間テストの個票"></label><button class="primary"${dis}>送る</button><p class="small muted">20MBまで</p></form>`;
 
 // 保護者・生徒の画面: 次のテスト・推移・試験のカード・成績票
 export function gradesView(st, { who, dis = '' }) {
   let h = '';
   if (st.nextTest) h += `<p class="notice">${esc(st.nextTest.title || 'テスト')}まで あと <strong>${st.nextTest.days}日</strong>（${esc(md(st.nextTest.date))}）</p>`;
-  if (!st.exams.length) h += '<p class="muted">まだ成績の記録はありません。成績票が返ってきたら、写真を送ってください。</p>';
+  if (!st.exams.length) h += '<p class="muted">まだ成績の記録はありません。</p>';
   const pk = seriesPick(st.exams, st.id);
   h += pk.bar + trendBox(pk.list, st.id) + examPager(pk.list, st.id, e => examCard(e, { lessons: who === 'family' && st.lessons ? st.lessons.find(x => x.examId === e.id) : null, sheets: st.files.filter(f => f.examId === e.id && f.status !== 'dismissed') }));
   h += `<h2>成績票を送る</h2>${uploadForm(dis, who === 'family' ? `<input type="hidden" name="studentId" value="${esc(st.id)}">` : '')}`;

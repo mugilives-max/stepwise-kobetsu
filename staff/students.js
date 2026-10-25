@@ -1,10 +1,10 @@
 // スタッフの「生徒」（docs/UX_STRUCTURE.md 3）。#students（家族ごとの一覧）と #student=<id>/<タブ>（1人の生徒の画面）。
 // タブ: 概要・予定・記録と宿題・成績・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
-import { hwSubject } from '/assets/v2/learning-view.js?v=20261008-launch1';
-import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261016-stages';
-import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261008-launch1';
-import { ICON } from '/staff/ui.js?v=20261008-launch1';
-import { gradeOptions } from '/assets/v2/grade-options.js?v=20261019-grade';
+import { hwSubject } from '/assets/v2/learning-view.js?v=20261025-layout';
+import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261025-layout';
+import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261025-layout';
+import { ICON } from '/staff/ui.js?v=20261025-layout';
+import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
 
 let list = null, query = '', hub = null, hubFor = '';
 export function resetStudents() { list = null; hub = null; hubFor = ''; }
@@ -29,11 +29,11 @@ export function studentsPage(ctx) {
   if (list.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
   h += `<label class="search"><svg viewBox="0 0 24 24" aria-hidden="true">${SEARCH}</svg><input type="search" data-input="stu-query" value="${esc(query)}" placeholder="名前・ふりがなで探す" aria-label="生徒を探す"></label>`;
   // 体験生（まだ入塾していない人）を臨時で登録する。登録すると予定表で授業を入れられる（種類「体験」・無料）
-  if (list.manager) h += `<details class="trial-new"><summary>＋ 体験生を登録（まだ入塾していない人）</summary><form class="stack" data-form="trial-create">
+  if (list.manager) h += `<details class="trial-new"><summary>＋ 体験生を登録</summary><form class="stack" data-form="trial-create">
     <div class="row"><label style="flex:1">名字<input name="familyName" maxlength="40" required placeholder="高橋"></label><label style="flex:1">名前<input name="givenName" maxlength="40" placeholder="香帆"></label><label style="flex:1">学年<select name="grade">${gradeOptions(esc, '')}</select></label></div>
     <label>学校<input name="school" maxlength="60" placeholder="〇〇中学校"></label>
     <label>メモ（紹介・志望など）<input name="note" maxlength="1000"></label>
-    <p class="small muted">家族は「◯◯さん」で作ります。メールは入れないので、お知らせは届きません。授業は予定表から入れ、種類「体験」（無料）でそのまま決定になります。続けることになったら、その生徒の画面の「入塾の案内を送る」から、保護者に申込みをお願いします。</p>
+    <p class="small muted">メールは登録しないので、お知らせは届きません。</p>
     <div class="row"><button class="primary"${ctx.dis()}>登録する</button></div></form></details>`;
   const q = query.trim();
   const match = s => !q || s.name.includes(q) || s.kana.includes(q);
@@ -86,18 +86,18 @@ function summary(ctx, x) {
   if (x.pendingRecords.length) todo.push(`<a class="todo" href="#record=${encodeURIComponent(x.pendingRecords[x.pendingRecords.length - 1].id)}"><span class="b"><strong>記録待ち ${x.pendingRecords.length}件</strong><small class="muted">${x.pendingRecords.map(l => md(l.date) + ' ' + esc(l.subject)).join('・')}</small></span><span class="go">›</span></a>`);
   if (x.grades.pendingTests.length) todo.push(`<a class="todo" href="#grades=${sid}"><span class="b"><strong>結果待ちのテスト</strong><small class="muted">${x.grades.pendingTests.map(t => esc(t.title)).join('・')}</small></span><span class="go">›</span></a>`);
   if (todo.length) h += `<h2>対応すること</h2><div class="rows">${todo.join('')}</div>`;
-  h += '<h2>次の授業</h2>' + (x.upcoming.length ? '<div class="rows">' + x.upcoming.slice(0, 2).map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">決まっている授業はありません。</p>');
+  h += '<h2>次の授業</h2>' + (x.upcoming.length ? '<div class="rows">' + x.upcoming.slice(0, 2).map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">ありません。</p>');
   const last = x.records.find(r => r.status === 'published') || x.records[0];
   h += '<h2>前回の記録</h2>' + (last ? `<div class="rows"><a class="todo" href="#record=${encodeURIComponent(last.lessonId)}"><span class="b"><strong>${md(last.date)} ${esc(last.subject)}：${esc(last.range || '（範囲なし）')}</strong><small class="muted">${esc(noteText(last.staffNotes) || last.comment.slice(0, 60))}</small></span><span class="go">›</span></a></div>` : '<p class="muted small">まだ記録はありません。</p>');
   if (x.handover.length) h += '<h2>引き継ぎメモ</h2><div class="rows">' + x.handover.slice(0, 3).map(n => `<div class="ev"><span class="t">${esc(n.createdAt.slice(5, 10).replace('-', '/'))}</span><span class="b" style="white-space:pre-wrap;color:var(--ink)">${esc(n.body)}<small class="muted"> ${esc(n.authorName)}</small></span><span></span></div>`).join('') + '</div>';
   h += '<h2>宿題</h2>' + homeworkList(esc, x.homework.slice(0, 5));
   const nt = x.grades.nextTest;
-  h += '<h2>テスト</h2>' + (nt ? `<p>${esc(nt.title || 'テスト')} ${md(nt.date)}・あと <strong>${nt.days}日</strong></p>` : '<p class="muted small">共有されている次のテストはありません。</p>');
+  h += '<h2>テスト</h2>' + (nt ? `<p>${esc(nt.title || 'テスト')} ${md(nt.date)}・あと <strong>${nt.days}日</strong></p>` : '<p class="muted small">ありません。</p>');
   if (x.plans) h += '<h2>今月・来月の計画</h2>' + planList(esc, x.plans);
   return h;
 }
 function homeworkList(esc, hw) {
-  if (!hw.length) return '<p class="muted small">未完了の宿題はありません。</p>';
+  if (!hw.length) return '<p class="muted small">ありません。</p>';
   return '<div class="rows">' + hw.map(w => `<div class="ev"><span class="t">${esc(hwSubject(w) || '宿題')}</span><span class="b" style="color:var(--ink)">${esc([w.material, w.title].filter(Boolean).join(' '))}
     <small class="muted">${w.due ? md(w.due) + 'まで' : w.dueMode === 'date' ? md(w.dueDate) + 'まで' : w.dueMode === 'nextLesson' ? '次の' + esc(w.dueSubject || '授業') + 'まで' : ''}</small></span><span>${w.status === 'reported' ? '<span class="tag warn">できたと報告</span>' : ''}</span></div>`).join('') + '</div>';
 }
@@ -108,10 +108,10 @@ function planList(esc, plans) {
 }
 function schedule(ctx, x) {
   const { esc } = ctx;
-  return `<h2>これからの授業 <span class="count">${x.upcoming.length}</span></h2>` + (x.upcoming.length ? '<div class="rows">' + x.upcoming.map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">決まっている授業はありません。</p>')
+  return `<h2>これからの授業 <span class="count">${x.upcoming.length}</span></h2>` + (x.upcoming.length ? '<div class="rows">' + x.upcoming.map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">ありません。</p>')
     + (x.events.length ? '<h2>テスト・行事・授業ができない日</h2><div class="rows">' + x.events.map(e => `<div class="ev ${e.kind}"><span class="t">${md(e.date)}${e.dateTo !== e.date ? '〜' : ''}</span><span class="b">${esc(e.title || (e.kind === 'unavailable' ? '授業ができない日' : ''))}</span><span></span></div>`).join('') + '</div>' : '')
     + '<h2>これまでの授業</h2>' + (x.past.length ? '<div class="rows">' + x.past.map(l => lessonRow(esc, l, ['decided', 'done'].includes(l.status) ? '#record=' + encodeURIComponent(l.id) : '')).join('') + '</div>' : '<p class="muted small">まだありません。</p>')
-    + '<p class="small" style="margin-top:12px"><a href="#schedule">月の予定表を開く（授業を作る・直す）</a></p>';
+    + '<p class="small" style="margin-top:12px"><a href="#schedule">月の予定表を開く</a></p>';
 }
 function records(ctx, x) {
   const { esc } = ctx;
@@ -126,7 +126,7 @@ function grades(ctx, x) {
   const sid = encodeURIComponent(x.student.id), g = x.grades;
   let h = `<p style="margin-top:12px"><a class="small-btn primary" href="#grades=${sid}">結果を入れる・直す</a></p>`;
   if (g.nextTest) h += `<p class="small">次のテスト: ${ctx.esc(g.nextTest.title || '')} ${md(g.nextTest.date)}（あと${g.nextTest.days}日）</p>`;
-  if (!g.exams.length) return h + '<p class="muted small">まだ成績の記録はありません。</p>';
+  if (!g.exams.length) return h + '<p class="muted small">まだ記録はありません。</p>';
   const pk = seriesPick(g.exams, x.student.id);
   return h + pk.bar + trendBox(pk.list, x.student.id) + examPager(pk.list, x.student.id, e => examCard(e, { sheets: (g.files || []).filter(f => f.examId === e.id && f.status !== 'dismissed') }));
 }
@@ -139,12 +139,12 @@ function money(ctx, x) {
 function basic(ctx, x) {
   const { esc } = ctx, b = x.basic, s = x.student;
   const row = (k, v) => v ? `<div class="ev"><span class="t" style="font-weight:400">${k}</span><span class="b" style="color:var(--ink)">${esc(v)}</span><span></span></div>` : '';
-  const trialBox = s.trial ? `<div class="notice" style="margin-top:12px"><strong>体験生です</strong>（まだ入塾していません。授業は種類「体験」で無料）。入塾の手続きは<a href="#student=${encodeURIComponent(s.id)}/summary">概要</a>の「入塾の手続き」から。
-    <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする（書面などで手続きしたとき）</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">ご利用規約・受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
+  const trialBox = s.trial ? `<div class="notice" style="margin-top:12px"><strong>体験生</strong>（授業は無料）・<a href="#student=${encodeURIComponent(s.id)}/summary">入塾の手続き</a>
+    <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">ご利用規約・受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
   return trialBox + `<h2>生徒</h2><div class="rows">${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('通常の基準単価', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}</div>
     <h2>家族</h2><div class="rows">${row('家族', b.familyName)}${row('保護者', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</div>
-    <h2>その人の目で見る</h2><p class="small muted">表示だけです。押しても何も変わりません（1時間で切れます）。</p>
-    <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る（プレビュー）</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る（プレビュー）</button></div>
+    <h2>その人の目で見る</h2><p class="small muted">見るだけ・1時間で切れます</p>
+    <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る</button></div>
     <p style="margin-top:12px"><a class="small-btn" href="#family=${encodeURIComponent(b.familyId)}">直す・招待・専用リンク（家族の画面）</a></p>`;
 }
 
@@ -167,17 +167,17 @@ function offerForm(ctx, x, again) {
   return `<form class="reg-form" data-form="enroll-offer" data-id="${esc(s.id)}" novalidate>
     <fieldset class="reg-field"><legend>保護者のメールアドレス <span class="req">必須</span></legend>
       <input type="email" name="email" value="${esc(e.email || '')}" ${e.familyActive ? 'readonly' : ''} autocomplete="off" placeholder="parent@example.com">
-      <p class="reg-help">${e.familyActive ? '保護者ページに登録済みのアドレスです（変えるときは家族の画面で）。' : 'ここに入塾の案内が届きます。保護者ページのログインにも使います。'}</p></fieldset>
+      <p class="reg-help">${e.familyActive ? '登録済み（変えるときは家族の画面で）' : '保護者ページのログインにも使います'}</p></fieldset>
     <fieldset class="reg-field"><legend>受講条件</legend>
-      <p class="reg-help">受講条件書になります。保護者は申込みのときに、この内容に同意します。</p>
+      <p class="reg-help">受講条件書になり、保護者が申込みで同意します</p>
       <div class="row"><label style="flex:1">開始月<input type="month" name="fromMonth" value="${esc(from)}" required></label><label style="flex:1">1回の時間（分）<input type="number" name="minutes" value="${esc(minutes)}" min="15" max="300" step="5" required></label><label style="flex:1">1回の基準単価（円・税込）<input type="number" name="fee" value="${esc(fee)}" min="0" max="100000" step="10" required></label></div>
       <div class="choices" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${Object.entries(MODE).map(([k, l]) => `<label class="choice"><input type="radio" name="deliveryMode" value="${k}"${mode === k ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
       <label>科目<input name="subjects" value="${esc((cond && cond.subjects) || b.subjects || '')}" maxlength="100" placeholder="英語・数学"></label>
-      <label class="choice"><input type="checkbox" name="studentContact"${!cond || cond.studentContact ? ' checked' : ''}><span>生徒本人からのお休みの連絡を受け付ける<small>前日23時までの無料のお休みを、生徒ページからも連絡できます。</small></span></label>
+      <label class="choice"><input type="checkbox" name="studentContact"${!cond || cond.studentContact ? ' checked' : ''}><span>生徒本人からのお休みの連絡を受け付ける</span></label>
     </fieldset>
-    ${ready ? '' : '<p class="notice error" style="margin:0">ご利用規約をまだ使い始めていません。保護者は申込みのときに規約に同意するので、先に <a href="#terms">設定 → ご利用規約</a> で使い始めてください。</p>'}
+    ${ready ? '' : '<p class="notice error" style="margin:0">ご利用規約をまだ使い始めていません。先に <a href="#terms">設定 → ご利用規約</a> で使い始めてください。</p>'}
     <div class="row"><button class="primary"${ready ? ctx.dis() : ' disabled'}>${again ? 'この条件で送り直す' : '入塾の案内を送る'}</button></div>
-    <p class="small muted" style="margin:0">送ると保護者にメールが届きます。保護者がパスワードを決めて申し込むと、そのまま入塾になります（ご利用規約と、この受講条件書への同意も記録されます）。</p></form>`;
+    <p class="small muted" style="margin:0">送ると保護者にメールが届きます。保護者が申し込むと、そのまま入塾になります。</p></form>`;
 }
 function enrollCard(ctx, x) {
   const { esc } = ctx, e = x.enrollment, o = e.offer, s = x.student, cond = (x.basic.condition && x.basic.condition.latest) || null;
@@ -186,16 +186,14 @@ function enrollCard(ctx, x) {
     if (Date.parse(o.appliedAt) < Date.parse(x.today) - 30 * 86400e3) return '';
     const a = o.application || {};
     return `<section class="reg-card"><div class="reg-card-head"><h2>入塾しました</h2><span class="tag ok">${jaAt(o.appliedAt)}に申込み</span></div>${enrollSteps(4)}
-      <p style="margin:0 0 6px">保護者が申し込み、ご利用規約と受講条件書に同意しました。次は${esc(jaMonth(o.fromMonth))}の計画（受講合意書）を作って送ってください。</p>
+      <p style="margin:0 0 6px">ご利用規約と受講条件書に同意済み</p>
       <dl class="reg-rows">${row('保護者', (a.guardian && a.guardian.name) || o.consenterName)}${a.guardian ? row('電話', a.guardian.phone) + row('住所', a.guardian.address) : ''}${row('入塾日', a.enrolledOn || '')}</dl>
-      <div class="row" style="margin-top:8px"><a class="small-btn primary" href="#plans">計画を作る</a></div></section>`;
+      <div class="row" style="margin-top:8px"><a class="small-btn primary" href="#plans">${esc(jaMonth(o.fromMonth))}の計画を作る</a></div></section>`;
   }
   if (!s.trial) return '';
-  if (!o) return `<section class="reg-card"><div class="reg-card-head"><h2>入塾の手続き</h2></div>${enrollSteps(1)}
-    <p style="margin:0 0 4px">続けることになったら、保護者のメールアドレスと受講条件を入れて「入塾の案内を送る」を押してください。</p>${offerForm(ctx, x, false)}</section>`;
-  const link = lastInvite && lastInvite.id === o.id && lastInvite.url ? `<p class="small" style="margin:8px 0 4px">メールが届かないときは、このリンクをLINEなどで送れます（7日間）。</p><p class="copy">${esc(lastInvite.url)}</p><button data-action="copy" data-text="${esc(lastInvite.url)}">リンクをコピー</button>` : '';
+  if (!o) return `<section class="reg-card"><div class="reg-card-head"><h2>入塾の手続き</h2></div>${enrollSteps(1)}${offerForm(ctx, x, false)}</section>`;
+  const link = lastInvite && lastInvite.id === o.id && lastInvite.url ? `<p class="small" style="margin:8px 0 4px">メールが届かないときのリンク（7日間有効）</p><p class="copy">${esc(lastInvite.url)}</p><button data-action="copy" data-text="${esc(lastInvite.url)}">リンクをコピー</button>` : '';
   return `<section class="reg-card"><div class="reg-card-head"><h2>保護者の申込みを待っています</h2><span class="tag warn">${jaAt(o.offeredAt)}に案内</span></div>${enrollSteps(2)}
-    <p style="margin:0 0 6px">保護者がメールのリンクからパスワードを決め、申し込むと入塾になります。</p>
     <dl class="reg-rows">${row('送り先', e.email || '')}${cond ? row('受講条件', `${jaMonth(cond.fromMonth)}から・1回${cond.minutes}分 ${yen(cond.fee)}・${MODE[cond.deliveryMode] || ''}${cond.subjects ? '・' + cond.subjects : ''}`) : ''}</dl>${link}
     <div class="row" style="margin-top:10px"><button data-action="enroll-resend" data-id="${esc(o.id)}"${ctx.dis()}>案内をもう一度送る</button><button data-action="enroll-withdraw" data-id="${esc(o.id)}"${ctx.dis()}>案内を取り消す</button></div>
     <details style="margin-top:10px"><summary class="small">条件を変えて送り直す</summary>${offerForm(ctx, x, true)}</details></section>`;
@@ -220,7 +218,7 @@ export async function studentsSubmit(ctx, kind, el) {
   if (kind !== 'trial-create') return false;
   const v = Object.fromEntries(new FormData(el).entries());
   const r = await ctx.call('admin/trials/create', { familyName: v.familyName, givenName: v.givenName, grade: v.grade, school: v.school, note: v.note });
-  if (r.ok) { list = null; ctx.say(`${v.familyName}${v.givenName ? ' ' + v.givenName : ''}さんを体験生で登録しました。予定表から授業を入れられます`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+  if (r.ok) { list = null; ctx.say(`${v.familyName}${v.givenName ? ' ' + v.givenName : ''}さんを体験生で登録しました`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;
 }
 export async function studentsClick(ctx, a, b) {

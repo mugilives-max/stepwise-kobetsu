@@ -1,7 +1,7 @@
-import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 // 作り直し（v2）の予定の部品。スタッフ・保護者・生徒の画面で共通に使う（言葉と色をそろえる）。
 import { esc } from '/assets/v2/api.js';
-import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
+import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 
 // 段階（2026-10-14 本人決定）: 下書き（塾だけ）→ 調整中（お互いに見える・締め切りなし）→ 確認待ち（締め切りあり。proposed で asked）→ 確定
 export const STATUS = {
@@ -11,9 +11,10 @@ export const ASKING = ['ask', '確認待ち'];
 export const stageLabel = l => l.status === 'proposed' && l.asked ? ASKING[1] : (STATUS[l.status] || ['', l.status])[1];
 const byText = l => automaticDeadline(l) ? ' ' + Number(l.confirmBy.slice(5, 7)) + '/' + Number(l.confirmBy.slice(8)) + 'まで' : '';
 export const REQUEST = { move: '日時の変更のお願い', rest: 'お休みの連絡', late: '開始を遅らせたい', cancel: 'キャンセル' };
+// [ボタン, 料金, 選んだときに出す一言（料金・取り消せない結果だけ。無いときは空）, 入力欄の例]
 export const CHOICE = {
-  move: ['日時の変更をお願いする', '無料', '先生が別の日時を相談します。決まるまでは今の日時のままです。', '希望の日時など（必須）'],
-  rest: ['お休みにする', '無料', '前日23時までの連絡なので、料金はかかりません。', '理由（必須）'],
+  move: ['日時の変更をお願いする', '無料', '決まるまでは今の日時のままです。', '希望の日時など（必須）'],
+  rest: ['お休みにする', '無料', '', '理由（必須）'],
   late: ['開始を遅らせたい', '先生に相談', '先生の都合がつくときだけ応じます。応じた場合も料金は予定どおりで、追加はありません。', '何分ほど遅らせたいか（必須）'],
   cancel: ['キャンセルする', '1,000円', '前日23時を過ぎているため、キャンセル料（1回1,000円）がかかります。授業の開始後は授業料相当額です。急病などの事情があれば理由に書いてください。先生が確認し、減額・免除することがあります。', '理由（必須）'],
 };
@@ -43,7 +44,7 @@ export function eventList(events, { names = {}, canDelete = () => false } = {}) 
 export function eventForm(students) {
   return `<form class="stack" data-form="event">${students.length > 1 ? `<label>だれの予定<select name="studentId">${students.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></label>` : `<input type="hidden" name="studentId" value="${esc(students[0] ? students[0].id : '')}">`}
     <label>種類<select name="kind"><option value="test">テスト</option><option value="event">行事</option><option value="unavailable">授業ができない日</option></select></label>
-    <div class="row"><label style="flex:1">日付<input type="date" name="date" required></label><label style="flex:1">終わりの日（同じ日なら空）<input type="date" name="dateTo"></label></div>
+    <div class="row"><label style="flex:1">日付<input type="date" name="date" required></label><label style="flex:1">終わりの日（任意）<input type="date" name="dateTo"></label></div>
     <div class="row"><label style="flex:1">時間（任意）<input type="time" name="start"></label><label style="flex:1">〜<input type="time" name="end"></label></div>
-    <label>内容（例: 2学期中間テスト）<input name="title" maxlength="60"></label><button class="primary">共有する</button></form>`;
+    <label>内容<input name="title" maxlength="60" placeholder="例: 2学期中間テスト"></label><button class="primary">共有する</button></form>`;
 }

@@ -1,6 +1,6 @@
-import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
-import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261016-notices';
-import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261016-agreement';
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
+import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261025-layout';
+import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261025-layout';
 // 保護者・生徒の画面で共通に使う部品（作り直し v2）。
 // 考え方（docs/UX_STRUCTURE.md 1）: 一覧は白い枠に 1 件 1 行、操作は押すと下から出る画面で。文字より印で分かるように。
 // - 授業の一覧（日付ごと）と、授業を押したときの画面（変更・お休み・キャンセルの連絡）
@@ -9,11 +9,11 @@ import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=202
 // - 受講合意書（月ごとに 1 枚。承認は月に 1 回）、請求、キャンセル料
 // - テスト・行事
 import { esc } from '/assets/v2/api.js';
-import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261016-notices';
-import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261008-launch1';
-import { partText } from '/assets/v2/cancel-rate.js?v=20261008-launch1';
-import { sheet, ICON } from '/staff/ui.js?v=20261008-launch1';
-import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261020-r9';
+import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261025-layout';
+import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261025-layout';
+import { partText } from '/assets/v2/cancel-rate.js?v=20261025-layout';
+import { sheet, ICON } from '/staff/ui.js?v=20261025-layout';
+import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261025-layout';
 
 export const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 export const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
@@ -73,7 +73,7 @@ export function lessonRows(lessons, { names = {}, today = '', emptyText = 'こ�
 export function dayRows(date, lessons, events, { names = {}, canDelete = () => false } = {}) {
   const ls = lessons.filter(l => l.date === date).sort((a, b) => a.start.localeCompare(b.start)), evs = events.filter(e => e.date <= date && date <= e.dateTo);
   if (!ls.length && !evs.length) return '<p class="muted small" style="margin:4px 2px 10px">予定はありません。</p>';
-  return '<div class="group">' + evs.map(e => `<div class="evrow"><span class="t"><small>${e.start ? e.start + '〜' + e.end : '終日'}</small></span><span class="b"><span class="nm">${esc(e.title || EVENT_KIND[e.kind])}</span><small>${names[e.studentId] ? esc(given(names[e.studentId])) + '・' : ''}${EVENT_KIND[e.kind]}</small></span>${canDelete(e) ? `<button type="button" class="x" data-action="del-event" data-id="${esc(e.id)}" aria-label="消す">${picon('x')}</button>` : '<span></span>'}</div>`).join('') + lessonRows(ls, { names, bare: true }) + '</div>';
+  return '<div class="group">' + evs.map(e => `<div class="evrow"><span class="t"><small>${e.start ? e.start + '〜' + e.end : '終日'}</small></span><span class="b"><span class="nm">${esc(e.title || EVENT_KIND[e.kind])}</span><small>${[names[e.studentId] ? esc(given(names[e.studentId])) : '', e.title ? EVENT_KIND[e.kind] : ''].filter(Boolean).join('・')}</small></span>${canDelete(e) ? `<button type="button" class="x" data-action="del-event" data-id="${esc(e.id)}" aria-label="消す">${picon('x')}</button>` : '<span></span>'}</div>`).join('') + lessonRows(ls, { names, bare: true }) + '</div>';
 }
 // 次の授業（ホームの一番上）。押すと同じ下から出る画面
 export function nextLessonHero(l, { names = {}, today = '' } = {}) {
@@ -84,27 +84,29 @@ export function nextLessonHero(l, { names = {}, today = '' } = {}) {
     <span class="s">${names[l.studentId] ? esc(given(names[l.studentId])) + '　' : ''}${esc(l.subject)}${l.deliveryMode === 'online' ? '・オンライン' : '・教室'}${l.status === 'proposed' ? (l.asked ? '<span class="tag ask">確認待ち</span>' : '<span class="tag warn">調整中</span>') : ''}</span></button>`;
 }
 // 授業を押したときの画面。state: { id, pick, note }。canRequest=false なら見るだけ。canAgree: 確認待ちに「この日程で大丈夫」を出す（保護者だけ）
+// 状態は上の印で見せる。文で書くのは、締め切りで確定すること・料金がかかることだけ
 export function lessonSheet(l, state, { names = {}, canRequest = true, canAgree = false, busy = false, sendLabel = '連絡する' } = {}) {
   const title = `${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)}`;
   const req = openRequest(l);
   let body = `<div class="ls-head"><strong>${names[l.studentId] ? esc(names[l.studentId]) + '　' : ''}${esc(l.subject)}${l.kind && l.kind !== '通常' ? `（${esc(l.kind)}）` : ''}</strong><span class="small muted">${l.deliveryMode === 'online' ? 'オンライン' : '教室で'}${l.minutes ? `・${l.minutes}分` : ''}</span><span class="tags">${statusText(l).join('') || '<span class="tag">確定</span>'}</span></div>`;
-  if (l.status === 'proposed') body += `<p class="small muted" style="margin:0 0 8px">${l.asked ? (automaticDeadline(l) ? `先生から日程の確認のお願いです。${md(l.confirmBy)}までにご連絡がなければ、この日時で確定します。` : '先生から日程の確認のお願いです。この授業は無回答では確定しません。ご返事をいただいてから確定します。') : '先生と日時を相談している段階です。まだ確定していません（自動では確定しません）。'}</p>`;
+  if (l.status === 'proposed' && l.asked && automaticDeadline(l)) body += `<p class="small muted" style="margin:0 0 8px">${md(l.confirmBy)}までにご連絡がなければ、この日時で確定します。</p>`;
   if (l.meetUrl && l.status === 'decided') body += `<a class="btn wide" href="${esc(l.meetUrl)}" target="_blank" rel="noopener">${picon('video')} Meet に参加する</a>`;
   if (req) {
-    body += `<div class="ls-req"><div><b>${REQUEST[req.kind]}</b>を連絡済みです${req.note ? `<div class="small muted">${esc(req.note)}</div>` : ''}<div class="small muted">先生の返事をお待ちください。</div></div>${canRequest ? `<button data-action="withdraw" data-id="${esc(req.id)}"${busy ? ' disabled' : ''}>連絡を取り下げる</button>` : ''}</div>`;
+    body += `<div class="ls-req"><div><b>${REQUEST[req.kind]}</b>${req.note ? `<div class="small muted">${esc(req.note)}</div>` : ''}</div>${canRequest ? `<button data-action="withdraw" data-id="${esc(req.id)}"${busy ? ' disabled' : ''}>連絡を取り下げる</button>` : ''}</div>`;
     return sheet(esc, title, body, 'close-sheet');
   }
-  if (canAgree && canRequest && l.status === 'proposed' && l.asked) body += `<div style="margin:0 0 10px"><button class="primary wide" data-action="agree" data-id="${esc(l.id)}" data-version="${l.version}"${busy ? ' disabled' : ''}>この日程で大丈夫</button><p class="small muted" style="margin:4px 0 0">押すと、この日時で確定します（予約になります）。</p></div>`;
+  if (canAgree && canRequest && l.status === 'proposed' && l.asked) body += `<div style="margin:0 0 10px"><button class="primary wide" data-action="agree" data-id="${esc(l.id)}" data-version="${l.version}"${busy ? ' disabled' : ''}>この日程で大丈夫</button></div>`;
   const choices = canRequest ? (l.choices || []) : [];
   if (!choices.length) {
-    body += `<p class="small muted">${!canRequest ? '予定の変更・お休みの連絡は、保護者の方からお願いします。' : ['rested', 'cancelled', 'done'].includes(l.status) ? 'この授業は' + (STATUS[l.status] || [])[1] + 'です。' : '授業が始まっているため、ここからは連絡できません。先生に直接お知らせください。'}</p>`;
+    const why = !canRequest ? '連絡は保護者の方からお願いします。' : ['rested', 'cancelled', 'done'].includes(l.status) ? '' : '授業が始まっているため、先生に直接お知らせください。';
+    if (why) body += `<p class="small muted">${why}</p>`;
     return sheet(esc, title, body, 'close-sheet');
   }
   body += `<h3>連絡する</h3><div class="choice-list">` + choices.map(c => { const [label, cost, how] = choiceOf(l, c); const on = state.pick === c;
-    return `<button type="button" class="choice${on ? ' on' : ''}${c === 'cancel' ? ' danger' : ''}" data-action="pick" data-c="${c}" aria-pressed="${on}"><span class="b"><b>${esc(label)}</b>${on ? `<small>${esc(how)}</small>` : ''}</span><span class="cost">${esc(cost)}</span></button>`; }).join('') + '</div>';
+    return `<button type="button" class="choice${on ? ' on' : ''}${c === 'cancel' ? ' danger' : ''}" data-action="pick" data-c="${c}" aria-pressed="${on}"><span class="b"><b>${esc(label)}</b>${on && how ? `<small>${esc(how)}</small>` : ''}</span><span class="cost">${esc(cost)}</span></button>`; }).join('') + '</div>';
   if (state.pick) {
     const offerRest = state.pick === 'rest' && l.status === 'proposed';
-    body += offerRest ? '<p class="small muted">この授業（まだ確定していません）をお休みにします。料金はかかりません。</p>' : `<input id="change-note" maxlength="500" value="${esc(state.note || '')}" placeholder="${esc(choiceOf(l, state.pick)[3])}" autocomplete="off">`;
+    body += offerRest ? '' : `<input id="change-note" maxlength="500" value="${esc(state.note || '')}" placeholder="${esc(choiceOf(l, state.pick)[3])}" autocomplete="off">`;
     body += `<div class="row" style="margin-top:10px"><button class="${state.pick === 'cancel' ? 'danger' : 'primary'} wide" data-action="send-change"${busy ? ' disabled' : ''}>${busy ? '送っています…' : sendLabel}</button></div>`;
   }
   return sheet(esc, title, body, 'close-sheet');
@@ -130,7 +132,7 @@ export function homeworkRows(list, { names = {}, canReport = true, emptyText = '
 const CHECK_TEXT = { done: ['ok', 'やってきた'], partial: ['warn', '一部だけ'], notDone: ['danger', 'やってこなかった'] };
 export function recordCards(records, homework = [], { names = {}, limit = 0 } = {}) {
   const list = limit ? records.slice(0, limit) : records;
-  if (!list.length) return '<p class="muted small">公開された授業の記録はまだありません。</p>';
+  if (!list.length) return '<p class="muted small">授業の記録はまだありません。</p>';
   return list.map(r => {
     const checks = homework.filter(w => w.checkedRecordId === r.id && CHECK_TEXT[w.checkResult]);
     return `<article class="rcard"><div class="rc-head"><strong>${md(r.date)}<small>（${wd(r.date)}）</small> ${esc(r.subject)}${r.kind && r.kind !== '通常' ? `<small>（${esc(r.kind)}）</small>` : ''}</strong>${names[r.studentId] ? `<span class="tag gray">${esc(given(names[r.studentId]))}</span>` : ''}</div>
@@ -158,11 +160,11 @@ export function planApprovalCard(month, lines, { multi, counts = {}, dis = '', c
   const total = lines.reduce((s, l) => s + n(l) * l.fee, 0);
   const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span>
       <span class="n"><select name="count-${esc(l.id)}" data-plan-count="${esc(l.id)}" aria-label="回数">${Array.from({ length: l.count - l.minCount + 1 }, (_, i) => l.count - i).map(k => `<option value="${k}"${n(l) === k ? ' selected' : ''}>${k}回</option>`).join('')}${l.minCount === 0 ? `<option value="0"${n(l) === 0 ? ' selected' : ''}>見送る</option>` : ''}</select><small>1回 ${esc(l.minutes)}分・${yen(l.fee)}</small></span>
-      <span class="amt">${yen(n(l) * l.fee)}</span></div>${l.minCount ? `<div class="small muted pl-note">すでに決まっている授業が${l.minCount}回あるため、${l.minCount}回より少なくはできません。</div>` : ''}`);
+      <span class="amt">${yen(n(l) * l.fee)}</span></div>${l.minCount ? `<div class="small muted pl-note">決まっている授業 ${l.minCount}回</div>` : ''}`);
   return `<form class="pcard ask" data-form="plan-approve" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書（案）</strong><span class="tag warn">承認をお願いします</span></div>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
-    <p class="small muted">回数を減らしたいときは、各行の回数を変えてから承認してください。承認は、表示した科目・回数・時間・料金の範囲で授業を実施できるようにするものです。予約や授業料の事前購入ではありません。授業日時は別に確認します。</p>
-    ${agreementDocumentButtons(lines,{label:'提示された案を印刷・PDF保存'})}<p class="small muted">書面には提示された回数を表示します。画面で変更中の回数は、承認後の控えに反映されます。</p>
+    <p class="small muted">承認は、表示した科目・回数・時間・料金の範囲で授業を実施できるようにするものです。予約や授業料の事前購入ではありません。授業日時は別に確認します。</p>
+    ${agreementDocumentButtons(lines,{label:'提示された案を印刷・PDF保存'})}
     ${consenterField(month, consenterName)}<button class="primary wide"${dis}>この内容で承認する</button></form>`;
 }
 // 先生が記録した承諾（LINE など）を確かめてもらう月
@@ -171,7 +173,7 @@ export function planAckCard(month, lines, { multi, dis = '' }) {
   const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span><span class="n"><small>${l.approvedCount}回・1回 ${yen(l.fee)}</small></span><span class="amt">${yen(l.approvedCount * l.fee)}</span></div>`);
   const total = lines.reduce((s, l) => s + l.approvedCount * l.fee, 0);
   return `<div class="pcard ack" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書</strong><span class="tag">確かめてください</span></div>
-    <p class="small muted">${esc(via)}で承諾いただいた内容を、先生が記録しました（${esc(date)}）。</p>
+    <p class="small muted">${esc(via)}でのご承諾・${esc(date)}</p>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
     ${agreementDocumentButtons(lines)}<div class="row"><button class="primary" data-action="plan-ack-month" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"${dis}>この内容で合っています</button><button data-action="plan-inquiry" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"${dis}>違うところがある</button></div></div>`;
 }
@@ -190,13 +192,13 @@ export function planGroups(plans) {
   const others = plans.filter(l => !asks.includes(l) && !acks.includes(l));
   return { asks: groupByMonth(asks), acks: groupByMonth(acks), others };
 }
-export const inquirySheet = (month, note, busy) => sheet(esc, `${monthLabel(month)}の受講合意書について`, `<p class="small muted">違うところや確かめたいことを書いてください。先生に届きます。</p><textarea id="inquiry-note" rows="3" maxlength="500" placeholder="例: 英語は 4 回ではなく 3 回で話していました">${esc(note || '')}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-inquiry" data-month="${esc(month)}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '先生に伝える'}</button></div>`, 'close-sheet');
+export const inquirySheet = (month, note, busy) => sheet(esc, `${monthLabel(month)}の受講合意書について`, `<textarea id="inquiry-note" rows="3" maxlength="500" placeholder="例: 英語は 4 回ではなく 3 回で話していました">${esc(note || '')}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-inquiry" data-month="${esc(month)}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '先生に伝える'}</button></div>`, 'close-sheet');
 
 // ---- ご利用規約（同意が要るとき） ----
 export function termsCard(terms, { busy = false, checked = false, consenterName = '' } = {}) {
   const t = terms.current;
   return `<div class="pcard ask" data-terms="${esc(t.version)}"><div class="pc-head"><strong>${esc(t.title || 'ご利用規約')}</strong><span class="tag warn">同意をお願いします</span></div>
-    <p class="small">${t.from ? `${ymdJa(t.from)}から適用されます。` : ''}すべてのご家庭に共通の、当塾のきまりです。${t.note ? esc(t.note) : '受講合意書を承認する前に、ご利用規約をお読みください。'}${terms.agreed.version ? '<br><span class="muted">以前の内容には同意いただいています。新しい内容をお読みいただき、あらためて同意をお願いします。</span>' : ''}</p>
+    <p class="small">${t.from ? `${ymdJa(t.from)}から適用されます。` : ''}${t.note ? esc(t.note) : ''}${terms.agreed.version ? '<br><span class="muted">以前の内容に同意済み</span>' : ''}</p>
     ${t.url ? `<a class="btn wide" href="${esc(t.url)}" target="_blank" rel="noopener">${picon('file')} 規約の全文を読む</a>` : '<p class="small muted">全文は教室からお渡しします。</p>'}
     ${consenterField('terms', consenterName)}<label class="agree"><input type="checkbox" id="terms-agree"${checked ? ' checked' : ''}> 全文を読み、内容に同意します</label>
     <button class="primary wide" data-action="terms-accept" data-version="${esc(t.version)}"${busy ? ' disabled' : ''}>同意する</button></div>`;
@@ -208,7 +210,7 @@ export function conditionCard(x, { busy = false, checked = false, consenterName 
   const c = x.latest;
   return `<div class="pcard ask" data-condition="${esc(c.id)}"><div class="pc-head"><strong>${esc(given(x.studentName))}さんの受講条件書（第${c.no}版）</strong><span class="tag warn">同意をお願いします</span></div>
     <dl class="cond-dl">${condRow('通常の基準単価', `1回 ${c.minutes}分 <strong>${yen(c.fee)}</strong>（税込）`)}${condRow('形式', esc(c.deliveryLabel))}${condRow('人数', esc(c.groupSize))}${condRow('生徒本人からの連絡', c.studentContact ? '前日23時までの無料のお休みは、本人からも連絡できます' : '保護者からお願いします')}${condRow('科目', esc(c.subjects))}${condRow('特記事項', esc(c.note))}${condRow('適用開始', monthJa(c.fromMonth))}</dl>
-    ${x.agreed ? `<p class="small muted">今は第${x.agreed.no}版（1回 ${x.agreed.minutes}分 ${yen(x.agreed.fee)}）に同意いただいています。この版に同意すると、${monthJa(c.fromMonth)}から置き換わります。</p>` : '<p class="small muted">通常の授業はこの条件で行います。月ごとの回数は、別に受講合意書でお知らせします。</p>'}
+    ${x.agreed ? `<p class="small muted">同意すると、今の第${x.agreed.no}版（1回 ${x.agreed.minutes}分 ${yen(x.agreed.fee)}）は${monthJa(c.fromMonth)}からこの版に置き換わります。</p>` : ''}
     ${c.docFileId ? `<button type="button" class="btn wide" data-action="gr-open" data-id="${esc(c.docFileId)}">${picon('file')} 受講条件書（書面）を開く</button>` : ''}
     ${consenterField(c.id, consenterName)}<label class="agree"><input type="checkbox" data-cond-agree="${esc(c.id)}"${checked ? ' checked' : ''}> 内容を確かめ、この条件に同意します</label>
     <button class="primary wide" data-action="cond-agree" data-id="${esc(c.id)}"${busy ? ' disabled' : ''}>同意する</button></div>`;
@@ -219,7 +221,7 @@ const ymdJa = v => v ? `${Number(v.slice(0, 4))}年${Number(v.slice(5, 7))}月${
 export function specialCard(x, { busy = false, checked = false, consenterName = '' } = {}) {
   return `<div class="pcard ask" data-special="${esc(x.id)}"><div class="pc-head"><strong>${esc(given(x.studentName))}さんの特別単価「${esc(x.title)}」</strong><span class="tag warn">承認をお願いします</span></div>
     <dl class="cond-dl">${condRow('指導の目的', esc(x.purpose))}${condRow('内容と範囲', esc(x.content).replace(/\n/g, '<br>'))}${condRow('通常の授業との違い', esc(x.reason).replace(/\n/g, '<br>'))}${condRow('必要な準備', esc(x.prep))}${condRow('1回の時間と特別の基準単価', `${x.minutes}分 <strong>${yen(x.fee)}</strong>（税込）`)}${condRow('対象期間', `${ymdJa(x.fromDate)} 〜 ${ymdJa(x.toDate)}`)}${condRow('特記事項', esc(x.note))}</dl>
-    <p class="small muted">承認すると、この期間の受講合意書の案に種類「${esc(x.title)}」として、この基準単価を上限とした適用単価で提案できます。月ごとの回数は受講合意書で別に承認していただきます。</p>
+    <p class="small muted">承認すると、この期間の受講合意書で「${esc(x.title)}」を、この基準単価を上限に提案できるようになります。回数は受講合意書で別に承認します。</p>
     ${x.docFileId ? `<button type="button" class="btn wide" data-action="gr-open" data-id="${esc(x.docFileId)}">${picon('file')} 特別単価合意書（書面）を開く</button>` : ''}
     ${consenterField(x.id, consenterName)}<label class="agree"><input type="checkbox" data-special-agree="${esc(x.id)}"${checked ? ' checked' : ''}> 内容を確かめ、この特別単価と料金を承認します</label>
     <button class="primary wide" data-action="special-agree" data-id="${esc(x.id)}"${busy ? ' disabled' : ''}>承認する</button></div>`;
@@ -230,7 +232,7 @@ export const termsLine = terms => terms && terms.agreed.version ? `<p class="sma
 // ---- 請求 ----
 const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['入金の確認待ち', ''], paid: ['お支払い済み', 'ok'], void: ['取り消し済み', ''] };
 export function invoiceRows(invoices) {
-  if (!invoices.length) return '<p class="muted small">まだ請求はありません。実施した授業の分を、翌月3日に確定してお知らせします。</p>';
+  if (!invoices.length) return '<p class="muted small">まだ請求はありません。</p>';
   return '<div class="group">' + invoices.map(v => { const [label, cls] = INV[v.status] || [v.status, ''];
     return `<button type="button" class="irow" data-action="invoice" data-id="${esc(v.id)}"><span class="b"><b>${v.month.slice(0, 4)}年${monthLabel(v.month)}分</b><small><span class="tag ${cls}">${label}</span>${v.status === 'paid' && v.paidOn ? ` ${md(v.paidOn)}` : ''}</small></span><span class="amt">${yen(v.total)}</span><span class="go">›</span></button>`; }).join('') + '</div>';
 }
@@ -239,12 +241,11 @@ export function invoiceSheet(v, { multi, busy = false }) {
   for (const i of v.items) (by[i.studentName] = by[i.studentName] || []).push(i);
   let body = `<div class="inv-total"><span class="tag ${cls}">${label}</span><strong>${yen(v.total)}</strong></div>`;
   if(v.status==='void')body+='<p class="notice">この請求は取り消されています。お支払いは不要です。理由：'+esc(v.voidReason||'')+'<br>お振込み済みの場合は教室へご連絡ください。</p>';
-  else if(v.status!=='paid')body+='<p><b>支払期限：'+esc(v.dueText||invoiceDueText(v))+'</b></p><p>振込先：'+esc(v.bank||'請求書をご確認ください。未記載の場合は教室から別途ご案内します。')+'</p><p class="small">振込手数料は保護者のご負担となります。</p>';
+  else if(v.status!=='paid')body+='<p><b>支払期限：'+esc(v.dueText||invoiceDueText(v))+'</b></p><p>振込先：'+esc(v.bank||'請求書をご確認ください')+'</p><p class="small">振込手数料は保護者のご負担となります。</p>';
   body += Object.entries(by).map(([name, items]) => `${multi ? `<h3>${esc(name)}</h3>` : ''}<table class="itbl">${items.map(i => `<tr><td>${i.date ? md(i.date) : ''}</td><td>${esc(i.subject)}${i.label ? `<small class="muted"> ${esc(i.label)}</small>` : ''}</td><td class="r">${i.kind === 'lesson' && i.minutes ? i.minutes + '分' : ''}</td><td class="r">${yen(i.amount)}</td></tr>`).join('')}</table>`).join('');
   if (v.invoiceDocId || v.receiptDocId) body += `<div class="row" style="margin:8px 0">${v.invoiceDocId ? `<button type="button" class="btn" data-action="gr-open" data-id="${esc(v.invoiceDocId)}">${picon('file')} 請求書を開く</button>` : ''}${v.receiptDocId ? `<button type="button" class="btn" data-action="gr-open" data-id="${esc(v.receiptDocId)}">${picon('file')} 領収書を開く</button>` : ''}</div>`;
-  if (v.status === 'confirmed') body += `<p class="small muted">お振込のあと、下のボタンで知らせてください。先生が入金を確かめます。</p><button class="primary wide" data-action="inv-report" data-id="${esc(v.id)}" data-version="${v.version}"${busy ? ' disabled' : ''}>振り込みました</button>`;
-  else if (v.status === 'reported') body += '<p class="small muted">振込のご連絡ありがとうございます。先生が入金を確かめます。</p>';
-  else if (v.status === 'paid') body += `<p class="small muted">入金を確認しました（${esc(v.paidOn)}）。ありがとうございました。</p>`;
+  if (v.status === 'confirmed') body += `<button class="primary wide" data-action="inv-report" data-id="${esc(v.id)}" data-version="${v.version}"${busy ? ' disabled' : ''}>振り込みました</button>`;
+  else if (v.status === 'paid' && v.paidOn) body += `<p class="small muted">入金確認 ${esc(v.paidOn)}</p>`;
   return sheet(esc, `${v.month.slice(0, 4)}年${monthLabel(v.month)}分の授業料`, body, 'close-sheet');
 }
 
@@ -256,18 +257,18 @@ export function feeRows(fees, { multi }) {
 export function feeSheet(f, { busy = false, note = '' }) {
   let body = `<div class="inv-total"><span class="small muted">${(f.parts || []).length ? f.parts.map(p => esc(partText(p, f.date))).join('<br>') : 'キャンセル料'}</span><strong>${yen(f.amount)}</strong></div>`;
   if (f.note) body += `<p class="small muted">${esc(f.note)}</p>`;
-  if (f.reliefStatus === 'pending') body += '<p class="small">減額・免除の申請を受け付けました。先生からの回答をお待ちください。</p>';
+  if (f.reliefStatus === 'pending') body += '<p class="small">減額・免除を申請中</p>';
   else if (f.reliefStatus) body += `<p class="small">申請への回答: ${esc(f.reliefResponse)}</p>`;
-  else if (!f.invoiceId && f.amount > 0) body += `<h3>減額・免除を申請する</h3><p class="small muted">重篤な体調不良で受診した場合や電車の運休など、やむを得ない事情のときに申請できます。通常の体調不良は対象外です。</p><textarea id="relief-note" rows="2" maxlength="1000" placeholder="事情を書いてください（例: 利用予定の路線が運休したため）">${esc(note)}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-relief" data-id="${esc(f.id)}" data-version="${f.version}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '申請する'}</button></div>`;
+  else if (!f.invoiceId && f.amount > 0) body += `<h3>減額・免除を申請する</h3><p class="small muted">対象は、重篤な体調不良での受診や電車の運休など、やむを得ない事情のときです。通常の体調不良は対象外です。</p><textarea id="relief-note" rows="2" maxlength="1000" placeholder="事情を書いてください（例: 利用予定の路線が運休したため）">${esc(note)}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-relief" data-id="${esc(f.id)}" data-version="${f.version}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '申請する'}</button></div>`;
   return sheet(esc, `${mdw(f.date)} ${esc(f.subject)} のキャンセル料`, body, 'close-sheet');
 }
 
 // ---- テスト・行事 ----
 export function eventRows(events, { names = {}, canDelete = () => false, today = '' } = {}) {
   if (!events.length) return '<p class="muted small">知らせた予定はありません。</p>';
-  return '<div class="group">' + events.map(e => `<div class="evrow"><span class="t">${md(e.date)}<small>${wd(e.date)}${e.dateTo !== e.date ? '〜' + md(e.dateTo) : ''}</small></span><span class="b"><span class="nm">${esc(e.title || EVENT_KIND[e.kind])}</span><small>${names[e.studentId] ? esc(given(names[e.studentId])) + '・' : ''}${EVENT_KIND[e.kind]}${e.start ? '・' + e.start + '〜' + e.end : ''}${e.date >= today && daysText(e.date, today) ? '・' + daysText(e.date, today) : ''}</small></span>${canDelete(e) ? `<button type="button" class="x" data-action="del-event" data-id="${esc(e.id)}" aria-label="消す">${picon('x')}</button>` : '<span></span>'}</div>`).join('') + '</div>';
+  return '<div class="group">' + events.map(e => `<div class="evrow"><span class="t">${md(e.date)}<small>${wd(e.date)}${e.dateTo !== e.date ? '〜' + md(e.dateTo) : ''}</small></span><span class="b"><span class="nm">${esc(e.title || EVENT_KIND[e.kind])}</span><small>${[names[e.studentId] ? esc(given(names[e.studentId])) : '', e.title ? EVENT_KIND[e.kind] : '', e.start ? e.start + '〜' + e.end : '', e.date >= today ? daysText(e.date, today) : ''].filter(Boolean).join('・')}</small></span>${canDelete(e) ? `<button type="button" class="x" data-action="del-event" data-id="${esc(e.id)}" aria-label="消す">${picon('x')}</button>` : '<span></span>'}</div>`).join('') + '</div>';
 }
-export const eventSheet = students => sheet(esc, 'テスト・行事を知らせる', `<p class="small muted">テスト・行事・授業ができない日を知らせると、先生が予定を作るときの参考にします。</p>${eventForm(students)}`, 'close-sheet');
+export const eventSheet = students => sheet(esc, 'テスト・行事を知らせる', eventForm(students), 'close-sheet');
 
 // 下から出る画面の共通の動き: Esc で閉じる、閉じるときは滑って戻る（スタッフの画面と同じ）
 export function wireSheets(app, { reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches } = {}) {
@@ -307,7 +308,7 @@ export function contractArchive(data) {
   const terms = data.terms?.history || [];
   const status = {proposed:'提案',approved:'承認済み',declined:'見送り',agreed:'同意済み',replaced:'旧提案',ended:'終了'};
   const details = (name,rows) => '<details><summary>'+name+'（'+rows.length+'件）</summary>'+rows.join('')+'</details>';
-  let h = '<section class="group" style="padding:12px"><h3>契約・同意の控え</h3><p class="small muted">過去の記録を表示しています。「記録なし」は当時の記録から確認できない項目です。下書きは表示しません。</p>';
+  let h = '<section class="group" style="padding:12px"><h3>契約・同意の控え</h3>';
   h += details('規約への同意', terms.map(r=>`<div class="pcard"><strong>${esc(r.title || 'ご利用規約')}${r.from ? `（${ymdJa(r.from)}から）` : ''}</strong><p class="small">${evidenceText(r,r.at)}</p>${/^https:\/\//.test(r.url||'') ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">この版の全文</a>` : '<p class="small muted">当時の全文リンクは未登録です。</p>'}</div>`));
   h += details('受講条件書',cs.map(c=>`<div class="pcard"><strong>${esc(c.studentName)}・第${c.no}版（${esc(status[c.status]||c.status)}）</strong><p class="small">${esc(c.fromMonth)}から・${c.minutes}分 ${yen(c.fee)}<br>${esc(c.subjects)}・${esc(c.deliveryLabel)}・${esc(c.groupSize)}<br>規約 ${esc(c.termsVersion || '記録なし')}</p><p class="small">${evidenceText(c,c.agreedAt)}</p>${doc(c)}</div>`));
   h += details('特別単価合意書',ss.map(c=>`<div class="pcard"><strong>${esc(c.studentName)}・${esc(c.title)} 第${c.no}版（${esc(status[c.status]||c.status)}）</strong><p class="small">${esc(c.fromDate)}〜${esc(c.toDate)}・${c.minutes}分 ${yen(c.fee)}<br>目的：${esc(c.purpose || '記録なし')}<br>規約 ${esc(c.termsVersion || '記録なし')}</p><p class="small">${evidenceText(c,c.agreedAt)}</p>${doc(c)}</div>`));

@@ -1,15 +1,15 @@
-import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261016-notices';
-import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261018-enroll';
-import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261016-agreement';
-import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261025-riyou';
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
+import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261025-layout';
+import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261025-layout';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261025-layout';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, session, esc, liveState } from '/assets/v2/api.js';
-import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261008-launch1';
-import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261008-launch1';
-import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261016-notices';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261025-riyou2';
+import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261025-layout';
+import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
+import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261025-layout';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261025-layout';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -45,14 +45,14 @@ const noticeHtml = () => notice ? `<p class="notice ${notice.k}" role="${notice.
 const dis = () => busy ? ' disabled' : '';
 async function run(task) { if (busy) return; busy = true; render(); try { await task(); } finally { busy = false; render(); } }
 // 切り替える前だけ出す案内（health の cutover.live で決める）
-const prepText = '<p class="notice small">準備中の新しい保護者ページです。今は今までの <a href="/hogosha/">保護者ページ</a> をお使いください。</p>';
+const prepText = '<p class="notice small">準備中です。今は <a href="/hogosha/">今までの保護者ページ</a> をお使いください。</p>';
 const prep = () => { const s = liveState(render); return s.known && !s.live ? prepText : ''; };
 
 function newPasswordForm(kind, label) {
   return `<form class="stack" data-form="${kind}"><label>新しいパスワード（12文字以上）<input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
     <label>もう一度<input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="128" required></label><button class="primary"${dis()}>${label}</button></form>`;
 }
-const helpLinks = '<p class="small">リンクの期限切れ・登録にお困りの場合は、いつものLINEまたは <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> に登録リンクの再案内を依頼してください。</p><p><a href="#home">ログインへ</a> · <a href="#forgot">パスワードを再設定する</a></p>';
+const helpLinks = '<p class="small">リンクが使えないときは、LINE または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へご連絡ください。</p><p><a href="#home">ログインへ</a> · <a href="#forgot">パスワードを再設定する</a></p>';
 function savedTarget(){try{return safeFamilyTarget(sessionStorage.getItem(NEXT_KEY)||'');}catch{return '';}}
 let appliedTarget='', openedTarget='';
 function applyTarget() {
@@ -66,14 +66,15 @@ function applyTarget() {
   appliedTarget=r.target;
 }
 function loginPage() {
-  return `${prep()}<h1>保護者ページ</h1><p>${esc(targetPurpose(route().target || savedTarget()))}ためにログインしてください。ログイン後、元の案内に戻ります。</p>${noticeHtml()}<form class="stack" data-form="login"><label>メールアドレス<input type="email" name="email" autocomplete="username" required></label>
+  const to = route().target || savedTarget();
+  return `${prep()}<h1>保護者ページ</h1>${to ? `<p>${esc(targetPurpose(to))}ためにログインしてください。</p>` : ''}${noticeHtml()}<form class="stack" data-form="login"><label>メールアドレス<input type="email" name="email" autocomplete="username" required></label>
     <label>パスワード<input type="password" name="password" autocomplete="current-password" required></label><button class="primary"${dis()}>${busy ? 'ログインしています…' : 'ログイン'}</button></form><p><a href="#forgot">パスワードを忘れたとき</a></p>`;
 }
 function invitePage(token) {
   if (!inviteInfo || inviteInfo.token !== token) { inviteInfo = { token, loading: true }; call('family/invite/info', { token }).then(r => { inviteInfo = { token, ...(r.ok ? r : { error: r.error.message }) }; render(); }); }
   if (inviteInfo.loading) return '<p class="muted">確かめています…</p>';
   if (inviteInfo.error) return `<h1>保護者ページの登録</h1><p class="notice error">${esc(inviteInfo.error)}</p>${helpLinks}`;
-  return `<h1>保護者ページの登録</h1><p>${esc(inviteInfo.name)}（${esc(inviteInfo.email)}）のパスワードを決めてください。</p>${noticeHtml()}<input type="email" value="${esc(inviteInfo.email)}" autocomplete="username" hidden>${newPasswordForm('invite', '登録してはじめる')}`;
+  return `<h1>保護者ページの登録</h1><p>${esc(inviteInfo.name)}（${esc(inviteInfo.email)}）</p>${noticeHtml()}<input type="email" value="${esc(inviteInfo.email)}" autocomplete="username" hidden>${newPasswordForm('invite', '登録してはじめる')}`;
 }
 // ---- 入口（docs/UX_STRUCTURE.md 4）: ホーム・予定・学習・お支払い。スマホでは画面の下。アカウントは右上 ----
 const ICON = {
@@ -122,24 +123,25 @@ function homePage() {
   let h = `${prep()}${noticeHtml()}`;
   const next = upcoming();
   h += nextLessonHero(next[0], { names: names(), today: sched.today });
-  // やること（押すとその画面へ）
+  // やること（押すとその画面へ）。行の下は値（だれ・どの月・締め切り・金額）だけ
   const todo = [], { asks, acks } = planGroups(money.plans);
   const enroll = enrollTodo(ectx()), covers = enrollCovers(ectx()); if (enroll) todo.push(enroll); // 入塾のお申込み（いちばん上）。申込みで規約・条件書にもまとめて同意する
-  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#money', 'file', '#c98a00', 'ご利用規約への同意', (money.terms.current.title || 'ご利用規約') + '・全文を読んで同意してください', 1]);
+  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#money', 'file', '#c98a00', 'ご利用規約への同意', money.terms.current.title || '', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs && !covers.students.has(x.studentId)) : [];
-  if (needConds.length) todo.push(['#money', 'file', '#c98a00', '受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・') + '・内容を確かめて同意してください', needConds.length]);
+  if (needConds.length) todo.push(['#money', 'file', '#c98a00', '受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・'), needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
-  if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特別単価合意書の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・') + '・内容と料金を確かめて承認してください', needSpecials.length]);
-  if (asks.length) todo.push(['#money', 'plan', '#5b6672', '受講合意書の承認', asks.map(([m]) => monthLabel(m)).join('・') + 'の計画を確かめて承認してください', asks.length]);
-  if (acks.length) todo.push(['#money', 'check', '#138a8a', '受講合意書の確認', acks.map(([m]) => monthLabel(m)).join('・') + '・先生が記録した承諾の内容を確かめてください', acks.length]);
+  if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特別単価合意書の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・'), needSpecials.length]);
+  if (asks.length) todo.push(['#money', 'plan', '#5b6672', '受講合意書の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
+  if (acks.length) todo.push(['#money', 'check', '#138a8a', '受講合意書の確認', acks.map(([m]) => monthLabel(m)).join('・'), acks.length]);
   const asking = askingLessons(sched.lessons);
-  if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '日程の確認', 'お子さまごとに日程と回答期限を確認し、都合の悪い授業をお知らせください', asking.length]);
+  const askBy = asking.map(automaticDeadline).filter(Boolean).sort()[0];
+  if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '日程の確認', askBy ? md(askBy) + 'まで' : '', asking.length]);
   const due = money.invoices.filter(v => v.status === 'confirmed');
   if (due.length) todo.push(['#money', 'yen', '#c0392b', 'お支払い', due.map(v => `${monthLabel(v.month)}分 ${yen(v.total)}`).join('・'), due.length]);
   const hw = learning.homework.filter(w => w.status === 'open');
-  if (hw.length) todo.push(['#learning', 'homework', '#7b4fd6', '宿題', 'できたら左の丸を押してください', hw.length]);
+  if (hw.length) todo.push(['#learning', 'homework', '#7b4fd6', '宿題', '', hw.length]);
   h += secTitle('やること');
-  h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}</span><small>${esc(note)}</small></span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">いま、やることはありません。</p>';
+  h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}</span>${note ? `<small>${esc(note)}</small>` : ''}</span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">やることはありません。</p>';
   // そのあとの授業（最大 4 件）
   const more = next.slice(1, 5);
   if (more.length) h += secTitle('そのあとの授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { names: names(), today: sched.today });
@@ -149,6 +151,7 @@ function homePage() {
   return h;
 }
 // 予定: 月の表（スタッフと同じ動き）。子どもを選べる。日を押すとその日の一覧、授業を押すと下から出る画面で「変更・お休みの連絡」。テスト・行事を知らせるは上の帯の右
+// 表の上: 確認待ちは日程の確認へのリンク、調整中は色の印（オレンジ）と件数だけ
 const RANK = { proposed: 1, decided: 2, done: 3 };
 function needCal(month) {
   if (!calData[month]) { calData[month] = { loading: true }; call('family/schedule', { from: gridStart(month), to: gridEnd(month) }, store.get()).then(r => { calData[month] = r.ok ? r : { lessons: [], events: [], students: [], today: '' }; if (!r.ok) failed(r); render(); }); }
@@ -166,13 +169,13 @@ function schedulePage() {
     openedTarget=route().target;
     const found=calData[cal.month].lessons.find(l=>l.id===t.refs[0].id);
     if(found){cal.sel=found.date;sheetState={kind:'lesson',id:found.id,pick:'',note:''};}
-    else h+='<p class="notice">この授業は変更・取り下げ済み、または表示範囲外です。現在の予定をご確認ください。</p>';
+    else h+='<p class="notice">この授業は変更・取り下げ済みか、この月にありません。</p>';
   }
   const d = calData[cal.month], multi = multiKids() && !kid, nm = names();
   const lessons = forKid(d.lessons).filter(l => l.status !== 'held'), events = forKid(d.events);
   const asking = askingLessons(lessons), adjusting = lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= d.today);
-  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px">確認待ち ${asking.length}件：<a href="#confirm">日程の確認</a>で「この日程で大丈夫」を押すか、都合の悪い授業を押して連絡してください。</p>`;
-  if (adjusting.length) h += `<p class="small muted" style="margin:0 0 6px">調整中（オレンジ）${adjusting.length}件：先生と相談中の日時です。まだ確定していません。</p>`;
+  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px"><a href="#confirm">日程の確認待ち ${asking.length}件 ›</a></p>`;
+  if (adjusting.length) h += `<p style="margin:0 0 6px"><span class="tag warn">調整中 ${adjusting.length}件</span></p>`;
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
     const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`);
@@ -189,11 +192,12 @@ function schedulePage() {
 function askingLessons(lessons) { return lessons.filter(l => l.status === 'proposed' && l.asked && Date.parse(l.date+'T'+l.start+':00+09:00') > Date.now()); }
 const hasOpen = l => (l.requests || []).some(r => r.status === 'open');
 // 日程の確認（メール・LINE のリンク #confirm）: 確認待ちの授業を並べて「この日程で大丈夫」（規約 r9 第14条1項）。都合の悪い授業は押して連絡
+// 子ども × 締め切りのまとまりごとに見出し。締め切りがあるまとまりだけ「連絡がなければ確定」を書く（取り消せない結果なので）
 function confirmPage() {
   if(need('sched'))return loading;
-  let h=kidPicker(true)+noticeHtml()+'<p>これは授業日時の確認です。科目・回数・料金の承認（受講合意書）とは別です。</p><p class="small muted">現在の確認待ちを表示しています。メール送信後に変更・追加された予定も含みます。都合の悪い授業は、その授業を押して連絡してください。</p>';
+  let h=kidPicker(true)+noticeHtml();
   const all=askingLessons(forKid(sched.lessons)), groups=new Map();
-  if(!all.length)return h+'<p>現在、このお子さまへの確認待ちはありません。確定・変更・取消し後の状態は予定で確認できます。</p><p><a href="#schedule">予定を見る</a></p>';
+  if(!all.length)return h+'<p>確認待ちの授業はありません。</p><p><a href="#schedule">予定を見る</a></p>';
   for(const l of all) {
     const eligible=!!automaticDeadline(l);
     const key=l.studentId+'|'+(eligible?l.confirmBy:'');
@@ -203,7 +207,7 @@ function confirmPage() {
   for(const g of groups.values()) {
     const ok=g.rows.filter(l=>!hasOpen(l)), refs=ok.map(l=>({id:l.id,version:l.version}));
     h+='<h2>'+esc(names()[g.student]||'')+' · '+(g.by?esc(md(g.by))+'まで':'ご返事が必要です')+'</h2>';
-    h+=g.by?'<p class="small">このまとまりは、'+esc(md(g.by))+'までにご連絡がなければ確定します。</p>':'<p class="small">このまとまりは、無回答では確定しません。日程をご確認のうえ、ご返事をお願いします。</p>';
+    if(g.by)h+='<p class="small">'+esc(md(g.by))+'までにご連絡がなければ、この日程で確定します。</p>';
     h+=lessonRows(g.rows,{names:names(),today:sched.today});
     if(ok.length)h+='<button class="primary wide" data-action="agree-all" data-refs="'+esc(JSON.stringify(refs))+'"'+dis()+'>この日程で大丈夫（'+ok.length+'件を確定）</button>';
   }
@@ -229,31 +233,31 @@ function moneySelection() {
   const t=targetParts(route().target||''), match=x=>t.refs.some(r=>r.id===x.id), exact=x=>t.refs.some(r=>r.id===x.id && r.version===(x.version ?? x.no));
   let header='', plans=money.plans, invoices=money.invoices.filter(x=>x.status!=='void'), fees=money.fees, conds=money.conditions?.items||[], specials=money.specials?.items||[];
   if(!t.kind || !t.refs.length)return {header,plans,invoices,fees,conds,specials};
-  header='<p class="notice">メールでお知らせした対象を表示しています。<a href="#money">現在のすべての書類・料金を見る</a></p>';
+  header='<p class="notice"><a href="#money">すべての書類・料金を見る ›</a></p>';
   if(t.kind==='plan') {
     plans=money.plans.filter(match);
     const stale=plans.some(l=>l.status==='proposed'&&!exact(l)) || plans.length!==t.refs.length;
-    if(stale)header+='<p class="notice">お知らせ後に内容が変更されたか、取り下げられています。古い案からは承認できません。現在の案と過去の控えをご確認ください。</p>';
+    if(stale)header+='<p class="notice">お知らせ後に内容が変わったか、取り下げられています。古い案からは承認できません。</p>';
     plans=plans.filter(l=>l.status!=='proposed'||exact(l));
     invoices=[];fees=[];
   } else if(t.kind==='invoice') {
     invoices=money.invoices.filter(match);plans=[];fees=[];
     if(invoices.length && openedTarget!==route().target){openedTarget=route().target;sheetState={kind:'invoice',id:invoices[0].id};}
-    if(!invoices.length)header+='<p>この請求を表示できません。現在の請求一覧を確認するか、教室へお問い合わせください。</p>';
+    if(!invoices.length)header+='<p>この請求は表示できません。</p>';
   } else if(t.kind==='fee') {
     fees=money.fees.filter(match);plans=[];invoices=[];
     if(fees.length && openedTarget!==route().target){openedTarget=route().target;sheetState={kind:'fee',id:fees[0].id,note:''};}
-    if(!fees.length)header+='<p>この料金を表示できません。現在の一覧を確認するか、教室へお問い合わせください。</p>';
+    if(!fees.length)header+='<p>この料金は表示できません。</p>';
   } else if(t.kind==='condition') {
     const hit=conds.flatMap(x=>x.history||[]).find(match);
     if(!hit || hit.status!=='proposed' || !exact(hit)) {
-      header+='<p class="notice">この条件書は同意済み、または更新・取り下げ済みです。現在の条件と過去の控えをご確認ください。</p>';
+      header+='<p class="notice">この条件書は同意済み、または更新・取り下げ済みです。</p>';
       conds=[];
     } else conds=conds.filter(x=>x.latest && match(x.latest));
     plans=[];invoices=[];fees=[];specials=[];
   } else if(t.kind==='special') {
     const hit=specials.find(match);
-    if(!hit||hit.status!=='proposed'||!exact(hit))header+='<p class="notice">この提案は対応済み、または変更されています。現在の条件と過去の控えをご確認ください。</p>';
+    if(!hit||hit.status!=='proposed'||!exact(hit))header+='<p class="notice">この提案は対応済み、または変更されています。</p>';
     specials=specials.filter(x=>match(x)&&(x.status!=='proposed'||exact(x)));
     plans=[];invoices=[];fees=[];
   }
@@ -270,7 +274,7 @@ function moneyPage() {
   const needSpecials = selected.specials.filter(x=>x.status==='proposed');
   if (asks.length || acks.length || blocked || needSpecials.length) {
     h += secTitle('確かめていただきたいこと');
-    if (covers.terms) h += `<div class="group" style="margin-bottom:12px"><a class="todo-row" href="#enroll">${ibox('file', '#c0392b', '入塾のお申込み')}<span class="v"><span class="lbl">入塾のお申込み</span><small>ご利用規約と受講条件書は、お申込みの画面でまとめてご確認いただけます</small></span><span class="go">›</span></a></div>`;
+    if (covers.terms) h += `<div class="group" style="margin-bottom:12px"><a class="todo-row" href="#enroll">${ibox('file', '#c0392b', '入塾のお申込み')}<span class="v"><span class="lbl">入塾のお申込み</span></span><span class="go">›</span></a></div>`;
     else if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
     h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id], consenterName: consentNames[x.latest.id] || me.guardianName || '' })).join('');
     h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id], consenterName: consentNames[x.id] || me.guardianName || '' })).join('');
