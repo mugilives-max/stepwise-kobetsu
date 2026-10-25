@@ -7,7 +7,7 @@ import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
 // - 講師: 自分の担当の授業を見る・実施済みにする・自分の休みを登録する
 // - 保護者: 予定を見る、確認待ちの授業に「この日程で大丈夫」（確定）、「変更・お休みの連絡」、予定の共有（テスト・行事・授業ができない日）
 // - 生徒: 予定を見る、「変更・お休みの連絡」（許されていれば）、予定の共有
-// - 毎日0時10分: 締め切りを過ぎた確認待ちを確定する（autoConfirm）
+// - 毎日0時10分: 締め切りを過ぎた確認待ちを確定する（autoConfirm）。日付が過ぎた確定を実施済みにする（autoDone）
 // カレンダー・Meet と保護者へのメールは、切り替え（settings.live）まで実際には行わない（effects に held で残る）。
 import { fail, newId, iso, audit, sha256Hex } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
@@ -232,6 +232,21 @@ export async function autoConfirm(c) {
   }
   if (Object.keys(byStudent).length) { c.actor = { kind: 'system', id: 'autoConfirm' }; await audit(c, 'autoConfirm', '', { lessons: Object.values(byStudent).reduce((n,ls)=>n+ls.length,0) }); }
   return { confirmed: Object.values(byStudent).reduce((n,ls)=>n+ls.length,0), students: Object.keys(byStudent).length };
+}
+
+// ---- 毎日0時10分: 日付が過ぎた確定の授業を実施済みにする（2026-10-26 本人「予定済みのもので期日を過ぎたら基本実施済みにする」） ----
+// しなかった授業は、先生がお休み・キャンセルにする。連絡が残っている授業は先生が見るので触らない。メールなし
+export async function autoDone(c) {
+  const today = todayJst(c.now);
+  const due = (await c.db.prepare(`select id, version from lessons l where l.status = 'decided' and l.date < ?
+    and not exists (select 1 from lessonRequests r where r.lessonId = l.id and r.status = 'open') order by l.date, l.start`).bind(today).all()).results;
+  let done = 0;
+  for (const l of due) {
+    const saved = await c.db.prepare("update lessons set status = 'done', updatedAt = ?, version = version + 1 where id = ? and version = ? and status = 'decided'").bind(iso(c.now), l.id, l.version).run();
+    if (saved.meta?.changes) done++;
+  }
+  if (done) { c.actor = { kind: 'system', id: 'autoDone' }; await audit(c, 'autoDone', '', { lessons: done }); }
+  return { done };
 }
 
 // ---- 生徒・保護者からの「変更・お休みの連絡」 ----
