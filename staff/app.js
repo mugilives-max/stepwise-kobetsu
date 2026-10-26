@@ -128,7 +128,7 @@ function loginPage() {
   if (bootstrap && bootstrap.available) {
     h += `<h2>最初の設定</h2>`;
     h += legacyToken()
-      ? `<p>まだ代表のアカウントがありません。この端末は今の管理画面にログインしているので、ここから代表のアカウントを作れます。パスワードは次の画面でご自身で決めます。</p><p><button data-action="bootstrap"${dis()}>代表のアカウントを作る</button></p>`
+      ? `<p>まだ代表のアカウントがありません。</p><p><button data-action="bootstrap"${dis()}>代表のアカウントを作る</button></p>`
       : `<p class="small muted">まだ代表のアカウントがありません。今の管理画面（<a href="/kanri/">/kanri/</a>）にログインしてから、もう一度このページを開いてください。</p>`;
   }
   return h;
