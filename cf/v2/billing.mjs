@@ -1,6 +1,6 @@
 import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
 import { invoiceDueText } from '../../assets/v2/invoice-due.js';
-// 受講合意書・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
+// 受講計画合意書・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
 // - 教室管理者: 計画を作る・お知らせする・LINE などの承諾を記録する・先月と同じ内容で下書き、授業の種類と標準料金、
 //              キャンセル料の判断・減額や免除の申請への回答、月ごとの請求（確かめる・確定・取消・入金）
 // - 保護者: 計画の承認（回数を減らす・見送るも）・先生が記録した承諾の確認、請求の確認・振込の連絡、キャンセル料の減額・免除の申請
@@ -27,7 +27,7 @@ const sameVersion = (row, b) => { if (Number(b.version) !== Number(row.version))
 const DAY = 86400e3;
 
 export function planNoticeText(lines,names) {
-  return '次の授業内容・回数・時間・料金をご確認ください（受講合意書）。\n'+lines.map(l=>'・'+names[l.studentId]+'さん '+l.subject+' '+l.startDate+'〜'+l.endDate+' '+l.count+'回・1回'+l.minutes+'分 '+yen(l.fee)+'（税込）').join('\n')+
+  return '次の授業内容・回数・時間・料金をご確認ください（受講計画合意書）。\n'+lines.map(l=>'・'+names[l.studentId]+'さん '+l.subject+' '+l.startDate+'〜'+l.endDate+' '+l.count+'回・1回'+l.minutes+'分 '+yen(l.fee)+'（税込）').join('\n')+
     '\n予定総額：'+yen(lines.reduce((n,l)=>n+l.count*l.fee,0))+'（請求額ではありません）\n内容がよければ「承認する」を押してください。変更のご希望は教室へご連絡ください。\n未回答・既読だけで承認にはなりません。承認後は控えをPDF保存できます。';
 }
 // ---- 見せ方 ----
@@ -223,7 +223,7 @@ export const billingRoutes = {
       const usage = usageOf(sb, tentative);
       const lines = sb.lines.filter(l => l.startDate <= to && from <= l.endDate);
       const lessonsInMonth = sb.lessons.filter(l => l.date >= from && l.date <= to);
-      // 種類の選択肢: 「通常」・この生徒の特別単価合意書・この月の授業で使っている種類（前からの「演習」なども、その授業の受講合意書は作れる）
+      // 種類の選択肢: 「通常」・この生徒の特別単価合意書・この月の授業で使っている種類（前からの「演習」なども、その授業の受講計画合意書は作れる）
       const specials = (await c.db.prepare("select title, minutes, fee from specials where studentId = ? and status in ('proposed', 'agreed') order by fromDate").bind(s.id).all()).results;
       const usedKinds = [...new Set(lessonsInMonth.concat(tentative).map(ls => ls.kind).filter(k => k && k !== '体験'))];
       rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseFee90: base90(s), baseRate30: s.baseRate30, specials, usedKinds,
@@ -284,7 +284,7 @@ export const billingRoutes = {
     await c.db.batch(drafts.map(l => c.db.prepare("update planLines set status = 'proposed', proposedAt = ?, updatedAt = ?, version = version + 1 where id = ? and status = 'draft'").bind(now, now, l.id)));
     const names = Object.fromEntries((await c.db.prepare(`select * from students where id in (${ids.map(() => '?').join(', ')})`).bind(...ids).all()).results.map(s => [s.id, fullName(s)]));
     const sentLines=drafts.map(l=>({...l,version:l.version+1}));
-    await familyNotice(c,drafts[0].studentId,[...new Set(sentLines.map(l=>l.startDate.slice(0,7)))].join('・')+' の授業内容・回数・料金をご確認ください（受講合意書）',planNoticeText(sentLines,names),
+    await familyNotice(c,drafts[0].studentId,[...new Set(sentLines.map(l=>l.startDate.slice(0,7)))].join('・')+' の授業内容・回数・料金をご確認ください（受講計画合意書）',planNoticeText(sentLines,names),
       familyTarget('money',{kind:'plan',refs:targetRefs(sentLines)}),{type:'plan',targets:sentLines.map(l=>({id:l.id,version:l.version}))});
     await audit(c, 'planSend', '', { lines: drafts.length });
     return { sent: drafts.length };
@@ -306,7 +306,7 @@ export const billingRoutes = {
       const sb = await studentBilling(c.db, sid);
       waiting += sb.lessons.filter(ls => !sb.line[ls.id] && !ls.invoiceId && lines.some(l => lineMatches(l, ls))).length;
     }
-    await familyNotice(c,lines[0].studentId,[...new Set(lines.map(l=>l.startDate.slice(0,7)))].join('・')+' 受講合意書の確認のお願い（再案内）',planNoticeText(lines,names)+(waiting ? '\nこの計画に当たる授業が'+waiting+'回あります。日時の確定と、科目・回数・料金への承認は別です。' : ''),
+    await familyNotice(c,lines[0].studentId,[...new Set(lines.map(l=>l.startDate.slice(0,7)))].join('・')+' 受講計画合意書の確認のお願い（再案内）',planNoticeText(lines,names)+(waiting ? '\nこの計画に当たる授業が'+waiting+'回あります。日時の確定と、科目・回数・料金への承認は別です。' : ''),
       familyTarget('money',{kind:'plan',refs:targetRefs(lines)}),{type:'plan',targets:lines.map(l=>({id:l.id,version:l.version}))});
     const now = iso(c.now);
     await c.db.batch(lines.map(l => c.db.prepare('update planLines set remindedAt = ? where id = ?').bind(now, l.id)));

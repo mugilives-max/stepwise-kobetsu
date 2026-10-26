@@ -128,7 +128,7 @@ function donePage(ctx, o) {
   return `${steps(3)}<h1>お申込みを受け付けました</h1>
     <section class="flow"><h2>このあとの流れ</h2><ol>
       <li class="done"><div class="ft">入塾のお申込み</div><div class="fb">控えは「お支払い」の「過去の契約・同意の控え」にあります。</div></li>
-      <li class="now"><div class="ft">${esc(jaMonth(o.fromMonth))}の受講合意書</div><div class="fb">科目・回数・料金をお知らせします。承認をお願いします。</div></li>
+      <li class="now"><div class="ft">${esc(jaMonth(o.fromMonth))}の受講計画合意書</div><div class="fb">科目・回数・料金をお知らせします。承認をお願いします。</div></li>
       <li><div class="ft">授業の日程</div><div class="fb">日程の確認のお願いが届きます。</div></li></ol></section>
     <p><a class="small-btn primary" href="#home">ホームへ</a></p>`;
 }

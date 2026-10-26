@@ -1,4 +1,4 @@
-// 保護者の画面: 受講合意書・お支払い（5段目）。受講合意書の承認、キャンセル料、月ごとの請求と振込の連絡。
+// 保護者の画面: 受講計画合意書・お支払い（5段目）。受講計画合意書の承認、キャンセル料、月ごとの請求と振込の連絡。
 import { esc } from '/assets/v2/api.js';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 
@@ -14,7 +14,7 @@ function lineText(l, multi) {
 
 export function moneyView(data, { multi, dis }) {
   let h = '';
-  // 承認をお願いしている受講合意書
+  // 承認をお願いしている受講計画合意書
   const asks = data.plans.filter(l => l.status === 'proposed');
   const acks = data.plans.filter(l => l.status === 'approved' && l.approvedBy === 'staff' && !l.familyAck);
   if (asks.length || acks.length) {
@@ -44,8 +44,8 @@ export function moneyView(data, { multi, dis }) {
       ${!f.reliefStatus && !f.invoiceId && f.amount > 0 ? `<details><summary class="small">減額・免除を申請する</summary><form class="stack" data-form="fee-relief" data-id="${esc(f.id)}" data-version="${f.version}"><textarea name="reason" maxlength="1000" rows="2" placeholder="事情を書いてください（例: 急に熱が出たため）" required></textarea><button${dis}>申請する</button></form></details>` : ''}</div><div></div></div>`).join('');
     h += '</div>';
   }
-  // 受講合意書の一覧
+  // 受講計画合意書の一覧
   const others = data.plans.filter(l => !asks.includes(l) && !acks.includes(l));
-  if (others.length) h += '<h2>受講合意書</h2><div class="list">' + others.map(l => `<div><div>${lineText(l, multi)}<div class="small muted">${l.status === 'approved' ? `承認（${l.approvedCount}回・${esc(l.consentDate)}・${esc(l.approvedVia)}）` : '見送り'}${l.familyAck === 'inquiry' ? '・問い合わせ済み' : ''}</div></div><div></div></div>`).join('') + '</div>';
+  if (others.length) h += '<h2>受講計画合意書</h2><div class="list">' + others.map(l => `<div><div>${lineText(l, multi)}<div class="small muted">${l.status === 'approved' ? `承認（${l.approvedCount}回・${esc(l.consentDate)}・${esc(l.approvedVia)}）` : '見送り'}${l.familyAck === 'inquiry' ? '・問い合わせ済み' : ''}</div></div><div></div></div>`).join('') + '</div>';
   return h;
 }

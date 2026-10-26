@@ -720,7 +720,7 @@ form[data-form=sch-create]:has(select[name=studentId] option[data-trial]:checked
 
 /* 授業計画のまとめ（assets/v2/plan-view.js。管理画面の一覧・計画全体のプレビュー・保護者画面） */
 .pl-set { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin: 8px 0; background: var(--white); }
-/* 受講合意書（#plans）2026-10-26 作り直し: やることが残っている順のまとまり。1人1行。押すと下から生徒の受講合意書 */
+/* 受講計画合意書（#plans）2026-10-26 作り直し: やることが残っている順のまとまり。1人1行。押すと下から生徒の受講計画合意書 */
 .pl-progress { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 4px 2px 14px; font-size: 14px; color: var(--muted); }
 .pl-progress > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
 .pl-progress b { font-size: 24px; color: var(--ink); }
@@ -745,7 +745,7 @@ button.pl-stu-row:focus-visible { outline: 2px solid var(--primary); outline-off
 .pl-fam-head strong { font-size: 14px; }
 .pl-fam-head .grow { flex: 1; }
 .pl-fam-head > strong + .small-btn, .pl-fam-head > strong + span + .small-btn { margin-left: auto; }
-/* 生徒の受講合意書（下から出る画面）: 期間と状態ごとの見出しと行の表 */
+/* 生徒の受講計画合意書（下から出る画面）: 期間と状態ごとの見出しと行の表 */
 .pl-set-head .grow { flex: 1; }
 .bsheet .pl-set { border: 0; border-radius: 0; padding: 0; margin: 0 0 12px; background: none; }
 .bsheet .pl-set-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 4px 0; font-size: 14px; }

@@ -65,7 +65,7 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
   assert.match(await approved.locator('body').innerText(),/31,500円/);
   await savePdf(approved,'approved');await approved.close();
   await page.getByRole('button',{name:'過去の契約・同意の控え',exact:true}).click();
-  await page.locator('summary').filter({hasText:'受講合意書の履歴'}).click();
+  await page.locator('summary').filter({hasText:'受講計画合意書の履歴'}).click();
   const historyPopup=page.waitForEvent('popup');await page.getByRole('button',{name:'この版を印刷・PDF保存'}).first().click();
   const history=await historyPopup;await history.getByRole('heading',{name:'受講合意書の控え',exact:true}).waitFor();await history.close();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -73,7 +73,7 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
   report.checks.push('family approved and archive documents, mobile width');
   await page.goto(origin+'/staff/#plans');
   await page.locator('button[data-action="pl-student"]').first().click(); // 生徒を押すと、その月の受講合意書
-  await page.getByRole('button',{name:/の受講合意書を見る/}).first().click();
+  await page.getByRole('button',{name:/の受講計画合意書を見る/}).first().click();
   const staffPopup=page.waitForEvent('popup');await page.getByRole('button',{name:'印刷・PDF保存',exact:true}).click();
   const staffDoc=await staffPopup;await staffDoc.getByRole('heading',{name:'受講合意書の控え',exact:true}).waitFor();await staffDoc.close();
   await page.locator('button[data-action="pl-close"]').first().click();

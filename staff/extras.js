@@ -17,7 +17,7 @@ const DOC_GROUPS = [
     ['terms', '共通規約'],
     ['condition', '個別受講条件書'],
     ['special', '特別単価合意書'],
-    ['agreement', '受講合意書'],
+    ['agreement', '受講計画合意書'],
   ]],
   ['講師の書類', '#7a5bd6', [
     ['employment', '雇用契約書'],
@@ -92,7 +92,7 @@ export function termsPage(ctx) {
       <div class="group">${picked.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.name)}</span>${fm.hasPassword ? '' : '<small>保護者ページに未登録</small>'}</span></div>`).join('')}</div>
       <section class="reg-card"><div class="reg-card-head"><h2>お願いするとどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
         <li>選んだ家族の保護者ページに、規約の全文と「同意する」が出ます。</li>
-        <li>同意するまで、その家族は次の受講合意書を承認できません（見送りはできます）。</li>
+        <li>同意するまで、その家族は次の受講計画合意書を承認できません（見送りはできます）。</li>
         ${noPage.length ? `<li>保護者ページに登録していない家族（${noPage.map(fm => esc(fm.name)).join('・')}）は、お願いを見られません。</li>` : ''}</ul></section>
       <form class="reg-form" data-form="terms-request">
         <fieldset class="reg-field"><legend>保護者への一言 <span class="opt">任意</span></legend><textarea name="note" rows="3" maxlength="500" placeholder="例：11月からの受講のきまりをまとめました。全文をお読みいただき、同意をお願いします。"></textarea></fieldset>

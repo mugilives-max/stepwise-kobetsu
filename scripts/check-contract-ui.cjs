@@ -52,7 +52,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   assert.equal(await page.locator('input[data-consenter="'+pendingSpecial.id+'"]').inputValue(),'架空 花子');
   report.checks.push('pending basic and special condition cards render and retain explicit names');
   await page.getByRole('button',{name:'過去の契約・同意の控え',exact:true}).click();
-  await page.locator('summary').filter({hasText:'受講合意書の履歴'}).click();
+  await page.locator('summary').filter({hasText:'受講計画合意書の履歴'}).click();
   await page.getByText('第2版・2026-05-01〜2026-05-31',{exact:false}).waitFor();
   assert.match(await page.locator('#app').innerText(),/架空 保護者/);
   const links=await page.locator('a').evaluateAll(es=>es.filter(e=>e.textContent==='この版の全文').map(e=>e.href));

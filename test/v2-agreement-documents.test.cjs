@@ -114,7 +114,7 @@ test('agreement documents saved after 2026-10-26 use the same layout as the indi
  assert.equal(usesLayoutR13([rec({...line,createdAt:'2026-10-14T00:00:00.000Z'},NEW_LAYOUT_FROM)]),false,'前からの行は前の様式');
  assert.equal(usesLayoutR13([rec(line,'')]),true);
  const draft=agreementDocHtmlR13({records:[rec(line,NEW_LAYOUT_FROM)],documentId:'AG-a',guardianName:'【テスト】架空 花子'});
- assert.match(draft,/<h1>受講合意書<span class="draft">案<\/span><\/h1>/);assert.match(draft,/【テスト】架空 花子 様/);
+ assert.match(draft,/<h1>受講計画合意書<span class="draft">案<\/span><\/h1>/);assert.match(draft,/【テスト】架空 花子 様/);
  assert.match(draft,/class="key"/);assert.match(draft,/<h2>取り決め<\/h2>/);assert.match(draft,/まだ承認いただいていません/);
  assert.match(draft,/18,000円/);assert.match(draft,/二次関数 2回／テスト対策 2回/);assert.doesNotMatch(draft,/pl_1|ID：/,'内部の番号を出さない');
  const ok=agreementDocHtmlR13({records:[rec({...line,status:'approved',approvedCount:3,consenterName:'【テスト】承認した保護者',consentedAt:'2026-10-28T01:00:00.000Z',approvedVia:'保護者ページ'},NEW_LAYOUT_FROM)],documentId:'AG-b',guardianName:'今の保護者'});

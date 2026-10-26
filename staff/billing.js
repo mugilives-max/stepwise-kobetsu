@@ -1,16 +1,16 @@
-import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261025-layout';
-// スタッフの画面: 受講合意書（#plans）と請求（#billing、キャンセル料を含む）。5段目。教室管理者だけ。種類は「通常」と特別単価合意書の名称（設定の「授業の種類と標準料金」は 2026-10-26 になくした）
-// 受講合意書は月ごとに生徒の行を並べる。請求は月ごとに家族の行を並べ、開くと内訳。
+import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261026-keikaku';
+// スタッフの画面: 受講計画合意書（#plans）と請求（#billing、キャンセル料を含む）。5段目。教室管理者だけ。種類は「通常」と特別単価合意書の名称（設定の「授業の種類と標準料金」は 2026-10-26 になくした）
+// 受講計画合意書は月ごとに生徒の行を並べる。請求は月ごとに家族の行を並べ、開くと内訳。
 import { sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261025-layout';
-import { formOf, partsOf, planSets, subjectGroups, planTotals, formsText, amountText, periodText, planPreviewHtml, STATUS_LABEL } from '/assets/v2/plan-view.js?v=20261025-layout';
-// 下から出る画面: lineOpen（受講合意書の行）・editing（直す）・consentFor（承諾を記録）・addFor（足す）・openFamily（請求の内訳）・feeOpen（キャンセル料）
+import { formOf, partsOf, planSets, subjectGroups, planTotals, formsText, amountText, periodText, planPreviewHtml, STATUS_LABEL } from '/assets/v2/plan-view.js?v=20261026-keikaku';
+// 下から出る画面: lineOpen（受講計画合意書の行）・editing（直す）・consentFor（承諾を記録）・addFor（足す）・openFamily（請求の内訳）・feeOpen（キャンセル料）
 let plans = null, planMonth = '', editing = '', consentFor = '', addFor = '', lineOpen = '', feeOpen = '', studentOpen = '';
 const unpicked = new Set(); // お知らせから外した下書き（チェックを外したもの）
 export function billingPick(id, on) { if (on) unpicked.delete(id); else unpicked.add(id); }
 let bill = null, billMonth = '', openFamily = '', detail = null, fees = null, billSettings = null;
 let historyRows = null;
-let previewKey = ''; // 受講合意書全体のプレビュー（生徒 × 期間 × 状態のまとまり）。開くだけで何も保存・送信しない
+let previewKey = ''; // 受講計画合意書全体のプレビュー（生徒 × 期間 × 状態のまとまり）。開くだけで何も保存・送信しない
 export function leaveBilling() { historyRows = null; studentOpen = ''; lineOpen = editing = consentFor = addFor = openFamily = feeOpen = previewKey = ''; }
 export function resetBilling() { historyRows = null; studentOpen = ''; lineOpen = feeOpen = previewKey = ''; plans = null; bill = null; detail = null; fees = null; editing = ''; consentFor = ''; addFor = ''; openFamily = ''; }
 
@@ -25,7 +25,7 @@ const INV_STATUS = { confirmed: ['お支払い待ち', 'warn'], reported: ['振�
 const FEE_TYPE = { late: '開始前の連絡', noshow: '開始後・連絡なし' };
 const monthPicker = (m, action) => `<div class="mpick"><button class="icon" data-action="${action}" data-d="-1" aria-label="前の月">‹</button><strong>${monthLabel(m)}</strong><button class="icon" data-action="${action}" data-d="1" aria-label="次の月">›</button></div>`;
 
-// ---------- 受講合意書 ----------
+// ---------- 受講計画合意書 ----------
 function needPlans(ctx) {
   if (!planMonth) planMonth = shift(thisMonth(), new Date(Date.now() + 9 * 3600e3).getUTCDate() >= 15 ? 1 : 0);
   if (!plans || plans.month !== planMonth) {
@@ -33,9 +33,9 @@ function needPlans(ctx) {
     ctx.call('billing/plans/list', { month: want }).then(r => { if (planMonth !== want) return; plans = r.ok ? r : { month: want, students: [], kinds: [] }; if (!r.ok && !ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); ctx.render(); });
   }
 }
-// 受講合意書（#plans）。2026-10-26 本人「これは誰が見るんですか？代表ですよね。代表はこの画面で何をしたいんですか？」→「その形で作り直して」:
-// 代表が月末（と月の途中）に、その月の受講合意書を全員分そろえて承認をもらい切るための画面。やることが残っている順に、
-// 受講合意書のない授業 → まだ作っていない → 下書き（お知らせ前）→ 承認待ち → 承認済み。1人1行（科目と回数・合計）、押すとその生徒の受講合意書
+// 受講計画合意書（#plans）。2026-10-26 本人「これは誰が見るんですか？代表ですよね。代表はこの画面で何をしたいんですか？」→「その形で作り直して」:
+// 代表が月末（と月の途中）に、その月の受講計画合意書を全員分そろえて承認をもらい切るための画面。やることが残っている順に、
+// 受講計画合意書のない授業 → まだ作っていない → 下書き（お知らせ前）→ 承認待ち → 承認済み。1人1行（科目と回数・合計）、押すとその生徒の受講計画合意書
 const planDone = s => s.lines.length > 0 && s.lines.every(l => l.status === 'approved' || l.status === 'declined');
 const base90Of = s => Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3;
 // 計画している回数（承認済みは承認した回数、見送りは 0）。同日 本人「どれくらいの授業回数を計画しているのかを確認する」も大事な目的
@@ -61,9 +61,9 @@ export function plansPage(ctx) {
   const lines = st.flatMap(s => s.lines), by = status => countSum(lines.filter(l => l.status === status));
   const parts = [['承認済み', by('approved')], ['承認待ち', by('proposed')], ['下書き', by('draft')]].filter(([, n]) => n).map(([t, n]) => `${t} ${n}回`).join('・');
   h += `<div class="pl-progress"><div><span>授業</span><b>${countSum(lines)}</b>回${parts ? `<small>${parts}</small>` : ''}</div><div><span>承認済み</span><b>${target.filter(planDone).length}</b>人 / ${target.length}人</div></div>`;
-  // 1. 受講合意書のない授業（このままでは請求できない）
+  // 1. 受講計画合意書のない授業（このままでは請求できない）
   const unplanned = st.filter(s => s.unplanned);
-  if (unplanned.length) h += section('受講合意書のない授業', '', `<div class="pl-rows">${unplanned.map(s => studentRow(ctx, s, [], `<span class="tag danger">${s.unplanned}件</span>`)).join('')}</div>`);
+  if (unplanned.length) h += section('受講計画合意書のない授業', '', `<div class="pl-rows">${unplanned.map(s => studentRow(ctx, s, [], `<span class="tag danger">${s.unplanned}件</span>`)).join('')}</div>`);
   // 2. まだ作っていない（休会は除く）。個別受講条件書がない生徒は作れない
   const none = st.filter(s => !s.lines.length && s.status !== 'paused');
   if (none.length) h += section(`まだ作っていない（${none.length}人）`, `<button class="small-btn" data-action="pl-copy"${ctx.dis()}>先月と同じ内容で作る</button>`,
@@ -94,19 +94,19 @@ export function plansPage(ctx) {
   h += planSheet(ctx);
   return h;
 }
-// 生徒を押したとき: その月の受講合意書（期間と状態ごとの表）・足す・過去の版
+// 生徒を押したとき: その月の受講計画合意書（期間と状態ごとの表）・足す・過去の版
 function studentSheet(ctx, s) {
   const { esc } = ctx;
-  let body = s.unplanned ? `<p class="notice error small" style="margin-top:0">受講合意書にない授業が ${s.unplanned}件あります（このままでは請求できません）。</p>` : '';
-  body += s.lines.length ? planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('') : '<p class="muted" style="margin-top:0">この月の受講合意書はまだありません。</p>';
+  let body = s.unplanned ? `<p class="notice error small" style="margin-top:0">受講計画合意書にない授業が ${s.unplanned}件あります（このままでは請求できません）。</p>` : '';
+  body += s.lines.length ? planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('') : '<p class="muted" style="margin-top:0">この月の受講計画合意書はまだありません。</p>';
   body += `<div class="row" style="margin-top:12px">${base90Of(s) ? `<button class="small-btn" data-action="pl-add" data-id="${esc(s.id)}"${ctx.dis()}>＋ 足す</button>` : ''}<span class="grow"></span><button type="button" class="text-btn" data-action="pl-history" data-student="${esc(s.id)}" aria-label="${esc(s.name)}の過去の版">過去の版</button></div>`;
-  return sheet(esc, `${s.name}・${monthLabel(planMonth)}の受講合意書`, body, 'pl-stu-close', { wide: true });
+  return sheet(esc, `${s.name}・${monthLabel(planMonth)}の受講計画合意書`, body, 'pl-stu-close', { wide: true });
 }
 // 期間 × 状態のまとまり（承認済みと下書きは別のまとまり）。見出しに期間・状態・予定額、下に行の表。行を押すと 1 行の画面（直す・承諾を記録・消す）
 function planSetBlock(ctx, s, set) {
   const { esc } = ctx, t = planTotals(set.lines), cls = (LINE_STATUS[set.status] || [])[1] || 'gray';
   return `<div class="pl-set"><div class="pl-set-head"><b>${esc(periodText(set.startDate, set.endDate))}</b><span class="tag ${cls}">${esc(STATUS_LABEL[set.status] || set.status)}</span><span class="grow"></span><span class="pl-amt">${esc(amountText(t))}</span>
-    <button type="button" class="text-btn" data-action="pl-preview" data-key="${esc(set.key)}" aria-label="${esc(s.name)} ${esc(periodText(set.startDate, set.endDate))} ${esc(STATUS_LABEL[set.status] || '')}の受講合意書を見る">書面を見る</button></div>
+    <button type="button" class="text-btn" data-action="pl-preview" data-key="${esc(set.key)}" aria-label="${esc(s.name)} ${esc(periodText(set.startDate, set.endDate))} ${esc(STATUS_LABEL[set.status] || '')}の受講計画合意書を見る">書面を見る</button></div>
     <div class="pl-lines">${set.lines.map(l => lineRow(ctx, s, l)).join('')}</div></div>`;
 }
 const lineCount = l => l.status === 'approved' && l.approvedCount !== l.count ? `${l.approvedCount}回（お知らせ ${l.count}回）` : `${l.count}回`;
@@ -120,12 +120,12 @@ function lineRow(ctx, s, l) {
     <span class="pl-n">${lineCount(l)}</span><span class="pl-fee">${l.minutes}分 ${yen(l.fee)}</span><span class="pl-amt">${yen(amount)}</span><span class="go" aria-hidden="true">›</span>
     ${note ? `<span class="pl-note">${note}</span>` : ''}</button></div>`;
 }
-// 受講合意書の行を押したとき・直す・承諾を記録・足す（下から出る画面）
+// 受講計画合意書の行を押したとき・直す・承諾を記録・足す（下から出る画面）
 function planSheet(ctx) {
   const { esc } = ctx;
   const find = id => { for (const s of plans.students) { const l = s.lines.find(x => x.id === id); if (l) return [s, l]; } return []; };
-  if (historyRows) return sheet(esc, '受講合意書の履歴', (historyRows.length ? historyRows.map(l=>'<div class="pcard"><b>'+esc(l.subject)+' '+esc(l.kind)+'・第'+l.version+'版</b>'+agreementDocumentButtons([l],{label:'この版を印刷・PDF保存'})+'</div>').join('') : '<p>保存された履歴はありません。</p>'), 'pl-close');
-  if (addFor) { const s = plans.students.find(x => x.id === addFor); return s ? sheet(esc, s.name + ' の受講合意書を足す', lineForm(ctx, s, null), 'pl-close') : ''; }
+  if (historyRows) return sheet(esc, '受講計画合意書の履歴', (historyRows.length ? historyRows.map(l=>'<div class="pcard"><b>'+esc(l.subject)+' '+esc(l.kind)+'・第'+l.version+'版</b>'+agreementDocumentButtons([l],{label:'この版を印刷・PDF保存'})+'</div>').join('') : '<p>保存された履歴はありません。</p>'), 'pl-close');
+  if (addFor) { const s = plans.students.find(x => x.id === addFor); return s ? sheet(esc, s.name + ' の受講計画合意書を足す', lineForm(ctx, s, null), 'pl-close') : ''; }
   if (editing) { const [s, l] = find(editing); return l ? sheet(esc, `${s.name} ${l.subject} を直す`, lineForm(ctx, s, l), 'pl-close') : ''; }
   if (consentFor) {
     const [s, l] = find(consentFor); if (!l) return '';
@@ -140,7 +140,7 @@ function planSheet(ctx) {
       const body = planPreviewHtml(set, esc, { others, schedule: set.lines.map(l => ({ lineId: l.id, assigned: l.assigned, tentative: l.tentative })) })
         + agreementDocumentButtons(set.lines.map(l=>({...l,studentName:st.name})))
         + '<div class="row"><button type="button" data-action="pl-close">閉じる</button></div>';
-      return sheet(esc, `${st.name} の受講合意書全体`, body, 'pl-close', { wide: true });
+      return sheet(esc, `${st.name} の受講計画合意書全体`, body, 'pl-close', { wide: true });
     }
     return '';
   }
@@ -159,11 +159,11 @@ function planSheet(ctx) {
     ${l.locked ? '' : `<button class="danger" data-action="pl-delete" data-id="${esc(l.id)}" data-version="${l.version}"${ctx.dis()}>消す</button>`}</div>`;
   return sheet(esc, `${s.name} ${l.subject}`, body, 'pl-close');
 }
-// 承認のお願いを送るボタン（受講合意書・請求の画面で共通）。同じ家族に1日1回まで
+// 承認のお願いを送るボタン（受講計画合意書・請求の画面で共通）。同じ家族に1日1回まで
 function remindButton(ctx, familyId, n, last) {
   return `<button data-action="pl-remind" data-family="${ctx.esc(familyId)}"${ctx.dis()}>承認のお願いを送る（${n}件）</button>${last ? `<span class="small muted">前回 ${md(new Date(Date.parse(last) + 9 * 3600e3).toISOString().slice(0, 10))}</span>` : ''}`;
 }
-// 受講合意書の行の入力欄（新しく足す・直す）。種類は「通常」・この生徒の特別単価・この月の授業で使っている種類。初期値は「通常」の90分・個別受講条件書の基準単価
+// 受講計画合意書の行の入力欄（新しく足す・直す）。種類は「通常」・この生徒の特別単価・この月の授業で使っている種類。初期値は「通常」の90分・個別受講条件書の基準単価
 // （2026-10-26 本人「このページってもはや不要」→ 種類は「通常」と特別単価合意書の名称だけ。授業料の上限は個別受講条件書・特別単価合意書で決まる）
 function lineForm(ctx, s, l) {
   const { esc } = ctx, kinds = [...new Set(['通常', ...(s.specials || []).map(x => x.title), ...(s.usedKinds || []), ...(l ? [l.kind] : [])])].map(name => ({ name })); // 直すときは今の種類を勝手に変えない
@@ -178,7 +178,7 @@ function lineForm(ctx, s, l) {
     <label>1回の授業料（円）<input type="number" name="fee" min="0" max="100000" value="${fee}" style="width:7em" required></label></div>
     <div class="small muted">通常の基準単価（90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}）なら 60分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 60 / 90))}・120分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 120 / 90))}</div>
     <div class="row"><label>期間<input type="date" name="startDate" value="${l ? l.startDate : plans.month + '-01'}" required></label><label>〜<input type="date" name="endDate" value="${l ? l.endDate : monthEnd(plans.month)}" required></label>
-    <label>追加の受講合意書<select name="parentId"><option value="">ふつうの受講合意書</option>${parents.map(p => `<option value="${esc(p.id)}"${l && l.parentId === p.id ? ' selected' : ''}>${esc(p.subject)}（${md(p.startDate)}〜${md(p.endDate)}）への追加</option>`).join('')}</select></label></div>
+    <label>追加の受講計画合意書<select name="parentId"><option value="">ふつうの受講計画合意書</option>${parents.map(p => `<option value="${esc(p.id)}"${l && l.parentId === p.id ? ' selected' : ''}>${esc(p.subject)}（${md(p.startDate)}〜${md(p.endDate)}）への追加</option>`).join('')}</select></label></div>
     <label>保護者への説明（任意）<input name="comment" maxlength="500" value="${esc(l ? l.comment : '')}" placeholder="例: 2学期中間テストに向けて計算の復習"></label>
     ${partsInputs(ctx, l)}
     <div class="row"><button class="primary"${ctx.dis()}>${l ? '直して下書きにする' : '下書きを作る'}</button><button type="button" data-action="pl-close"${ctx.dis()}>やめる</button></div></form>`;
@@ -344,18 +344,18 @@ export async function billingClick(ctx, a, b) {
   if (a === 'pl-preview') { previewKey = b.dataset.key; editing = consentFor = addFor = lineOpen = ''; return true; }
   if (a === 'bl-open') { openFamily = b.dataset.id; detail = null; ctx.say(''); return true; }
   if (a === 'pl-copy') {
-    if (!confirm(`${monthLabel(planMonth)}の受講合意書の下書きを、先月と同じ内容で作りますか？ もう受講合意書がある科目は作りません。`)) return true;
+    if (!confirm(`${monthLabel(planMonth)}の受講計画合意書の下書きを、先月と同じ内容で作りますか？ もう受講計画合意書がある科目は作りません。`)) return true;
     r = await ctx.call('billing/plans/copyMonth', { month: planMonth }); msg = r.ok ? `下書きを ${r.created}件 作りました` : ''; if (r.ok) plans = null;
   } else if (a === 'pl-send') {
     const ids = String(b.dataset.ids || '').split(',').filter(Boolean);
-    if (!ids.length) { ctx.say('お知らせする受講合意書にチェックを付けてください', 'error'); return true; }
-    if (!confirm(`この家族に、チェックした ${ids.length}件の受講合意書をお知らせしますか？ 保護者ページに出て、承認をお願いするメールが 1 通届きます。`)) return true;
+    if (!ids.length) { ctx.say('お知らせする受講計画合意書にチェックを付けてください', 'error'); return true; }
+    if (!confirm(`この家族に、チェックした ${ids.length}件の受講計画合意書をお知らせしますか？ 保護者ページに出て、承認をお願いするメールが 1 通届きます。`)) return true;
     r = await ctx.call('billing/plans/send', { familyId: b.dataset.family, ids }); msg = r.ok ? `${r.sent}件をお知らせしました` : ''; if (r.ok) { plans = null; ids.forEach(x => unpicked.delete(x)); }
   } else if (a === 'pl-remind') {
-    if (!confirm('この家族に、承認待ちの受講合意書の「承認のお願い」をメールで送りますか？')) return true;
+    if (!confirm('この家族に、承認待ちの受講計画合意書の「承認のお願い」をメールで送りますか？')) return true;
     r = await ctx.call('billing/plans/remind', { familyId: b.dataset.family }); msg = r.ok ? `承認のお願いを送りました（${r.reminded}件）` : ''; if (r.ok) { plans = null; bill = null; }
   } else if (a === 'pl-delete') {
-    if (!confirm('この受講合意書を消しますか？')) return true;
+    if (!confirm('この受講計画合意書を消しますか？')) return true;
     r = await ctx.call('billing/plans/delete', { id: b.dataset.id, version: Number(b.dataset.version) }); msg = '消しました'; if (r.ok) { plans = null; lineOpen = ''; }
   } else if (a === 'bl-confirm') {
     if (!confirm('この内容で請求を確定しますか？ 保護者ページに出て、メールでお知らせします。')) return true;

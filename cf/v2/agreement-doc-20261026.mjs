@@ -1,6 +1,6 @@
-// 受講合意書の書面（2026-10-26 本人「PDFを見ると全然だめですね。書式を他の書類に合わせましょうか」）。
+// 受講計画合意書の書面（2026-10-26 本人「PDFを見ると全然だめですね。書式を他の書類に合わせましょうか」）。
 // 個別受講条件書（condition-doc-r6.mjs）・特別単価合意書（special-doc-r9.mjs）と同じ形: 表題と案 → 宛名 → 授業の内容（左に大きなまとまり）→ 取り決め → 記録 → 保護者の承認 → 塾。
-// この日より後に作った受講合意書の行（planLines.createdAt）だけこの様式。前からの行は、承認のあとも agreement-doc-20261016.mjs のまま（保存した書面の文字を変えない）。
+// この日より後に作った受講計画合意書の行（planLines.createdAt）だけこの様式。前からの行は、承認のあとも agreement-doc-20261016.mjs のまま（保存した書面の文字を変えない）。
 import { keyTable, ruleTable, TABLE_CSS } from './doc-tables.mjs';
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const jstParts = t => { const d = new Date(Date.parse(t) + 9 * 3600e3); return Number.isFinite(d.getTime()) ? d : null; };
@@ -62,7 +62,7 @@ export function agreementDocHtmlR13({ records, documentId, guardianName = '', sa
     : status === 'declined'
       ? `<div class="consent"><div class="ct">保護者の意思表示</div><div><strong>${esc(l0.consenterName || '')} 様</strong>（保護者）　${esc(minute(l0.consentedAt || l0.consentDate))}　見送り</div></div>`
       : `<div class="consent"><div class="ct">保護者の承認</div><div>まだ承認いただいていません。保護者ページで内容をご確認のうえ、承認してください。承認のない授業は行いません。</div></div>`;
-  const barLabel = `受講合意書${status === 'approved' ? '（控え）' : status === 'declined' ? '（見送り）' : '（案）'}`;
+  const barLabel = `受講計画合意書${status === 'approved' ? '（控え）' : status === 'declined' ? '（見送り）' : '（案）'}`;
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>${esc(barLabel)} ${esc(name)}</title>
@@ -97,7 +97,7 @@ export function agreementDocHtmlR13({ records, documentId, guardianName = '', sa
 <div class="bar"><span>${esc(barLabel)}。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
 <div class="sheet">
   ${sample ? '<div class="sample">見本・架空の記録です。実際の契約ではありません。</div>' : ''}
-  <div class="head"><h1>受講合意書${badge}</h1><div class="meta">${l0.proposedAt ? `提示日 ${esc(day(l0.proposedAt))}` : ''}${status === 'approved' ? `<br>承認日 ${esc(day(l0.consentedAt || l0.consentDate))}` : ''}</div></div>
+  <div class="head"><h1>受講計画合意書${badge}</h1><div class="meta">${l0.proposedAt ? `提示日 ${esc(day(l0.proposedAt))}` : ''}${status === 'approved' ? `<br>承認日 ${esc(day(l0.consentedAt || l0.consentDate))}` : ''}</div></div>
   <div class="to">${to}</div>
   <p class="lead">${status === 'approved' ? '承認いただいた授業の内容と料金です。' : status === 'declined' ? '見送りとなった授業の内容と料金の記録です。' : '授業の内容と料金です。内容をご確認のうえ、承認をお願いします。'}</p>
   <h2>授業の内容</h2>
