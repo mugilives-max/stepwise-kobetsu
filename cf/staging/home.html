@@ -57,7 +57,8 @@
       const login = await post('staff/login', { email: 'owner@example.invalid', password: 'correct horse battery' }); if (!login.ok) return fail();
       const d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
       const r = await post('admin/enrollment/offer', { auth: login.auth, studentId: b.dataset.trial, email: 'trial-parent@example.invalid', fromMonth: d, minutes: 90, fee: 4500, deliveryMode: 'in_person', subjects: '英語・数学' });
-      if (!r.ok || !r.inviteUrl) return fail();
+      if (!r.ok) return fail();
+      if (!r.inviteUrl) { location.href = '/family/#enroll'; return; } // もう登録した保護者: 申込みの画面へ（ログインのままならそのまま）
       try { localStorage.removeItem('sw2_family'); } catch {}
       location.href = r.inviteUrl;
     });
