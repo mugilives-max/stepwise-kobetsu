@@ -83,7 +83,7 @@ function render() {
       if (kari.length) h += `<p class="notice small" style="margin:0 0 6px">確認待ち ${kari.length}件・連絡がなければ締め切りで決まります</p>`;
       const cell = date => { const ls = lessons.filter(l => l.date === date && l.status in RANK).sort((a, b) => a.start.localeCompare(b.start));
         return { lines: events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`).concat(ls.map(l => `<span class="nm r${RANK[l.status]}">${esc(l.subject)}</span>`)), count: ls.length }; };
-      const day = (date, first) => cal.dayHead(date, first, `<span class="muted small">授業 ${lessons.filter(l => l.date === date && l.status in RANK).length}件</span>`) + dayRows(date, lessons, events, { canDelete: e => sched.permissions.events && e.createdByKind === 'student' });
+      const day = (date, first) => cal.dayHead(date, first) + dayRows(date, lessons, events, { canDelete: e => sched.permissions.events && e.createdByKind === 'student' });
       h += cal.html(esc, { cell, day });
     }
   } else if (page === 'learning') {
@@ -118,7 +118,7 @@ app.addEventListener('submit', ev => {
   const v = Object.fromEntries(new FormData(ev.target).entries());
   if (ev.target.dataset.form === 'gr-upload') {
     const file = ev.target.querySelector('input[type=file]').files[0]; if (!file) return;
-    return run(async () => { const r = await uploadFile(file, v.note || '', meta => call('student/grades/upload', { ...meta, k })); if (r.ok) { grades = null; say('成績票を送りました。先生が確かめて点数を入れます', 'ok'); } else say(r.error.message, 'error'); });
+    return run(async () => { const r = await uploadFile(file, v.note || '', meta => call('student/grades/upload', { ...meta, k })); if (r.ok) { grades = null; say('成績票を送りました', 'ok'); } else say(r.error.message, 'error'); });
   }
   run(async () => { const r = await call('student/events/add', { ...v, k }); if (r.ok) { sched = null; calData = {}; closeSheet(); say('先生に知らせました', 'ok'); } else say(r.error.message, 'error'); });
 });
