@@ -8,6 +8,8 @@ const ymd = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? `${Number(v.slice
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const br = s => esc(s).replace(/\n/g, '<br>');
 
+// 版は第2版から出す。第1版は提示日・同意日で分かる（2026-10-26 本人「第1版は出さない形で」）
+const verText = no => Number(no) > 1 ? `第${no}版` : '';
 export function specialDocR9({ sp, student, family, terms }) {
   const final = sp.status === 'agreed';
   const name = `${student.familyName} ${student.givenName}`.trim();
@@ -41,7 +43,7 @@ export function specialDocR9({ sp, student, family, terms }) {
     : `<div class="consent"><div class="ct">保護者の承認</div><div>まだ承認いただいていません。保護者ページで内容をご確認のうえ、承認してください。承認がない場合、この単価は使いません。</div></div>`;
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex">
-<title>特別単価合意書 ${esc(sp.title)} 第${sp.no}版${final ? '' : '（案）'} ${esc(name)}</title>
+<title>特別単価合意書 ${esc(sp.title)} ${verText(sp.no)}${final ? '' : '（案）'} ${esc(name)}</title>
 <style>
   @page { size: A4; margin: 15mm; }
   * { box-sizing: border-box; }
@@ -76,9 +78,9 @@ export function specialDocR9({ sp, student, family, terms }) {
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; font-size: 11.5px; line-height: 1.55; } h1 { font-size: 21px; } .to { margin-top: 5mm; font-size: 15px; } .lead { margin-top: 4mm; font-size: 12.5px; } .key { margin-top: 4mm; } .key div { padding: 2.5mm 3.5mm; } .key dd { font-size: 17px; } h2 { margin-top: 5mm; font-size: 13.5px; } .rules li { padding: 1.4mm 0; } .consent { margin-top: 5mm; padding: 3mm; } .issuer { margin-top: 5mm; font-size: 11.5px; } }
 </style></head>
 <body>
-<div class="bar"><span>特別単価合意書（${esc(sp.title)}・第${sp.no}版${final ? '' : '・案'}）。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
+<div class="bar"><span>特別単価合意書（${[esc(sp.title), verText(sp.no), final ? '' : '案'].filter(Boolean).join('・')}）。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
 <div class="sheet">
-  <div class="head"><h1>特別単価合意書</h1><div class="meta">第${sp.no}版${final ? '' : '<span class="draft">案</span>'}<br>提示日 ${esc(jst(sp.proposedAt))}${final ? `<br>承認日 ${esc(jst(sp.agreedAt))}` : ''}</div></div>
+  <div class="head"><h1>特別単価合意書</h1><div class="meta">${verText(sp.no) ? verText(sp.no) + '<br>' : ''}${final ? '' : '<span class="draft">案</span><br>'}提示日 ${esc(jst(sp.proposedAt))}${final ? `<br>承認日 ${esc(jst(sp.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
   <p class="lead">「${esc(sp.title)}」は、準備に特別な負担がかかるため、通常の基準単価とは別の単価（特別の基準単価）でお願いします。内容をご確認のうえ、承認をお願いします。</p>
   <dl class="key">${key.map(([k, v, a = '']) => `<div${a}><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>

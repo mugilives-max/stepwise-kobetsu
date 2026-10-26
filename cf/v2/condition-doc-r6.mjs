@@ -8,6 +8,8 @@ const monthJa = m => m ? `${Number(m.slice(0, 4))}年${Number(m.slice(5, 7))}月
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const MODES = { in_person: '教室', online: 'オンライン', both: '教室とオンライン' };
 
+// 版は第2版から出す。第1版は提示日・同意日で分かる（2026-10-26 本人「第1版は出さない形で」）
+const verText = no => Number(no) > 1 ? `第${no}版` : '';
 export function conditionDocR6({ cond, student, family, terms }) {
   const final = cond.status === 'agreed';
   const name = `${student.familyName} ${student.givenName}`.trim();
@@ -37,7 +39,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
     : `<div class="consent"><div class="ct">保護者の同意</div><div>まだ同意いただいていません。保護者ページで内容をご確認のうえ、同意してください。</div></div>`;
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex">
-<title>受講条件書 第${cond.no}版${final ? '' : '（案）'} ${esc(name)}</title>
+<title>受講条件書 ${verText(cond.no)}${final ? '' : '（案）'} ${esc(name)}</title>
 <style>
   @page { size: A4; margin: 15mm; }
   * { box-sizing: border-box; }
@@ -72,9 +74,9 @@ export function conditionDocR6({ cond, student, family, terms }) {
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; font-size: 11.5px; line-height: 1.55; } h1 { font-size: 21px; } .to { margin-top: 5mm; font-size: 15px; } .lead { margin-top: 4mm; font-size: 12.5px; } .key { margin-top: 4mm; } .key div { padding: 2.5mm 3.5mm; } .key dd { font-size: 17px; } h2 { margin-top: 5mm; font-size: 13.5px; } .rules li { padding: 1.4mm 0; } .consent { margin-top: 5mm; padding: 3mm; } .issuer { margin-top: 5mm; font-size: 11.5px; } }
 </style></head>
 <body>
-<div class="bar"><span>受講条件書（第${cond.no}版${final ? '' : '・案'}）。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
+<div class="bar"><span>受講条件書${[verText(cond.no), final ? '' : '案'].filter(Boolean).length ? '（' + [verText(cond.no), final ? '' : '案'].filter(Boolean).join('・') + '）' : ''}。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
 <div class="sheet">
-  <div class="head"><h1>受講条件書</h1><div class="meta">第${cond.no}版${final ? '' : '<span class="draft">案</span>'}<br>提示日 ${esc(jst(cond.proposedAt))}${final ? `<br>同意日 ${esc(jst(cond.agreedAt))}` : ''}</div></div>
+  <div class="head"><h1>受講条件書</h1><div class="meta">${verText(cond.no) ? verText(cond.no) + '<br>' : ''}${final ? '' : '<span class="draft">案</span><br>'}提示日 ${esc(jst(cond.proposedAt))}${final ? `<br>同意日 ${esc(jst(cond.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
   <p class="lead">授業の基本となる条件です。毎月の授業の回数と料金は、別に「受講合意書」でお知らせし、そのつど同意をいただきます。</p>
   <dl class="key">${key.map(([k, v, a = '']) => `<div${a}><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
