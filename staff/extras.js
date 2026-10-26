@@ -52,6 +52,8 @@ export function docsPage(ctx) {
 // 2. 保護者への同意のお願い（家族を選ぶ → 確認（一言・メール）→ お願いする）。家族ごとに 同意済み／お願い中／まだ。版の名前や URL を手で打たない
 // 日付だけ（YYYY-MM-DD）はそのまま、日時（ISO）は日本の日付にする
 const jaDay = v => { let d = String(v || ''); if (d.length > 10 && !Number.isNaN(Date.parse(d))) d = new Date(Date.parse(d) + 9 * 3600e3).toISOString(); return /^\d{4}-\d{2}-\d{2}/.test(d) ? `${Number(d.slice(0, 4))}年${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日` : ''; };
+// 版の見分け（代表だけが見る。保護者には出さない）: 「2026-11-20261026-r13」→「r13（2026年10月26日の改訂）」（2026-10-26 本人「これがどの版なのかってわかりづらい」）
+const verLabel = v => { const m = /(\d{4})(\d{2})(\d{2})-(r\d+)$/.exec(String(v || '')); return m ? `${m[4]}（${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日の改訂）` : String(v || ''); };
 const kv = (esc, rows) => '<dl class="reg-rows">' + rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('') + '</dl>';
 export function termsPage(ctx) {
   const { esc } = ctx;
@@ -72,7 +74,7 @@ export function termsPage(ctx) {
   // 規約を決める確認（別の画面）
   if (termsStep === 'decide' && latest) {
     const first = !t.version;
-    return h + `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>${kv(esc, [['適用日', esc(jaDay(latest.from))], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}</section>
+    return h + `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>${kv(esc, [['版', esc(verLabel(latest.version))], ['適用日', esc(jaDay(latest.from))], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}</section>
       <section class="reg-card"><div class="reg-card-head"><h2>${first ? '使い始める' : '切り替える'}とどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
         <li>これから作る個別受講条件書・特別単価合意書は、この規約によります。</li>
         <li>新しく入塾する家族は、申込みのときにこの規約に同意します。</li>
@@ -101,7 +103,7 @@ export function termsPage(ctx) {
   if (t.version) {
     const reg = terms.catalogue.find(x => x.version === t.version);
     h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>今の版</h2><span class="tag ok">全員共通</span></div>
-      ${kv(esc, [['規約', esc(t.title || t.version) + (t.url ? '<br>' + open(t.url, '全文を読む') : '')], ['適用日', esc(jaDay(t.from) || '—')], ...(reg && reg.registeredAt ? [['使い始めた日', esc(jaDay(reg.registeredAt))]] : [])])}</section>`;
+      ${kv(esc, [['規約', esc(t.title || t.version) + (t.url ? '<br>' + open(t.url, '全文を読む') : '')], ['版', esc(verLabel(t.version))], ['適用日', esc(jaDay(t.from) || '—')], ...(reg && reg.registeredAt ? [['使い始めた日', esc(jaDay(reg.registeredAt))]] : [])])}</section>`;
   } else {
     h += `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>まだ使い始めていません</h2></div>
       <p class="reg-help" style="margin:6px 0 0">使い始めるまで入塾の案内を送れません。</p></section>`;
@@ -109,7 +111,7 @@ export function termsPage(ctx) {
   if (latest && latest.version !== t.version) {
     h += `<div class="sec-title">${t.version ? '新しい版があります' : '使い始められる版'}</div>
       <section class="reg-card" style="margin-top:0"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>
-      ${kv(esc, [['適用日', esc(jaDay(latest.from))], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}
+      ${kv(esc, [['版', esc(verLabel(latest.version))], ['適用日', esc(jaDay(latest.from))], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}
       <button class="primary wide" style="margin-top:10px" data-action="terms-decide-start"${ctx.dis()}>${t.version ? 'この版に切り替える' : 'この版を使い始める'}</button></section>`;
   } else if (!latest) h += '<p class="small muted">サイトの規約の一覧を読み込めませんでした。画面を読み直してください。</p>';
   // 2. 保護者への同意のお願い
