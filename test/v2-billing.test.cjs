@@ -67,7 +67,8 @@ test('the month bill: approved lessons at the plan fee, unapproved ones wait, op
   h.clock = at('2026-10-02T12:00:00');
   for (const l of [l1, l2, l3]) await done(l);
   let p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
-  assert.equal(p.canConfirm, false); assert.match(p.issues.join(), /花子さん 09\/10 英語 が実施済みになっていません/);
+  // 2026-10-27 から、決定した授業は終わりの時刻を過ぎたら自動で実施済み。実施済みにしていない授業で止まらない
+  assert.doesNotMatch(p.issues.join(), /実施済みになっていません/); assert.equal(h.rows('select status from lessons where id = ?', s1.id)[0].status, 'done');
   await done(s1);
   p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
   const kidRow = p.students.find(s => s.studentId === kid.id);
@@ -282,4 +283,28 @@ test('an invoice document is stored when the month is confirmed and a receipt wh
   assert.deepEqual(cats, ['invoice', 'receipt']);
   const re = await h.ok('admin/billing/docs/rebuild', { auth, id: inv.id });
   assert.notEqual(re.docs.invoiceDocId, fam1.invoice.invoiceDocId, '作り直すと新しい書面');
+});
+
+// 2026-10-27 本人「予定が確定している授業に関しては、授業予定時刻が過ぎたら自動で実施済みに変えること」
+test('a decided lesson becomes done once its end time passes; until billed it can still be cancelled or rested', async () => {
+  const { h, auth, kid, lesson } = await world();
+  const l = await lesson(kid.id, '2026-09-08', '17:00', '数学', 60);
+  h.clock = at('2026-09-08T17:59:00');
+  await h.ok('schedule/staff/range', { auth, from: '2026-09-01', to: '2026-09-30' });
+  assert.equal(h.rows('select status from lessons where id = ?', l.id)[0].status, 'decided', '終わる前は決定のまま');
+  h.clock = at('2026-09-08T18:00:00');
+  await h.ok('schedule/staff/range', { auth, from: '2026-09-01', to: '2026-09-30' });
+  const d = h.rows('select status, version from lessons where id = ?', l.id)[0];
+  assert.deepEqual([d.status, d.version], ['done', l.version], '終わりの時刻で実施済み（版は上げない）');
+  assert.ok(h.rows("select * from auditLog where action = 'lessonAutoDone'").length, '記録を残す');
+  // 欠席だった: 請求・給与の前なら、実施済みからお休みにできる
+  await h.ok('schedule/lessons/rest', { auth, id: l.id, version: d.version });
+  assert.equal(h.rows('select status from lessons where id = ?', l.id)[0].status, 'rested');
+  // 請求に入った実施済みの授業は変えられない
+  const m = await lesson(kid.id, '2026-09-15', '17:00', '数学', 60);
+  h.clock = at('2026-09-16T09:00:00');
+  await h.ok('schedule/staff/range', { auth, from: '2026-09-01', to: '2026-09-30' });
+  await h.db2.prepare("update lessons set invoiceId = 'inv_x' where id = ?").bind(m.id).run();
+  const cur = h.rows('select version from lessons where id = ?', m.id)[0];
+  assert.equal((await h.call('schedule/lessons/rest', { auth, id: m.id, version: cur.version })).error.code, 'badStatus');
 });

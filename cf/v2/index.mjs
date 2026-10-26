@@ -12,7 +12,7 @@ import { staffRoutes } from './staff.mjs';
 import { familyRoutes } from './family.mjs';
 import { peopleRoutes } from './people.mjs';
 import { migrateRoutes } from './migrate-identity.mjs';
-import { scheduleRoutes, autoConfirm } from './schedule.mjs';
+import { scheduleRoutes, autoConfirm, settlePastLessons } from './schedule.mjs';
 import { migrateScheduleRoutes } from './migrate-schedule.mjs';
 import { recordRoutes } from './records.mjs';
 import { migrateRecordsRoutes } from './migrate-records.mjs';
@@ -53,6 +53,7 @@ export async function runV2Scheduled(env, now = Date.now()) {
   let backup; try { backup = await backupToR2(env, c.db, now); } catch (e) { backup = { error: String((e && e.message) || e).slice(0, 200) }; } // 控えが取れなくても、ほかの処理は止めない（画面に「古い」と出る）
   const result = await autoConfirm(c);
   result.backup = backup;
+  try { result.settled = await settlePastLessons(c); } catch (e) { result.settled = { error: String((e && e.message) || e).slice(0, 200) }; }
   result.invoices = await autoCloseInvoices(c);
   result.tests = await remindTestResults(c);
   result.files = await cleanupFiles(c);
@@ -98,6 +99,8 @@ export async function handleV2(request, env, ctx, head = {}) {
     if (!who) return reply(401, { ok: false, error: { code: 'badKey', message: '鍵が正しくありません' } });
     c.serviceStaff = who; c.serviceWrite = true; delete body.serviceWriteKey; delete body.auth;
   }
+  // 予定の終わりを過ぎた決定の授業を実施済みにしてから答える（cf/v2/schedule.mjs settlePastLessons）
+  if (body.dryRun !== true) { try { await settlePastLessons(c); } catch (e) { console.error('settle', e && e.stack || e); } } // 試すだけの操作では何も変えない
   try {
     const result = await handler(c, body);
     if (c.effects.length || (c.queued && c.queued.length)) {

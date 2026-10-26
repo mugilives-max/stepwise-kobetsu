@@ -42,8 +42,7 @@ test('the month statement counts done lessons and past meetings at each instruct
   assert.deepEqual(v.items.map(i => [i.kind, i.minutes, i.rate, i.amount]), [['lesson', 90, 1555, 2332], ['prep', 10, 1555, 259], ['lesson', 45, 1555, 1166], ['prep', 10, 1555, 259], ['meeting', 30, 1500, 750]], '1円未満は行ごとに切り捨て。準備・記録は授業の前後5分（その日の授業が1つなら10分）を授業の時給で');
   assert.deepEqual([v.lessonMinutes, v.meetingMinutes, v.prepMinutes, v.gross, v.withholding, v.net, v.taxColumn], [135, 30, 20, 4766, 145, 4621, 'otsu'], '扶養控除等申告書が出るまでは乙欄（105,000円未満は 3.063%、1円未満切り捨て）');
   const other = (await h.ok('payroll/staff', { auth, staffId: u.id, month: '2026-09' })).preview;
-  assert.match(other.issues.join(), /実施済みになっていません/, '代講の講師の授業も、実施済みにしないと確定できない');
-  assert.equal((await h.call('payroll/confirm', { auth, staffId: u.id, month: '2026-09' })).error.code, 'notReady');
+  assert.doesNotMatch(other.issues.join(), /実施済みになっていません/, '代講の講師の授業も、終わりの時刻を過ぎたら自動で実施済み（2026-10-27）');
   await done(sub);
   // 扶養控除等申告書を出した講師は甲欄（105,000円未満は0円）
   const tu = h.rows('select version, contractType from staff where id = ?', u.id)[0];
@@ -66,8 +65,7 @@ test('confirming fixes the statement; corrections void it with a reason; instruc
   assert.equal((await h.call('payroll/confirm', { auth, staffId: t.id, month: '2026-09' })).error.code, 'tooEarly', '月末締め');
   h.clock = at('2026-10-02T12:00:00');
   await h.ok('payroll/adjust/add', { auth, staffId: t.id, month: '2026-09', label: '研修 1時間', amount: 1500 });
-  // 9/29 の授業をまだ実施済みにしていないので確定できない。実施済みにしてから確定する
-  assert.equal((await h.call('payroll/confirm', { auth, staffId: t.id, month: '2026-09' })).error.code, 'notReady');
+  // 9/29 の授業は、終わりの時刻を過ぎたので自動で実施済み（2026-10-27。前は手で実施済みにするまで確定できなかった）
   await done(late);
   const before = h.mails().length;
   const p = (await h.ok('payroll/confirm', { auth, staffId: t.id, month: '2026-09', expectedNet: 2250 + 250 + 2250 + 250 + 1500 })).payroll;
