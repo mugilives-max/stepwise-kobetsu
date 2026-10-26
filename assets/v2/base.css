@@ -850,6 +850,12 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .cond-box > legend { padding: 0 6px; margin: 0 0 4px -6px; }
 .cond-sub { font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 6px; }
 .info-head { font-size: 15px; margin: 16px 0 0; }
+/* 表計算のような罫線つきの表（入塾のお申込み。2026-10-26 本人「エクセルのような表示形式の方が分かりやすい」） */
+.grid-table { width: 100%; border-collapse: collapse; margin: 10px 0 0; table-layout: fixed; }
+.grid-table th, .grid-table td { border: 1px solid #c3ccd5; padding: 8px 10px; text-align: left; vertical-align: top; color: var(--ink); overflow-wrap: anywhere; }
+.grid-table th { width: 8.5em; background: #eef2f6; font-size: 14px; font-weight: 600; }
+.grid-table td { background: var(--white); font-size: 15px; }
+.reg-field input[readonly] { background: #eef2f6; color: var(--ink); }
 .info-table { margin: 6px 0 0; }
 .info-table > div { display: grid; grid-template-columns: 7em minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line); }
 .info-table > div:first-child { border-top: 0; }

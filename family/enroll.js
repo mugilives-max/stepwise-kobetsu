@@ -47,8 +47,12 @@ function steps(i) {
 }
 function condRows(esc, o) {
   const c = o.condition || {};
-  const row = (k, v) => v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '';
-  return `<dl class="reg-rows">${row('開始', jaMonth(o.fromMonth) + 'から')}${row('通常の基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`)}${row('実施形態', MODE[c.deliveryMode] || '')}${row('科目', c.subjects || '')}${row('特記事項', c.note || '')}</dl>`;
+  return gridTable(esc, [['開始', jaMonth(o.fromMonth) + 'から'], ['通常の基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`], ['実施形態', MODE[c.deliveryMode] || ''], ['科目', c.subjects || ''], ['特記事項', c.note || '']]);
+}
+const gridTable = (esc, rows) => `<table class="grid-table"><tbody>${rows.filter(([, v]) => v).map(([k, v]) => `<tr><th scope="row">${k}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>`;
+// 入力済みの項目（メールアドレス。変えるのはアカウントの画面から）
+function fixed(esc, label, value) {
+  return `<label style="flex:1 1 140px;min-width:0"><span>${label}</span><input value="${esc(value || '')}" readonly></label>`;
 }
 function field(esc, key, label, opts = {}) {
   const bad = missing.includes(key);
@@ -56,7 +60,7 @@ function field(esc, key, label, opts = {}) {
 }
 // 受講条件書とご利用規約（入力と確認の両方の画面に出す。同意の前に、いつでも全文を開ける）。説明文は置かず、条件の表と全文のボタンだけ
 function docCards(esc, o) {
-  return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書</h2></div>${condRows(esc, o)}
+  return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書の主な条件</h2></div>${condRows(esc, o)}
       ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>ご利用規約</h2></div>
       <p style="margin:6px 0 0">${data.terms.from ? `${Number(data.terms.from.slice(0, 4))}年${Number(data.terms.from.slice(5, 7))}月${Number(data.terms.from.slice(8, 10))}日から適用されます。` : ''}</p>
@@ -64,14 +68,16 @@ function docCards(esc, o) {
 }
 function inputPage(ctx, o) {
   const { esc } = ctx, bad = () => '';
-  return `${steps(1)}<h1>${esc(o.student.name)}さんの入塾のお申込み</h1>${ctx.noticeHtml()}
+  return `${steps(1)}<h1>入塾のお申込み</h1>${ctx.noticeHtml()}
   <form class="reg-form" data-form="enroll-input" novalidate>
-    <fieldset class="reg-field"><legend>保護者さまの情報 <span class="req">必須</span></legend>
+    <fieldset class="reg-field cond-box"><legend>保護者さまの情報 <span class="req">必須</span></legend>
       <div class="row">${field(esc, 'guardianFamilyName', '姓', { ph: '例：山田', auto: 'family-name', max: 30 })}${field(esc, 'guardianGivenName', '名', { ph: '例：花子', auto: 'given-name', max: 30 })}</div>
       <div class="row">${field(esc, 'guardianFamilyKana', 'ふりがな（姓）', { ph: '例：やまだ', max: 30 })}${field(esc, 'guardianGivenKana', 'ふりがな（名）', { ph: '例：はなこ', max: 30 })}</div>
+      <div class="cond-sub">連絡先</div>
+      ${fixed(esc, 'メールアドレス', data.guardian && data.guardian.email)}
       ${field(esc, 'phone', '電話番号', { type: 'tel', mode: 'tel', auto: 'tel', ph: '例：090-1234-5678', max: 20 })}
       ${field(esc, 'zip', '郵便番号', { mode: 'numeric', auto: 'postal-code', ph: '例：343-0002', max: 8 })}${field(esc, 'address', '住所', { auto: 'street-address', ph: '例：越谷市〇〇町1-2-3', max: 200 })}</fieldset>
-    <fieldset class="reg-field${bad(['familyName', 'givenName', 'familyKana', 'givenKana', 'grade'])}"><legend>生徒さんの情報 <span class="req">必須</span></legend>
+    <fieldset class="reg-field cond-box${bad(['familyName', 'givenName', 'familyKana', 'givenKana', 'grade'])}"><legend>生徒さんの情報 <span class="req">必須</span></legend>
       <div class="row">${field(esc, 'familyName', '姓', { max: 40 })}${field(esc, 'givenName', '名', { max: 40 })}</div>
       <div class="row">${field(esc, 'familyKana', 'ふりがな（姓）', { max: 40 })}${field(esc, 'givenKana', 'ふりがな（名）', { max: 40 })}</div>
       <div class="row"><label style="flex:1 1 140px;min-width:0"><span>学年</span><select name="grade" data-enroll="grade"${missing.includes('grade') ? ' aria-invalid="true"' : ''}>${gradeOptions(esc, draft.grade)}</select></label>${field(esc, 'school', '学校', { ph: '例：〇〇中学校' })}</div></fieldset>
@@ -80,11 +86,10 @@ function inputPage(ctx, o) {
 }
 function confirmPage(ctx, o) {
   const { esc } = ctx, d = draft;
-  const row = (k, v) => v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '';
   const zip = d.zip.trim().replace(/^(\d{3})(\d{4})$/, '$1-$2');
   return `${steps(1)}<h1>入力内容の確認</h1>${ctx.noticeHtml()}
-    <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div><dl class="reg-rows">${row('氏名', d.guardianFamilyName + ' ' + d.guardianGivenName)}${row('ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana)}${row('電話番号', d.phone)}${row('住所', '〒' + zip + ' ' + d.address)}</dl></section>
-    <section class="reg-card"><div class="reg-card-head"><h2>生徒さんの情報</h2></div><dl class="reg-rows">${row('氏名', d.familyName + ' ' + d.givenName)}${row('ふりがな', d.familyKana + ' ' + d.givenKana)}${row('学年', d.grade)}${row('学校', d.school)}</dl></section>
+    <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div>${gridTable(esc, [['氏名', d.guardianFamilyName + ' ' + d.guardianGivenName], ['ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana], ['メールアドレス', data.guardian && data.guardian.email], ['電話番号', d.phone], ['住所', '〒' + zip + ' ' + d.address]])}</section>
+    <section class="reg-card"><div class="reg-card-head"><h2>生徒さんの情報</h2></div>${gridTable(esc, [['氏名', d.familyName + ' ' + d.givenName], ['ふりがな', d.familyKana + ' ' + d.givenKana], ['学年', d.grade], ['学校', d.school]])}</section>
     ${docCards(esc, o)}
     <form class="reg-form" data-form="enroll-apply" novalidate>
       <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}><span>ご利用規約と受講条件書の内容を確認し、同意します<small>同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）</small></span></label>
