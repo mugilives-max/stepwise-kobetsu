@@ -25,7 +25,7 @@ export function specialDocR9({ sp, student, family, terms }) {
   const detail = [
     ['指導の目的', br(sp.purpose)],
     ['内容と範囲', br(sp.content)],
-    ['特別単価にする理由', br(sp.reason)],
+    ['特別単価の理由', br(sp.reason)],
     ['必要な準備', sp.prep ? br(sp.prep) : 'なし'],
   ];
   if (sp.note) detail.push(['特記事項', br(sp.note)]);

@@ -7,16 +7,16 @@ export const ruleTable = rows => `<table class="rules"><tbody>${rows.map(([k, v]
 export const TABLE_CSS = `
   .key, .rules { width: 100%; border-collapse: collapse; border: 1.5px solid #1e2630; }
   .key { margin-top: 5mm; table-layout: fixed; }
-  .key col.gc { width: 20mm; }
-  .key col.kc { width: 46mm; }
+  .key col.gc { width: 16mm; }
+  .key col.kc { width: 44mm; }
   .key th, .key td, .rules th, .rules td { border: 1px solid #aab2bb; padding: 2.4mm 3.5mm; text-align: left; vertical-align: middle; font-size: 14.5px; line-height: 1.5; }
   .key th, .rules th { background: #eef1f4; font-weight: 700; text-align: center; vertical-align: middle; } /* 項目名はマスの中央（同日 本人「項目がマスに対して不自然…中央揃えにした方が良い」） */
   .key th.grp { background: #dfe5eb; }
   .key td { font-weight: 700; overflow-wrap: anywhere; }
   .key td small { font-size: 12px; font-weight: 600; }
   .key td .note { display: block; font-size: 12px; font-weight: 500; margin-top: .5mm; }
-  .rules th { width: 66mm; }
+  .rules th { width: 40mm; }
   .rules th, .rules td { font-size: 14px; }
   h2 { border-bottom: 0; padding-bottom: 0; }
-  .consent { grid-template-columns: calc(66mm - 4mm) 1fr; } /* 同意の欄の項目名も表の列にそろえる */
+  .consent { grid-template-columns: calc(40mm - 4mm) 1fr; } /* 同意の欄の項目名も表の列にそろえる */
   @media print { .key th, .key td, .rules th, .rules td { padding: 1.8mm 3mm; font-size: 12.5px; } .rules td { font-size: 11.5px; } }`;
