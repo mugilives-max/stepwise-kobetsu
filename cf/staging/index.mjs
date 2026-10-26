@@ -51,7 +51,9 @@ export default {
       const kid = async given => (await env.DB2.prepare("select linkCode from students where familyName = '架空' and givenName = ? and linkCode not like 'off.%'").bind(given).first().catch(() => null))?.linkCode || '';
       const links = {};
       for (const [k, given] of [['taro', '太郎'], ['hana', '花']]) { const code = await kid(given); if (code) links[k] = origin + '/student/?k=' + encodeURIComponent(code); }
-      return json({ ok: true, seeded: Number(n && n.n) > 0, builtAt: snapshot.builtAt, links });
+      // 入塾の手続きを試す体験生（架空 体験）。入塾したあとは出さない
+      const trial = await env.DB2.prepare("select id from students where familyName = '架空' and givenName = '体験' and trial = 1").first().catch(() => null);
+      return json({ ok: true, seeded: Number(n && n.n) > 0, builtAt: snapshot.builtAt, links, trial: trial ? trial.id : '' });
     }
     if (url.pathname.startsWith('/v2/')) {
       const res = await handleV2(request, env, ctx, NOINDEX);
