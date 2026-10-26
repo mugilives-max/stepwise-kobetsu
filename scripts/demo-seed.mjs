@@ -94,6 +94,10 @@ export async function seed({ live = false } = {}) {
   const k = h.rows('select linkCode from students where id = ?', taro.id)[0].linkCode;
   const kh = h.rows('select linkCode from students where id = ?', hana.id)[0].linkCode;
   if (live) h.db2._sqlite.prepare("insert into settings (key, value, updatedAt) values ('live', '1', ?) on conflict(key) do update set value = '1'").run(new Date().toISOString());
+  // ご利用規約は使い始めた状態にしておく（本番と同じ。サイトの正式版 terms/versions.json の先頭）。今の家族への同意のお願いはしない
+  const fs = await import('node:fs');
+  const v = JSON.parse(fs.readFileSync(path.join(ROOT, 'terms', 'versions.json'), 'utf8')).versions[0];
+  await h.ok('admin/terms/set', { auth, version: v.version, title: v.title, url: v.url, from: v.from, note: '' });
   return { h, k, kh };
 }
 
