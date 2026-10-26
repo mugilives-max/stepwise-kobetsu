@@ -43,7 +43,7 @@ export function plansPage(ctx) {
   // 月の状況（受講合意書のない生徒・下書き・承認待ち・承認済み）と、まとめて作る操作
   const all = plans.students.flatMap(s => s.lines), none = plans.students.filter(s => !s.lines.length).length;
   const n = st => all.filter(l => l.status === st).length;
-  const sum = [[none, 'なし', 'gray'], [n('draft'), '下書き', 'gray'], [n('proposed'), '承認待ち', 'warn'], [n('approved'), '承認済み', 'ok']].filter(([c]) => c).map(([c, t, cls]) => `<span class="tag ${cls}">${t} ${c}</span>`).join('');
+  const sum = [[none, '受講合意書なし', 'gray', '人'], [n('draft'), '下書き', 'gray', '件'], [n('proposed'), '承認待ち', 'warn', '件'], [n('approved'), '承認済み', 'ok', '件']].filter(([c]) => c).map(([c, t, cls, u]) => `<span class="tag ${cls}">${t} ${c}${u}</span>`).join('');
   h += `<div class="pl-top"><div class="pl-sum">${sum}</div><button class="small-btn" data-action="pl-copy"${ctx.dis()}>先月と同じ内容で下書きを作る</button></div>`;
   const byFamily = {};
   for (const s of plans.students) (byFamily[s.familyId] = byFamily[s.familyId] || []).push(s);
@@ -78,7 +78,7 @@ const lineCount = l => l.status === 'approved' && l.approvedCount !== l.count ? 
 function lineRow(ctx, s, l) {
   const { esc } = ctx, parts = partsOf(l), amount = l.status === 'declined' ? 0 : (l.status === 'approved' ? l.approvedCount : l.count) * Number(l.fee || 0);
   // 下書きにはチェック。外した行は「お知らせ」に入れない（あとで送る）
-  const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="${esc(l.subject)}をお知らせに入れる">` : '<span class="pl-pick-sp"></span>';
+  const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="${esc(l.subject)}をお知らせに入れる">` : '';
   const note = [l.assigned || l.tentative ? `決定・実施 ${l.assigned}回${l.tentative ? `・調整中 ${l.tentative}回` : ''}` : '', parts.length ? parts.map(p => `${esc(p.label)} ${p.count}回`).join('・') : ''].filter(Boolean).join('　');
   return `<div class="pl-r">${pick}<button type="button" class="pl-line" data-action="pl-line" data-id="${esc(l.id)}">
     <span class="pl-ln-subj"><strong>${esc(l.subject)}</strong>${l.kind && l.kind !== '通常' ? `<span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? '<span class="tag">追加</span>' : ''}${l.familyAck === 'inquiry' ? '<span class="tag danger">問い合わせ</span>' : ''}</span>

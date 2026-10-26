@@ -738,9 +738,8 @@ form[data-form=sch-create]:has(select[name=studentId] option[data-trial]:checked
 .pl-lines { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .pl-r { display: flex; align-items: stretch; }
 .pl-r + .pl-r { border-top: 1px solid var(--line); }
-.pl-r .pl-pick, .pl-r .pl-pick-sp { flex: none; width: 34px; margin: 0; padding: 0; align-self: center; }
-.pl-r .pl-pick { width: 18px; height: 18px; margin: 0 8px; accent-color: var(--primary); }
-.pl-line { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 6em 9em 7em 1em; align-items: center; gap: 2px 12px; padding: 9px 12px 9px 0; font-size: 14.5px; color: var(--ink); }
+.pl-r .pl-pick { flex: none; align-self: center; width: 18px; height: 18px; margin: 0 0 0 12px; accent-color: var(--primary); }
+.pl-line { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 6em 9em 7em 1em; align-items: center; gap: 2px 12px; padding: 9px 12px; font-size: 14.5px; color: var(--ink); }
 .pl-line:hover { background: #f6f8fa; }
 .pl-line:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .pl-line .pl-ln-subj { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
