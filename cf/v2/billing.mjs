@@ -223,7 +223,10 @@ export const billingRoutes = {
       const usage = usageOf(sb, tentative);
       const lines = sb.lines.filter(l => l.startDate <= to && from <= l.endDate);
       const lessonsInMonth = sb.lessons.filter(l => l.date >= from && l.date <= to);
-      rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseFee90: base90(s), baseRate30: s.baseRate30,
+      // 種類の選択肢: 「通常」・この生徒の特別単価合意書・この月の授業で使っている種類（前からの「演習」なども、その授業の受講合意書は作れる）
+      const specials = (await c.db.prepare("select title, minutes, fee from specials where studentId = ? and status in ('proposed', 'agreed') order by fromDate").bind(s.id).all()).results;
+      const usedKinds = [...new Set(lessonsInMonth.concat(tentative).map(ls => ls.kind).filter(k => k && k !== '体験'))];
+      rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseFee90: base90(s), baseRate30: s.baseRate30, specials, usedKinds,
         lines: await Promise.all(lines.map(async l => lineView(l, { ...usage[l.id], locked: await lineLocked(c, l.id) }))),
         // 計画のない授業: 承認済みの行に入らず、下書き・承認待ちの行にも当たらないもの
         unplanned: lessonsInMonth.concat(tentative).filter(ls => !sb.line[ls.id] && !lines.some(l => ['draft', 'proposed'].includes(l.status) && lineMatches(l, ls))).length });

@@ -461,7 +461,8 @@ export const scheduleRoutes = {
     const events = (await c.db.prepare('select * from sharedEvents where dateTo >= ? and date <= ? order by date').bind(from, to).all()).results.filter(e => !allowed || allowed.includes(e.studentId));
     const offs = (await c.db.prepare('select * from staffUnavailability where date between ? and ? order by date, start').bind(from, to).all()).results.filter(o => manager || !o.staffId || o.staffId === me.id);
     const meetings = manager ? (await c.db.prepare("select * from meetings where date between ? and ? and status <> 'cancelled' order by date, start").bind(from, to).all()).results : [];
-    const kinds = (await c.db.prepare('select name from lessonKinds where active = 1 order by sortOrder, name').all()).results.map(k => k.name);
+    // 種類: 「通常」と、特別単価合意書の名称（2026-10-26 本人「このページってもはや不要」→ 種類は「通常」と特別単価合意書の名称だけ。授業料の上限は個別受講条件書・特別単価合意書で決まる）
+    const kinds = ['通常', ...new Set((await c.db.prepare("select title from specials where status in ('proposed', 'agreed') order by title").all()).results.map(r => r.title).filter(t => t && t !== '通常'))];
     // 下書きと調整中（今日以降）は、表示している月に限らず全部（「対応すること」で選んで、見せる・確認をお願いする）
     const heldAll = manager ? (await c.db.prepare("select * from lessons where status = 'held' and date >= ? order by date, start").bind(todayJst(c.now)).all()).results : [];
     const adjustingAll = manager ? (await c.db.prepare("select * from lessons where status = 'proposed' and askedAt = '' and date >= ? order by date, start").bind(todayJst(c.now)).all()).results : [];
