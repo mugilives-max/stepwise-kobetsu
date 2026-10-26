@@ -36,7 +36,7 @@ export function enrollTodo(ctx) {
 }
 
 // 同意の前に開く全文（受講条件書・ご利用規約）。開くまで「同意します」に印を付けられない（2026-10-26 本人「実際に表示しないと同意できないように」）
-const docsOf = o => [...(o.condition ? [['cond', '受講条件書']] : []), ...(data.terms.url ? [['terms', 'ご利用規約']] : [])];
+const docsOf = o => [...(data.terms.url ? [['terms', 'ご利用規約']] : []), ...(o.condition ? [['cond', '受講条件書']] : [])]; // 規約が先（受講条件書は規約に基づく）
 const unopened = o => docsOf(o).filter(([k]) => !opened.has(k)).map(([, t]) => t);
 function initDraft(o) {
   const g = data.guardian || {}, s = o.student;

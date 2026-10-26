@@ -88,7 +88,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await parent.screenshot({path:path.join(out,'04a-parent-confirm-locked.png'),fullPage:true});
   assert.equal(await parent.locator('[data-form="enroll-apply"] input[name="agree"]').isDisabled(),true,'全文を開くまで同意の印は付けられない');
   await parent.locator('[data-form="enroll-apply"] button.primary').click();
-  await parent.getByText('受講条件書とご利用規約の全文を開いて確かめてください',{exact:true}).waitFor();
+  await parent.getByText('ご利用規約と受講条件書の全文を開いて確かめてください',{exact:true}).waitFor();
   for(const name of ['受講条件書の全文を開く','ご利用規約の全文を開く']){const [doc]=await Promise.all([parent.context().waitForEvent('page'),parent.locator(`.agree-docs [aria-label="${name}"]`).click()]);
     if(name.startsWith('受講条件書')){await doc.waitForURL(/^blob:/);await doc.waitForLoadState();assert.ok((await doc.textContent('body')).includes('【テスト】架空 花子 様'),'受講条件書の宛名は入れた保護者の氏名');}
     await doc.close();}
