@@ -71,7 +71,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await page.locator('[data-action="terms-decide-start"]').click();
   await page.getByRole('heading',{name:'切り替えるとどうなるか',exact:true}).waitFor();
   assert.match(await page.locator('#app').innerText(),/今通っている家族には、まだ何も出ません/);
-  assert.equal(await page.locator('[data-form="terms-decide"] input[name="confirm"]').isChecked(),false);
+  assert.equal(await page.locator('[data-form="terms-decide"] input[name="confirm"]').count(),0,'代表に「確かめました」の印は求めない');
   assert.equal((await h.ok('admin/terms/get',{auth})).terms.version,'new','opening the confirmation does not change the terms in use');
   report.checks.push('deciding the terms in use is separate from asking families to agree, and needs its own confirmation');
   await page.screenshot({path:path.join(out,'staff-terms.png'),fullPage:true});
