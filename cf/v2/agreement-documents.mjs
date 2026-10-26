@@ -4,6 +4,7 @@ import { requireFamily } from './family.mjs';
 import { termsForVersion } from './terms.mjs';
 import { lineView } from './billing.mjs';
 import { agreementDocHtml, agreementLayout } from './agreement-doc-20261016.mjs';
+import { agreementDocHtmlR13, usesLayoutR13, AGREEMENT_LAYOUT_R13 } from './agreement-doc-20261026.mjs';
 
 // Exact archived versions only. Never fall back to the current row or current family.
 async function document(c,b,familyId=null) {
@@ -23,6 +24,12 @@ async function document(c,b,familyId=null) {
   records.sort((a,b)=>a.line.id.localeCompare(b.line.id,'en'));
   for(const r of records) r.terms=await termsForVersion(c.db,r.line.termsVersion);
   const key=records.map(r=>r.line.id+':'+r.line.version).join('|');
+  // 2026-10-26 より後に作った行は、個別受講条件書と同じ書式（agreement-doc-20261026.mjs）。宛名は、承認の前は今の保護者の氏名、承認・見送りのあとは意思表示した保護者
+  if(usesLayoutR13(records)){
+    const layout=AGREEMENT_LAYOUT_R13, documentId='AG-'+sha256Hex(layout+'|'+key).slice(0,20);
+    const fam=await c.db.prepare('select guardianName from families where id=?').bind(a.familyId).first();
+    return {documentId,layoutVersion:layout,html:agreementDocHtmlR13({records,documentId,guardianName:(fam&&fam.guardianName)||''})};
+  }
   const layout=agreementLayout(records), documentId='AG-'+sha256Hex(layout+'|'+key).slice(0,20);
   return {documentId,layoutVersion:layout,html:agreementDocHtml({records,documentId})};
 }

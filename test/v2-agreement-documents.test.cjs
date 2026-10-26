@@ -87,7 +87,7 @@ test('read-only parent preview and synthetic sample can open documents without w
  const pv=await h.ok('family/plans/document',{auth:token,refs:req});
  assert.equal(pv.html,normal.html);
  const sample=await h.ok('admin/docs/sample',{auth,type:'agreement'});
- assert.match(sample.html,/見本・架空の記録/);assert.match(sample.html,/印刷・PDF保存/);
+ assert.match(sample.html,/見本・架空の記録/);assert.match(sample.html,/印刷・PDF/);
  assert.doesNotMatch(sample.html,/【テスト】架空 一郎/);
 });
 
@@ -104,4 +104,28 @@ test('parent approval keeps the original proposal and a declined plan shows zero
  assert.deepEqual(await h.ok('family/plans/document',{auth:parent,refs:refs(original)}),proposal);
  const declined=await h.ok('family/plans/document',{auth:parent,refs:refs(row(q.id))});
  assert.match(declined.html,/受講合意書の記録（見送り）/);assert.match(declined.html,/<th>承認回数<\/th>/);assert.match(declined.html,/<td>0回<\/td>/);
+});
+
+// 2026-10-26 本人「書式を他の書類に合わせましょうか」: この日より後に保存した版は、個別受講条件書と同じ書式。前の版は前の様式のまま
+test('agreement documents saved after 2026-10-26 use the same layout as the individual conditions document',async()=>{
+ const {agreementDocHtmlR13,usesLayoutR13,NEW_LAYOUT_FROM}=await import('../cf/v2/agreement-doc-20261026.mjs');
+ const line={id:'pl_1',version:1,status:'proposed',createdAt:'2026-10-27T03:00:00.000Z',subject:'数学',kind:'通常',startDate:'2026-11-01',endDate:'2026-11-30',count:4,minutes:90,fee:4500,comment:'二次関数の復習',parts:[{label:'二次関数',count:2},{label:'テスト対策',count:2}],instructionType:'regular',proposedByName:'【テスト】講師',proposedAt:'2026-10-27T03:00:00.000Z'};
+ const rec=(l,at)=>({line:l,studentName:'【テスト】架空 一郎',capturedAt:at,terms:{title:'共通規約',url:'https://www.stepwise-education.jp/terms/2026-11-20261026-r13/'}});
+ assert.equal(usesLayoutR13([rec({...line,createdAt:'2026-10-14T00:00:00.000Z'},NEW_LAYOUT_FROM)]),false,'前からの行は前の様式');
+ assert.equal(usesLayoutR13([rec(line,'')]),true);
+ const draft=agreementDocHtmlR13({records:[rec(line,NEW_LAYOUT_FROM)],documentId:'AG-a',guardianName:'【テスト】架空 花子'});
+ assert.match(draft,/<h1>受講合意書<span class="draft">案<\/span><\/h1>/);assert.match(draft,/【テスト】架空 花子 様/);
+ assert.match(draft,/class="key"/);assert.match(draft,/<h2>取り決め<\/h2>/);assert.match(draft,/まだ承認いただいていません/);
+ assert.match(draft,/18,000円/);assert.match(draft,/二次関数 2回／テスト対策 2回/);assert.doesNotMatch(draft,/pl_1|ID：/,'内部の番号を出さない');
+ const ok=agreementDocHtmlR13({records:[rec({...line,status:'approved',approvedCount:3,consenterName:'【テスト】承認した保護者',consentedAt:'2026-10-28T01:00:00.000Z',approvedVia:'保護者ページ'},NEW_LAYOUT_FROM)],documentId:'AG-b',guardianName:'今の保護者'});
+ assert.match(ok,/【テスト】承認した保護者 様/,'承認のあとは意思表示した保護者');assert.doesNotMatch(ok,/今の保護者/);
+ assert.match(ok,/13,500円/);assert.match(ok,/提案した回数/);assert.match(ok,/承認いただきました/);
+ const no=agreementDocHtmlR13({records:[rec({...line,status:'declined',consenterName:'【テスト】保護者',consentedAt:'2026-10-28T01:00:00.000Z'},NEW_LAYOUT_FROM)],documentId:'AG-c'});
+ assert.match(no,/<span class="draft">見送り<\/span>/);assert.match(no,/0円/);
+});
+test('the document route uses the new layout for versions saved after 2026-10-26, addressed to the guardian before approval',async()=>{
+ const {h,auth,parent,plan,approve,refs,row,kid}=await agreementFixture({at:'2026-10-27T03:00:00Z'});
+ const p=await plan();await h.ok('billing/plans/send',{auth,familyId:kid.familyId});
+ const d=await h.ok('family/plans/document',{auth:parent,refs:refs(row(p.id))});
+ assert.equal(d.layoutVersion,'20261026-r13');assert.match(d.html,/【テスト】架空 保護者 様/);assert.match(d.html,/<h2>取り決め<\/h2>/);
 });
