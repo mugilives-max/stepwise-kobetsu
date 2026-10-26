@@ -109,7 +109,7 @@ export function termsPage(ctx) {
   if (latest && latest.version !== t.version) {
     h += `<div class="sec-title">${t.version ? '新しい版があります' : '使い始められる版'}</div>
       <section class="reg-card" style="margin-top:0"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>
-      ${kv(esc, [['適用日', esc(jaDay(latest.from))], ['内容', esc(latest.summary || '')], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}
+      ${kv(esc, [['適用日', esc(jaDay(latest.from))], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}
       <button class="primary wide" style="margin-top:10px" data-action="terms-decide-start"${ctx.dis()}>${t.version ? 'この版に切り替える' : 'この版を使い始める'}</button></section>`;
   } else if (!latest) h += '<p class="small muted">サイトの規約の一覧を読み込めませんでした。画面を読み直してください。</p>';
   // 2. 保護者への同意のお願い
