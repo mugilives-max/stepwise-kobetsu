@@ -32,7 +32,7 @@ export function bankPage(ctx,me,id=''){
  }
  if(cache.loading)return '<p>読み込んでいます…</p>';if(!cache.ok)return ctx.notice();
  const {esc}=ctx,d=cache,latest=d.requests.find(r=>r.id===d.latestId),current=d.requests.find(r=>r.id===d.acceptedId);
- let h=ctx.notice()+(owner?'<p><a href="#employment='+esc(id)+'">雇用・勤務へ戻る</a></p>':'')+'<h1>給与の振込先</h1>'+(owner?'<p>'+esc(d.staff.name)+' さん</p>':'<p class="small muted">口座情報は本人と塾だけが見られます。</p>');
+ let h=ctx.notice()+(owner?'<p><a href="#employment='+esc(id)+'">雇用・勤務へ戻る</a></p>':'')+'<h1>給与の振込先</h1>'+(owner?'<p>'+esc(d.staff.name)+' さん</p>':'');
  if(!owner&&step==='edit'){
   h+='<h2>本人名義の口座を入力</h2><p class="small">ゆうちょ銀行は記号・番号ではなく、他行からの振込用の店名・口座番号を入れます。7桁未満の口座番号は先頭に0を付けます。</p><form class="stack" autocomplete="off" data-form="bank-edit">';
   for(const [k,label] of fields){

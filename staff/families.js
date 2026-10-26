@@ -85,7 +85,7 @@ function familySheet(ctx, f) {
   const cd = s.condition || { latest: null, agreed: null, needs: false }, base = cd.latest || null;
   if (m === 'cond') { // 条件を決めてお知らせ（新しい版）。前の版か生徒の登録から初期値
     const v = { minutes: base ? base.minutes : 90, fee: base ? base.fee : (Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3), deliveryMode: base ? base.deliveryMode : (s.deliveryMode || 'in_person'), groupSize: base ? base.groupSize : '', studentContact: base ? base.studentContact : true, subjects: base ? base.subjects : (s.subjects || ''), note: base ? base.note : '', fromMonth: nextMonth() };
-    return sheet(esc, s.name + ' の受講条件書' + (base ? `（第${base.no + 1}版）` : ''), `<p class="small muted" style="margin-top:0">お知らせすると保護者にメールが届き、同意まで、この家族は新しい計画を承認できません。通常の基準単価・形式・本人の連絡は生徒の登録にも写します。</p>
+    return sheet(esc, s.name + ' の受講条件書' + (base ? `（第${base.no + 1}版）` : ''), `<p class="small muted" style="margin-top:0">お知らせすると保護者にメールが届き、同意まで、この家族は新しい計画を承認できません。</p>
       <form class="stack" data-form="cond-propose" data-id="${esc(s.id)}">
       <div class="row"><label style="flex:1">基本の授業時間（分）<input type="number" name="minutes" min="15" max="300" step="5" required value="${v.minutes}"></label><label style="flex:1">1回の税込の通常の基準単価（円）<input type="number" name="fee" min="0" max="100000" step="10" required value="${v.fee}"></label></div>
       <div class="row"><label style="flex:1">形式<select name="deliveryMode">${Object.entries(COND_MODE).map(([k, l]) => `<option value="${k}"${k === v.deliveryMode ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label style="flex:1">適用開始月<input type="month" name="fromMonth" required value="${esc(v.fromMonth)}"></label></div>
@@ -99,8 +99,7 @@ function familySheet(ctx, f) {
   if (m === 'special') { // 特別単価を提案する（replaceId があれば置き換え）
     const base = famSheet.replaceId ? sps.items.find(x => x.id === famSheet.replaceId) : null;
     const v = base || { title: '', content: '', reason: '', prep: '', minutes: cd.latest ? cd.latest.minutes : 90, fee: '', fromDate: today(), toDate: '', note: '' };
-    return sheet(esc, `${s.name} の特別単価を提案${base ? `（「${esc(base.title)}」を置き換え）` : ''}`, `<p class="small muted" style="margin-top:0">保護者に送り、承認をもらいます。承認後は、この名称の授業の種類で、通常の基準単価を超える計画を作れます。</p>
-      <form class="stack" data-form="special-propose" data-id="${esc(s.id)}" data-replace="${esc(famSheet.replaceId || '')}">
+    return sheet(esc, `${s.name} の特別単価を提案${base ? `（「${esc(base.title)}」を置き換え）` : ''}`, `<form class="stack" data-form="special-propose" data-id="${esc(s.id)}" data-replace="${esc(famSheet.replaceId || '')}">
       <label>名称<input name="title" maxlength="20" placeholder="例: 英検準1級対策" required value="${esc(v.title)}"></label>
       <label>指導の目的<textarea name="purpose" maxlength="1000" rows="2" required>${esc(v.purpose || '')}</textarea></label>
       <label>指導の内容と範囲<textarea name="content" maxlength="1000" rows="3" required placeholder="例: 過去問の長文とライティングの添削。毎回、前回の答案を講師が採点して返す">${esc(v.content)}</textarea></label>

@@ -141,7 +141,7 @@ function detailPart(ctx, name) {
   const v = detail.preview, ended = month < thisMonth();
   let h = `<div class="stack">${statementTable(esc, v)}`;
   if (v.issues.length) h += `<ul class="small">${v.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
-  h += '<h3 style="margin-bottom:0">調整</h3><div class="small muted">割増賃金・休業手当・立て替えなど。勤務実績で計上済みの分は足しません。</div>' + detail.adjusts.map(a => `<div class="row small">${esc(a.label)} ${yen(a.amount)} <button data-action="pr-adj-del" data-id="${esc(a.id)}"${ctx.dis()}>外す</button></div>`).join('')
+  h += '<h3 style="margin-bottom:0">調整</h3><div class="small muted">勤務実績で計上済みの分は足しません。</div>' + detail.adjusts.map(a => `<div class="row small">${esc(a.label)} ${yen(a.amount)} <button data-action="pr-adj-del" data-id="${esc(a.id)}"${ctx.dis()}>外す</button></div>`).join('')
     + `<form class="row" data-form="pr-adj"><input name="label" maxlength="60" placeholder="理由（例: 研修 2時間）" style="flex:2" required><input type="number" name="amount" placeholder="金額" style="width:8em" required><button${ctx.dis()}>足す</button></form>`;
   if (v.canConfirm && ended) h += `<p><button class="primary" data-action="pr-confirm" data-net="${v.net}"${ctx.dis()}>この内容で確定する（差引 ${yen(v.net)}）</button></p><p class="small muted">確定すると講師に明細のお知らせが届きます。</p>`;
   else if (!ended) h += '<p class="small muted">月が終わってから確定できます。</p>';
@@ -170,7 +170,7 @@ export function ratesPage(ctx) {
       <label class="small" style="display:flex;gap:6px;align-items:center"><input type="radio" name="taxColumn" value="kou"${s.taxColumn === 'kou' ? ' checked' : ''} style="width:auto"> 甲欄（扶養控除等申告書を出している）</label>
       <label class="small" style="display:flex;gap:6px;align-items:center"><input type="radio" name="taxColumn" value="otsu"${s.taxColumn === 'otsu' ? ' checked' : ''} style="width:auto"> 乙欄（出していない。ほかの勤め先に出している）</label>
       <label>扶養親族等の数（甲欄のとき）<select name="dependents">${[0, 1, 2, 3, 4, 5, 6, 7].map(n => `<option value="${n}"${s.dependents === n ? ' selected' : ''}>${n}人</option>`).join('')}</select></label>
-      <button class="primary"${ctx.dis()}>この欄にする</button><div class="small muted">まだ確定していない明細から使います。</div></form>`;
+      <button class="primary"${ctx.dis()}>この欄にする</button></form>`;
     h += sheet(esc, s.name + ' さんの時給', body, 'rt-close');
   }
   return h;

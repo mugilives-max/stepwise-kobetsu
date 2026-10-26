@@ -1,15 +1,15 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261025-layout';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261025-layout';
-import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261026-trim';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261026-p4';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, session, esc, liveState } from '/assets/v2/api.js';
-import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261025-layout';
+import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261025-layout';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261026-p4';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -184,7 +184,7 @@ function schedulePage() {
     else chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => `<span class="nm r${RANK[l.status]}">${esc(l.subject)}</span>`);
     return { lines: bars.concat(chips), count: ls.length };
   };
-  const day = (date, first) => cal.dayHead(date, first, `<span class="muted small">授業 ${lessons.filter(l => l.date === date && l.status in RANK).length}件</span>`) + dayRows(date, lessons, events, { names: multi ? nm : {}, canDelete: e => e.createdByKind === 'family' });
+  const day = (date, first) => cal.dayHead(date, first) + dayRows(date, lessons, events, { names: multi ? nm : {}, canDelete: e => e.createdByKind === 'family' });
   h += cal.html(esc, { cell, day });
   return h;
 }
@@ -371,7 +371,7 @@ app.addEventListener('submit', ev => {
     else if (kind === 'gr-upload') {
       const file = el.querySelector('input[type=file]').files[0]; if (!file) return;
       r = await uploadFile(file, v.note || '', meta => call('family/grades/upload', { ...meta, studentId: v.studentId }, store.get()));
-      if (r.ok) { grades = null; return say('成績票を送りました。先生が確かめて点数を入れます', 'ok'); }
+      if (r.ok) { grades = null; return say('成績票を送りました', 'ok'); }
       if (r.error && !r.error.code) r.error.code = 'client';
     } else if (kind === 'plan-approve') {
       // 月の計画をまとめて承認する（行ごとの回数は画面で選んだ値）。途中で失敗したら、そこまでの承認は済んでいる
@@ -388,7 +388,7 @@ app.addEventListener('submit', ev => {
         if (!r.ok) break; okCount++; delete planCounts[l.id];
       }
       money = null;
-      if (r.ok) return say(`${monthLabel(el.dataset.month)}の受講合意書を承認しました。下の控えから印刷・PDF保存できます`, 'ok');
+      if (r.ok) return say(`${monthLabel(el.dataset.month)}の受講合意書を承認しました`, 'ok');
       if (okCount) return say(`${okCount}件は承認できましたが、途中で止まりました: ${r.error.message}`, 'error');
     } else if (kind === 'event') { r = await call('family/events/add', v, store.get()); if (r.ok) { sched = null; calData = {}; closeSheet(); return say('先生に知らせました', 'ok'); } }
     if (!r) return;
@@ -426,19 +426,19 @@ app.addEventListener('click', ev => {
     } else if (a === 'send-change') {
       const s = sheetState; if (!s || s.kind !== 'lesson' || !s.pick) return;
       r = await call('family/lessons/request', { lessonId: s.id, kind: s.pick, note: (s.note || '').trim() }, store.get());
-      if (r.ok) { closeSheet(); sched = null; calData = {}; return say({ move: '日時の変更をお願いしました。先生から連絡があります', rest: 'お休みにしました', late: '先生に連絡しました', cancel: 'キャンセルの連絡を受け付けました' + (r.fee ? `（キャンセル料 ${yen(r.fee.amount)}）` : '') }[r.request ? r.request.kind : 'move'], 'ok'); }
+      if (r.ok) { closeSheet(); sched = null; calData = {}; return say({ move: '日時の変更をお願いしました', rest: 'お休みにしました', late: '先生に連絡しました', cancel: 'キャンセルの連絡を受け付けました' + (r.fee ? `（キャンセル料 ${yen(r.fee.amount)}）` : '') }[r.request ? r.request.kind : 'move'], 'ok'); }
     } else if (a === 'withdraw') { if (!confirm('この連絡を取り下げますか？')) return; r = await call('family/lessons/withdraw', { requestId: b.dataset.id }, store.get()); if (r.ok) { closeSheet(); sched = null; calData = {}; return say('連絡を取り下げました', 'ok'); } }
     else if (a === 'hw-done' || a === 'hw-undo') { r = await call('family/homework/report', { id: b.dataset.id, undo: a === 'hw-undo' }, store.get()); if (r.ok) { learning = null; return say(a === 'hw-done' ? 'できたと先生に知らせました' : '取り消しました', 'ok'); } }
     else if (a === 'plan-ack-month') {
       const lines=JSON.parse(b.dataset.refs||'[]'); let completed=0;
       for (const l of (lines || [])) { r = await call('family/plans/ack', { id: l.id, version: l.version, ack: 'confirmed' }, store.get()); if (!r.ok) break; completed++; }
-      money = null; if (r && r.ok) return say('確認しました。控えから印刷・PDF保存できます', 'ok');
+      money = null; if (r && r.ok) return say('確認しました', 'ok');
       if(completed)return say(completed+'件は確認できました。残りは再確認してください：'+r.error.message,'error');
     } else if (a === 'send-inquiry') {
       const s = sheetState; const note = (s.note || '').trim(); if (!note) return say('内容を書いてください', 'error');
       const lines=s.refs||[]; let completed=0;
       for (const l of (lines || [])) { r = await call('family/plans/ack', { id: l.id, version: l.version, ack: 'inquiry', note }, store.get()); if (!r.ok) break; completed++; }
-      money = null; if (r && r.ok) { closeSheet(); return say('先生に伝えました。返事をお待ちください', 'ok'); }
+      money = null; if (r && r.ok) { closeSheet(); return say('先生に伝えました', 'ok'); }
       if(completed){closeSheet();return say(completed+'件は伝えました。残りは再確認してください：'+r.error.message,'error');}
     } else if (a === 'contracts-open') {
       contracts = { loading: true }; render();
@@ -448,7 +448,7 @@ app.addEventListener('click', ev => {
     } else if (a === 'cond-agree') { const id = b.dataset.id; if (!condChecked[id]) return say('内容を確かめて「同意します」に印を付けてください', 'error'); if (!(consentNames[id] || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/conditions/agree', { id, agree: true, consenterName: consentNames[id] || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; delete condChecked[id]; return say('受講条件書に同意いただきました。ありがとうございます', 'ok'); }
     } else if (a === 'terms-accept') { if (!termsChecked) return say('全文を読んで「同意します」に印を付けてください', 'error'); if (!(consentNames.terms || me.guardianName || '').trim()) return say('同意する保護者の氏名を入れてください', 'error'); r = await call('family/terms/accept', { version: b.dataset.version, agree: true, consenterName: consentNames.terms || me.guardianName }, store.get()); if (r.ok) { money = contracts = null; termsChecked = false; return say('ご利用規約に同意いただきました。ありがとうございます', 'ok'); } }
     else if (a === 'inv-report') { if (!confirm('振り込んだことを先生に知らせますか？')) return; r = await call('family/invoices/report', { id: b.dataset.id, version: Number(b.dataset.version) }, store.get()); if (r.ok) { closeSheet(); money = null; return say('振込のご連絡を受け付けました。ありがとうございます', 'ok'); } }
-    else if (a === 'send-relief') { const s = sheetState; const reason = (s.note || '').trim(); if (!reason) return say('事情を書いてください', 'error'); r = await call('family/fees/relief', { id: b.dataset.id, version: Number(b.dataset.version), reason }, store.get()); if (r.ok) { closeSheet(); money = null; return say('申請を受け付けました。先生が確かめて返事をします', 'ok'); } }
+    else if (a === 'send-relief') { const s = sheetState; const reason = (s.note || '').trim(); if (!reason) return say('事情を書いてください', 'error'); r = await call('family/fees/relief', { id: b.dataset.id, version: Number(b.dataset.version), reason }, store.get()); if (r.ok) { closeSheet(); money = null; return say('申請を受け付けました', 'ok'); } }
     else if (a === 'del-event') { r = await call('family/events/delete', { id: b.dataset.id }, store.get()); if (r.ok) { sched = null; calData = {}; return say('消しました', 'ok'); } }
     else if (a === 'logout') { await call('family/logout', {}, store.get()); store.set(''); me = null; money = contracts = null; for (const k of Object.keys(consentNames)) delete consentNames[k]; resetEnroll(); location.hash = ''; return say('ログアウトしました', 'ok'); }
     if (r) failed(r);

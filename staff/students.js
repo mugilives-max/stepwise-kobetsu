@@ -2,7 +2,7 @@
 // タブ: 概要・予定・記録と宿題・成績・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261025-layout';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261025-layout';
+import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { ICON } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
 
@@ -33,7 +33,6 @@ export function studentsPage(ctx) {
     <div class="row"><label style="flex:1">名字<input name="familyName" maxlength="40" required placeholder="高橋"></label><label style="flex:1">名前<input name="givenName" maxlength="40" placeholder="香帆"></label><label style="flex:1">学年<select name="grade">${gradeOptions(esc, '')}</select></label></div>
     <label>学校<input name="school" maxlength="60" placeholder="〇〇中学校"></label>
     <label>メモ（紹介・志望など）<input name="note" maxlength="1000"></label>
-    <p class="small muted">メールは登録しないので、お知らせは届きません。</p>
     <div class="row"><button class="primary"${ctx.dis()}>登録する</button></div></form></details>`;
   const q = query.trim();
   const match = s => !q || s.name.includes(q) || s.kana.includes(q);
@@ -143,7 +142,7 @@ function basic(ctx, x) {
     <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">ご利用規約・受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
   return trialBox + `<h2>生徒</h2><div class="rows">${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('通常の基準単価', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}</div>
     <h2>家族</h2><div class="rows">${row('家族', b.familyName)}${row('保護者', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</div>
-    <h2>その人の目で見る</h2><p class="small muted">見るだけ・1時間で切れます</p>
+    <h2>その人の目で見る</h2>
     <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る</button></div>
     <p style="margin-top:12px"><a class="small-btn" href="#family=${encodeURIComponent(b.familyId)}">直す・招待・専用リンク（家族の画面）</a></p>`;
 }
@@ -169,9 +168,8 @@ function offerForm(ctx, x, again) {
   return `<form class="reg-form" data-form="enroll-offer" data-id="${esc(s.id)}" novalidate>
     <fieldset class="reg-field"><legend>保護者のメールアドレス <span class="req">必須</span></legend>
       <input type="email" name="email" value="${esc(d && !e.familyActive ? d.email : e.email || '')}" ${e.familyActive ? 'readonly' : ''} autocomplete="off" placeholder="parent@example.com">
-      <p class="reg-help">${e.familyActive ? '登録済み（変えるときは家族の画面で）' : '保護者ページのログインにも使います'}</p></fieldset>
+      ${e.familyActive ? '<p class="reg-help">登録済み（変えるときは家族の画面で）</p>' : ''}</fieldset>
     <fieldset class="reg-field"><legend>受講条件</legend>
-      <p class="reg-help">受講条件書になり、保護者が申込みで同意します</p>
       <div class="row"><label style="flex:1">開始月<input type="month" name="fromMonth" value="${esc(from)}" required></label><label style="flex:1">1回の時間（分）<input type="number" name="minutes" value="${esc(minutes)}" min="15" max="300" step="5" required></label><label style="flex:1">1回の基準単価（円・税込）<input type="number" name="fee" value="${esc(fee)}" min="0" max="100000" step="10" required></label></div>
       <div class="choices" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${Object.entries(MODE).map(([k, l]) => `<label class="choice"><input type="radio" name="deliveryMode" value="${k}"${mode === k ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
       <label>科目<input name="subjects" value="${esc(d ? d.subjects || '' : (cond && cond.subjects) || b.subjects || '')}" maxlength="100" placeholder="英語・数学"></label>
