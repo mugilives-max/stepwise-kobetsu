@@ -36,7 +36,7 @@ export function enrollTodo(ctx) {
 }
 
 // 同意の前に開く全文（受講条件書・ご利用規約）。開くまで「同意します」に印を付けられない（2026-10-26 本人「実際に表示しないと同意できないように」）
-const docsOf = o => [...(o.condition && o.condition.docFileId ? [['cond', '受講条件書']] : []), ...(data.terms.url ? [['terms', 'ご利用規約']] : [])];
+const docsOf = o => [...(o.condition ? [['cond', '受講条件書']] : []), ...(data.terms.url ? [['terms', 'ご利用規約']] : [])];
 const unopened = o => docsOf(o).filter(([k]) => !opened.has(k)).map(([, t]) => t);
 function initDraft(o) {
   const g = data.guardian || {}, s = o.student;
@@ -81,12 +81,12 @@ function docCards(esc, o) {
 }
 function condCard(esc, o, withButton) {
   return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書の主な条件</h2></div>${condRows(esc, o)}
-      ${withButton && o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-doc="cond" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>`;
+      ${withButton && o.condition ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="enroll-cond">受講条件書の全文を開く</button></div>` : ''}</section>`;
 }
 // 同意の欄: 開く全文をチェック欄のすぐ上に並べ、開いたものに ✓（2026-10-26 本人「何故チェックできないのか理解できない…チェックボックスの近くに」）
 function agreeDocs(esc, o) {
   const btn = (k, t) => k === 'cond'
-    ? `<button type="button" class="small-btn" data-action="gr-open" data-doc="cond" data-id="${esc(o.condition.docFileId)}" aria-label="${t}の全文を開く">全文を開く</button>`
+    ? `<button type="button" class="small-btn" data-action="enroll-cond" aria-label="${t}の全文を開く">全文を開く</button>`
     : `<a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener" data-action="enroll-terms" aria-label="${t}の全文を開く">全文を開く</a>`;
   return `<ul class="agree-docs">${docsOf(o).map(([k, t]) => `<li${opened.has(k) ? ' class="done"' : ''}><span class="mk" aria-hidden="true">${opened.has(k) ? '✓' : ''}</span><span class="t">${t}${k === 'terms' && termsFrom() ? `<small>${termsFrom()}</small>` : ''}</span>${btn(k, t)}</li>`).join('')}</ul>`;
 }
@@ -172,9 +172,20 @@ export function enrollSubmit(ctx, kind) {
   });
   return true;
 }
+function openCondDoc(ctx) {
+  const win = window.open('', '_blank');
+  if (!win) { ctx.say('書面のタブを開けませんでした。ポップアップを許可して、もう一度お試しください。', 'error'); ctx.render(); return; }
+  win.opener = null; win.document.title = '受講条件書'; win.document.body.textContent = '書面を読み込んでいます…';
+  const d = draft;
+  ctx.call('family/enrollment/document', { offerId: d.offerId, guardianFamilyName: d.guardianFamilyName, guardianGivenName: d.guardianGivenName, familyName: d.familyName, givenName: d.givenName, grade: d.grade }).then(r => {
+    if (!r.ok) throw new Error(r.error.message);
+    if (win.closed) return;
+    const url = URL.createObjectURL(new Blob([r.html], { type: 'text/html' })); win.location.replace(url); setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }).catch(e => { if (!win.closed) win.close(); ctx.say(e.message || '通信できませんでした。もう一度お試しください。', 'error'); ctx.render(); });
+}
 export function enrollClick(ctx, a, b) {
-  // 全文を開いたしるし。受講条件書は開く処理を app.js に任せる（false を返す）。ご利用規約はここで開く
-  if (a === 'gr-open' && b && b.dataset.doc) { opened.add(b.dataset.doc); if (step === 'confirm') setTimeout(ctx.render); return false; }
+  // 全文を開いたしるし。受講条件書は入れた氏名を宛名にして作る。ご利用規約は公開している全文
+  if (a === 'enroll-cond') { opened.add('cond'); openCondDoc(ctx); if (step === 'confirm') ctx.render(); return true; }
   if (a === 'enroll-terms') { opened.add('terms'); window.open(b.href, '_blank', 'noopener'); if (step === 'confirm') ctx.render(); return true; }
   if (a !== 'enroll-back') return false;
   step = 'input'; ctx.say(''); ctx.render(); return true;

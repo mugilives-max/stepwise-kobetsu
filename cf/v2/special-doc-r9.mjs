@@ -54,7 +54,7 @@ export function specialDocR9({ sp, student, family, terms }) {
   .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
   h1 { margin: 0; font-size: 24px; letter-spacing: .04em; }
   .meta { text-align: right; font-size: 13px; line-height: 1.8; }
-  .draft { display: inline-block; border: 2px solid #b8860b; color: #8a6200; padding: 0 8px; border-radius: 4px; font-weight: bold; margin-left: 6px; }
+  .draft { display: inline-block; border: 2px solid #b8860b; color: #8a6200; padding: 0 8px; border-radius: 4px; font-weight: bold; margin-left: 12px; font-size: 15px; letter-spacing: 0; vertical-align: 4px; } /* 案は表題の右隣り（2026-10-26 本人） */
   .to { margin-top: 9mm; font-size: 17px; font-weight: 600; border-bottom: 1.5px solid #1e2630; display: inline-block; min-width: 90mm; padding-bottom: 1mm; }
   .lead { margin: 6mm 0 0; font-size: 14px; }
   .key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #c7ccd2; margin-top: 5mm; border: 1.5px solid #1e2630; border-radius: 6px; overflow: hidden; }
@@ -80,7 +80,7 @@ export function specialDocR9({ sp, student, family, terms }) {
 <body>
 <div class="bar"><span>特別単価合意書（${[esc(sp.title), verText(sp.no), final ? '' : '案'].filter(Boolean).join('・')}）。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
 <div class="sheet">
-  <div class="head"><h1>特別単価合意書</h1><div class="meta">${verText(sp.no) ? verText(sp.no) + '<br>' : ''}${final ? '' : '<span class="draft">案</span><br>'}提示日 ${esc(jst(sp.proposedAt))}${final ? `<br>承認日 ${esc(jst(sp.agreedAt))}` : ''}</div></div>
+  <div class="head"><h1>特別単価合意書${final ? '' : '<span class="draft">案</span>'}</h1><div class="meta">${verText(sp.no) ? verText(sp.no) + '<br>' : ''}提示日 ${esc(jst(sp.proposedAt))}${final ? `<br>承認日 ${esc(jst(sp.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
   <p class="lead">「${esc(sp.title)}」は、準備に特別な負担がかかるため、通常の基準単価とは別の単価（特別の基準単価）でお願いします。内容をご確認のうえ、承認をお願いします。</p>
   <dl class="key">${key.map(([k, v, a = '']) => `<div${a}><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>

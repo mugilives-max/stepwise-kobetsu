@@ -10,7 +10,8 @@ import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { issueChallenge } from './accounts.mjs';
 import { familyNotice, staffNotice, todayJst } from './schedule.mjs';
-import { currentTerms, termsConsentStatements } from './terms.mjs';
+import { currentTerms, termsConsentStatements, termsForVersion } from './terms.mjs';
+import { conditionDocHtml } from './condition-doc.mjs';
 import { conditionFields, proposeCondition, studentConditions, storeDoc, MODE_LABEL } from './conditions.mjs';
 import { consentEvidence } from './consent-evidence.mjs';
 import { GRADES, normGrade } from '../../assets/v2/grade-options.js';
@@ -153,6 +154,21 @@ export const enrollmentRoutes = {
     const [kf, kg] = me.guardianFamilyKana || me.guardianGivenKana ? [me.guardianFamilyKana, me.guardianGivenKana] : split(me.guardianKana);
     return { offers, terms: await currentTerms(c.db),
       guardian: { familyName: nf || '', givenName: ng || '', familyKana: kf || '', givenKana: kg || '', phone: me.phone || '', zip: zip ? zip[1] : '', address: zip ? zip[2] : (me.address || ''), email: me.email } };
+  },
+  // 申込みの画面で開く受講条件書の全文。宛名・生徒は画面に入れた内容で作る（保存はしない。2026-10-26 本人「契約者は保護者…氏名もわかっているし、それをそのまま表示するべき」）
+  'family/enrollment/document': async (c, b) => {
+    const me = await requireFamily(c, b);
+    const r = await getOffer(c, b.offerId);
+    if (r.familyId !== me.id || r.status !== 'offered') fail('notFound', '入塾の案内が見つかりません', 404);
+    const cond = await c.db.prepare('select * from conditions where id = ?').bind(r.conditionId).first();
+    if (!cond) fail('notFound', '受講条件書が見つかりません', 404);
+    const s = await getStudent(c, r.studentId);
+    const v = k => typeof b[k] === 'string' ? b[k].trim().slice(0, 40) : '';
+    const guardianName = [v('guardianFamilyName'), v('guardianGivenName')].filter(Boolean).join(' ') || me.guardianName || '';
+    const student = { ...s, familyName: v('familyName') || s.familyName, givenName: v('givenName') || s.givenName, grade: v('grade') || s.grade };
+    const staffId = String(cond.proposedBy || '').replace(/^staff:/, '');
+    const proposer = staffId ? await c.db.prepare('select name from staff where id = ?').bind(staffId).first() : null;
+    return { html: conditionDocHtml({ cond, student, family: { ...me, guardianName }, terms: await termsForVersion(c.db, cond.termsVersion), proposer: proposer ? proposer.name : '', now: iso(c.now) }) };
   },
   // ③ 申し込む（ご利用規約と受講条件書への同意を含む）→ ④ そのまま入塾
   'family/enrollment/apply': async (c, b) => {
