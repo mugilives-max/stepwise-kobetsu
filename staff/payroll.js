@@ -141,7 +141,7 @@ function detailPart(ctx, name) {
   const v = detail.preview, ended = month < thisMonth();
   let h = `<div class="stack">${statementTable(esc, v)}`;
   if (v.issues.length) h += `<ul class="small">${v.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
-  h += '<h3 style="margin-bottom:0">調整</h3>' + detail.adjusts.map(a => `<div class="row small">${esc(a.label)} ${yen(a.amount)} <button data-action="pr-adj-del" data-id="${esc(a.id)}"${ctx.dis()}>外す</button></div>`).join('')
+  h += '<h3 style="margin-bottom:0">調整</h3><div class="small muted">勤務実績で計上済みの分は足しません。</div>' + detail.adjusts.map(a => `<div class="row small">${esc(a.label)} ${yen(a.amount)} <button data-action="pr-adj-del" data-id="${esc(a.id)}"${ctx.dis()}>外す</button></div>`).join('')
     + `<form class="row" data-form="pr-adj"><input name="label" maxlength="60" placeholder="理由（例: 研修 2時間）" style="flex:2" required><input type="number" name="amount" placeholder="金額" style="width:8em" required><button${ctx.dis()}>足す</button></form>`;
   if (v.canConfirm && ended) h += `<p><button class="primary" data-action="pr-confirm" data-net="${v.net}"${ctx.dis()}>この内容で確定する（差引 ${yen(v.net)}）</button></p><p class="small muted">確定すると講師に明細のお知らせが届きます。</p>`;
   else if (!ended) h += '<p class="small muted">月が終わってから確定できます。</p>';

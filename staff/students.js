@@ -2,7 +2,7 @@
 // タブ: 概要・予定・記録と宿題・成績・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261025-layout';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261025-layout';
+import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { ICON } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
 
