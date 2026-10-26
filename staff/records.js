@@ -112,7 +112,7 @@ export function recordPage(ctx, lessonId) {
   // 開く画面（いつもフォームの中に置く）
   h += panelHtml('range', '何をやったか', `${rangeRows(ctx)}<button type="button" class="link small" data-action="ub-add"${rgRows.length >= 5 ? ' disabled' : ''}>＋ 単元を足す</button>`);
   h += panelHtml('hw', '宿題と前回のこと', beforePart(ctx)
-    + (checks.length ? `<div class="rec-block"><div class="rec-label">前回の宿題 <span>○やった △一部 ×やってない</span></div>${checksPart(ctx)}</div>
+    + (checks.length ? `<div class="rec-block"><div class="rec-label">前回の宿題</div>${checksPart(ctx)}</div>
       ${slider(esc, { name: 'note.homeworkAccuracy', label: '正答率', value: String(n.homeworkAccuracy || '').replace(/\s*%$/, ''), options: ACCURACY, compact: true })}` : '')
     + `<div class="rec-label" style="margin-top:6px">今日の宿題 <span>次の${esc(l.subject)}（${due}）まで</span></div>${homeworkRows(ctx)}${hwRows.every(x => hwText(x).trim()) && hwRows.length < 10 ? '<button type="button" class="link small" data-action="hw-add">＋ もう1つ</button>' : ''}
     <p class="small muted" style="margin:14px 0 0">公開すると、範囲・コメント・保護者への連絡・宿題とチェックが生徒と保護者に見えます。確定の授業は実施済みになります。</p>

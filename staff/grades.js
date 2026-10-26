@@ -66,7 +66,7 @@ export function gradesStudentPage(ctx, studentId) {
     // 試験にひもづいていない成績票: ここから結果を入れる（入れると自動でひもづく）か、できている試験にひもづける
     const loose = st.files.filter(f => !f.examId && f.status !== 'dismissed'), dismissed = st.files.filter(f => f.status === 'dismissed');
     h += '<div class="sec-title" style="margin-top:22px">成績票</div>';
-    if (loose.length) h += `<p class="small muted" style="margin:0 2px 6px">試験にひもづいていないもの</p><div class="group">` + loose.map(f => rowButton(esc, 'gr-pick', { kind: 'resolve', id: f.id }, esc(f.name), `${esc(jst(f.createdAt).slice(5, 10))}${f.note ? '・' + esc(f.note) : ''}${f.status === 'new' ? '・<span class="tag warn">確かめ待ち</span>' : ''}`)).join('') + '</div>';
+    if (loose.length) h += '<div class="group">' + loose.map(f => rowButton(esc, 'gr-pick', { kind: 'resolve', id: f.id }, esc(f.name), `${esc(jst(f.createdAt).slice(5, 10))}${f.note ? '・' + esc(f.note) : ''}${f.status === 'new' ? '・<span class="tag warn">確かめ待ち</span>' : ''}`)).join('') + '</div>';
     const f = pick && pick.kind === 'resolve' && loose.find(x => x.id === pick.id);
     if (f) h += sheet(esc, f.name, `<div class="stack"><button data-action="gr-open" data-id="${esc(f.id)}">成績票を開く</button>
       <button class="primary" data-action="gr-from-file" data-id="${esc(f.id)}" data-name="${esc(f.name)}"${ctx.dis()}>この成績票の結果を入れる</button>
