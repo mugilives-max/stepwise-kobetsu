@@ -31,8 +31,10 @@ p { margin: 6px 0; }
 .notice.error { background: var(--danger-soft); color: var(--danger); }
 .notice.ok { background: var(--ok-soft); color: var(--ok); }
 form.stack, .stack { display: grid; gap: 8px; margin: 10px 0; }
-label { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
-input, select { font: inherit; font-size: 16px; line-height: 1.35; color: var(--ink); padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); width: 100%; }
+label { display: grid; gap: 4px; font-size: 14px; font-weight: 600; color: var(--ink); } /* 入力欄の項目名は濃く（2026-10-26 本人「文字が薄くて認識し辛い」）。例の文字（placeholder）は薄く */
+input::placeholder, textarea::placeholder { color: #a7b0b9; font-weight: 400; }
+label.choice, label.agree, label.chk, .checks label, label.inline { font-weight: 400; } /* 選ぶ・印を付けるものの文字は太くしない */
+input, select { font: inherit; font-weight: 400; font-size: 16px; line-height: 1.35; color: var(--ink); padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); width: 100%; }
 input:focus, select:focus, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 button { font: inherit; cursor: pointer; border-radius: 8px; padding: 8px 14px; border: 1px solid var(--line); background: var(--white); color: var(--ink); }
 button.primary { background: var(--primary); border-color: var(--primary); color: var(--white); font-weight: 700; }
@@ -237,7 +239,7 @@ form.rec h2 { margin-top: 22px; }
 form.rec details.more { margin: 2px 0; }
 form.rec button.link { justify-self: start; text-decoration: none; color: var(--primary); }
 /* ---- 複数行の入力欄（1行の入力欄と同じ見た目に） ---- */
-textarea { font: inherit; font-size: 16px; color: var(--ink); padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); width: 100%; resize: vertical; line-height: 1.6; }
+textarea { font: inherit; font-weight: 400; font-size: 16px; color: var(--ink); padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); width: 100%; resize: vertical; line-height: 1.6; }
 textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 /* ---- 段階のあるスライダー（理解度）: 太い帯・段階の点・白い丸のつまみ。--t は 0〜1 ---- */
 .slider-head { display: flex; justify-content: space-between; align-items: baseline; }
