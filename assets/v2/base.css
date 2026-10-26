@@ -860,3 +860,5 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .text-btn.danger { color: var(--danger); }
 .text-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .danger-line { margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--line); text-align: right; }
+.cond-view { margin-top: 14px; padding: 10px 14px 4px; }
+.cond-view .info-head { margin: 0; }

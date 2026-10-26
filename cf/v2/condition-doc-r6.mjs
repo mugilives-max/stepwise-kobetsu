@@ -20,7 +20,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
     ['1回の授業料（上限）', `${yen(cond.fee)}<small>（税込）</small>`],
     ['開始', `${esc(monthJa(cond.fromMonth))}から`],
     ['科目', esc(cond.subjects || '毎月の受講合意書で決めます')],
-    ['形式', `${esc(MODES[cond.deliveryMode] || cond.deliveryMode)}${cond.groupSize ? `<small class="note">${esc(cond.groupSize)}</small>` : ''}`, ' class="wide"'],
+    ['実施形態', `${esc(MODES[cond.deliveryMode] || cond.deliveryMode)}${cond.groupSize ? `<small class="note">${esc(cond.groupSize)}</small>` : ''}`, ' class="wide"'],
   ];
   const promises = [
     ['授業料', `毎月の「受講合意書」で、科目・回数と料金をお知らせします。1回の授業料は、上の金額までです。授業の時間が違うときは、時間に合わせて計算します。`],

@@ -182,7 +182,7 @@ function offerForm(ctx, x, again) {
 function enrollCard(ctx, x) {
   const { esc } = ctx, e = x.enrollment, o = e.offer, s = x.student, cond = (x.basic.condition && x.basic.condition.latest) || null;
   const row = (k, v) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`;
-  const condTable = c => `<h3 class="info-head">受講条件</h3><dl class="info-table">${row('開始', jaMonth(c.fromMonth) + 'から')}${row('1回', c.minutes + '分')}${row('基準単価', yen(c.fee) + '（税込）')}${row('実施形態', MODE[c.deliveryMode] || '')}${c.subjects ? row('科目', c.subjects) : ''}</dl>`;
+  const condTable = c => `<div class="cond-box cond-view"><h3 class="info-head">受講条件</h3><dl class="info-table">${row('開始', jaMonth(c.fromMonth) + 'から')}${row('1回', c.minutes + '分')}${row('基準単価', yen(c.fee) + '（税込）')}${row('実施形態', MODE[c.deliveryMode] || '')}${c.subjects ? row('科目', c.subjects) : ''}</dl></div>`;
   if (o && o.status === 'applied') {
     if (Date.parse(o.appliedAt) < Date.parse(x.today) - 30 * 86400e3) return '';
     const a = o.application || {};
@@ -197,7 +197,7 @@ function enrollCard(ctx, x) {
   // 2026-10-26 本人「案内した日のような重要な情報は端っこではなく整理して」「同じ見た目のボタンが 3 個並ぶと混乱する」:
   // ボタンはそれぞれ関係する行の中に。めったに使わず取り消せない「案内を取り消す」はいちばん下に離して
   return `<section class="reg-card"><div class="reg-card-head"><h2>保護者の申込みを待っています</h2></div>${enrollSteps(2)}
-    <dl class="info-table">${row('案内した日', jaAt(o.offeredAt))}${act('送り先', esc(e.email || ''), `<button class="small-btn" data-action="enroll-resend" data-id="${esc(o.id)}"${ctx.dis()}>もう一度送る</button>`)}${copy}</dl>${cond ? condTable(cond) : ''}
+    <dl class="info-table">${row('案内した日', jaAt(o.offeredAt))}${act('送り先', esc(e.email || ''), `<button class="small-btn" data-action="enroll-resend" data-id="${esc(o.id)}" data-email="${esc(e.email || '')}"${ctx.dis()}>もう一度送る</button>`)}${copy}</dl>${cond ? condTable(cond) : ''}
     <details style="margin-top:12px"><summary class="small">条件を変えて送り直す</summary>${offerForm(ctx, x, true)}</details>
     <p class="danger-line"><button class="text-btn danger" data-action="enroll-withdraw" data-id="${esc(o.id)}"${ctx.dis()}>案内を取り消す</button></p></section>`;
 }
@@ -227,7 +227,7 @@ export async function studentsSubmit(ctx, kind, el) {
   return true;
 }
 export async function studentsClick(ctx, a, b) {
-  if (a === 'enroll-resend') { await enrollDone(ctx, await ctx.call('admin/enrollment/resend', { offerId: b.dataset.id }), '案内をもう一度送りました'); return true; }
+  if (a === 'enroll-resend') { if (!confirm(`${b.dataset.email || '保護者'} に入塾の案内をもう一度送りますか？`)) return true; await enrollDone(ctx, await ctx.call('admin/enrollment/resend', { offerId: b.dataset.id }), '案内をもう一度送りました'); return true; }
   if (a === 'enroll-withdraw') {
     if (!confirm('入塾の案内を取り消しますか？（保護者のリンクと受講条件書の案は使えなくなります）')) return true;
     const r = await ctx.call('admin/enrollment/withdraw', { offerId: b.dataset.id });
