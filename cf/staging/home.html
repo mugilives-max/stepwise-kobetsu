@@ -6,16 +6,20 @@
   <meta name="robots" content="noindex, nofollow">
   <title>【検証】ステップワイズ</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/assets/v2/base.css?v=20261026-labels">
+  <link rel="stylesheet" href="/assets/v2/base.css?v=20261026-center">
   <script>/* iPhone の Chrome: ページ全体を動かすとアドレスバーの高さの分だけ上が隠れて戻らない（2026-10、iOS 26・Chrome 155）。中身の側でスクロールする */if(/CriOS/.test(navigator.userAgent)){document.documentElement.classList.add('crios');window.scrollTo=function(){var b=document.body;return b.scrollTo.apply(b,arguments)};}</script>
   <style>
     .who .todo-row { grid-template-columns: minmax(0, 1fr) auto; }
     .who [hidden] { display: none; }
+    .who .stage { cursor: default; }
+    .who .stg { display: flex; align-items: center; gap: 6px; }
+    .who .stg .arrow { color: var(--muted); }
   </style>
 </head>
 <body>
   <!-- 検証環境の入口。2026-10-26 本人「ごちゃごちゃしているので整理して」→ ④ レイアウトに説明させる: 説明文・ログイン情報の文字を外し、押すだけの一覧に。
-       同日「上側は普段の画面、下側は手続き」: 普段の画面（代表・講師・保護者・生徒・体験の生徒）と手続き（体験・入塾・雇用） -->
+       同日「上側は普段の画面、下側は手続き」: 普段の画面（代表・講師・保護者・生徒・体験の生徒）と手続き（体験・入塾・雇用）
+       同日「入塾手続きを２段階に」: 入塾・雇用は 塾 → 相手 の順に並べたボタン -->
   <main id="app" class="narrow" style="max-width:640px;margin:0 auto;padding:16px 16px 120px">
     <h1>検証環境</h1>
     <p id="first" class="notice" hidden>架空のデータがまだありません。<button class="primary" type="button" onclick="stagingReset(this)">最初の状態にする</button></p>
@@ -30,10 +34,8 @@
     <h2>手続き</h2>
     <div class="group who">
       <button type="button" class="todo-row" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#students"><span class="lbl">体験手続き</span><span class="go">›</span></button>
-      <button type="button" class="todo-row" id="trial" hidden data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/"><span class="lbl">入塾手続き</span><span class="go">›</span></button>
-      <button type="button" class="todo-row" id="trial-parent" hidden><span class="lbl">入塾手続き（保護者）</span><span class="go">›</span></button>
-      <button type="button" class="todo-row" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#employment"><span class="lbl">雇用手続き</span><span class="go">›</span></button>
-      <button type="button" class="todo-row" data-login="staff" data-email="teacher-new@example.invalid" data-pass="teacher password 1" data-to="/staff/"><span class="lbl">雇用手続き（新しい講師）</span><span class="go">›</span></button>
+      <div class="todo-row stage" id="enroll-row" hidden><span class="lbl">入塾手続き</span><span class="stg"><button type="button" class="small-btn" id="trial" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/">塾</button><span class="arrow" aria-hidden="true">→</span><button type="button" class="small-btn" id="trial-parent">保護者</button></span></div>
+      <div class="todo-row stage"><span class="lbl">雇用手続き</span><span class="stg"><button type="button" class="small-btn" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#employment">塾</button><span class="arrow" aria-hidden="true">→</span><button type="button" class="small-btn" data-login="staff" data-email="teacher-new@example.invalid" data-pass="teacher password 1" data-to="/staff/">新しい講師</button></span></div>
     </div>
   </main>
   <script src="/staging-bar.js" defer></script>
@@ -43,24 +45,26 @@
       document.getElementById('first').hidden = r.seeded;
       if (r.links && r.links.taro) document.getElementById('taro').href = r.links.taro;
       if (r.links && r.links.trial) { const t = document.getElementById('trial-student'); t.href = r.links.trial; t.hidden = false; }
-      if (r.trial) { const t = document.getElementById('trial'); t.dataset.to = '/staff/#student=' + r.trial; t.hidden = false; }
-      if (r.trial) { const t = document.getElementById('trial-parent'); t.dataset.trial = r.trial; t.hidden = false; }
+      if (r.trial) { document.getElementById('trial').dataset.to = '/staff/#student=' + r.trial; document.getElementById('trial-parent').dataset.trial = r.trial; document.getElementById('enroll-row').hidden = false; }
     });
-    // 入塾手続き（保護者）: 代表として体験生に入塾の案内を送り（送り直し）、届いた招待のリンクを保護者として開く
+    // 押したしるし（一覧の › か、ボタンの文字を … に）
+    const busy = b => { b.disabled = true; const g = b.querySelector('.go'); if (g) g.textContent = '…'; else b.textContent = '…'; };
+    // 入塾手続きの保護者: 代表として体験生に入塾の案内を送り（送り直し）、届いた招待のリンクを保護者として開く
     document.getElementById('trial-parent').addEventListener('click', async e => {
-      const b = e.currentTarget; if (b.disabled) return; b.disabled = true; b.querySelector('.go').textContent = '…';
+      const b = e.currentTarget; if (b.disabled) return; busy(b);
       const post = (route, body) => fetch('/v2/' + route, { method: 'POST', body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false }));
       const fail = () => { alert('開けませんでした。最初の状態に戻してから、もう一度試してください。'); location.reload(); };
       const login = await post('staff/login', { email: 'owner@example.invalid', password: 'correct horse battery' }); if (!login.ok) return fail();
       const d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
       const r = await post('admin/enrollment/offer', { auth: login.auth, studentId: b.dataset.trial, email: 'trial-parent@example.invalid', fromMonth: d, minutes: 90, fee: 4500, deliveryMode: 'in_person', subjects: '英語・数学' });
-      if (!r.ok || !r.inviteUrl) return fail();
+      if (!r.ok) return fail();
+      if (!r.inviteUrl) { location.href = '/family/#enroll'; return; } // もう登録した保護者: 申込みの画面へ（ログインのままならそのまま）
       try { localStorage.removeItem('sw2_family'); } catch {}
       location.href = r.inviteUrl;
     });
     document.addEventListener('click', async e => {
       const b = e.target.closest('[data-login]'); if (!b) return;
-      b.disabled = true; b.querySelector('.go').textContent = '…';
+      busy(b);
       const r = await fetch('/v2/' + b.dataset.login + '/login', { method: 'POST', body: JSON.stringify({ email: b.dataset.email, password: b.dataset.pass }) }).then(x => x.json()).catch(() => ({ ok: false }));
       if (!r.ok) { alert('ログインできませんでした。最初の状態に戻してから、もう一度試してください。'); location.reload(); return; }
       localStorage.setItem(b.dataset.login === 'staff' ? 'sw2_staff' : 'sw2_family', r.auth);

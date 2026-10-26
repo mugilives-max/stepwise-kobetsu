@@ -845,11 +845,30 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .reg-field:has(input[name="delivery"][value="paper"]:checked) .dl-mail, .reg-field:not(:has(input[name="delivery"]:checked)) .dl-mail { display: none; }
 
 /* 入塾の手続き（2026-10-26 本人「受講条件に記載する内容というのが分かるまとまり」「どこが登録されている情報で項目なのか分からない」）:
-   受講条件書に載る内容は 1 つの枠に。登録した内容は、項目名と中身を左右に並べる表で、文字は濃く */
+   個別受講条件書に載る内容は 1 つの枠に。登録した内容は、項目名と中身を左右に並べる表で、文字は濃く */
 .cond-box { border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px 14px; background: var(--paper); }
 .cond-box > legend { padding: 0 6px; margin: 0 0 4px -6px; }
 .cond-sub { font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 6px; }
 .info-head { font-size: 15px; margin: 16px 0 0; }
+/* 表計算のような罫線つきの表（入塾のお申込み。2026-10-26 本人「エクセルのような表示形式の方が分かりやすい」） */
+.grid-table { width: 100%; border-collapse: collapse; margin: 10px 0 0; }
+.grid-table th, .grid-table td { border: 1px solid #c3ccd5; padding: 8px 10px; text-align: left; vertical-align: top; color: var(--ink); overflow-wrap: anywhere; }
+/* 項目名は 1 行。狭い画面では語のまとまり（span）の間でだけ折り返す */
+.grid-table th { width: 1%; white-space: nowrap; background: #eef2f6; font-size: 14px; font-weight: 600; text-align: center; vertical-align: middle; } /* 項目名はマスの中央 */
+.grid-table th > span { display: inline-block; white-space: nowrap; }
+@media (max-width: 480px) { .grid-table th { white-space: normal; } }
+.grid-table td { background: var(--white); font-size: 15px; white-space: pre-line; }
+/* 入塾のお申込みの同意の欄: 開く全文の一覧（開いたものに ✓）とチェック欄 */
+.agree-card { display: grid; gap: 12px; }
+.agree-docs { list-style: none; margin: 0; padding: 0; }
+.agree-docs li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.agree-docs li:first-child { padding-top: 2px; }
+.agree-docs .mk { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #c3ccd5; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--white); }
+.agree-docs li.done .mk { background: #1a7f37; border-color: #1a7f37; }
+.agree-docs .t { flex: 1; min-width: 0; font-weight: 600; color: var(--ink); }
+.agree-docs .t small { display: block; font-weight: 400; color: var(--muted); }
+.agree-docs .small-btn { flex: none; }
+.reg-field input[readonly] { background: #eef2f6; color: var(--ink); }
 .info-table { margin: 6px 0 0; }
 .info-table > div { display: grid; grid-template-columns: 7em minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line); }
 .info-table > div:first-child { border-top: 0; }

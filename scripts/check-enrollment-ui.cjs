@@ -44,7 +44,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await owner.goto(origin+'/staff/#student='+trial.studentId+'/summary');
   await owner.getByRole('heading',{name:'入塾の手続き',exact:true}).waitFor();
   assert.equal(await owner.locator('[data-form="enroll-offer"] button.primary').isDisabled(),true,'規約が無いうちは案内できない');
-  await owner.getByText('ご利用規約をまだ使い始めていません',{exact:false}).waitFor();
+  await owner.getByText('ご利用共通規約をまだ使い始めていません',{exact:false}).waitFor();
   await h.ok('admin/terms/set',{auth,version:'2026-11-r9',title:'受講規約（2026年11月版）',url:'https://example.invalid/terms',from:'2026-11-01'});
   await owner.reload();
   const f='[data-form="enroll-offer"]';
@@ -71,15 +71,30 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await parent.locator('[data-form="enroll-input"] button.primary').click();
   assert.equal(await parent.locator('[aria-invalid="true"]').count(),10,'保護者の姓・名・ふりがな2つ・電話・郵便番号・住所と、生徒のふりがな2つ・学校');
   assert.equal(await parent.locator('select[data-enroll="grade"]').inputValue(),'中3','学年は選択肢から（体験のときの値が選ばれている）');
+  assert.equal(await parent.locator('select[data-enroll="stage"]').inputValue(),'中学生','区分が先（学年から決まる）');
+  await parent.selectOption('select[data-enroll="stage"]','小学生');
+  assert.deepEqual(await parent.locator('select[data-enroll="grade"] option').allInnerTexts(),['選んでください','1年','2年','3年','4年','5年','6年'],'区分を変えると学年を選び直す');
+  await parent.selectOption('select[data-enroll="stage"]','中学生');await parent.selectOption('select[data-enroll="grade"]','中3');
   const g=(k,v)=>parent.fill(`[data-enroll="${k}"]`,v);
   await g('guardianFamilyName','【テスト】架空');await g('guardianGivenName','花子');await g('guardianFamilyKana','かくう');await g('guardianGivenKana','はなこ');await g('phone','090-1234-5678');await g('zip','3430002');await g('address','【テスト】越谷市1-2-3');
   await g('familyKana','かくう');await g('givenKana','たいけん');await g('school','【テスト】第一中学校');
   await parent.locator('[data-form="enroll-input"] button.primary').click();
   await parent.getByRole('heading',{name:'入力内容の確認',exact:true}).waitFor();
   await parent.getByText('〒343-0002 【テスト】越谷市1-2-3',{exact:true}).waitFor();
-  await parent.getByRole('button',{name:'受講条件書の全文を開く',exact:true}).waitFor(); // 同意の前に全文を開ける（確認の画面にも）
-  await parent.getByRole('link',{name:'ご利用規約の全文を開く',exact:true}).waitFor();
+  await parent.getByRole('button',{name:'個別受講条件書の全文を開く',exact:true}).waitFor(); // 同意の前に全文を開ける（確認の画面にも）
+  await parent.getByRole('link',{name:'ご利用共通規約の全文を開く',exact:true}).waitFor();
   assert.equal(h.rows('select count(*) n from termsConsents')[0].n,0,'確認の画面ではまだ何も記録しない');
+  // 同意は全文を開いてから（開くまで印を付けられない）
+  await parent.screenshot({path:path.join(out,'04a-parent-confirm-locked.png'),fullPage:true});
+  assert.equal(await parent.locator('[data-form="enroll-apply"] input[name="agree"]').isDisabled(),true,'全文を開くまで同意の印は付けられない');
+  await parent.locator('[data-form="enroll-apply"] button.primary').click();
+  await parent.getByText('ご利用共通規約と個別受講条件書の全文を開いて確かめてください',{exact:true}).waitFor();
+  for(const name of ['個別受講条件書の全文を開く','ご利用共通規約の全文を開く']){const [doc]=await Promise.all([parent.context().waitForEvent('page'),parent.locator(`.agree-docs [aria-label="${name}"]`).click()]);
+    if(name.startsWith('個別受講条件書')){await doc.waitForURL(/^blob:/);await doc.waitForLoadState();assert.ok((await doc.textContent('body')).includes('【テスト】架空 花子 様'),'個別受講条件書の宛名は入れた保護者の氏名');}
+    await doc.close();}
+  report.externalRequests=report.externalRequests.filter(u=>u!=='https://example.invalid'); // ご利用共通規約の全文（このテストの架空の URL）を開いた分
+  assert.equal(await parent.locator('[data-form="enroll-apply"] input[name="agree"]').isDisabled(),false,'両方を開いたら印を付けられる');
+  assert.equal(await parent.locator('.agree-docs li.done').count(),2,'開いた全文に ✓');
   await parent.locator('[data-form="enroll-apply"] button.primary').click();
   await parent.getByText('「同意します」に印を付けてください',{exact:false}).waitFor();
   await parent.locator('[data-form="enroll-apply"] input[name="agree"]').check();
@@ -91,7 +106,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   assert.deepEqual([s.trial,s.enrolledOn],[0,'2026-10-02'],'申し込んだ日にそのまま入塾（開始は今月）');
   assert.equal(h.rows('select consenterName from termsConsents')[0].consenterName,'【テスト】架空 花子','同意者名は入れた氏名');
   await parent.goto(origin+'/family/#home');await parent.getByText('やること',{exact:true}).waitFor();
-  assert.equal((await parent.locator('#app').innerText()).includes('ご利用規約への同意'),false,'申込みで同意したので、別に求めない');
+  assert.equal((await parent.locator('#app').innerText()).includes('ご利用共通規約への同意'),false,'申込みで同意したので、別に求めない');
   report.checks.push('parent: password then the application page, required fields marked, confirm records nothing, consent required, enrolled at once with the typed name');
   // 3. 代表: 入塾した
   await owner.goto(origin+'/staff/#student='+trial.studentId+'/summary');

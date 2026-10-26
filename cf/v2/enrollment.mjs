@@ -1,16 +1,17 @@
 // 入塾の案内と申込み（2026-10-18 本人決定。migrations-v2/0032_family_enrollment.sql）。
-// 体験 → ① 代表が「入塾の案内を送る」（保護者のメールと受講条件。受講条件書の案ができ、招待のメールが届く）
-//      → ② 保護者がパスワードを決める → ③ 保護者が 1 つの画面で申込み（保護者の情報・生徒の情報の確認・ご利用規約と受講条件書への同意）
+// 体験 → ① 代表が「入塾の案内を送る」（保護者のメールと受講条件。個別受講条件書の案ができ、招待のメールが届く）
+//      → ② 保護者がパスワードを決める → ③ 保護者が 1 つの画面で申込み（保護者の情報・生徒の情報の確認・ご利用共通規約と個別受講条件書への同意）
 //      → ④ そのまま入塾（体験の印を外し、代表にメール）。そのあとは毎月の受講合意書。
 // - 申込みのあと代表の確認は挟まない（本人「そのまま入塾」）。受講条件は案内のときに代表が決める。
 // - 申込みの内容（受講申込書の控え）は enrollmentOffers.application に残し、変えない（トリガー）。
-// - 規約の同意・受講条件書の同意・申込み・入塾は 1 回の書き込み（batch）で行う。同意者名は保護者が入れた氏名。
+// - 規約の同意・個別受講条件書の同意・申込み・入塾は 1 回の書き込み（batch）で行う。同意者名は保護者が入れた氏名。
 import { fail, newId, iso, audit, normEmail, validEmail, sha256Hex } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { issueChallenge } from './accounts.mjs';
 import { familyNotice, staffNotice, todayJst } from './schedule.mjs';
-import { currentTerms, termsConsentStatements } from './terms.mjs';
+import { currentTerms, termsConsentStatements, termsForVersion } from './terms.mjs';
+import { conditionDocHtml } from './condition-doc.mjs';
 import { conditionFields, proposeCondition, studentConditions, storeDoc, MODE_LABEL } from './conditions.mjs';
 import { consentEvidence } from './consent-evidence.mjs';
 import { GRADES, normGrade } from '../../assets/v2/grade-options.js';
@@ -42,8 +43,8 @@ async function getStudent(c, id) { const s = await c.db.prepare('select * from s
 async function getFamily(c, id) { const f = await c.db.prepare('select * from families where id = ?').bind(String(id || '')).first(); if (!f) fail('notFound', '家族が見つかりません', 404); return f; }
 async function getOffer(c, id) { const r = await c.db.prepare('select * from enrollmentOffers where id = ?').bind(String(id || '')).first(); if (!r) fail('notFound', '入塾の案内が見つかりません', 404); return r; }
 
-const inviteMail = (s, cond) => ({ subject: '【ステップワイズ】入塾のお手続きのご案内', body: url => `${fullName(s)}さんの保護者さま\n\nステップワイズ個別指導です。入塾のお手続きをご案内します。\n7日以内に次のリンクを開き、保護者ページのパスワードを決めてください。続けて、保護者さまの情報のご登録と、ご利用規約・受講条件書のご確認をお願いします。\n\n${url}\n\n保護者ページで「同意して入塾を申し込む」を押すと、お申込みが完了します。\nリンクの期限が切れた場合は、いつものLINEまたは mugilives@gmail.com へご連絡ください。\n心当たりがない場合は、このメールを破棄してください。` });
-const activeText = (s, cond) => `${fullName(s)}さんの入塾のお手続きをご案内します。保護者ページの「入塾のお申込み」で、保護者さまの情報とご利用規約・受講条件書をご確認のうえ、お申し込みください。`; // 料金などは申込みの画面で（2026-10-26 本人「料金とかはこの段階では見せなくていい」）
+const inviteMail = (s, cond) => ({ subject: '【ステップワイズ】入塾のお手続きのご案内', body: url => `${fullName(s)}さんの保護者さま\n\nステップワイズ個別指導です。入塾のお手続きをご案内します。\n7日以内に次のリンクを開き、保護者ページのパスワードを決めてください。続けて、保護者さまの情報のご登録と、ご利用共通規約・個別受講条件書のご確認をお願いします。\n\n${url}\n\n保護者ページで「同意して入塾を申し込む」を押すと、お申込みが完了します。\nリンクの期限が切れた場合は、いつものLINEまたは mugilives@gmail.com へご連絡ください。\n心当たりがない場合は、このメールを破棄してください。` });
+const activeText = (s, cond) => `${fullName(s)}さんの入塾のお手続きをご案内します。保護者ページの「入塾のお申込み」で、保護者さまの情報とご利用共通規約・個別受講条件書をご確認のうえ、お申し込みください。`; // 料金などは申込みの画面で（2026-10-26 本人「料金とかはこの段階では見せなくていい」）
 
 // 案内のメール（パスワードがまだなら招待のリンク、登録済みなら保護者ページのお知らせ）
 async function sendOffer(c, f, s, cond) {
@@ -87,7 +88,7 @@ export const enrollmentRoutes = {
     if (!s.trial) fail('notTrial', 'この生徒はもう入塾しています');
     if (s.status === 'left') fail('left', '退会した生徒には案内できません');
     const terms = await currentTerms(c.db);
-    if (!terms.version) fail('needTerms', '先に「設定 → ご利用規約」で、ご利用規約を使い始めてください。保護者は申込みのときに規約に同意します', 409);
+    if (!terms.version) fail('needTerms', '先に「設定 → ご利用共通規約」で、ご利用共通規約を使い始めてください。保護者は申込みのときに規約に同意します', 409);
     let f = await getFamily(c, s.familyId);
     if (f.status === 'stopped') fail('stopped', '停止中の家族には案内できません');
     const email = normEmail(b.email || f.email);
@@ -135,7 +136,7 @@ export const enrollmentRoutes = {
   },
 
   // ---- 保護者 ----
-  // 申込みの画面に出すもの: 案内（生徒・受講条件書）、今のご利用規約、保護者の今の情報
+  // 申込みの画面に出すもの: 案内（生徒・個別受講条件書）、今のご利用共通規約、保護者の今の情報
   'family/enrollment': async (c, b) => {
     const me = await requireFamily(c, b);
     const rows = (await c.db.prepare("select * from enrollmentOffers where familyId = ? and status in ('offered', 'applied') order by offeredAt").bind(me.id).all()).results;
@@ -154,18 +155,33 @@ export const enrollmentRoutes = {
     return { offers, terms: await currentTerms(c.db),
       guardian: { familyName: nf || '', givenName: ng || '', familyKana: kf || '', givenKana: kg || '', phone: me.phone || '', zip: zip ? zip[1] : '', address: zip ? zip[2] : (me.address || ''), email: me.email } };
   },
-  // ③ 申し込む（ご利用規約と受講条件書への同意を含む）→ ④ そのまま入塾
+  // 申込みの画面で開く個別受講条件書の全文。宛名・生徒は画面に入れた内容で作る（保存はしない。2026-10-26 本人「契約者は保護者…氏名もわかっているし、それをそのまま表示するべき」）
+  'family/enrollment/document': async (c, b) => {
+    const me = await requireFamily(c, b);
+    const r = await getOffer(c, b.offerId);
+    if (r.familyId !== me.id || r.status !== 'offered') fail('notFound', '入塾の案内が見つかりません', 404);
+    const cond = await c.db.prepare('select * from conditions where id = ?').bind(r.conditionId).first();
+    if (!cond) fail('notFound', '個別受講条件書が見つかりません', 404);
+    const s = await getStudent(c, r.studentId);
+    const v = k => typeof b[k] === 'string' ? b[k].trim().slice(0, 40) : '';
+    const guardianName = [v('guardianFamilyName'), v('guardianGivenName')].filter(Boolean).join(' ') || me.guardianName || '';
+    const student = { ...s, familyName: v('familyName') || s.familyName, givenName: v('givenName') || s.givenName, grade: v('grade') || s.grade };
+    const staffId = String(cond.proposedBy || '').replace(/^staff:/, '');
+    const proposer = staffId ? await c.db.prepare('select name from staff where id = ?').bind(staffId).first() : null;
+    return { html: conditionDocHtml({ cond, student, family: { ...me, guardianName }, terms: await termsForVersion(c.db, cond.termsVersion), proposer: proposer ? proposer.name : '', now: iso(c.now) }) };
+  },
+  // ③ 申し込む（ご利用共通規約と個別受講条件書への同意を含む）→ ④ そのまま入塾
   'family/enrollment/apply': async (c, b) => {
     const me = await requireFamily(c, b);
     const r = await getOffer(c, b.offerId);
     if (r.familyId !== me.id) fail('notFound', '入塾の案内が見つかりません', 404);
     if (r.status !== 'offered') fail('closed', r.status === 'applied' ? 'お申込みはもう完了しています' : 'この案内は取り消されました。教室にお問い合わせください', 409);
-    if (b.agree !== true) fail('needAgree', 'ご利用規約と受講条件書を確かめて「同意します」に印を付けてください');
+    if (b.agree !== true) fail('needAgree', 'ご利用共通規約と個別受講条件書を確かめて「同意します」に印を付けてください');
     const terms = await currentTerms(c.db);
-    if (!terms.version) fail('noTerms', 'ご利用規約の準備ができていません。教室にお問い合わせください', 409);
-    if (String(b.termsVersion || '') !== terms.version) fail('staleVersion', 'ご利用規約が新しくなっています。画面を更新して、もう一度確かめてください', 409);
+    if (!terms.version) fail('noTerms', 'ご利用共通規約の準備ができていません。教室にお問い合わせください', 409);
+    if (String(b.termsVersion || '') !== terms.version) fail('staleVersion', 'ご利用共通規約が新しくなっています。画面を更新して、もう一度確かめてください', 409);
     const cond = await c.db.prepare('select * from conditions where id = ?').bind(r.conditionId).first();
-    if (String(b.conditionId || '') !== r.conditionId || !cond || cond.status !== 'proposed') fail('staleCondition', '受講条件書が変わりました。画面を更新して、もう一度確かめてください', 409);
+    if (String(b.conditionId || '') !== r.conditionId || !cond || cond.status !== 'proposed') fail('staleCondition', '個別受講条件書が変わりました。画面を更新して、もう一度確かめてください', 409);
     const s = await getStudent(c, r.studentId), app = applicationFields(b);
     const evidence = consentEvidence(c, { consenterName: app.guardian.name }, me, me), now = iso(c.now), at = evidence.consentedAt;
     const today = todayJst(c.now), enrolledOn = r.fromMonth + '-01' > today ? r.fromMonth + '-01' : today;
@@ -186,9 +202,9 @@ export const enrollmentRoutes = {
         .bind(at, '保護者ページ（入塾の申込み）', 'family:' + me.id, '', evidence.consenterName, evidence.recordedAt, evidence.recordedByName, now, cond.id),
       ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at, via: '保護者ページ（入塾の申込み）', actorKind: 'family', actorId: me.id, note: '', evidence })),
     ]);
-    await storeDoc(c, cond.id); // 同意済みの受講条件書
+    await storeDoc(c, cond.id); // 同意済みの個別受講条件書
     const name = app.student.familyName + ' ' + app.student.givenName;
-    await staffNotice(c, `【入塾の申込み】${name}さん`, `${name}さん（${app.student.grade}）の入塾の申込みがありました。\n保護者：${app.guardian.name}\n開始：${monthText(r.fromMonth)}から（入塾日 ${enrolledOn}）\nご利用規約・受講条件書（第${cond.no}版）に同意済みです。${monthText(r.fromMonth)}の計画（受講合意書）を作って送ってください。`);
+    await staffNotice(c, `【入塾の申込み】${name}さん`, `${name}さん（${app.student.grade}）の入塾の申込みがありました。\n保護者：${app.guardian.name}\n開始：${monthText(r.fromMonth)}から（入塾日 ${enrolledOn}）\nご利用共通規約・個別受講条件書（第${cond.no}版）に同意済みです。${monthText(r.fromMonth)}の計画（受講合意書）を作って送ってください。`);
     await audit(c, 'enrollmentApplied', r.id, { studentId: s.id, conditionId: cond.id, termsVersion: terms.version });
     return { enrollment: offerView(await getOffer(c, r.id)), enrolledOn };
   },

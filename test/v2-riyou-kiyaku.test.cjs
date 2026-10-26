@@ -7,7 +7,7 @@ const line = { id: 'pl_1', version: 1, status: 'approved', startDate: '2026-11-0
 const rec = title => ({ line, studentName: '架空 一郎', studentId: 's1', familyId: 'f1', capturedAt: '2026-10-25T00:00:00.000Z', terms: { version: 'v', title, url: '' } });
 
 test('agreement documents keep the old wording unless the row refers to ご利用規約', async () => {
-  const { agreementDocHtml, agreementLayout, AGREEMENT_LAYOUT, AGREEMENT_LAYOUT_R10 } = await import('../cf/v2/agreement-doc-20261016.mjs');
+  const { agreementDocHtml, agreementLayout, AGREEMENT_LAYOUT, AGREEMENT_LAYOUT_R10, AGREEMENT_LAYOUT_R12 } = await import('../cf/v2/agreement-doc-20261016.mjs');
   assert.equal(agreementLayout([rec('受講規約（2026年11月版）')]), AGREEMENT_LAYOUT);
   assert.equal(agreementLayout([rec('')]), AGREEMENT_LAYOUT, '規約の版がない行も前の様式');
   assert.equal(agreementLayout([rec('ご利用規約（2026年11月版・10月25日改訂）')]), AGREEMENT_LAYOUT_R10);
@@ -15,4 +15,9 @@ test('agreement documents keep the old wording unless the row refers to ご利�
   assert.match(old, /適用される受講規約に基づき/); assert.match(old, new RegExp('書類様式：' + AGREEMENT_LAYOUT));
   const now = agreementDocHtml({ records: [rec('ご利用規約（2026年11月版・10月25日改訂）')], documentId: 'AG-y' });
   assert.match(now, /適用されるご利用規約に基づき/); assert.doesNotMatch(now, /受講規約/); assert.match(now, new RegExp('書類様式：' + AGREEMENT_LAYOUT_R10));
+  // r12（2026-10-26）: ご利用共通規約・個別受講条件書。r10 の書面は変えない
+  assert.match(now, /参照する受講条件書 ID/);
+  assert.equal(agreementLayout([rec('ご利用共通規約')]), AGREEMENT_LAYOUT_R12);
+  const r12 = agreementDocHtml({ records: [rec('ご利用共通規約')], documentId: 'AG-z' });
+  assert.match(r12, /適用されるご利用共通規約に基づき/); assert.match(r12, /参照する個別受講条件書 ID/); assert.match(r12, new RegExp('書類様式：' + AGREEMENT_LAYOUT_R12));
 });

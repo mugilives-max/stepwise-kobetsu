@@ -22,9 +22,12 @@ const parts = l => {
 export const AGREEMENT_LAYOUT = '20261016-r9';
 // 2026-10-25 規約の名前を「ご利用規約」に（r10）。ご利用規約の版を参照する行の書面だけ、名前を変えた様式にする。前に出した書面は同じ文字・同じ書面番号のまま
 export const AGREEMENT_LAYOUT_R10 = '20261025-r10';
-export const agreementLayout = records => records.some(r => /^ご利用規約/.test((r.terms && r.terms.title) || '')) ? AGREEMENT_LAYOUT_R10 : AGREEMENT_LAYOUT;
+// 2026-10-26 名前を「ご利用共通規約」「個別受講条件書」に（r12。本人「ご利用共通規約とかにした方が良い」「受講条件書は個別受講条件書と」）。その版を参照する行の書面だけ
+export const AGREEMENT_LAYOUT_R12 = '20261026-r12';
+const termsTitleOf = records => records.map(r => (r.terms && r.terms.title) || '');
+export const agreementLayout = records => termsTitleOf(records).some(t => /^ご利用共通規約/.test(t)) ? AGREEMENT_LAYOUT_R12 : termsTitleOf(records).some(t => /^ご利用規約/.test(t)) ? AGREEMENT_LAYOUT_R10 : AGREEMENT_LAYOUT;
 export function agreementDocHtml({records,documentId,sample=false}) {
-  const first=records[0], l0=first.line, status=l0.status, layout=agreementLayout(records), kiyaku=layout===AGREEMENT_LAYOUT_R10?'ご利用規約':'受講規約';
+  const first=records[0], l0=first.line, status=l0.status, layout=agreementLayout(records), kiyaku=layout===AGREEMENT_LAYOUT_R12?'ご利用共通規約':layout===AGREEMENT_LAYOUT_R10?'ご利用規約':'受講規約', jouken=layout===AGREEMENT_LAYOUT_R12?'個別受講条件書':'受講条件書';
   const title=status==='approved'?'受講合意書の控え':status==='declined'?'受講合意書の記録（見送り）':'受講合意書（案）';
   const total=records.reduce((n,r)=>n+amount(r.line),0);
   const rows=records.map((r,i)=>{
@@ -34,7 +37,7 @@ export function agreementDocHtml({records,documentId,sample=false}) {
       '<td>'+value(l.startDate)+'<br>〜 '+value(l.endDate)+'</td><td>'+value(count(l))+'回</td><td>'+value(l.minutes)+'分</td><td>'+money(numeric(l.fee)?Number(l.fee):NaN)+'</td><td>'+money(amount(l))+'</td></tr></tbody></table>'+
       '<p class="content"><b>具体的な授業内容</b><br>'+value(l.comment)+'</p>'+parts(l)+
       '<p class="small">基準単価の区分：'+(l.instructionType==='regular'?'通常':l.instructionType==='special'?'特別（対象指導名：'+value(l.kind)+'）':'記録なし')+
-      '／参照する受講条件書 ID：'+value(l.conditionId)+(l.instructionType==='special'?'／特別単価合意書 ID：'+value(l.specialId):'')+'</p></section>';
+      '／参照する'+jouken+' ID：'+value(l.conditionId)+(l.instructionType==='special'?'／特別単価合意書 ID：'+value(l.specialId):'')+'</p></section>';
   }).join('');
   const evidence=records.map((r,i)=>{
     const l=r.line, t=r.terms||{}, link=/^https:\/\/[^\s]+$/.test(t.url||'')?'<a href="'+esc(t.url)+'" rel="noopener noreferrer">この版の規約全文</a>':'全文リンクの記録なし';

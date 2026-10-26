@@ -1,5 +1,5 @@
 import { familyTarget } from '../../assets/v2/family-target.js';
-// 受講条件書（ご利用規約の「受講条件書」。migrations-v2/0018_conditions.sql）
+// 個別受講条件書（ご利用共通規約の「個別受講条件書」。migrations-v2/0018_conditions.sql）
 // - 教室管理者が生徒ごとに「条件を決めてお知らせ」する（admin/conditions/propose）。基本の授業時間と1回の税込の通常の基準単価、形式、人数、
 //   生徒本人の連絡の可否、科目、特記、適用開始月。お知らせすると保護者にメールが届き、保護者ページに同意のお願いが出る
 // - 保護者は保護者ページで内容を見て同意する（family/conditions/agree）。同意していない条件がある家族は、計画を承認できない（規約と同じ）
@@ -46,7 +46,7 @@ export async function storeDoc(c, condId) {
   const html = conditionDocHtml({ cond, student, family, terms: await termsForVersion(c.db, cond.termsVersion), proposer: proposer ? proposer.name : '', now: iso(c.now) });
   const final = cond.status === 'agreed';
   return putGenerated(c, { category: 'contract', familyId: family.id, studentId: student.id, refType: 'condition', refId: cond.id,
-    name: `${cond.templateVersion === '20261019-r6' ? '受講条件書' : cond.templateVersion === '20261014-r5' ? '受講条件書（通常指導）' : cond.templateVersion === '20261012-r3' ? '基本指導条件書' : '個別指導条件書'}_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
+    name: `${cond.templateVersion === '20261019-r6' ? '個別受講条件書' : cond.templateVersion === '20261014-r5' ? '受講条件書（通常指導）' : cond.templateVersion === '20261012-r3' ? '基本指導条件書' : '個別指導条件書'}_第${cond.no}版${final ? '' : '_案'}_${fullName(student)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: final ? '同意済み' : '案' });
 }
 // 家族: 子どもごとの条件。同意していない条件があれば needs
 export async function familyConditions(db, students) {
@@ -108,7 +108,7 @@ export const conditionRoutes = {
     const s = await studentRow(c, b.studentId); if (!s) fail('notFound', '生徒が見つかりません', 404);
     if (s.status === 'left') fail('left', '退会した生徒には条件を作れません');
     const f = conditionFields(b), { id, no } = await proposeCondition(c, me, s, f);
-    await familyNotice(c, s.id, '受講条件書のお知らせ', `${fullName(s)}さんの受講条件書${no > 1 ? `（第${no}版）` : ''}をお送りしました。保護者ページの「お支払い」で内容（受講条件書）を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.'+no}),{type:'condition',targets:[{id,version:no}]});
+    await familyNotice(c, s.id, '個別受講条件書のお知らせ', `${fullName(s)}さんの個別受講条件書${no > 1 ? `（第${no}版）` : ''}をお送りしました。保護者ページの「お支払い」で内容（個別受講条件書）を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.'+no}),{type:'condition',targets:[{id,version:no}]});
     await audit(c, 'conditionPropose', id, { studentId: s.id, no, minutes: f.minutes, fee: f.fee, fromMonth: f.fromMonth });
     return { condition: await withDoc(c.db, conditionView(await c.db.prepare('select * from conditions where id = ?').bind(id).first())) };
   },
