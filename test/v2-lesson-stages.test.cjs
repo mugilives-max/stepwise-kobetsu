@@ -160,6 +160,22 @@ test('保護者の「この日程で大丈夫」: 見ていた確認待ち（id 
   assert.equal((await h.call('student/lessons/agree', { k, lessons: [pick(b)] })).ok, false);
 });
 
+test('夜の実施済み: 日付が過ぎた確定だけ。当日・下書き・お休み・連絡が残っている授業は触らない。メールなし', async () => {
+  const { h, auth, parent, L, familyMails, row, ids, night } = await world();
+  const make = async (date, start) => { const before = ids(); await h.ok('schedule/lessons/create', { ...L, date, start, send: 'hold' }); return ids().find(id => !before.includes(id)); };
+  const a = await make('2026-10-05', '17:00'), moved = await make('2026-10-05', '18:30'), rested = await make('2026-10-06', '17:00');
+  const held = await make('2026-10-06', '18:30'), today = await make('2026-10-07', '17:00');
+  for (const id of [a, moved, rested, today]) await h.ok('schedule/lessons/decide', { auth, id, version: row(id).version, agreement: 'LINE で合意' });
+  await h.ok('schedule/lessons/rest', { auth, id: rested, version: row(rested).version });
+  await h.ok('family/lessons/request', { auth: parent, lessonId: moved, kind: 'move', note: '別の日にしたい' });
+  const n0 = familyMails().length;
+  const r = await night('2026-10-07');
+  assert.equal(r.autoDone.done, 1);
+  assert.deepEqual([a, moved, rested, held, today].map(id => row(id).status), ['done', 'decided', 'rested', 'held', 'decided']);
+  assert.equal(familyMails().length, n0, '実施済みにしても保護者にメールは出さない');
+  assert.equal((await night('2026-10-07')).autoDone.done, 0, '二度目は何もしない');
+});
+
 test('スタッフの「今日」: 調整中のまま 5 日以内に来る授業を「対応すること」に出す', async () => {
   const { h, auth, L } = await world();
   await h.ok('schedule/lessons/create', { ...L, date: '2026-10-05', send: 'show' });
