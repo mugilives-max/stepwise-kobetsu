@@ -31,6 +31,7 @@
     <div class="group who">
       <button type="button" class="todo-row" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#students"><span class="lbl">体験手続き</span><span class="go">›</span></button>
       <button type="button" class="todo-row" id="trial" hidden data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/"><span class="lbl">入塾手続き</span><span class="go">›</span></button>
+      <button type="button" class="todo-row" id="trial-parent" hidden><span class="lbl">入塾手続き（保護者）</span><span class="go">›</span></button>
       <button type="button" class="todo-row" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#employment"><span class="lbl">雇用手続き</span><span class="go">›</span></button>
       <button type="button" class="todo-row" data-login="staff" data-email="teacher-new@example.invalid" data-pass="teacher password 1" data-to="/staff/"><span class="lbl">雇用手続き（新しい講師）</span><span class="go">›</span></button>
     </div>
@@ -43,6 +44,19 @@
       if (r.links && r.links.taro) document.getElementById('taro').href = r.links.taro;
       if (r.links && r.links.trial) { const t = document.getElementById('trial-student'); t.href = r.links.trial; t.hidden = false; }
       if (r.trial) { const t = document.getElementById('trial'); t.dataset.to = '/staff/#student=' + r.trial; t.hidden = false; }
+      if (r.trial) { const t = document.getElementById('trial-parent'); t.dataset.trial = r.trial; t.hidden = false; }
+    });
+    // 入塾手続き（保護者）: 代表として体験生に入塾の案内を送り（送り直し）、届いた招待のリンクを保護者として開く
+    document.getElementById('trial-parent').addEventListener('click', async e => {
+      const b = e.currentTarget; if (b.disabled) return; b.disabled = true; b.querySelector('.go').textContent = '…';
+      const post = (route, body) => fetch('/v2/' + route, { method: 'POST', body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false }));
+      const fail = () => { alert('開けませんでした。最初の状態に戻してから、もう一度試してください。'); location.reload(); };
+      const login = await post('staff/login', { email: 'owner@example.invalid', password: 'correct horse battery' }); if (!login.ok) return fail();
+      const d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
+      const r = await post('admin/enrollment/offer', { auth: login.auth, studentId: b.dataset.trial, email: 'trial-parent@example.invalid', fromMonth: d, minutes: 90, fee: 4500, deliveryMode: 'in_person', subjects: '英語・数学' });
+      if (!r.ok || !r.inviteUrl) return fail();
+      try { localStorage.removeItem('sw2_family'); } catch {}
+      location.href = r.inviteUrl;
     });
     document.addEventListener('click', async e => {
       const b = e.target.closest('[data-login]'); if (!b) return;
