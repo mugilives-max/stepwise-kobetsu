@@ -853,8 +853,10 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 /* 表計算のような罫線つきの表（入塾のお申込み。2026-10-26 本人「エクセルのような表示形式の方が分かりやすい」） */
 .grid-table { width: 100%; border-collapse: collapse; margin: 10px 0 0; }
 .grid-table th, .grid-table td { border: 1px solid #c3ccd5; padding: 8px 10px; text-align: left; vertical-align: top; color: var(--ink); overflow-wrap: anywhere; }
-/* 項目名は語の切れ目（<wbr>）でだけ折り返す */
-.grid-table th { width: 1%; word-break: keep-all; background: #eef2f6; font-size: 14px; font-weight: 600; }
+/* 項目名は 1 行。狭い画面では語のまとまり（span）の間でだけ折り返す */
+.grid-table th { width: 1%; white-space: nowrap; background: #eef2f6; font-size: 14px; font-weight: 600; }
+.grid-table th > span { display: inline-block; white-space: nowrap; }
+@media (max-width: 480px) { .grid-table th { white-space: normal; } }
 .grid-table td { background: var(--white); font-size: 15px; white-space: pre-line; }
 .reg-field input[readonly] { background: #eef2f6; color: var(--ink); }
 .info-table { margin: 6px 0 0; }

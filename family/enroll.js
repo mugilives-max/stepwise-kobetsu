@@ -60,9 +60,9 @@ function steps(i) {
 }
 function condRows(esc, o) {
   const c = o.condition || {};
-  return gridTable(esc, [['開始', jaMonth(o.fromMonth) + 'から'], ['通常の<wbr>基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`], ['実施形態', MODE[c.deliveryMode] || ''], ['科目', c.subjects || ''], ['特記事項', c.note || '']]);
+  return gridTable(esc, [['開始', jaMonth(o.fromMonth) + 'から'], ['通常の|基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`], ['実施形態', MODE[c.deliveryMode] || ''], ['科目', c.subjects || ''], ['特記事項', c.note || '']]);
 }
-const gridTable = (esc, rows) => `<table class="grid-table"><tbody>${rows.filter(([, v]) => v).map(([k, v]) => `<tr><th scope="row">${k}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>`;
+const gridTable = (esc, rows) => `<table class="grid-table"><tbody>${rows.filter(([, v]) => v).map(([k, v]) => `<tr><th scope="row">${k.split('|').map(w => `<span>${w}</span>`).join('')}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>`;
 // 入力済みの項目（メールアドレス。変えるのはアカウントの画面から）
 function fixed(esc, label, value) {
   return `<label style="flex:1 1 140px;min-width:0"><span>${label}</span><input value="${esc(value || '')}" readonly></label>`;
@@ -104,7 +104,7 @@ function confirmPage(ctx, o) {
   const left = unopened(o); if (left.length) agree = false;
   const zip = d.zip.trim().replace(/^(\d{3})(\d{4})$/, '$1-$2');
   return `${steps(1)}<h1>入力内容の確認</h1>${ctx.noticeHtml()}
-    <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div>${gridTable(esc, [['氏名', d.guardianFamilyName + ' ' + d.guardianGivenName], ['ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana], ['保護者<wbr>メールアドレス', data.guardian && data.guardian.email], ['保護者<wbr>電話番号', d.phone], ['住所', '〒' + zip + '\n' + d.address]])}</section>
+    <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div>${gridTable(esc, [['氏名', d.guardianFamilyName + ' ' + d.guardianGivenName], ['ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana], ['保護者|メールアドレス', data.guardian && data.guardian.email], ['保護者|電話番号', d.phone], ['住所', '〒' + zip + '\n' + d.address]])}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>生徒さんの情報</h2></div>${gridTable(esc, [['氏名', d.familyName + ' ' + d.givenName], ['ふりがな', d.familyKana + ' ' + d.givenKana], ['学年', d.grade], ['学校', d.school]])}</section>
     ${docCards(esc, o)}
     <form class="reg-form" data-form="enroll-apply" novalidate>
