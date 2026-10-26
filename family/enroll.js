@@ -59,7 +59,7 @@ function docCards(esc, o) {
   return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書</h2></div>${condRows(esc, o)}
       ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>ご利用規約</h2></div>
-      <p style="margin:6px 0 0">すべてのご家庭に共通の、当塾のきまりです。${data.terms.from ? `${Number(data.terms.from.slice(0, 4))}年${Number(data.terms.from.slice(5, 7))}月${Number(data.terms.from.slice(8, 10))}日から適用されます。` : ''}</p>
+      <p style="margin:6px 0 0">${data.terms.from ? `${Number(data.terms.from.slice(0, 4))}年${Number(data.terms.from.slice(5, 7))}月${Number(data.terms.from.slice(8, 10))}日から適用されます。` : ''}</p>
       ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener">ご利用規約の全文を開く</a></div>` : ''}</section>`;
 }
 function inputPage(ctx, o) {

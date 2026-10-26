@@ -97,9 +97,6 @@ export function termsPage(ctx) {
         <label class="choice"><input type="checkbox" name="mail" checked><span>メールでも知らせる（保護者ページに登録している家族だけ）</span></label>
         <div class="stack"><button class="primary wide"${ctx.dis()}>同意をお願いする</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
-  // 0. 全員共通のきまりであること（家族ごとに違うのは受講条件書と受講合意書）。2026-10-25 本人「受講規約って全員共通のやつじゃないですか。それがもっとわかりやすいといい」
-  h += `<p style="margin:12px 2px 6px">ご利用規約は、<strong>すべての家族に共通</strong>の、塾のきまりです。家族ごとの内容は、受講条件書と受講合意書で決めます。</p>
-    <section class="reg-card" style="margin-top:0">${kv(esc, [['ご利用規約', '全員共通'], ['受講条件書', 'お子さまごと（授業の時間・料金など）'], ['受講合意書', '月ごと（その月の回数と料金）']])}</section>`;
   // 1. 今の版
   if (t.version) {
     const reg = terms.catalogue.find(x => x.version === t.version);
