@@ -2,7 +2,7 @@
 // 台帳に残す書面（個別受講条件書・特別単価合意書・請求書・領収書）を、架空の家族（見本家）で描いて返す。読むだけ。
 // 2026-10-18 本人「雇用契約書と、給与明細的な講師関連の書類も追加して」: 雇用契約書は架空の講師（見本 講師）で、今のひな形から描く。給与明細は画面側（staff/payroll.js）で描く。
 // 請求書の振込先・備考だけは本番の設定を使う（今どう載るかを確かめるため）。
-import { agreementDocHtml } from './agreement-doc-20261016.mjs';
+import { agreementDocHtmlR13 } from './agreement-doc-20261026.mjs';
 import { fail, iso } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { currentTerms } from './terms.mjs';
@@ -26,11 +26,11 @@ export const DOC_TYPES = {
 };
 
 export async function sampleDocHtml(db, type, now) {
-  if(type==='agreement') return agreementDocHtml({sample:true,documentId:'AG-SAMPLE',records:[
-    {studentName:'【テスト】見本 太郎',capturedAt:'2026-10-16T03:00:00.000Z',terms:{url:'https://www.stepwise-education.jp/terms/2026-11-20261015-r9/'},line:{
-      id:'plan_sample_math',version:3,status:'approved',subject:'数学',kind:'通常',startDate:'2026-11-01',endDate:'2026-11-30',count:4,approvedCount:4,minutes:90,fee:4500,
+  if(type==='agreement') return agreementDocHtmlR13({sample:true,documentId:'AG-SAMPLE',records:[
+    {studentName:'【テスト】見本 太郎',capturedAt:'2026-10-27T03:00:00.000Z',terms:{title:'共通規約',url:'https://www.stepwise-education.jp/terms/2026-11-20261026-r13/'},line:{
+      id:'plan_sample_math',version:3,status:'approved',createdAt:'2026-10-27T03:00:00.000Z',subject:'数学',kind:'通常',startDate:'2026-11-01',endDate:'2026-11-30',count:4,approvedCount:4,minutes:90,fee:4500,
       comment:'二次関数の復習と定期テスト対策。学校のワークで理解を確認し、間違えた問題を解き直します。',parts:[{label:'二次関数の復習',count:2},{label:'定期テスト対策',count:2}],
-      instructionType:'regular',conditionId:'condition_sample_v1',termsVersion:'2026-11-20261015-r9',
+      instructionType:'regular',conditionId:'condition_sample_v1',termsVersion:'2026-11-20261026-r13',
       proposedByName:'【テスト】見本 講師',proposedAt:'2026-10-15T03:00:00.000Z',consenterName:'【テスト】見本 花子',consentedAt:'2026-10-16T03:00:00.000Z',approvedVia:'保護者ページ',recordedAt:'2026-10-16T03:00:00.000Z',recordedByName:'【テスト】見本 花子',familyAck:'confirmed'
     }}
   ]});
