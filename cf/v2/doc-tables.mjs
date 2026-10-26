@@ -7,6 +7,7 @@ export const ruleTable = rows => `<table class="rules"><tbody>${rows.map(([k, v]
 export const TABLE_CSS = `
   .key, .rules { width: 100%; border-collapse: collapse; border: 1.5px solid #1e2630; }
   .key { margin-top: 5mm; table-layout: fixed; }
+  h2 + .key { margin-top: 0; }
   .key col.gc { width: 16mm; }
   .key col.kc { width: 44mm; }
   .key th, .key td, .rules th, .rules td { border: 1px solid #aab2bb; padding: 2.4mm 3.5mm; text-align: left; vertical-align: middle; font-size: 14.5px; line-height: 1.5; }

@@ -60,7 +60,7 @@ function steps(i) {
 }
 function condRows(esc, o) {
   const c = o.condition || {};
-  return gridTable(esc, [['適用期間', jaMonth(o.fromMonth) + 'から、条件を変えるまで'], ['通常の|基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`], ['実施形態', MODE[c.deliveryMode] || ''], ['科目', c.subjects || ''], ['特記事項', c.note || '']]);
+  return gridTable(esc, [['適用期間', jaMonth(o.fromMonth) + 'から、条件変更日まで'], ['通常の|基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`], ['実施形態', MODE[c.deliveryMode] || ''], ['科目', c.subjects || ''], ['特記事項', c.note || '']]);
 }
 const gridTable = (esc, rows) => `<table class="grid-table"><tbody>${rows.filter(([, v]) => v).map(([k, v]) => `<tr><th scope="row">${k.split('|').map(w => `<span>${w}</span>`).join('')}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>`;
 // 入力済みの項目（メールアドレス。変えるのはアカウントの画面から）
