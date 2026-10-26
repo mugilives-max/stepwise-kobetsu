@@ -10,13 +10,13 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261025-r10"
+EDITION = "2026-11-20261026-r11"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261025-r10"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261025_R10.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261026-r11"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261026_R11.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "ea6719873df439df51ae9f546b8843b609125f31"
+EXPECTED_SOURCE_BLOB = "93b0d21028793d7eac3dcc0fdb9855e4a673a635"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -135,25 +135,25 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:auto; }
 }
 """
-# r10 (2026-10-25 本人「顧客からしてもわかりやすい名前が良い」→「ご利用規約」、「関係ない情報が多すぎませんか（顧客目線に立っていない）版とか、名前を変えただとか」):
-# r9 から、名前・保護者に見せていた版の行・版の参照だけを変えた版。
-# r9 の本文に決まった置き換えだけをしたものと、今の本文が一字一句同じであることを確かめる（条文・表・例は変わらない）
-PRIOR_COMMIT = "994f6c956127d073c6ee4e9a9c8b29415081db70"
-TERMS_REPLACEMENTS = [('# 受講規約（2026年11月版）', '# ご利用規約'), ('**版：2026年11月版（2026年10月15日改訂・共通の受講条件と特別単価の合意を整理）**  \n**適用開始日：2026年11月1日**', '**2026年11月1日から適用します。**'), ('2026年11月版（適用日 2026年11月1日）', '2026年11月1日から適用'), ('20261015-r9', '20261025-r10')]
-RELATED_REPLACEMENTS = [('**ステップワイズ個別指導／2026年10月15日改訂／2026年11月版受講規約（r9）に対応**', '**ステップワイズ個別指導**'), ('受講規約', 'ご利用規約'), ('20261015-r9', '20261025-r10'), ('（r9）', '（r10）'), ('2026年10月15日改訂', '2026年10月25日改訂')]
+# r11 (2026-10-26 本人「ご利用規約は11月1日から適用って書いてあるし。これじゃ10月の授業できないじゃン」→「新規は契約日から」):
+# r10 から、適用の行（冒頭・第28条第4項・末尾）に「同日より前に新たに入塾する場合は、申込みの日から」を足し、版の参照を r11 にしただけの版。
+# r10 の本文に決まった置き換えだけをしたものと、今の本文が一字一句同じであることを確かめる（ほかの条文・表・例は変わらない）
+PRIOR_COMMIT = "4cda0a99715a7a220dffda155a9594538f9fd2b2"
+TERMS_REPLACEMENTS = [("**2026年11月1日から適用します。**", "**2026年11月1日から適用します（同日より前に新たに入塾する場合は、入塾のお申込みの日から）。**"), ("4. この版は2026年11月1日から適用します。適用日より前に成立した契約と精算は、従前の合意によります。", "4. この版は2026年11月1日から適用します。ただし、同日より前に新たに入塾する場合は、入塾の申込みの日から適用します。適用日より前に成立したその他の契約と精算は、従前の合意によります。"), ("\n2026年11月1日から適用\n", "\n2026年11月1日から適用（同日より前に新たに入塾する場合は、お申込みの日から）\n"), ("20261025-r10", "20261026-r11")]
+RELATED_REPLACEMENTS = [("20261025-r10", "20261026-r11")]
 prior_source = subprocess.check_output(["git","show",PRIOR_COMMIT+":docs/terms-restructure-2026-11/TERMS.md"],text=True)
 expected_source = prior_source
 for old,new in TERMS_REPLACEMENTS:
     assert old in expected_source, old
     expected_source = expected_source.replace(old,new)
-assert expected_source==source, "Unexpected changes besides the name and edition references"
+assert expected_source==source, "Unexpected changes besides the application clause and edition references"
 CLAUSE_PATTERN = r'(<a id="(article-\d+-item-\d+)"></a>\n\n\d+\. )([\s\S]*?)(?=\n\n<a id=|$)'
 def clauses(value):
     return {m[2]:m[3].strip() for m in re.finditer(CLAUSE_PATTERN,value)}
 old_clauses,new_clauses = clauses(prior_source),clauses(source)
 assert len(old_clauses)==151 and set(old_clauses)==set(new_clauses)
 changes={k for k in old_clauses if old_clauses[k]!=new_clauses[k]}
-assert all("20261025-r10" in new_clauses[k] for k in changes) and len(changes)<=1, changes
+assert "article-28-item-4" in changes and all(k=="article-28-item-4" or "20261026-r11" in new_clauses[k] for k in changes) and len(changes)<=2, changes
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
 assert old_tables==new_tables, "Tables changed"
@@ -165,7 +165,7 @@ for link in body.select('a[href^="#article-"]'):
     if label:
         target="article-"+label[1]+("-item-"+label[2] if label[2] else "")
         assert link["href"]=="#"+target,"Reference label differs from anchor"
-waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261025-r10/waiver/"
+waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261026-r11/waiver/"
 assert [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]] == [waiver_url]
 for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.md","TUITION_AGREEMENT.md","WAIVER_GUIDE.md"]:
     before=subprocess.check_output(["git","show",PRIOR_COMMIT+":"+str(SOURCE.parent.relative_to(ROOT)/filename)],text=True)
@@ -185,11 +185,11 @@ index_html = """<!doctype html>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>ご利用規約</h1>
 <p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「受講条件書」、月ごとの授業の内容は「受講合意書」で定めます。</p>
 <h2>ご利用規約（2026年11月1日から適用）</h2>
-<ul><li><a href="2026-11-20261025-r10/">Web版を読む</a></li><li><a href="2026-11-20261025-r10/stepwise-terms-2026-11-20261025-r10.pdf">PDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261026-r11/">Web版を読む</a></li><li><a href="2026-11-20261026-r11/stepwise-terms-2026-11-20261026-r11.pdf">PDFで開く</a></li></ul>
 <h2>書類の様式</h2>
-<ul><li><a href="2026-11-20261025-r10/documents/regular/">受講条件書</a>（<a href="2026-11-20261025-r10/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261025-r10/documents/special/">特別単価合意書</a>（<a href="2026-11-20261025-r10/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261025-r10/documents/agreement/">受講合意書</a>（<a href="2026-11-20261025-r10/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
+<ul><li><a href="2026-11-20261026-r11/documents/regular/">受講条件書</a>（<a href="2026-11-20261026-r11/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r11/documents/special/">特別単価合意書</a>（<a href="2026-11-20261026-r11/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r11/documents/agreement/">受講合意書</a>（<a href="2026-11-20261026-r11/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
 <h2>キャンセル料金の免除申請</h2>
-<ul><li><a href="2026-11-20261025-r10/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261025-r10/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261026-r11/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261026-r11/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
 <p class="note">ご不明な点は、いつものLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
 </body></html>
 """
