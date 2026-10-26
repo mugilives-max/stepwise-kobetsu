@@ -88,7 +88,7 @@ export function termsPage(ctx) {
     if (!picked.length) { termsStep = ''; return termsPage(ctx); }
     const noPage = picked.filter(fm => !fm.hasPassword);
     return h + `<p style="margin-top:12px">次の${picked.length}家族に、「${esc(t.title || t.version)}」への同意をお願いします。</p>
-      <div class="group">${picked.map(fm => `<div class="evrow"><span class="b"><span class="nm">${esc(fm.name)}</span>${fm.hasPassword ? '' : '<small>保護者ページに未登録</small>'}</span></div>`).join('')}</div>
+      <div class="group">${picked.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.name)}</span>${fm.hasPassword ? '' : '<small>保護者ページに未登録</small>'}</span></div>`).join('')}</div>
       <section class="reg-card"><div class="reg-card-head"><h2>お願いするとどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
         <li>選んだ家族の保護者ページに、規約の全文と「同意する」が出ます。</li>
         <li>同意するまで、その家族は次の受講合意書を承認できません（見送りはできます）。</li>
@@ -101,7 +101,7 @@ export function termsPage(ctx) {
   }
   // 0. 全員共通のきまりであること（家族ごとに違うのは受講条件書と受講合意書）。2026-10-25 本人「受講規約って全員共通のやつじゃないですか。それがもっとわかりやすいといい」
   h += `<p style="margin:12px 2px 6px">ご利用規約は、<strong>すべての家族に共通</strong>の、塾のきまりです。家族ごとの内容は、受講条件書と受講合意書で決めます。</p>
-    <div class="group">${[['ご利用規約', '全員共通（この画面）'], ['受講条件書', 'お子さまごと（授業の時間・料金など）'], ['受講合意書', '月ごと（その月の回数と料金）']].map(([k, v]) => `<div class="evrow"><span class="b"><span class="nm">${k}</span><small>${v}</small></span></div>`).join('')}</div>`;
+    <section class="reg-card" style="margin-top:0">${kv(esc, [['ご利用規約', '全員共通'], ['受講条件書', 'お子さまごと（授業の時間・料金など）'], ['受講合意書', '月ごと（その月の回数と料金）']])}</section>`;
   // 1. 今の版
   if (t.version) {
     const reg = terms.catalogue.find(x => x.version === t.version);
@@ -141,7 +141,7 @@ export function termsPage(ctx) {
   h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトのご利用規約</span></span><span class="go" aria-hidden="true">›</span></a></div>`;
   if (terms.history.length) h += `<details style="margin-top:12px"><summary>同意の記録（新しい${terms.history.length}件）</summary><div class="group">` + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(jaDay(x.acceptedAt))}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}・同意者：${esc(x.consenterName || '記録なし')}${x.actorKind === 'staff' ? `（${esc(x.recordedByName || '教室')}が記録）` : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div></details>';
   const openReq = termsFams ? termsFams.filter(fm => state(fm) === 'asked') : [];
-  if (openReq.length) h += `<details style="margin-top:12px"><summary>同意のお願いを取り下げる</summary><p class="small muted">お願いした記録は残ります。</p><div class="group">${openReq.map(fm => `<div class="evrow"><span class="b"><span class="nm">${esc(fm.name)}</span></span><button type="button" class="small-btn" data-action="terms-withdraw" data-id="${esc(fm.id)}"${ctx.dis()}>取り下げる</button></div>`).join('')}</div></details>`;
+  if (openReq.length) h += `<details style="margin-top:12px"><summary>同意のお願いを取り下げる</summary><p class="small muted">お願いした記録は残ります。</p><div class="group">${openReq.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.name)}</span></span><button type="button" class="small-btn" data-action="terms-withdraw" data-id="${esc(fm.id)}"${ctx.dis()}>取り下げる</button></div>`).join('')}</div></details>`;
   return h;
 }
 
