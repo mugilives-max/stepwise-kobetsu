@@ -20,7 +20,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
     ['生徒', [['氏名', esc(name)], ['学年', esc(student.grade || '')]]],
-    ['授業', [['開始', `${esc(monthJa(cond.fromMonth))}から`], ['1回の授業', `${cond.minutes}分`], ['1回の授業料（上限）', `${yen(cond.fee)}<small>（税込）</small>`],
+    ['条件', [['適用期間', `${esc(monthJa(cond.fromMonth))}から、条件を変えるまで`], ['1回の授業', `${cond.minutes}分`], ['1回の授業料（上限）', `${yen(cond.fee)}<small>（税込）</small>`],
       ['科目', esc(cond.subjects || '毎月の受講合意書で決めます')], ['実施形態', `${esc(MODES[cond.deliveryMode] || cond.deliveryMode)}${cond.groupSize ? `<small class="note">${esc(cond.groupSize)}</small>` : ''}`]]],
   ];
   const promises = [
