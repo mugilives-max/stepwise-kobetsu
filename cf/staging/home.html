@@ -10,25 +10,29 @@
   <script>/* iPhone の Chrome: ページ全体を動かすとアドレスバーの高さの分だけ上が隠れて戻らない（2026-10、iOS 26・Chrome 155）。中身の側でスクロールする */if(/CriOS/.test(navigator.userAgent)){document.documentElement.classList.add('crios');window.scrollTo=function(){var b=document.body;return b.scrollTo.apply(b,arguments)};}</script>
   <style>
     .who .todo-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .who [hidden] { display: none; }
   </style>
 </head>
 <body>
-  <!-- 検証環境の入口。2026-10-26 本人「ごちゃごちゃしているので整理して」→ ④ レイアウトに説明させる: 説明文・ログイン情報の文字を外し、押すだけの一覧に -->
-  <main id="app" class="narrow" style="max-width:640px;margin:0 auto;padding:16px">
+  <!-- 検証環境の入口。2026-10-26 本人「ごちゃごちゃしているので整理して」→ ④ レイアウトに説明させる: 説明文・ログイン情報の文字を外し、押すだけの一覧に。
+       同日「上側は普段の画面、下側は手続き」: 普段の画面（代表・講師・保護者・生徒・体験の生徒）と手続き（体験・入塾・雇用） -->
+  <main id="app" class="narrow" style="max-width:640px;margin:0 auto;padding:16px 16px 120px">
     <h1>検証環境</h1>
     <p id="first" class="notice" hidden>架空のデータがまだありません。<button class="primary" type="button" onclick="stagingReset(this)">最初の状態にする</button></p>
-    <h2>ログイン</h2>
+    <h2>普段の画面</h2>
     <div class="group who">
       <button type="button" class="todo-row" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/"><span class="lbl">代表</span><span class="go">›</span></button>
-      <button type="button" class="todo-row" data-login="staff" data-email="teacher-new@example.invalid" data-pass="teacher password 1" data-to="/staff/"><span class="lbl">講師（入職の手続き中）</span><span class="go">›</span></button>
+      <button type="button" class="todo-row" data-login="staff" data-email="teacher@example.invalid" data-pass="teacher password 2" data-to="/staff/"><span class="lbl">講師</span><span class="go">›</span></button>
       <button type="button" class="todo-row" data-login="family" data-email="parent@example.invalid" data-pass="family password 1" data-to="/family/"><span class="lbl">保護者</span><span class="go">›</span></button>
       <a class="todo-row" id="taro" href="#"><span class="lbl">生徒</span><span class="go">›</span></a>
+      <a class="todo-row" id="trial-student" href="#" hidden><span class="lbl">体験の生徒</span><span class="go">›</span></a>
     </div>
-    <div id="flows" hidden>
-      <h2>試す</h2>
-      <div class="group who">
-        <button type="button" class="todo-row" id="trial" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/"><span class="lbl">入塾の手続き（体験生）</span><span class="go">›</span></button>
-      </div>
+    <h2>手続き</h2>
+    <div class="group who">
+      <button type="button" class="todo-row" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#students"><span class="lbl">体験手続き</span><span class="go">›</span></button>
+      <button type="button" class="todo-row" id="trial" hidden data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/"><span class="lbl">入塾手続き</span><span class="go">›</span></button>
+      <button type="button" class="todo-row" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#employment"><span class="lbl">雇用手続き</span><span class="go">›</span></button>
+      <button type="button" class="todo-row" data-login="staff" data-email="teacher-new@example.invalid" data-pass="teacher password 1" data-to="/staff/"><span class="lbl">雇用手続き（新しい講師）</span><span class="go">›</span></button>
     </div>
   </main>
   <script src="/staging-bar.js" defer></script>
@@ -37,7 +41,8 @@
       if (!r.ok) return;
       document.getElementById('first').hidden = r.seeded;
       if (r.links && r.links.taro) document.getElementById('taro').href = r.links.taro;
-      if (r.trial) { document.getElementById('trial').dataset.to = '/staff/#student=' + r.trial; document.getElementById('flows').hidden = false; }
+      if (r.links && r.links.trial) { const t = document.getElementById('trial-student'); t.href = r.links.trial; t.hidden = false; }
+      if (r.trial) { const t = document.getElementById('trial'); t.dataset.to = '/staff/#student=' + r.trial; t.hidden = false; }
     });
     document.addEventListener('click', async e => {
       const b = e.target.closest('[data-login]'); if (!b) return;
