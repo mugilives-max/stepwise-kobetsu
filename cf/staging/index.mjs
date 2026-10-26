@@ -52,7 +52,8 @@ export default {
       const links = {};
       for (const [k, given] of [['taro', '太郎'], ['hana', '花']]) { const code = await kid(given); if (code) links[k] = origin + '/student/?k=' + encodeURIComponent(code); }
       // 入塾の手続きを試す体験生（架空 体験）。入塾したあとは出さない
-      const trial = await env.DB2.prepare("select id from students where familyName = '架空' and givenName = '体験' and trial = 1").first().catch(() => null);
+      const trial = await env.DB2.prepare("select id, linkCode from students where familyName = '架空' and givenName = '体験' and trial = 1").first().catch(() => null);
+      if (trial && trial.linkCode && !trial.linkCode.startsWith('off.')) links.trial = origin + '/student/?k=' + encodeURIComponent(trial.linkCode);
       return json({ ok: true, seeded: Number(n && n.n) > 0, builtAt: snapshot.builtAt, links, trial: trial ? trial.id : '' });
     }
     if (url.pathname.startsWith('/v2/')) {

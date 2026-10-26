@@ -88,6 +88,11 @@ export async function seed({ live = false } = {}) {
   const newcomer = (await h.ok('employment/save', { auth, familyName: '架空', givenName: '新人', email: 'teacher-new@example.invalid', data: {} })).staff;
   await h.ok('employment/invite', { auth, staffId: newcomer.id, confirm: true });
   await h.ok('staff/invite/accept', { token: h.linkFrom(h.mails().at(-1)), password: 'teacher password 1' });
+  // ふだんの講師（勤務中）。花の授業を受け持つ。ログイン: teacher@example.invalid / teacher password 2
+  await h.ok('admin/staff/invite', { auth, familyName: '架空', givenName: '先生', email: 'teacher@example.invalid', roles: ['teacher'] });
+  const teacher = (await h.ok('staff/invite/accept', { token: h.linkFrom(h.mails().at(-1)), password: 'teacher password 2' })).auth;
+  const tid = (await h.ok('staff/me', { auth: teacher })).me.id;
+  h.db2._sqlite.prepare('update lessons set staffId = ? where studentId = ?').run(tid, hana.id);
   // 入塾の流れを試すための架空の体験生（家族は「◯◯さん」・メールなし。生徒の画面の「入塾の案内を送る」から始める）
   h.clock = at('2026-10-12T15:00:00');
   await h.ok('admin/trials/create', { auth, familyName: '架空', givenName: '体験', grade: '中3', school: '架空市立第一中学校', note: '入塾の流れを試す体験生' });
