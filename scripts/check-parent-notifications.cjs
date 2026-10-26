@@ -66,7 +66,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await page.screenshot({path:path.join(out,'02-agreement-mobile.png'),fullPage:true,animations:'disabled'});
   await page.setViewportSize({width:390,height:844});
   await form.getByRole('button',{name:'この内容で承認する',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'PDF保存できます'}).waitFor();
+  await page.getByRole('status').filter({hasText:'の受講合意書を承認しました'}).waitFor();
   assert.equal(row(p.id).status,'approved');assert.equal(row(p2.id).status,'proposed');
   await page.reload();await page.getByText('すべての書類・料金を見る',{exact:false}).waitFor();
   assert.equal(await page.locator('[data-form="plan-approve"]').count(),0);

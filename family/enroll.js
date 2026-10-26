@@ -67,12 +67,10 @@ function inputPage(ctx, o) {
   return `${steps(1)}<h1>${esc(o.student.name)}さんの入塾のお申込み</h1>${ctx.noticeHtml()}
   <form class="reg-form" data-form="enroll-input" novalidate>
     <fieldset class="reg-field"><legend>保護者さまの情報 <span class="req">必須</span></legend>
-      <p class="reg-help">教室からのご連絡と、書類の宛名に使います。</p>
       <div class="row">${field(esc, 'guardianFamilyName', '姓', { ph: '例：山田', auto: 'family-name', max: 30 })}${field(esc, 'guardianGivenName', '名', { ph: '例：花子', auto: 'given-name', max: 30 })}</div>
       <div class="row">${field(esc, 'guardianFamilyKana', 'ふりがな（姓）', { ph: '例：やまだ', max: 30 })}${field(esc, 'guardianGivenKana', 'ふりがな（名）', { ph: '例：はなこ', max: 30 })}</div>
       ${field(esc, 'phone', '電話番号', { type: 'tel', mode: 'tel', auto: 'tel', ph: '例：090-1234-5678', max: 20 })}
-      ${field(esc, 'zip', '郵便番号', { mode: 'numeric', auto: 'postal-code', ph: '例：343-0002', max: 8 })}${field(esc, 'address', '住所', { auto: 'street-address', ph: '例：越谷市〇〇町1-2-3', max: 200 })}
-      <p class="reg-help">メールアドレス（ログイン用）：${esc((data.guardian || {}).email || '')}</p></fieldset>
+      ${field(esc, 'zip', '郵便番号', { mode: 'numeric', auto: 'postal-code', ph: '例：343-0002', max: 8 })}${field(esc, 'address', '住所', { auto: 'street-address', ph: '例：越谷市〇〇町1-2-3', max: 200 })}</fieldset>
     <fieldset class="reg-field${bad(['familyName', 'givenName', 'familyKana', 'givenKana', 'grade'])}"><legend>生徒さんの情報 <span class="req">必須</span></legend>
       <div class="row">${field(esc, 'familyName', '姓', { max: 40 })}${field(esc, 'givenName', '名', { max: 40 })}</div>
       <div class="row">${field(esc, 'familyKana', 'ふりがな（姓）', { max: 40 })}${field(esc, 'givenKana', 'ふりがな（名）', { max: 40 })}</div>
