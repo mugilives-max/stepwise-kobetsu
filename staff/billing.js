@@ -33,51 +33,57 @@ function needPlans(ctx) {
     ctx.call('billing/plans/list', { month: want }).then(r => { if (planMonth !== want) return; plans = r.ok ? r : { month: want, students: [], kinds: [] }; if (!r.ok && !ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); ctx.render(); });
   }
 }
+// 受講合意書（#plans）。2026-10-26 本人「このページが見づらいので整理する必要がある」→ 誰が・いつ・何のために: 代表が月に一度、
+// 生徒ごとの受講合意書を作り・お知らせし・承認を確かめる。入れ子のカードを、家族の枠 → 生徒 → 期間と状態ごとの表 の 2 段にし、同じ状態を何度も出さない
 export function plansPage(ctx) {
   const { esc } = ctx;
   needPlans(ctx);
   let h = `${monthPicker(planMonth, 'pl-month')}${ctx.notice()}`;
   if (plans.loading) return h + '<p class="muted">読み込んでいます…</p>';
-  h += `<p class="small" style="margin:0 0 4px"><button class="small-btn" data-action="pl-copy"${ctx.dis()}>先月と同じ内容で下書きを作る</button></p>`;
+  // 月の状況（受講合意書のない生徒・下書き・承認待ち・承認済み）と、まとめて作る操作
+  const all = plans.students.flatMap(s => s.lines), none = plans.students.filter(s => !s.lines.length).length;
+  const n = st => all.filter(l => l.status === st).length;
+  const sum = [[none, 'なし', 'gray'], [n('draft'), '下書き', 'gray'], [n('proposed'), '承認待ち', 'warn'], [n('approved'), '承認済み', 'ok']].filter(([c]) => c).map(([c, t, cls]) => `<span class="tag ${cls}">${t} ${c}</span>`).join('');
+  h += `<div class="pl-top"><div class="pl-sum">${sum}</div><button class="small-btn" data-action="pl-copy"${ctx.dis()}>先月と同じ内容で下書きを作る</button></div>`;
   const byFamily = {};
   for (const s of plans.students) (byFamily[s.familyId] = byFamily[s.familyId] || []).push(s);
   for (const group of Object.values(byFamily)) {
     const draftLines = group.flatMap(s => s.lines.filter(l => l.status === 'draft')), picked = draftLines.filter(l => !unpicked.has(l.id));
     const asks = group.flatMap(s => s.lines.filter(l => l.status === 'proposed')), last = asks.map(l => l.remindedAt).filter(Boolean).sort().at(-1) || '';
-    h += `<div class="fam-head"><span>${esc(group[0].familyLabel)}</span><span class="row">${draftLines.length ? `<button class="small-btn primary" data-action="pl-send" data-family="${esc(group[0].familyId)}" data-ids="${esc(picked.map(l => l.id).join(','))}"${picked.length ? ctx.dis() : ' disabled'}>${picked.length === draftLines.length ? `下書き ${draftLines.length}件をお知らせ` : `選んだ ${picked.length}件をお知らせ`}</button>` : ''}${asks.length ? remindButton(ctx, group[0].familyId, asks.length, last) : ''}</span></div>`;
+    const send = draftLines.length ? `<button class="small-btn primary" data-action="pl-send" data-family="${esc(group[0].familyId)}" data-ids="${esc(picked.map(l => l.id).join(','))}"${picked.length ? ctx.dis() : ' disabled'}>${picked.length === draftLines.length ? `下書き ${draftLines.length}件をお知らせ` : `選んだ ${picked.length}件をお知らせ`}</button>` : '';
+    h += `<section class="pl-fam"><div class="pl-fam-head"><strong>${esc(group[0].familyLabel)}</strong><span class="pl-acts">${send}${asks.length ? remindButton(ctx, group[0].familyId, asks.length, last) : ''}</span></div>`;
     for (const s of group) h += studentPlans(ctx, s);
+    h += '</section>';
   }
   if (!plans.students.length) h += '<p class="muted">在籍の生徒がいません。</p>';
   h += planSheet(ctx);
   return h;
 }
 function studentPlans(ctx, s) {
-  const { esc } = ctx;
-  let h = `<div class="group"><div class="sub-head"><strong>${esc(s.name)}</strong><small class="muted">通常の基準単価 90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}${s.status === 'paused' ? '・休会' : ''}</small><button class="mini-btn" data-action="pl-add" data-id="${esc(s.id)}" aria-label="${esc(s.name)} の受講合意書を足す"${ctx.dis()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>`;
-  h += `<p class="small"><button type="button" data-action="pl-history" data-student="${esc(s.id)}">過去の版・控えを開く</button></p>`;
+  const { esc } = ctx, base = Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3;
+  let h = `<div class="pl-stu"><div class="pl-stu-head"><strong>${esc(s.name)}</strong>${s.status === 'paused' ? '<span class="tag gray">休会</span>' : ''}${base ? '' : '<span class="tag warn">個別受講条件書なし</span>'}${s.lines.length ? '' : '<span class="tag gray">受講合意書なし</span>'}
+    <span class="grow"></span><button type="button" class="text-btn" data-action="pl-history" data-student="${esc(s.id)}">過去の版</button><button type="button" class="small-btn" data-action="pl-add" data-id="${esc(s.id)}"${ctx.dis()}>＋ 足す</button></div>`;
   if (s.unplanned) h += `<p class="small notice" style="margin:6px 0">受講合意書にない授業 ${s.unplanned}件（このままでは請求できません）</p>`;
-  if (s.lines.length) h += planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('');
-  else h += '<p class="small muted" style="padding:6px 0 10px">この月の受講合意書はまだありません。</p>';
+  h += planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('');
   return h + '</div>';
 }
-// 期間 × 状態のまとまり（承認済みと下書きは別のまとまり）。中は科目ごと。行を押すと今までどおり 1 行の画面（直す・承諾を記録・消す）
+// 期間 × 状態のまとまり（承認済みと下書きは別のまとまり）。見出しに期間・状態・予定額、下に行の表。行を押すと 1 行の画面（直す・承諾を記録・消す）
 function planSetBlock(ctx, s, set) {
   const { esc } = ctx, t = planTotals(set.lines), cls = (LINE_STATUS[set.status] || [])[1] || 'gray';
-  let h = `<div class="pl-set"><div class="pl-set-head"><b>${esc(periodText(set.startDate, set.endDate))}</b><span class="tag ${cls}">${esc(STATUS_LABEL[set.status] || set.status)}</span><small>${esc(formsText(t.forms))}・予定 ${esc(amountText(t))}</small><span class="grow"></span>
-    <button type="button" class="small-btn" data-action="pl-preview" data-key="${esc(set.key)}" aria-label="${esc(s.name)} ${esc(periodText(set.startDate, set.endDate))} ${esc(STATUS_LABEL[set.status] || '')}の受講合意書全体を見る">受講合意書全体を見る</button></div>`;
-  for (const g of subjectGroups(set.lines)) {
-    h += `<div class="pl-subj"><div class="pl-subj-head"><strong>${esc(g.subject)}</strong><small>${esc(formsText(g.forms))}</small><span class="amt">${esc(amountText(g))}</span></div><div class="rows">${g.lines.map(l => lineRow(ctx, s, l)).join('')}</div></div>`;
-  }
-  return h + '</div>';
+  return `<div class="pl-set"><div class="pl-set-head"><b>${esc(periodText(set.startDate, set.endDate))}</b><span class="tag ${cls}">${esc(STATUS_LABEL[set.status] || set.status)}</span><span class="grow"></span><span class="pl-amt">${esc(amountText(t))}</span>
+    <button type="button" class="text-btn" data-action="pl-preview" data-key="${esc(set.key)}" aria-label="${esc(s.name)} ${esc(periodText(set.startDate, set.endDate))} ${esc(STATUS_LABEL[set.status] || '')}の受講合意書を見る">書面を見る</button></div>
+    <div class="pl-lines">${set.lines.map(l => lineRow(ctx, s, l)).join('')}</div></div>`;
 }
 const lineCount = l => l.status === 'approved' && l.approvedCount !== l.count ? `${l.approvedCount}回（お知らせ ${l.count}回）` : `${l.count}回`;
 function lineRow(ctx, s, l) {
-  const { esc } = ctx, [label, cls] = LINE_STATUS[l.status];
+  const { esc } = ctx, parts = partsOf(l), amount = l.status === 'declined' ? 0 : (l.status === 'approved' ? l.approvedCount : l.count) * Number(l.fee || 0);
   // 下書きにはチェック。外した行は「お知らせ」に入れない（あとで送る）
-  const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="お知らせに入れる">` : '';
-  const f = formOf(l.kind), parts = partsOf(l);
-  return (pick ? '<div class="pl-row">' + pick : '') + rowButton(esc, 'pl-line', { id: l.id }, `<span class="tag">${esc(f.form)}</span>${f.detail ? ` <span class="tag gray">${esc(f.detail)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''} ${lineCount(l)} <span class="tag ${cls}">${label}</span>`,
-    `1回 ${l.minutes}分 ${yen(l.fee)}・決定・実施 ${l.assigned}回${l.tentative ? `・調整中 ${l.tentative}回` : ''}${parts.length ? '・' + esc(parts.map(p => `${p.label} ${p.count}回`).join('・')) : ''}${l.familyAck === 'inquiry' ? '・<strong style="color:var(--danger)">保護者から問い合わせ</strong>' : ''}`) + (pick ? '</div>' : '');
+  const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="${esc(l.subject)}をお知らせに入れる">` : '<span class="pl-pick-sp"></span>';
+  const note = [l.assigned || l.tentative ? `決定・実施 ${l.assigned}回${l.tentative ? `・調整中 ${l.tentative}回` : ''}` : '', parts.length ? parts.map(p => `${esc(p.label)} ${p.count}回`).join('・') : ''].filter(Boolean).join('　');
+  return `<div class="pl-r">${pick}<button type="button" class="pl-line" data-action="pl-line" data-id="${esc(l.id)}">
+    <span class="pl-ln-subj"><strong>${esc(l.subject)}</strong>${l.kind && l.kind !== '通常' ? `<span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? '<span class="tag">追加</span>' : ''}${l.familyAck === 'inquiry' ? '<span class="tag danger">問い合わせ</span>' : ''}</span>
+    <span class="pl-n">${lineCount(l)}</span><span class="pl-fee">${l.minutes}分 ${yen(l.fee)}</span><span class="pl-amt">${yen(amount)}</span><span class="go" aria-hidden="true">›</span>
+    ${note ? `<span class="pl-note">${note}</span>` : ''}</button></div>`;
 }
 // 受講合意書の行を押したとき・直す・承諾を記録・足す（下から出る画面）
 function planSheet(ctx) {
