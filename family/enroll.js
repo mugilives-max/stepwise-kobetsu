@@ -2,8 +2,8 @@
 // 1 つの画面で: 保護者さまの情報 → 生徒さんの情報の確認 → 受講条件書・ご利用規約 → 確認 → 「同意して入塾を申し込む」。
 // 入力 → 確認 → 完了 の 3 画面（一般的な申込みの形）。同意者名は入れた保護者の氏名。申し込むとそのまま入塾。
 import { GRADES, normGrade } from '/assets/v2/grade-options.js?v=20261025-layout';
-let data = null, step = 'input', draft = null, agree = false, missing = [];
-export function resetEnroll() { data = null; step = 'input'; draft = null; agree = false; missing = []; }
+let data = null, step = 'input', draft = null, agree = false, missing = [], opened = new Set();
+export function resetEnroll() { data = null; step = 'input'; draft = null; agree = false; missing = []; opened = new Set(); }
 const jaMonth = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const MODE = { in_person: '教室', online: 'オンライン', both: '教室とオンライン' };
@@ -35,6 +35,9 @@ export function enrollTodo(ctx) {
   return ['#enroll', 'file', '#c0392b', '入塾のお申込み', o.map(x => x.student.givenName + 'さん').join('・'), o.length];
 }
 
+// 同意の前に開く全文（受講条件書・ご利用規約）。開くまで「同意します」に印を付けられない（2026-10-26 本人「実際に表示しないと同意できないように」）
+const docsOf = o => [...(o.condition && o.condition.docFileId ? [['cond', '受講条件書']] : []), ...(data.terms.url ? [['terms', 'ご利用規約']] : [])];
+const unopened = o => docsOf(o).filter(([k]) => !opened.has(k)).map(([, t]) => t);
 function initDraft(o) {
   const g = data.guardian || {}, s = o.student;
   draft = { offerId: o.id, guardianFamilyName: g.familyName || '', guardianGivenName: g.givenName || '', guardianFamilyKana: g.familyKana || '', guardianGivenKana: g.givenKana || '', phone: g.phone || '', zip: g.zip || '', address: g.address || '',
@@ -57,7 +60,7 @@ function steps(i) {
 }
 function condRows(esc, o) {
   const c = o.condition || {};
-  return gridTable(esc, [['開始', jaMonth(o.fromMonth) + 'から'], ['通常の基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`], ['実施形態', MODE[c.deliveryMode] || ''], ['科目', c.subjects || ''], ['特記事項', c.note || '']]);
+  return gridTable(esc, [['開始', jaMonth(o.fromMonth) + 'から'], ['通常の<wbr>基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`], ['実施形態', MODE[c.deliveryMode] || ''], ['科目', c.subjects || ''], ['特記事項', c.note || '']]);
 }
 const gridTable = (esc, rows) => `<table class="grid-table"><tbody>${rows.filter(([, v]) => v).map(([k, v]) => `<tr><th scope="row">${k}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>`;
 // 入力済みの項目（メールアドレス。変えるのはアカウントの画面から）
@@ -71,10 +74,10 @@ function field(esc, key, label, opts = {}) {
 // 受講条件書とご利用規約（入力と確認の両方の画面に出す。同意の前に、いつでも全文を開ける）。説明文は置かず、条件の表と全文のボタンだけ
 function docCards(esc, o) {
   return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書の主な条件</h2></div>${condRows(esc, o)}
-      ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
+      ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-doc="cond" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>ご利用規約</h2></div>
       <p style="margin:6px 0 0">${data.terms.from ? `${Number(data.terms.from.slice(0, 4))}年${Number(data.terms.from.slice(5, 7))}月${Number(data.terms.from.slice(8, 10))}日から適用されます。` : ''}</p>
-      ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener">ご利用規約の全文を開く</a></div>` : ''}</section>`;
+      ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener" data-action="enroll-terms">ご利用規約の全文を開く</a></div>` : ''}</section>`;
 }
 function inputPage(ctx, o) {
   const { esc } = ctx, bad = () => '';
@@ -98,13 +101,14 @@ function inputPage(ctx, o) {
 }
 function confirmPage(ctx, o) {
   const { esc } = ctx, d = draft;
+  const left = unopened(o); if (left.length) agree = false;
   const zip = d.zip.trim().replace(/^(\d{3})(\d{4})$/, '$1-$2');
   return `${steps(1)}<h1>入力内容の確認</h1>${ctx.noticeHtml()}
-    <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div>${gridTable(esc, [['氏名', d.guardianFamilyName + ' ' + d.guardianGivenName], ['ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana], ['保護者メールアドレス', data.guardian && data.guardian.email], ['保護者電話番号', d.phone], ['住所', '〒' + zip + ' ' + d.address]])}</section>
+    <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div>${gridTable(esc, [['氏名', d.guardianFamilyName + ' ' + d.guardianGivenName], ['ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana], ['保護者<wbr>メールアドレス', data.guardian && data.guardian.email], ['保護者<wbr>電話番号', d.phone], ['住所', '〒' + zip + '\n' + d.address]])}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>生徒さんの情報</h2></div>${gridTable(esc, [['氏名', d.familyName + ' ' + d.givenName], ['ふりがな', d.familyKana + ' ' + d.givenKana], ['学年', d.grade], ['学校', d.school]])}</section>
     ${docCards(esc, o)}
     <form class="reg-form" data-form="enroll-apply" novalidate>
-      <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}><span>ご利用規約と受講条件書の内容を確認し、同意します<small>同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）</small></span></label>
+      <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}${left.length ? ' disabled' : ''}><span>ご利用規約と受講条件書の内容を確認し、同意します<small>${left.length ? `${left.join('と')}の全文を開くと、印を付けられます` : `同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）`}</small></span></label>
       <div class="row"><button class="primary"${ctx.dis()}>同意して入塾を申し込む</button></div>
       <p class="small"><a href="javascript:void 0" data-action="enroll-back">入力画面に戻って直す</a></p></form>`;
 }
@@ -123,7 +127,7 @@ export function enrollPage(ctx) {
   const o = open()[0];
   if (step === 'done' && draft) { const applied = data.offers.find(x => x.id === draft.offerId); if (applied) return donePage(ctx, applied); }
   if (!o) return `<h1>入塾のお申込み</h1><p class="muted">お申込みをお願いしているものはありません。</p><p><a href="#home">ホームへ</a></p>`;
-  if (!draft || draft.offerId !== o.id) { initDraft(o); step = 'input'; agree = false; missing = []; }
+  if (!draft || draft.offerId !== o.id) { initDraft(o); step = 'input'; agree = false; missing = []; opened = new Set(); }
   return step === 'confirm' ? confirmPage(ctx, o) : inputPage(ctx, o);
 }
 export function enrollInput(ev) {
@@ -143,8 +147,9 @@ export function enrollSubmit(ctx, kind) {
     step = 'confirm'; agree = false; ctx.say(''); ctx.render(); scrollTo(0, 0); return true;
   }
   if (kind !== 'enroll-apply') return false;
-  if (!agree) { ctx.say('ご利用規約と受講条件書を確かめて「同意します」に印を付けてください', 'error'); ctx.render(); return true; }
   const o = open()[0]; if (!o) return true;
+  if (unopened(o).length) { ctx.say(`${unopened(o).join('と')}の全文を開いて確かめてください`, 'error'); ctx.render(); return true; }
+  if (!agree) { ctx.say('ご利用規約と受講条件書を確かめて「同意します」に印を付けてください', 'error'); ctx.render(); return true; }
   const d = draft;
   ctx.run(async () => {
     const r = await ctx.call('family/enrollment/apply', { offerId: o.id, conditionId: o.conditionId, termsVersion: data.terms.version, agree: true,
@@ -155,7 +160,10 @@ export function enrollSubmit(ctx, kind) {
   });
   return true;
 }
-export function enrollClick(ctx, a) {
+export function enrollClick(ctx, a, b) {
+  // 全文を開いたしるし。受講条件書は開く処理を app.js に任せる（false を返す）。ご利用規約はここで開く
+  if (a === 'gr-open' && b && b.dataset.doc) { opened.add(b.dataset.doc); if (step === 'confirm') setTimeout(ctx.render); return false; }
+  if (a === 'enroll-terms') { opened.add('terms'); window.open(b.href, '_blank', 'noopener'); if (step === 'confirm') ctx.render(); return true; }
   if (a !== 'enroll-back') return false;
   step = 'input'; ctx.say(''); ctx.render(); return true;
 }

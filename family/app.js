@@ -1,7 +1,7 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261025-layout';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261025-layout';
-import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261026-stage';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261026-open';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
@@ -404,7 +404,7 @@ app.addEventListener('click', ev => {
   const a = b.dataset.action;
   if (cal && cal.click(a, b)) return render();
   if (gradesClickShared(a, b)) return render();
-  if (enrollClick(ectx(), a)) { ev.preventDefault(); return; }
+  if (enrollClick(ectx(), a, b)) { ev.preventDefault(); return; }
   if (a === 'kid') { kid = b.dataset.id; try { sessionStorage.setItem(KID_KEY, kid); } catch {} ev.preventDefault(); return render(); }
   if (a === 'lesson') { sheetState = { kind: 'lesson', id: b.dataset.id, pick: '', note: '' }; return render(); }
   if (a === 'pick') { captureSheetInputs(); sheetState.pick = b.dataset.c; return render(); }

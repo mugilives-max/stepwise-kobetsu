@@ -84,6 +84,13 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await parent.getByRole('button',{name:'受講条件書の全文を開く',exact:true}).waitFor(); // 同意の前に全文を開ける（確認の画面にも）
   await parent.getByRole('link',{name:'ご利用規約の全文を開く',exact:true}).waitFor();
   assert.equal(h.rows('select count(*) n from termsConsents')[0].n,0,'確認の画面ではまだ何も記録しない');
+  // 同意は全文を開いてから（開くまで印を付けられない）
+  assert.equal(await parent.locator('[data-form="enroll-apply"] input[name="agree"]').isDisabled(),true,'全文を開くまで同意の印は付けられない');
+  await parent.locator('[data-form="enroll-apply"] button.primary').click();
+  await parent.getByText('受講条件書とご利用規約の全文を開いて確かめてください',{exact:true}).waitFor();
+  for(const name of ['受講条件書の全文を開く','ご利用規約の全文を開く']){const [doc]=await Promise.all([parent.context().waitForEvent('page'),parent.getByText(name,{exact:true}).click()]);await doc.close();}
+  report.externalRequests=report.externalRequests.filter(u=>u!=='https://example.invalid'); // ご利用規約の全文（このテストの架空の URL）を開いた分
+  assert.equal(await parent.locator('[data-form="enroll-apply"] input[name="agree"]').isDisabled(),false,'両方を開いたら印を付けられる');
   await parent.locator('[data-form="enroll-apply"] button.primary').click();
   await parent.getByText('「同意します」に印を付けてください',{exact:false}).waitFor();
   await parent.locator('[data-form="enroll-apply"] input[name="agree"]').check();
