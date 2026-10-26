@@ -1,6 +1,6 @@
 // 個別受講条件書の書面・r6（2026-10-19 本人「分量が多いし、パッと見て何が重要なのか分からない。細かい文章も意識して読まないと入ってこない。文字の色も薄い」）。
 // 条件・料金・約束の中身は r5 と同じ。読む人の目線で、だれ宛て・だれが出したか → 授業の条件（大きく）→ そのほかの約束（短い文）→ 同意、の順に並べ直した。
-// 条文の番号は本文から外し、「ご利用共通規約（版）に基づきます」とまとめて示す。内部の番号（条件 ID）や担当者は出さない。
+// 条文の番号は本文から外し、「共通規約（版）に基づきます」とまとめて示す。内部の番号（条件 ID）や担当者は出さない。
 import { keyTable, ruleTable, TABLE_CSS } from './doc-tables.mjs';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const jst = t => { if (!t) return ''; const d = new Date(Date.parse(t) + 9 * 3600e3); return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日`; };
@@ -16,7 +16,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
   const name = `${student.familyName} ${student.givenName}`.trim();
   const guardian = family.guardianName || '';
   const to = guardian ? `${esc(guardian)} 様` : `${esc(name)}さんの保護者さま`;
-  const termsTitle = (terms && terms.title) || 'ご利用共通規約';
+  const termsTitle = (terms && terms.title) || '共通規約';
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
     ['生徒', [['氏名', esc(name)], ['学年', esc(student.grade || '')]]],
@@ -33,7 +33,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
   ];
   if (cond.note) promises.push(['特記事項', esc(cond.note).replace(/\n/g, '<br>')]);
   const consent = final
-    ? `<div class="consent ok"><div class="ct">保護者の同意</div><div><strong>${esc(cond.consenterName || '')} 様</strong>（保護者）　${esc(jstMin(cond.agreedAt))}　${esc(cond.agreedVia || '')}${cond.agreedBy && cond.agreedBy.startsWith('staff:') ? '（書面・LINE などでいただいた同意を、塾が記録）' : ''}<br>生徒の受講について契約する権限を持つ保護者として、この条件とご利用共通規約に同意いただきました。</div></div>`
+    ? `<div class="consent ok"><div class="ct">保護者の同意</div><div><strong>${esc(cond.consenterName || '')} 様</strong>（保護者）　${esc(jstMin(cond.agreedAt))}　${esc(cond.agreedVia || '')}${cond.agreedBy && cond.agreedBy.startsWith('staff:') ? '（書面・LINE などでいただいた同意を、塾が記録）' : ''}<br>生徒の受講について契約する権限を持つ保護者として、この条件と共通規約に同意いただきました。</div></div>`
     : `<div class="consent"><div class="ct">保護者の同意</div><div>まだ同意いただいていません。保護者ページで内容をご確認のうえ、同意してください。</div></div>`;
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex">

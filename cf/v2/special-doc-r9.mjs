@@ -16,11 +16,11 @@ export function specialDocR9({ sp, student, family, terms }) {
   const name = `${student.familyName} ${student.givenName}`.trim();
   const guardian = family.guardianName || '';
   const to = guardian ? `${esc(guardian)} 様` : `${esc(name)}さんの保護者さま`;
-  const termsTitle = (terms && terms.title) || 'ご利用共通規約';
+  const termsTitle = (terms && terms.title) || '共通規約';
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
     ['生徒', [['氏名', esc(name)], ['学年', esc(student.grade || '')]]],
-    ['指導', [['名称', `${esc(sp.title)}`], ['対象期間', `${esc(ymd(sp.fromDate))} 〜 ${esc(ymd(sp.toDate))}`], ['1回の授業', `${sp.minutes}分`], ['1回の授業料（上限）', `${yen(sp.fee)}<small>（税込）</small>`]]],
+    ['指導', [['名称', `${esc(sp.title)}<small class="note">受講合意書では、授業の種類「${esc(sp.title)}」として示します</small>`], ['対象期間', `${esc(ymd(sp.fromDate))} 〜 ${esc(ymd(sp.toDate))}`], ['1回の授業', `${sp.minutes}分`], ['1回の授業料（上限）', `${yen(sp.fee)}<small>（税込）</small>`]]],
   ];
   const detail = [
     ['指導の目的', br(sp.purpose)],
@@ -30,10 +30,10 @@ export function specialDocR9({ sp, student, family, terms }) {
   ];
   if (sp.note) detail.push(['特記事項', br(sp.note)]);
   const promises = [
-    ['授業料', `毎月の「受講合意書」で、回数と料金をお知らせします。この指導の1回の授業料は、上の金額までです。授業の時間が違うときは、時間に合わせて計算します。受講合意書では、授業の種類「${esc(sp.title)}」として示します。`],
-    ['承認がないとき', '承認をいただくまで、この単価は使いません。'],
-    ['変えるとき', '期間を延ばす・内容や単価を変えるときは、新しい版をお送りし、承認をいただいてから変えます。'],
-    ['ほかの条件', 'お支払い・教材などは、個別受講条件書のとおりです。'],
+    // 授業料の行は外し、受講合意書での示し方は「名称」に添える（2026-10-26 個別受講条件書にそろえる）
+    ['承認前', '承認をいただくまで、この単価は使いません。'],
+    ['条件変更', '期間を延ばす・内容や単価を変えるときは、新しい版をお送りし、承認をいただいてから変えます。'],
+    ['その他', 'お支払い・教材などは、個別受講条件書のとおりです。'],
   ];
   const consent = final
     ? `<div class="consent ok"><div class="ct">保護者の承認</div><div><strong>${esc(sp.consenterName || '')} 様</strong>（保護者）　${esc(jstMin(sp.agreedAt))}　${esc(sp.agreedVia || '')}${sp.agreedBy && sp.agreedBy.startsWith('staff:') ? '（書面・LINE などでいただいた承認を、塾が記録）' : ''}<br>生徒の受講について契約する権限を持つ保護者として、この特別単価を承認いただきました。</div></div>`
@@ -73,7 +73,7 @@ export function specialDocR9({ sp, student, family, terms }) {
   ${keyTable(key)}
   <h2>指導の内容</h2>
   ${ruleTable(detail)}
-  <h2>そのほかの約束</h2>
+  <h2>取り決め</h2>
   ${ruleTable(promises)}
   <p class="terms">この単価は「${esc(termsTitle)}」に基づきます。ここにないことは、規約のとおりです。${termsUrl ? `<br>規約の全文：<span class="url">${esc(termsUrl)}</span>` : ''}</p>
   ${consent}

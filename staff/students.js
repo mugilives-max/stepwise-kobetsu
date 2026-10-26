@@ -141,7 +141,7 @@ function basic(ctx, x) {
   const { esc } = ctx, b = x.basic, s = x.student;
   const row = (k, v) => v ? `<div class="ev"><span class="t" style="font-weight:400">${k}</span><span class="b" style="color:var(--ink)">${esc(v)}</span><span></span></div>` : '';
   const trialBox = s.trial ? `<div class="notice" style="margin-top:12px"><strong>体験生</strong>（授業は無料）・<a href="#student=${encodeURIComponent(s.id)}/summary">入塾の手続き</a>
-    <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">ご利用共通規約・個別受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
+    <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">共通規約・個別受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
   return trialBox + `<h2>生徒</h2><div class="rows">${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('通常の基準単価', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('個別受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}</div>
     <h2>家族</h2><div class="rows">${row('家族', b.familyName)}${row('保護者', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</div>
     <h2>その人の目で見る</h2>
@@ -175,7 +175,7 @@ function offerForm(ctx, x, again) {
       <div class="cond-sub">実施形態</div>
       <div class="choices" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${Object.entries(MODE).map(([k, l]) => `<label class="choice"><input type="radio" name="deliveryMode" value="${k}"${mode === k ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
       <div class="cond-sub">科目</div>${subjectFields(esc, d ? d.subjects || '' : (cond && cond.subjects) || b.subjects || '')}</fieldset>
-    ${ready ? '' : '<p class="notice error" style="margin:0">ご利用共通規約をまだ使い始めていません。先に <a href="#terms">設定 → ご利用共通規約</a> で使い始めてください。</p>'}
+    ${ready ? '' : '<p class="notice error" style="margin:0">共通規約をまだ使い始めていません。先に <a href="#terms">設定 → 共通規約</a> で使い始めてください。</p>'}
     <div class="row"><button class="primary"${ready ? ctx.dis() : ' disabled'}>${again ? 'この条件で送り直す' : '入塾の案内を送る'}</button></div>
     <p class="small muted" style="margin:0">送ると保護者にメールが届きます。保護者が申し込むと、そのまま入塾になります。</p></form>`;
 }
@@ -187,7 +187,7 @@ function enrollCard(ctx, x) {
     if (Date.parse(o.appliedAt) < Date.parse(x.today) - 30 * 86400e3) return '';
     const a = o.application || {};
     return `<section class="reg-card"><div class="reg-card-head"><h2>入塾しました</h2></div>${enrollSteps(4)}
-      <dl class="info-table">${row('申込みの日', jaAt(o.appliedAt))}${row('保護者', (a.guardian && a.guardian.name) || o.consenterName)}${a.guardian ? row('電話', a.guardian.phone) + row('住所', a.guardian.address) : ''}${row('入塾日', a.enrolledOn || '')}${row('同意', 'ご利用共通規約・個別受講条件書')}</dl>
+      <dl class="info-table">${row('申込みの日', jaAt(o.appliedAt))}${row('保護者', (a.guardian && a.guardian.name) || o.consenterName)}${a.guardian ? row('電話', a.guardian.phone) + row('住所', a.guardian.address) : ''}${row('入塾日', a.enrolledOn || '')}${row('同意', '共通規約・個別受講条件書')}</dl>
       <div class="row" style="margin-top:8px"><a class="small-btn primary" href="#plans">${esc(jaMonth(o.fromMonth))}の計画を作る</a></div></section>`;
   }
   if (!s.trial) return '';
