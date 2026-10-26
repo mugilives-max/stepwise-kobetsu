@@ -54,7 +54,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await owner.locator(f+' button.primary').click();
   await owner.getByRole('heading',{name:'保護者の申込みを待っています',exact:true}).waitFor();
   assert.equal(h.mails().length,mails+1,'招待のメールが 1 通');
-  const invite=(await owner.locator('p.copy').first().innerText()).trim();
+  const invite=await owner.locator('button[data-action="copy"]').getAttribute('data-text');assert.equal(await owner.locator('p.copy').count(),0,'リンクの文字は出さず、コピーのボタンだけ');
   assert.ok(invite.includes('/family/#invite='),'メールが届かないときのリンクが出る');
   await owner.screenshot({path:path.join(out,'02-owner-waiting.png'),fullPage:true});
   await owner.goto(origin+'/staff/#students');await owner.getByText('入塾の申込み待ち',{exact:true}).waitFor();
