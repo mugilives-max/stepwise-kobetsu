@@ -84,7 +84,6 @@ export async function proposeCondition(c, me, s, f) {
   const last = await c.db.prepare('select max(no) no from conditions where studentId = ?').bind(s.id).first();
   const no = Number(last && last.no || 0) + 1, id = newId('cd');
   let perms = {}; try { perms = JSON.parse(s.permissions || '{}'); } catch {}
-  perms.reschedule = !!f.studentContact;
   await c.db.batch([
     c.db.prepare("update conditions set status = 'replaced', updatedAt = ? where studentId = ? and status = 'proposed'").bind(now, s.id),
     c.db.prepare('insert into conditions (id, studentId, no, minutes, fee, deliveryMode, groupSize, studentContact, subjects, note, fromMonth, termsVersion, status, proposedAt, proposedBy, createdAt, updatedAt, templateVersion) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')

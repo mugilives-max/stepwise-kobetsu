@@ -209,7 +209,7 @@ const monthJa = m => m ? `${Number(m.slice(0, 4))}年${Number(m.slice(5, 7))}月
 export function conditionCard(x, { busy = false, checked = false, consenterName = '' } = {}) {
   const c = x.latest;
   return `<div class="pcard ask" data-condition="${esc(c.id)}"><div class="pc-head"><strong>${esc(given(x.studentName))}さんの受講条件書（第${c.no}版）</strong><span class="tag warn">同意をお願いします</span></div>
-    <dl class="cond-dl">${condRow('通常の基準単価', `1回 ${c.minutes}分 <strong>${yen(c.fee)}</strong>（税込）`)}${condRow('形式', esc(c.deliveryLabel))}${condRow('人数', esc(c.groupSize))}${condRow('生徒本人からの連絡', c.studentContact ? '前日23時までの無料のお休みは、本人からも連絡できます' : '保護者からお願いします')}${condRow('科目', esc(c.subjects))}${condRow('特記事項', esc(c.note))}${condRow('適用開始', monthJa(c.fromMonth))}</dl>
+    <dl class="cond-dl">${condRow('通常の基準単価', `1回 ${c.minutes}分 <strong>${yen(c.fee)}</strong>（税込）`)}${condRow('実施形態', esc(c.deliveryLabel))}${condRow('人数', esc(c.groupSize))}${condRow('科目', esc(c.subjects))}${condRow('特記事項', esc(c.note))}${condRow('適用開始', monthJa(c.fromMonth))}</dl>
     ${x.agreed ? `<p class="small muted">同意すると、今の第${x.agreed.no}版（1回 ${x.agreed.minutes}分 ${yen(x.agreed.fee)}）は${monthJa(c.fromMonth)}からこの版に置き換わります。</p>` : ''}
     ${c.docFileId ? `<button type="button" class="btn wide" data-action="gr-open" data-id="${esc(c.docFileId)}">${picon('file')} 受講条件書（書面）を開く</button>` : ''}
     ${consenterField(c.id, consenterName)}<label class="agree"><input type="checkbox" data-cond-agree="${esc(c.id)}"${checked ? ' checked' : ''}> 内容を確かめ、この条件に同意します</label>

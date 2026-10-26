@@ -1,7 +1,7 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261025-layout';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261025-layout';
-import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261026-p4';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261026-form';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
@@ -9,7 +9,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261026-p4';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261026-form';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -293,7 +293,8 @@ function moneyPage() {
 }
 function accountPage() {
   if (previewToken) return `<p class="muted">プレビューでは使えません。</p>`;
-  return `<p>${esc(me.name)}（${esc(me.email)}）</p>${money && money.terms ? termsLine(money.terms) : ''}${noticeHtml()}<h2>パスワードを変える</h2><form class="stack" data-form="password"><input type="email" value="${esc(me.email)}" autocomplete="username" hidden>
+  need('sched');
+  return `<p>${esc(me.name)}（${esc(me.email)}）</p>${money && money.terms ? termsLine(money.terms) : ''}${noticeHtml()}${kids().length ? `<h2>生徒さん本人からのお休みの連絡</h2><div class="choices">${kids().map(k => `<label class="choice"><input type="checkbox" data-contact="${esc(k.id)}"${k.studentContact ? ' checked' : ''}${dis()}><span>${esc(k.name)}さん本人から受け付ける</span></label>`).join('')}</div>` : ''}<h2>パスワードを変える</h2><form class="stack" data-form="password"><input type="email" value="${esc(me.email)}" autocomplete="username" hidden>
     <label>今のパスワード<input type="password" name="current" autocomplete="current-password" required></label><label>新しいパスワード（12文字以上）<input type="password" name="next" autocomplete="new-password" minlength="12" required></label>
     <label>もう一度<input type="password" name="confirm" autocomplete="new-password" minlength="12" required></label><button class="primary"${dis()}>変える</button></form><h2>ログアウト</h2><p><button data-action="logout"${dis()}>この端末からログアウト</button></p>`;
 }
@@ -396,7 +397,7 @@ app.addEventListener('submit', ev => {
   });
 });
 app.addEventListener('input', ev => { if (enrollInput(ev)) return; if (ev.target.dataset?.consenter) consentNames[ev.target.dataset.consenter] = ev.target.value; });
-app.addEventListener('change', ev => { if (enrollChange(ev)) return; if (ev.target.id === 'terms-agree') { termsChecked = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.condAgree) { condChecked[ev.target.dataset.condAgree] = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.specialAgree) { specialChecked[ev.target.dataset.specialAgree] = ev.target.checked; return; } const id = ev.target.dataset && ev.target.dataset.planCount; if (id) { planCounts[id] = Number(ev.target.value); render(); } });
+app.addEventListener('change', ev => { if (enrollChange(ev)) return; if (ev.target.dataset && ev.target.dataset.contact) { const id = ev.target.dataset.contact, allow = ev.target.checked; run(async () => { const r = await call('family/students/contact', { studentId: id, allow }, store.get()); if (!r.ok) return failed(r); const k = kids().find(x => x.id === id); if (k) k.studentContact = allow; say(allow ? '生徒さん本人からも受け付けます' : '保護者からの連絡だけにしました', 'ok'); }); return; } if (ev.target.id === 'terms-agree') { termsChecked = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.condAgree) { condChecked[ev.target.dataset.condAgree] = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.specialAgree) { specialChecked[ev.target.dataset.specialAgree] = ev.target.checked; return; } const id = ev.target.dataset && ev.target.dataset.planCount; if (id) { planCounts[id] = Number(ev.target.value); render(); } });
 app.addEventListener('click', ev => {
   const b = ev.target.closest('[data-action]'); if (!b) return;
   const a = b.dataset.action;

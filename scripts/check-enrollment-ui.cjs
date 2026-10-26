@@ -48,7 +48,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await h.ok('admin/terms/set',{auth,version:'2026-11-r9',title:'受講規約（2026年11月版）',url:'https://example.invalid/terms',from:'2026-11-01'});
   await owner.reload();
   const f='[data-form="enroll-offer"]';
-  await owner.fill(f+' input[name="email"]','enroll-ui@example.invalid');assert.equal(await owner.locator(f+' input[name="fee"]').inputValue(),'4500','基準単価は 4,500円 から');assert.equal(await owner.locator(f+' input[name="fromMonth"]').inputValue(),'2026-10','開始は今月から');await owner.fill(f+' input[name="subjects"]','英語・数学');
+  await owner.fill(f+' input[name="email"]','enroll-ui@example.invalid');assert.equal(await owner.locator(f+' input[name="fee"]').inputValue(),'4500','基準単価は 4,500円 から');assert.equal(await owner.locator(f+' input[name="fromMonth"]').inputValue(),'2026-10','開始は今月から');await owner.locator(f+' input[name="subjects"][value="英語"]').check();await owner.locator(f+' input[name="subjects"][value="数学"]').check();await owner.getByText('実施形態',{exact:true}).waitFor();assert.equal(await owner.locator(f+' input[name="studentContact"]').count(),0,'お休みの連絡は保護者が決める');
   await owner.screenshot({path:path.join(out,'01-owner-offer.png'),fullPage:true});
   const mails=h.mails().length;
   await owner.locator(f+' button.primary').click();
