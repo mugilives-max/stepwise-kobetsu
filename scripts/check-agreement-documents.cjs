@@ -72,6 +72,7 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
   await page.screenshot({path:path.join(out,'family.png'),fullPage:true});
   report.checks.push('family approved and archive documents, mobile width');
   await page.goto(origin+'/staff/#plans');
+  await page.locator('button[data-action="pl-student"]').first().click(); // 生徒を押すと、その月の受講合意書
   await page.getByRole('button',{name:/の受講合意書を見る/}).first().click();
   const staffPopup=page.waitForEvent('popup');await page.getByRole('button',{name:'印刷・PDF保存',exact:true}).click();
   const staffDoc=await staffPopup;await staffDoc.getByRole('heading',{name:'受講合意書の控え',exact:true}).waitFor();await staffDoc.close();
