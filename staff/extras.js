@@ -77,7 +77,7 @@ export function termsPage(ctx) {
         <li>これから作る受講条件書・特別単価合意書は、この規約によります。</li>
         <li>新しく入塾する家族は、申込みのときにこの規約に同意します。</li>
         <li>今通っている家族には、まだ何も出ません。</li>
-        <li>この版の名前・全文・適用日は、あとから変えられません。</li></ul></section>
+        <li>内容を変えるときは、新しい版を作って切り替えます。同意済みの家族には、新しい版にあらためて同意をお願いします（同意するまでは、前の版のままです）。</li></ul></section>
       <form class="reg-form" data-form="terms-decide">
         <label class="choice"><input type="checkbox" name="confirm" required><span>全文を読み、この版を使うことを確かめました</span></label>
         <div class="stack"><button class="primary wide"${ctx.dis()}>${first ? 'この版を使い始める' : 'この版に切り替える'}</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
