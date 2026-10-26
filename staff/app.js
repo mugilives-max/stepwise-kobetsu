@@ -8,7 +8,7 @@ import { call, session, esc } from '/assets/v2/api.js';
 import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261026-kyotsu';
 import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261026-kinds';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261026-p4';
-import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261026-kinds';
+import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261026-kinds2';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261026-kyotsu';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261025-layout';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261026-kinds';
@@ -17,7 +17,7 @@ import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261026-ver';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261026-p4';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261026-p4';
-import { billingPick } from '/staff/billing.js?v=20261026-kinds';
+import { billingPick } from '/staff/billing.js?v=20261026-kinds2';
 
 const store = session('sw2_staff');
 const ROLE_LABEL = { teacher: '講師', manager: '教室管理者', sysadmin: 'システム管理者' };

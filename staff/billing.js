@@ -126,7 +126,7 @@ function remindButton(ctx, familyId, n, last) {
 // （2026-10-26 本人「このページってもはや不要」→ 種類は「通常」と特別単価合意書の名称だけ。授業料の上限は個別受講条件書・特別単価合意書で決まる）
 function lineForm(ctx, s, l) {
   const { esc } = ctx, kinds = [...new Set(['通常', ...(s.specials || []).map(x => x.title), ...(s.usedKinds || []), ...(l ? [l.kind] : [])])].map(name => ({ name })); // 直すときは今の種類を勝手に変えない
-  const minutes = l ? l.minutes : 90, fee = l ? l.fee : Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3;
+  const minutes = l ? l.minutes : 90, fee = l ? l.fee : Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3 || ''; // 基準単価がまだない生徒は空欄（0円で作らない）
   const parents = s.lines.filter(x => !x.parentId && x.status !== 'declined' && (!l || x.id !== l.id));
   return `<form class="stack" data-form="pl-save" data-student="${esc(s.id)}"${l ? ` data-id="${esc(l.id)}" data-version="${l.version}"` : ''}>
     ${l && l.status !== 'draft' ? '<p class="small notice">直すと承認が消え、下書きに戻ります。</p>' : ''}
