@@ -72,12 +72,23 @@ function field(esc, key, label, opts = {}) {
   return `<label style="flex:1 1 140px;min-width:0"><span>${label}${opts.req === false ? ' <span class="opt">任意</span>' : ''}</span><input name="${key}" data-enroll="${key}" value="${esc(draft[key] || '')}" ${opts.type ? `type="${opts.type}"` : ''} ${opts.mode ? `inputmode="${opts.mode}"` : ''} ${opts.auto ? `autocomplete="${opts.auto}"` : ''} placeholder="${esc(opts.ph || '')}" maxlength="${opts.max || 60}"${bad ? ' aria-invalid="true"' : ''}></label>`;
 }
 // 受講条件書とご利用規約（入力と確認の両方の画面に出す。同意の前に、いつでも全文を開ける）。説明文は置かず、条件の表と全文のボタンだけ
+const termsFrom = () => data.terms.from ? `${Number(data.terms.from.slice(0, 4))}年${Number(data.terms.from.slice(5, 7))}月${Number(data.terms.from.slice(8, 10))}日から適用` : '';
 function docCards(esc, o) {
-  return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書の主な条件</h2></div>${condRows(esc, o)}
-      ${o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-doc="cond" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>
+  return `${condCard(esc, o, true)}
     <section class="reg-card"><div class="reg-card-head"><h2>ご利用規約</h2></div>
-      <p style="margin:6px 0 0">${data.terms.from ? `${Number(data.terms.from.slice(0, 4))}年${Number(data.terms.from.slice(5, 7))}月${Number(data.terms.from.slice(8, 10))}日から適用されます。` : ''}</p>
+      <p style="margin:6px 0 0">${termsFrom() ? termsFrom() + 'されます。' : ''}</p>
       ${data.terms.url ? `<div class="row" style="margin-top:6px"><a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener" data-action="enroll-terms">ご利用規約の全文を開く</a></div>` : ''}</section>`;
+}
+function condCard(esc, o, withButton) {
+  return `<section class="reg-card"><div class="reg-card-head"><h2>受講条件書の主な条件</h2></div>${condRows(esc, o)}
+      ${withButton && o.condition && o.condition.docFileId ? `<div class="row" style="margin-top:6px"><button type="button" class="small-btn" data-action="gr-open" data-doc="cond" data-id="${esc(o.condition.docFileId)}">受講条件書の全文を開く</button></div>` : ''}</section>`;
+}
+// 同意の欄: 開く全文をチェック欄のすぐ上に並べ、開いたものに ✓（2026-10-26 本人「何故チェックできないのか理解できない…チェックボックスの近くに」）
+function agreeDocs(esc, o) {
+  const btn = (k, t) => k === 'cond'
+    ? `<button type="button" class="small-btn" data-action="gr-open" data-doc="cond" data-id="${esc(o.condition.docFileId)}" aria-label="${t}の全文を開く">全文を開く</button>`
+    : `<a class="small-btn" href="${esc(data.terms.url)}" target="_blank" rel="noopener" data-action="enroll-terms" aria-label="${t}の全文を開く">全文を開く</a>`;
+  return `<ul class="agree-docs">${docsOf(o).map(([k, t]) => `<li${opened.has(k) ? ' class="done"' : ''}><span class="mk" aria-hidden="true">${opened.has(k) ? '✓' : ''}</span><span class="t">${t}${k === 'terms' && termsFrom() ? `<small>${termsFrom()}</small>` : ''}</span>${btn(k, t)}</li>`).join('')}</ul>`;
 }
 function inputPage(ctx, o) {
   const { esc } = ctx, bad = () => '';
@@ -106,9 +117,10 @@ function confirmPage(ctx, o) {
   return `${steps(1)}<h1>入力内容の確認</h1>${ctx.noticeHtml()}
     <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div>${gridTable(esc, [['氏名', d.guardianFamilyName + ' ' + d.guardianGivenName], ['ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana], ['保護者|メールアドレス', data.guardian && data.guardian.email], ['保護者|電話番号', d.phone], ['住所', '〒' + zip + '\n' + d.address]])}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>生徒さんの情報</h2></div>${gridTable(esc, [['氏名', d.familyName + ' ' + d.givenName], ['ふりがな', d.familyKana + ' ' + d.givenKana], ['学年', d.grade], ['学校', d.school]])}</section>
-    ${docCards(esc, o)}
+    ${condCard(esc, o, false)}
     <form class="reg-form" data-form="enroll-apply" novalidate>
-      <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}${left.length ? ' disabled' : ''}><span>ご利用規約と受講条件書の内容を確認し、同意します<small>${left.length ? `${left.join('と')}の全文を開くと、印を付けられます` : `同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）`}</small></span></label>
+      <section class="reg-card agree-card">${agreeDocs(esc, o)}
+      <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}${left.length ? ' disabled' : ''}><span>ご利用規約と受講条件書の内容を確認し、同意します<small>同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）</small></span></label></section>
       <div class="row"><button class="primary"${ctx.dis()}>同意して入塾を申し込む</button></div>
       <p class="small"><a href="javascript:void 0" data-action="enroll-back">入力画面に戻って直す</a></p></form>`;
 }
