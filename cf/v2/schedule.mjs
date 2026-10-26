@@ -127,7 +127,7 @@ export function askText(name, lessons) {
   let t = `${name}さんの授業の日程の確認をお願いします。\n`;
   if (far.length) t += far.map(lessonLine).join('\n') + `\n${mdText(far[0].confirmBy)}までにご連絡がなければ、この日時で確定します。\n`;
   if (near.length) t += (far.length ? '\n' : '') + near.map(lessonLine).join('\n') + '\n' + (far.length ? '上の授業は' : near.length > 1 ? 'これらの授業は' : 'この授業は') + '日が近いため、ご返事をいただいてから確定します。\n';
-  return t + 'これは授業日時の確認です。科目・回数・料金の承認（受講合意書）とは別です。\n保護者ページの「この日程で大丈夫」を押すか、ご都合の悪い授業をお知らせください。';
+  return t + 'これは授業日時の確認です。科目・回数・料金の承認（受講計画合意書）とは別です。\n保護者ページの「この日程で大丈夫」を押すか、ご都合の悪い授業をお知らせください。';
 }
 // スタッフ（教室管理者）あてのお知らせ
 export async function staffNotice(c, subject, text) {

@@ -2,7 +2,7 @@
 // 「使う規約を決める」と「保護者に同意をお願いする」は別の操作（2026-10-20 本人「決定するのと、同意をお願いするのが同時…気持ち悪い」）。
 // - 使う規約（今の版）は settings に置く（教室管理者が「設定 → 共通規約」で決める）。これから作る書面と、新しく入塾する家族の申込みはこの版による
 // - 決めただけでは、今の家族には何も出ない。代表が家族を選んで同意をお願いすると（admin/terms/request）、その家族の保護者ページに同意のお願いが出る
-// - お願いしている家族は、同意するまで受講合意書を承認できない（billing.mjs）。お願いしていない家族は、規約 第28条のとおり前の約束のまま
+// - お願いしている家族は、同意するまで受講計画合意書を承認できない（billing.mjs）。お願いしていない家族は、規約 第28条のとおり前の約束のまま
 // - 保護者は保護者ページで全文を読んで同意する（family/terms/accept）
 // - 書面や LINE でもらった同意は、教室管理者が記録する（admin/families/terms）
 // - 計画の行には、承認したときの規約の版を残す（billing.mjs）
@@ -118,7 +118,7 @@ export const termsRoutes = {
     await c.db.batch(stmts);
     const held = !(await isLive(c));
     for (const { f, mailed } of done) if (mailed) c.effects.push({ kind: 'mail', to: f.email, name: 'ステップワイズ個別指導', subject: '【ステップワイズ】共通規約への同意のお願い',
-      body: `${f.guardianName ? f.guardianName + ' 様' : '保護者さま'}\n\nステップワイズ個別指導です。「${terms.title}」${terms.from ? `（${Number(terms.from.slice(5, 7))}月${Number(terms.from.slice(8))}日から）` : ''}への同意をお願いいたします。\n${note ? note + '\n' : ''}\n保護者ページで全文をお読みいただき、「同意する」を押してください。同意いただくまで、次の受講合意書は承認できません。\n\n確認する：\n${FAMILY_URL}#money\n\nご不明な点は、いつものLINEまたは mugilives@gmail.com へご連絡ください。`,
+      body: `${f.guardianName ? f.guardianName + ' 様' : '保護者さま'}\n\nステップワイズ個別指導です。「${terms.title}」${terms.from ? `（${Number(terms.from.slice(5, 7))}月${Number(terms.from.slice(8))}日から）` : ''}への同意をお願いいたします。\n${note ? note + '\n' : ''}\n保護者ページで全文をお読みいただき、「同意する」を押してください。同意いただくまで、次の受講計画合意書は承認できません。\n\n確認する：\n${FAMILY_URL}#money\n\nご不明な点は、いつものLINEまたは mugilives@gmail.com へご連絡ください。`,
       replyTo: 'mugilives@gmail.com', notice: null, testOnly: !!f.testOnly, audience: 'family', held });
     await audit(c, 'termsRequested', terms.version, { families: done.map(x => x.f.id), mailed: done.filter(x => x.mailed).length });
     return { requested: done.length, mailed: done.filter(x => x.mailed).length, skipped: ids.length - done.length };

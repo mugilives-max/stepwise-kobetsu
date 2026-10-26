@@ -43,7 +43,7 @@ test('引継ぎの例: 科目ごとに授業・演習の回数、目的ごとの
   const html = planPreviewHtml(sets[0], esc, { schedule: lines.map(l => ({ lineId: l.id, assigned: 1, tentative: 0 })) });
   assert.match(html, /授業 3回／演習 7回/);
   assert.match(html, /31,000円/);
-  assert.match(html, /日程（受講合意書とは別）/);
+  assert.match(html, /日程（受講計画合意書とは別）/);
   assert.match(html, /日時がまだの回数 1回/);
   assert.equal(JSON.stringify(lines), before, 'まとめても元の行は変わらない');
 });

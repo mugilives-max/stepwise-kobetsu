@@ -1,19 +1,19 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261025-layout';
-import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261025-layout';
+import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261026-keikaku';
 // 保護者・生徒の画面で共通に使う部品（作り直し v2）。
 // 考え方（docs/UX_STRUCTURE.md 1）: 一覧は白い枠に 1 件 1 行、操作は押すと下から出る画面で。文字より印で分かるように。
 // - 授業の一覧（日付ごと）と、授業を押したときの画面（変更・お休み・キャンセルの連絡）
 // - 宿題の一覧（左の丸を押して「できた」）
 // - 授業の記録（1 件 1 枚。保護者への一言は目立たせる）
-// - 受講合意書（月ごとに 1 枚。承認は月に 1 回）、請求、キャンセル料
+// - 受講計画合意書（月ごとに 1 枚。承認は月に 1 回）、請求、キャンセル料
 // - テスト・行事
 import { esc } from '/assets/v2/api.js';
 import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261025-layout';
 import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261025-layout';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 import { sheet, ICON } from '/staff/ui.js?v=20261025-layout';
-import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261025-layout';
+import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261026-keikaku';
 
 export const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 export const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
@@ -144,7 +144,7 @@ export function recordCards(records, homework = [], { names = {}, limit = 0 } = 
   }).join('');
 }
 
-// ---- 受講合意書（月ごとに 1 枚） ----
+// ---- 受講計画合意書（月ごとに 1 枚） ----
 const planMonth = l => l.startDate.slice(0, 7);
 const groupByMonth = lines => { const m = new Map(); for (const l of lines) { const k = planMonth(l); if (!m.has(k)) m.set(k, []); m.get(k).push(l); } return [...m.entries()].sort((a, b) => a[0] < b[0] ? 1 : -1); };
 const lineLabel = (l, multi) => `${multi ? `<b>${esc(given(l.studentName))}</b> ` : ''}${esc(l.subject)}${l.kind !== '通常' ? `（${esc(l.kind)}）` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''}${l.comment ? `<small class="muted">${esc(l.comment)}</small>` : ''}`;
@@ -161,7 +161,7 @@ export function planApprovalCard(month, lines, { multi, counts = {}, dis = '', c
   const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span>
       <span class="n"><select name="count-${esc(l.id)}" data-plan-count="${esc(l.id)}" aria-label="回数">${Array.from({ length: l.count - l.minCount + 1 }, (_, i) => l.count - i).map(k => `<option value="${k}"${n(l) === k ? ' selected' : ''}>${k}回</option>`).join('')}${l.minCount === 0 ? `<option value="0"${n(l) === 0 ? ' selected' : ''}>見送る</option>` : ''}</select><small>1回 ${esc(l.minutes)}分・${yen(l.fee)}</small></span>
       <span class="amt">${yen(n(l) * l.fee)}</span></div>${l.minCount ? `<div class="small muted pl-note">決まっている授業 ${l.minCount}回</div>` : ''}`);
-  return `<form class="pcard ask" data-form="plan-approve" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書（案）</strong><span class="tag warn">承認をお願いします</span></div>
+  return `<form class="pcard ask" data-form="plan-approve" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講計画合意書（案）</strong><span class="tag warn">承認をお願いします</span></div>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
     <p class="small muted">承認は、表示した科目・回数・時間・料金の範囲で授業を実施できるようにするものです。予約や授業料の事前購入ではありません。授業日時は別に確認します。</p>
     ${agreementDocumentButtons(lines,{label:'提示された案を印刷・PDF保存'})}
@@ -172,7 +172,7 @@ export function planAckCard(month, lines, { multi, dis = '' }) {
   const via = lines[0].approvedVia, date = lines[0].consentDate;
   const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span><span class="n"><small>${l.approvedCount}回・1回 ${yen(l.fee)}</small></span><span class="amt">${yen(l.approvedCount * l.fee)}</span></div>`);
   const total = lines.reduce((s, l) => s + l.approvedCount * l.fee, 0);
-  return `<div class="pcard ack" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講合意書</strong><span class="tag">確かめてください</span></div>
+  return `<div class="pcard ack" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講計画合意書</strong><span class="tag">確かめてください</span></div>
     <p class="small muted">${esc(via)}でのご承諾・${esc(date)}</p>
     <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
     ${agreementDocumentButtons(lines)}<div class="row"><button class="primary" data-action="plan-ack-month" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"${dis}>この内容で合っています</button><button data-action="plan-inquiry" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"${dis}>違うところがある</button></div></div>`;
@@ -184,15 +184,17 @@ export function planHistory(lines, { multi }) {
   return '<div class="group">' + groups.map(([m, ls]) => {
     const total = ls.reduce((s, l) => s + (l.status === 'approved' ? l.approvedCount * l.fee : 0), 0);
     return `<details class="ph"><summary><span class="b"><b>${monthLabel(m)}</b><small>${ls.map(l => `${multi ? given(l.studentName) + ' ' : ''}${l.subject}${l.status === 'approved' ? ` ${l.approvedCount}回` : '（見送り）'}`).map(esc).join('・')}</small></span><span class="amt">${yen(total)}</span></summary>
-      <div class="pl-list">${planSubjects(ls, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span><span class="n"><small>${l.status === 'approved' ? `${l.approvedCount}回・1回 ${yen(l.fee)}<br>${esc(l.consentDate)}・${esc(l.approvedVia)}${l.familyAck === 'inquiry' ? '・問い合わせ中' : ''}` : '見送り'}</small></span><span class="amt">${l.status === 'approved' ? yen(l.approvedCount * l.fee) : ''}</span></div>`)}</div>${agreementDocumentButtons(ls)}</details>`;
+      <div class="pl-list">${planSubjects(ls, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span><span class="n"><small>${l.status === 'approved' ? `${l.approvedCount}回・1回 ${yen(l.fee)}<br>${esc(l.consentDate)}・${esc(l.approvedVia)}${l.familyAck === 'inquiry' ? '・問い合わせ中' : ''}` : '見送り'}</small></span><span class="amt">${l.status === 'approved' ? yen(l.approvedCount * l.fee) : ''}</span></div>`)}</div>${agreementDocumentButtons(ls)}${(rec => rec.length ? `<p class="small" style="margin:6px 0 0"><button type="button" class="text-btn" data-action="plan-inquiry" data-refs="${esc(JSON.stringify(rec.map(l => ({ id: l.id, version: l.version }))))}" data-month="${esc(m)}">内容が違うときは問い合わせる</button></p>` : '')(ls.filter(l => l.status === 'approved' && l.approvedBy === 'staff' && !l.familyAck))}</details>`;
   }).join('') + '</div>';
 }
+// 2026-10-26 本人「受講合意書の承認と確認で２つ出ていますが意味が分からない」→ 保護者にお願いするのは承認だけ。
+// 塾が記録した承認（LINE など）は確認をお願いせず、決まった計画の一覧に出す（違うときだけ、その月から問い合わせる）
 export function planGroups(plans) {
-  const asks = plans.filter(l => l.status === 'proposed'), acks = plans.filter(l => l.status === 'approved' && l.approvedBy === 'staff' && !l.familyAck);
-  const others = plans.filter(l => !asks.includes(l) && !acks.includes(l));
+  const asks = plans.filter(l => l.status === 'proposed'), acks = [];
+  const others = plans.filter(l => !asks.includes(l));
   return { asks: groupByMonth(asks), acks: groupByMonth(acks), others };
 }
-export const inquirySheet = (month, note, busy) => sheet(esc, `${monthLabel(month)}の受講合意書について`, `<textarea id="inquiry-note" rows="3" maxlength="500" placeholder="例: 英語は 4 回ではなく 3 回で話していました">${esc(note || '')}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-inquiry" data-month="${esc(month)}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '先生に伝える'}</button></div>`, 'close-sheet');
+export const inquirySheet = (month, note, busy) => sheet(esc, `${monthLabel(month)}の受講計画合意書について`, `<textarea id="inquiry-note" rows="3" maxlength="500" placeholder="例: 英語は 4 回ではなく 3 回で話していました">${esc(note || '')}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-inquiry" data-month="${esc(month)}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '先生に伝える'}</button></div>`, 'close-sheet');
 
 // ---- 共通規約（同意が要るとき） ----
 export function termsCard(terms, { busy = false, checked = false, consenterName = '' } = {}) {
@@ -221,7 +223,7 @@ const ymdJa = v => v ? `${Number(v.slice(0, 4))}年${Number(v.slice(5, 7))}月${
 export function specialCard(x, { busy = false, checked = false, consenterName = '' } = {}) {
   return `<div class="pcard ask" data-special="${esc(x.id)}"><div class="pc-head"><strong>${esc(given(x.studentName))}さんの特別単価「${esc(x.title)}」</strong><span class="tag warn">承認をお願いします</span></div>
     <dl class="cond-dl">${condRow('指導の目的', esc(x.purpose))}${condRow('内容と範囲', esc(x.content).replace(/\n/g, '<br>'))}${condRow('通常の授業との違い', esc(x.reason).replace(/\n/g, '<br>'))}${condRow('必要な準備', esc(x.prep))}${condRow('1回の時間と特別の基準単価', `${x.minutes}分 <strong>${yen(x.fee)}</strong>（税込）`)}${condRow('対象期間', `${ymdJa(x.fromDate)} 〜 ${ymdJa(x.toDate)}`)}${condRow('特記事項', esc(x.note))}</dl>
-    <p class="small muted">承認すると、この期間の受講合意書で「${esc(x.title)}」を、この基準単価を上限に提案できるようになります。回数は受講合意書で別に承認します。</p>
+    <p class="small muted">承認すると、この期間の受講計画合意書で「${esc(x.title)}」を、この基準単価を上限に提案できるようになります。回数は受講計画合意書で別に承認します。</p>
     ${x.docFileId ? `<button type="button" class="btn wide" data-action="gr-open" data-id="${esc(x.docFileId)}">${picon('file')} 特別単価合意書（書面）を開く</button>` : ''}
     ${consenterField(x.id, consenterName)}<label class="agree"><input type="checkbox" data-special-agree="${esc(x.id)}"${checked ? ' checked' : ''}> 内容を確かめ、この特別単価と料金を承認します</label>
     <button class="primary wide" data-action="special-agree" data-id="${esc(x.id)}"${busy ? ' disabled' : ''}>承認する</button></div>`;
@@ -312,7 +314,7 @@ export function contractArchive(data) {
   h += details('規約への同意', terms.map(r=>`<div class="pcard"><strong>${esc(r.title || '共通規約')}${r.from ? `（${ymdJa(r.from)}から）` : ''}</strong><p class="small">${evidenceText(r,r.at)}</p>${/^https:\/\//.test(r.url||'') ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">この版の全文</a>` : ''}</div>`));
   h += details('個別受講条件書',cs.map(c=>`<div class="pcard"><strong>${esc(c.studentName)}${c.no > 1 ? `・第${c.no}版` : ''}（${esc(status[c.status]||c.status)}）</strong><p class="small">${esc(c.fromMonth)}から・${c.minutes}分 ${yen(c.fee)}<br>${esc(c.subjects)}・${esc(c.deliveryLabel)}・${esc(c.groupSize)}<br>規約 ${esc(c.termsVersion || '記録なし')}</p><p class="small">${evidenceText(c,c.agreedAt)}</p>${doc(c)}</div>`));
   h += details('特別単価合意書',ss.map(c=>`<div class="pcard"><strong>${esc(c.studentName)}・${esc(c.title)}${c.no > 1 ? ` 第${c.no}版` : ''}（${esc(status[c.status]||c.status)}）</strong><p class="small">${esc(c.fromDate)}〜${esc(c.toDate)}・${c.minutes}分 ${yen(c.fee)}<br>目的：${esc(c.purpose || '記録なし')}<br>規約 ${esc(c.termsVersion || '記録なし')}</p><p class="small">${evidenceText(c,c.agreedAt)}</p>${doc(c)}</div>`));
-  h += details('受講合意書の履歴',(data.plans||[]).map(l=>{
+  h += details('受講計画合意書の履歴',(data.plans||[]).map(l=>{
     const cd=cs.find(c=>c.id===l.conditionId), sp=ss.find(c=>c.id===l.specialId);
     return `<div class="pcard"><strong>${esc(l.studentName)}・${esc(l.subject)} ${esc(l.kind)}（${esc(status[l.status]||l.status)}）</strong><p class="small">第${l.version}版・${esc(l.startDate)}〜${esc(l.endDate)}<br>${l.minutes}分・適用単価 ${yen(l.fee)}（税込）・提案 ${l.count}回${l.approvedCount==null?'':'・承認 '+l.approvedCount+'回'}<br>予定総額 ${yen((l.approvedCount ?? l.count)*l.fee)}<br>指導区分：${l.instructionType==='special'?'特別単価':l.instructionType==='regular'?'通常の単価':'記録なし'}<br>${esc(l.comment || '')}<br>規約 ${esc(l.termsVersion || '記録なし')}<br>個別受講条件書 ${cd?'第'+cd.no+'版':'記録なし'}・特別単価合意書 ${esc(sp?sp.title+' 第'+sp.no+'版':l.instructionType==='regular'?'該当なし':'記録なし')}<br>提案者：${esc(l.proposedByName || '記録なし')}・提案記録：${consentTime(l.proposedAt)}</p><p class="small">${evidenceText(l,l.consentedAt || l.consentDate)}</p>${agreementDocumentButtons([l],{label:'この版を印刷・PDF保存'})}</div>`;
   }));

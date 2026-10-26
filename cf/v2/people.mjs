@@ -63,7 +63,7 @@ async function getFamily(c, id) { const f = await c.db.prepare('select * from fa
 async function getStudent(c, id) { const s = await c.db.prepare('select * from students where id = ?').bind(String(id || '')).first(); if (!s) fail('notFound', '生徒が見つかりません', 404); return s; }
 const sameVersion = (row, b) => { if (Number(b.version) !== Number(row.version)) fail('conflict', 'ほかの操作で変わりました。画面を更新してください', 409); };
 
-const INVITE_MAIL = { subject: '【ステップワイズ】保護者ページの登録', body: url => 'ステップワイズの保護者ページの登録のご案内です。7日以内に次のリンクを開き、パスワードを決めてください。授業の予定・記録・受講合意書・請求をご確認いただけます。\n\n' + url + '\n\n登録は授業内容への同意とは別です。登録後に表示される案内をご確認ください。\n期限切れの場合は、いつものLINEまたは mugilives@gmail.com へ登録リンクの再案内を依頼してください。\n心当たりがない場合は、このメールを破棄してください。' };
+const INVITE_MAIL = { subject: '【ステップワイズ】保護者ページの登録', body: url => 'ステップワイズの保護者ページの登録のご案内です。7日以内に次のリンクを開き、パスワードを決めてください。授業の予定・記録・受講計画合意書・請求をご確認いただけます。\n\n' + url + '\n\n登録は授業内容への同意とは別です。登録後に表示される案内をご確認ください。\n期限切れの場合は、いつものLINEまたは mugilives@gmail.com へ登録リンクの再案内を依頼してください。\n心当たりがない場合は、このメールを破棄してください。' };
 
 export const peopleRoutes = {
   'admin/families/list': async (c, b) => {
