@@ -19,10 +19,8 @@ export function specialDocR9({ sp, student, family, terms }) {
   const termsTitle = (terms && terms.title) || 'ご利用規約';
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
-    [['生徒', `${esc(name)}さん`], ['学年', esc(student.grade || '')]],
-    [['指導の名称', `${esc(sp.title)}`]],
-    [['1回の授業', `${sp.minutes}分`], ['1回の授業料（上限）', `${yen(sp.fee)}<small>（税込）</small>`]],
-    [['対象期間', `${esc(ymd(sp.fromDate))} 〜 ${esc(ymd(sp.toDate))}`]],
+    ['生徒', [['氏名', esc(name)], ['学年', esc(student.grade || '')]]],
+    ['指導', [['名称', `${esc(sp.title)}`], ['対象期間', `${esc(ymd(sp.fromDate))} 〜 ${esc(ymd(sp.toDate))}`], ['1回の授業', `${sp.minutes}分`], ['1回の授業料（上限）', `${yen(sp.fee)}<small>（税込）</small>`]]],
   ];
   const detail = [
     ['指導の目的', br(sp.purpose)],

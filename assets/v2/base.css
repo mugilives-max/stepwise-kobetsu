@@ -854,7 +854,7 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .grid-table { width: 100%; border-collapse: collapse; margin: 10px 0 0; }
 .grid-table th, .grid-table td { border: 1px solid #c3ccd5; padding: 8px 10px; text-align: left; vertical-align: top; color: var(--ink); overflow-wrap: anywhere; }
 /* 項目名は 1 行。狭い画面では語のまとまり（span）の間でだけ折り返す */
-.grid-table th { width: 1%; white-space: nowrap; background: #eef2f6; font-size: 14px; font-weight: 600; }
+.grid-table th { width: 1%; white-space: nowrap; background: #eef2f6; font-size: 14px; font-weight: 600; text-align: center; vertical-align: middle; } /* 項目名はマスの中央 */
 .grid-table th > span { display: inline-block; white-space: nowrap; }
 @media (max-width: 480px) { .grid-table th { white-space: normal; } }
 .grid-table td { background: var(--white); font-size: 15px; white-space: pre-line; }
