@@ -186,17 +186,20 @@ function enrollCard(ctx, x) {
   if (o && o.status === 'applied') {
     if (Date.parse(o.appliedAt) < Date.parse(x.today) - 30 * 86400e3) return '';
     const a = o.application || {};
-    return `<section class="reg-card"><div class="reg-card-head"><h2>入塾しました</h2><span class="tag ok">${jaAt(o.appliedAt)}に申込み</span></div>${enrollSteps(4)}
-      <dl class="info-table">${row('保護者', (a.guardian && a.guardian.name) || o.consenterName)}${a.guardian ? row('電話', a.guardian.phone) + row('住所', a.guardian.address) : ''}${row('入塾日', a.enrolledOn || '')}${row('同意', 'ご利用規約・受講条件書')}</dl>
+    return `<section class="reg-card"><div class="reg-card-head"><h2>入塾しました</h2></div>${enrollSteps(4)}
+      <dl class="info-table">${row('申込みの日', jaAt(o.appliedAt))}${row('保護者', (a.guardian && a.guardian.name) || o.consenterName)}${a.guardian ? row('電話', a.guardian.phone) + row('住所', a.guardian.address) : ''}${row('入塾日', a.enrolledOn || '')}${row('同意', 'ご利用規約・受講条件書')}</dl>
       <div class="row" style="margin-top:8px"><a class="small-btn primary" href="#plans">${esc(jaMonth(o.fromMonth))}の計画を作る</a></div></section>`;
   }
   if (!s.trial) return '';
   if (!o) return `<section class="reg-card"><div class="reg-card-head"><h2>入塾の手続き</h2></div>${enrollSteps(1)}${offerForm(ctx, x, false)}</section>`;
-  const copy = lastInvite && lastInvite.id === o.id && lastInvite.url ? `<button data-action="copy" data-text="${esc(lastInvite.url)}">招待のリンクをコピー（7日間有効）</button>` : '';
-  return `<section class="reg-card"><div class="reg-card-head"><h2>保護者の申込みを待っています</h2><span class="tag warn">${jaAt(o.offeredAt)}に案内</span></div>${enrollSteps(2)}
-    <dl class="info-table">${row('送り先', e.email || '')}</dl>${cond ? condTable(cond) : ''}
-    <div class="row" style="margin-top:12px">${copy}<button data-action="enroll-resend" data-id="${esc(o.id)}"${ctx.dis()}>案内をもう一度送る</button><button data-action="enroll-withdraw" data-id="${esc(o.id)}"${ctx.dis()}>案内を取り消す</button></div>
-    <details style="margin-top:10px"><summary class="small">条件を変えて送り直す</summary>${offerForm(ctx, x, true)}</details></section>`;
+  const act = (k, v, btn) => `<div><dt>${k}</dt><dd class="act"><span>${v}</span>${btn}</dd></div>`;
+  const copy = lastInvite && lastInvite.id === o.id && lastInvite.url ? act('招待のリンク', '7日間有効', `<button class="small-btn" data-action="copy" data-text="${esc(lastInvite.url)}">コピー</button>`) : '';
+  // 2026-10-26 本人「案内した日のような重要な情報は端っこではなく整理して」「同じ見た目のボタンが 3 個並ぶと混乱する」:
+  // ボタンはそれぞれ関係する行の中に。めったに使わず取り消せない「案内を取り消す」はいちばん下に離して
+  return `<section class="reg-card"><div class="reg-card-head"><h2>保護者の申込みを待っています</h2></div>${enrollSteps(2)}
+    <dl class="info-table">${row('案内した日', jaAt(o.offeredAt))}${act('送り先', esc(e.email || ''), `<button class="small-btn" data-action="enroll-resend" data-id="${esc(o.id)}"${ctx.dis()}>もう一度送る</button>`)}${copy}</dl>${cond ? condTable(cond) : ''}
+    <details style="margin-top:12px"><summary class="small">条件を変えて送り直す</summary>${offerForm(ctx, x, true)}</details>
+    <p class="danger-line"><button class="text-btn danger" data-action="enroll-withdraw" data-id="${esc(o.id)}"${ctx.dis()}>案内を取り消す</button></p></section>`;
 }
 async function enrollDone(ctx, r, okText) {
   if (!r.ok) { if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); return; }
