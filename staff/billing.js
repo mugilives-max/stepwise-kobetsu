@@ -62,7 +62,7 @@ export function plansPage(ctx) {
 function studentPlans(ctx, s) {
   const { esc } = ctx, base = Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3;
   let h = `<div class="pl-stu"><div class="pl-stu-head"><strong>${esc(s.name)}</strong>${s.status === 'paused' ? '<span class="tag gray">休会</span>' : ''}${base ? '' : '<span class="tag warn">個別受講条件書なし</span>'}${s.lines.length ? '' : '<span class="tag gray">受講合意書なし</span>'}
-    <span class="grow"></span><button type="button" class="text-btn" data-action="pl-history" data-student="${esc(s.id)}">過去の版</button><button type="button" class="small-btn" data-action="pl-add" data-id="${esc(s.id)}"${ctx.dis()}>＋ 足す</button></div>`;
+    <span class="grow"></span><button type="button" class="text-btn" data-action="pl-history" data-student="${esc(s.id)}" aria-label="${esc(s.name)}の過去の版">過去の版</button><button type="button" class="small-btn" data-action="pl-add" data-id="${esc(s.id)}"${ctx.dis()}>＋ 足す</button></div>`;
   if (s.unplanned) h += `<p class="small notice" style="margin:6px 0">受講合意書にない授業 ${s.unplanned}件（このままでは請求できません）</p>`;
   h += planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('');
   return h + '</div>';
