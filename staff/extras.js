@@ -1,9 +1,9 @@
-// スタッフの画面: 設定の下の「ご利用規約」（#terms）と「送信の記録」（#effects）。教室管理者だけ。
-// ご利用規約: 今の版（版・名前・全文のリンク・適用日・説明）を決める。家族ごとの同意の状態と記録。
+// スタッフの画面: 設定の下の「ご利用共通規約」（#terms）と「送信の記録」（#effects）。教室管理者だけ。
+// ご利用共通規約: 今の版（版・名前・全文のリンク・適用日・説明）を決める。家族ごとの同意の状態と記録。
 // 送信の記録: 送れなかったメール・カレンダー（失敗・止まっているもの）を送り直す・取り下げる。最近送ったものも見える。
 import { sheet, ICON } from '/staff/ui.js?v=20261025-layout';
 
-let termsStep = '', termsFams = null, termsSite = null, termsPick = []; // ご利用規約: '' | 'decide'（使う規約を決める確認）| 'request'（同意をお願いする確認）。termsPick: お願いする家族
+let termsStep = '', termsFams = null, termsSite = null, termsPick = []; // ご利用共通規約: '' | 'decide'（使う規約を決める確認）| 'request'（同意をお願いする確認）。termsPick: お願いする家族
 let terms = null, effects = null, effOpen = 0, backups = null;
 export function resetExtras() { termsStep = ''; termsPick = []; termsFams = null; termsSite = null; terms = null; effects = null; effOpen = 0; backups = null; }
 export function leaveExtras() { effOpen = 0; termsStep = ''; }
@@ -14,8 +14,8 @@ const jst = t => t ? new Date(Date.parse(t) + 9 * 3600e3).toISOString().slice(5,
 // 書類の一覧: 種類ごとにまとめ、名前だけ。行を押すと見本（架空の家族（見本家）で作った書面）が新しいタブに開く
 const DOC_GROUPS = [
   ['契約の書類', '#2f6fde', [
-    ['terms', 'ご利用規約'],
-    ['condition', '受講条件書'],
+    ['terms', 'ご利用共通規約'],
+    ['condition', '個別受講条件書'],
     ['special', '特別単価合意書'],
     ['agreement', '受講合意書'],
   ]],
@@ -46,8 +46,8 @@ export function docsPage(ctx) {
   return h;
 }
 
-// ---- ご利用規約 ----
-// ご利用規約（設定 → ご利用規約）。2026-10-18 作り直し、2026-10-20 本人「決定するのと、同意をお願いするのが同時…気持ち悪い」→ 2 つに分けた:
+// ---- ご利用共通規約 ----
+// ご利用共通規約（設定 → ご利用共通規約）。2026-10-18 作り直し、2026-10-20 本人「決定するのと、同意をお願いするのが同時…気持ち悪い」→ 2 つに分けた:
 // 1. 使う規約（サイトの正式版 terms/versions.json から「この規約に決める」→ 確認 → 決める）。決めただけでは今の家族に何も出ない
 // 2. 保護者への同意のお願い（家族を選ぶ → 確認（一言・メール）→ お願いする）。家族ごとに 同意済み／お願い中／まだ。版の名前や URL を手で打たない
 // 日付だけ（YYYY-MM-DD）はそのまま、日時（ISO）は日本の日付にする
@@ -74,7 +74,7 @@ export function termsPage(ctx) {
     const first = !t.version;
     return h + `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>${kv(esc, [['適用日', esc(jaDay(latest.from))], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}</section>
       <section class="reg-card"><div class="reg-card-head"><h2>${first ? '使い始める' : '切り替える'}とどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
-        <li>これから作る受講条件書・特別単価合意書は、この規約によります。</li>
+        <li>これから作る個別受講条件書・特別単価合意書は、この規約によります。</li>
         <li>新しく入塾する家族は、申込みのときにこの規約に同意します。</li>
         <li>今通っている家族には、まだ何も出ません。</li>
         <li>内容を変えるときは、新しい版を作って切り替えます。同意済みの家族には、新しい版にあらためて同意をお願いします（同意するまでは、前の版のままです）。</li></ul></section>
@@ -133,7 +133,7 @@ export function termsPage(ctx) {
     }
   }
   // 3. めったに使わないもの
-  h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトのご利用規約</span></span><span class="go" aria-hidden="true">›</span></a></div>`;
+  h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトのご利用共通規約</span></span><span class="go" aria-hidden="true">›</span></a></div>`;
   if (terms.history.length) h += `<details style="margin-top:12px"><summary>同意の記録（新しい${terms.history.length}件）</summary><div class="group">` + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(jaDay(x.acceptedAt))}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}・同意者：${esc(x.consenterName || '記録なし')}${x.actorKind === 'staff' ? `（${esc(x.recordedByName || '教室')}が記録）` : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div></details>';
   const openReq = termsFams ? termsFams.filter(fm => state(fm) === 'asked') : [];
   if (openReq.length) h += `<details style="margin-top:12px"><summary>同意のお願いを取り下げる</summary><p class="small muted">お願いした記録は残ります。</p><div class="group">${openReq.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.name)}</span></span><button type="button" class="small-btn" data-action="terms-withdraw" data-id="${esc(fm.id)}"${ctx.dis()}>取り下げる</button></div>`).join('')}</div></details>`;

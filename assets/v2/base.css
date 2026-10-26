@@ -845,7 +845,7 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .reg-field:has(input[name="delivery"][value="paper"]:checked) .dl-mail, .reg-field:not(:has(input[name="delivery"]:checked)) .dl-mail { display: none; }
 
 /* 入塾の手続き（2026-10-26 本人「受講条件に記載する内容というのが分かるまとまり」「どこが登録されている情報で項目なのか分からない」）:
-   受講条件書に載る内容は 1 つの枠に。登録した内容は、項目名と中身を左右に並べる表で、文字は濃く */
+   個別受講条件書に載る内容は 1 つの枠に。登録した内容は、項目名と中身を左右に並べる表で、文字は濃く */
 .cond-box { border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px 14px; background: var(--paper); }
 .cond-box > legend { padding: 0 6px; margin: 0 0 4px -6px; }
 .cond-sub { font-size: 14px; font-weight: 700; color: var(--ink); margin-top: 6px; }

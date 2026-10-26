@@ -1,5 +1,5 @@
 'use strict';
-// 生徒本人からのお休み・変更の連絡を受け付けるかは、保護者ページのアカウントで保護者が決める（2026-10-26 本人）。受講条件書では変えない
+// 生徒本人からのお休み・変更の連絡を受け付けるかは、保護者ページのアカウントで保護者が決める（2026-10-26 本人）。個別受講条件書では変えない
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createV2 } = require('./helpers/v2-harness.cjs');
@@ -20,7 +20,7 @@ test('parents switch whether the student may send absence requests; conditions d
   assert.equal((await h.call('family/students/contact', { auth: parent, studentId: otherKid.id, allow: false })).error.code, 'notFound', 'ほかの家族の生徒は変えられない');
   assert.equal((await h.call('family/students/contact', { auth: parent, studentId: kid.id, allow: 'yes' })).error.code, 'badValue');
   await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', studentContact: true, subjects: '数学', fromMonth: '2026-11' });
-  assert.equal(await contact(), false, '受講条件書を作っても、保護者の設定は変わらない');
+  assert.equal(await contact(), false, '個別受講条件書を作っても、保護者の設定は変わらない');
   await h.ok('family/students/contact', { auth: parent, studentId: kid.id, allow: true });
   assert.equal(await contact(), true);
 });

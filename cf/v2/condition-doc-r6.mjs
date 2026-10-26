@@ -1,6 +1,6 @@
-// 受講条件書の書面・r6（2026-10-19 本人「分量が多いし、パッと見て何が重要なのか分からない。細かい文章も意識して読まないと入ってこない。文字の色も薄い」）。
+// 個別受講条件書の書面・r6（2026-10-19 本人「分量が多いし、パッと見て何が重要なのか分からない。細かい文章も意識して読まないと入ってこない。文字の色も薄い」）。
 // 条件・料金・約束の中身は r5 と同じ。読む人の目線で、だれ宛て・だれが出したか → 授業の条件（大きく）→ そのほかの約束（短い文）→ 同意、の順に並べ直した。
-// 条文の番号は本文から外し、「ご利用規約（版）に基づきます」とまとめて示す。内部の番号（条件 ID）や担当者は出さない。
+// 条文の番号は本文から外し、「ご利用共通規約（版）に基づきます」とまとめて示す。内部の番号（条件 ID）や担当者は出さない。
 import { keyTable, ruleTable, TABLE_CSS } from './doc-tables.mjs';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const jst = t => { if (!t) return ''; const d = new Date(Date.parse(t) + 9 * 3600e3); return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日`; };
@@ -16,7 +16,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
   const name = `${student.familyName} ${student.givenName}`.trim();
   const guardian = family.guardianName || '';
   const to = guardian ? `${esc(guardian)} 様` : `${esc(name)}さんの保護者さま`;
-  const termsTitle = (terms && terms.title) || 'ご利用規約';
+  const termsTitle = (terms && terms.title) || 'ご利用共通規約';
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
     ['生徒', [['氏名', esc(name)], ['学年', esc(student.grade || '')]]],
@@ -33,11 +33,11 @@ export function conditionDocR6({ cond, student, family, terms }) {
   ];
   if (cond.note) promises.push(['特記事項', esc(cond.note).replace(/\n/g, '<br>')]);
   const consent = final
-    ? `<div class="consent ok"><div class="ct">保護者の同意</div><div><strong>${esc(cond.consenterName || '')} 様</strong>（保護者）　${esc(jstMin(cond.agreedAt))}　${esc(cond.agreedVia || '')}${cond.agreedBy && cond.agreedBy.startsWith('staff:') ? '（書面・LINE などでいただいた同意を、塾が記録）' : ''}<br>生徒の受講について契約する権限を持つ保護者として、この条件とご利用規約に同意いただきました。</div></div>`
+    ? `<div class="consent ok"><div class="ct">保護者の同意</div><div><strong>${esc(cond.consenterName || '')} 様</strong>（保護者）　${esc(jstMin(cond.agreedAt))}　${esc(cond.agreedVia || '')}${cond.agreedBy && cond.agreedBy.startsWith('staff:') ? '（書面・LINE などでいただいた同意を、塾が記録）' : ''}<br>生徒の受講について契約する権限を持つ保護者として、この条件とご利用共通規約に同意いただきました。</div></div>`
     : `<div class="consent"><div class="ct">保護者の同意</div><div>まだ同意いただいていません。保護者ページで内容をご確認のうえ、同意してください。</div></div>`;
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex">
-<title>受講条件書 ${verText(cond.no)}${final ? '' : '（案）'} ${esc(name)}</title>
+<title>個別受講条件書 ${verText(cond.no)}${final ? '' : '（案）'} ${esc(name)}</title>
 <style>
   @page { size: A4; margin: 15mm; }
   * { box-sizing: border-box; }
@@ -62,9 +62,9 @@ export function conditionDocR6({ cond, student, family, terms }) {
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; font-size: 11.5px; line-height: 1.55; } h1 { font-size: 21px; } .to { margin-top: 5mm; font-size: 15px; } .lead { margin-top: 4mm; font-size: 12.5px; } .key { margin-top: 4mm; } h2 { margin-top: 5mm; font-size: 13.5px; } .consent { margin-top: 5mm; padding: 3mm; } .issuer { margin-top: 5mm; font-size: 11.5px; } }${TABLE_CSS}
 </style></head>
 <body>
-<div class="bar"><span>受講条件書${[verText(cond.no), final ? '' : '案'].filter(Boolean).length ? '（' + [verText(cond.no), final ? '' : '案'].filter(Boolean).join('・') + '）' : ''}。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
+<div class="bar"><span>個別受講条件書${[verText(cond.no), final ? '' : '案'].filter(Boolean).length ? '（' + [verText(cond.no), final ? '' : '案'].filter(Boolean).join('・') + '）' : ''}。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
 <div class="sheet">
-  <div class="head"><h1>受講条件書${final ? '' : '<span class="draft">案</span>'}</h1><div class="meta">${verText(cond.no) ? verText(cond.no) + '<br>' : ''}提示日 ${esc(jst(cond.proposedAt))}${final ? `<br>同意日 ${esc(jst(cond.agreedAt))}` : ''}</div></div>
+  <div class="head"><h1>個別受講条件書${final ? '' : '<span class="draft">案</span>'}</h1><div class="meta">${verText(cond.no) ? verText(cond.no) + '<br>' : ''}提示日 ${esc(jst(cond.proposedAt))}${final ? `<br>同意日 ${esc(jst(cond.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
   <p class="lead">授業の基本となる条件です。毎月の授業の回数と料金は、別に「受講合意書」でお知らせし、そのつど同意をいただきます。</p>
   <h2>個別の条件</h2>

@@ -1,5 +1,5 @@
-// 特別単価合意書の書面（2026-10-20。ご利用規約 r9 の名称「特別単価合意書」。2026-10-15 本人決定、2026-10-20 本人「名前を変更しないといけない」）。
-// 受講条件書 r6 と同じく、読む人の目線で並べる: だれ宛て・だれから → 大事な条件（大きく）→ 内容 → そのほかの約束 → 保護者の承認。
+// 特別単価合意書の書面（2026-10-20。ご利用共通規約 r9 の名称「特別単価合意書」。2026-10-15 本人決定、2026-10-20 本人「名前を変更しないといけない」）。
+// 個別受講条件書 r6 と同じく、読む人の目線で並べる: だれ宛て・だれから → 大事な条件（大きく）→ 内容 → そのほかの約束 → 保護者の承認。
 // 中身（名称・目的・内容と範囲・理由・準備・時間と単価・期間・特記事項）は r5 と同じ。条文の番号・内部の番号は書面に出さない。
 import { keyTable, ruleTable, TABLE_CSS } from './doc-tables.mjs';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -16,7 +16,7 @@ export function specialDocR9({ sp, student, family, terms }) {
   const name = `${student.familyName} ${student.givenName}`.trim();
   const guardian = family.guardianName || '';
   const to = guardian ? `${esc(guardian)} 様` : `${esc(name)}さんの保護者さま`;
-  const termsTitle = (terms && terms.title) || 'ご利用規約';
+  const termsTitle = (terms && terms.title) || 'ご利用共通規約';
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
     ['生徒', [['氏名', esc(name)], ['学年', esc(student.grade || '')]]],
@@ -33,7 +33,7 @@ export function specialDocR9({ sp, student, family, terms }) {
     ['授業料', `毎月の「受講合意書」で、回数と料金をお知らせします。この指導の1回の授業料は、上の金額までです。授業の時間が違うときは、時間に合わせて計算します。受講合意書では、授業の種類「${esc(sp.title)}」として示します。`],
     ['承認がないとき', '承認をいただくまで、この単価は使いません。'],
     ['変えるとき', '期間を延ばす・内容や単価を変えるときは、新しい版をお送りし、承認をいただいてから変えます。'],
-    ['ほかの条件', 'お支払い・教材などは、受講条件書のとおりです。'],
+    ['ほかの条件', 'お支払い・教材などは、個別受講条件書のとおりです。'],
   ];
   const consent = final
     ? `<div class="consent ok"><div class="ct">保護者の承認</div><div><strong>${esc(sp.consenterName || '')} 様</strong>（保護者）　${esc(jstMin(sp.agreedAt))}　${esc(sp.agreedVia || '')}${sp.agreedBy && sp.agreedBy.startsWith('staff:') ? '（書面・LINE などでいただいた承認を、塾が記録）' : ''}<br>生徒の受講について契約する権限を持つ保護者として、この特別単価を承認いただきました。</div></div>`

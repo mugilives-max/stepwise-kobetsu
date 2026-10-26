@@ -1,6 +1,6 @@
 'use strict';
 // 作り直し（v2）: 入塾の案内と申込み（cf/v2/enrollment.mjs、0032_family_enrollment.sql）。2026-10-18 本人決定。
-// 体験 → 代表の「入塾の案内」→ 保護者のパスワード → 1 画面の申込み（規約・受講条件書の同意つき）→ そのまま入塾 → 計画を承認できる。
+// 体験 → 代表の「入塾の案内」→ 保護者のパスワード → 1 画面の申込み（規約・個別受講条件書の同意つき）→ そのまま入塾 → 計画を承認できる。
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createV2 } = require('./helpers/v2-harness.cjs');
@@ -26,12 +26,12 @@ test('enrollment: offer → password → one application with consents → enrol
   const o = await h.ok('admin/enrollment/offer', { auth, studentId: sid, email: 'enroll@example.invalid', ...COND });
   assert.equal(o.enrollment.status, 'offered');
   assert.ok(o.inviteUrl.includes('/family/#invite='), '招待のリンク（コピーして渡せる）');
-  assert.equal(h.mails().length, mails + 1, 'メールは招待の 1 通だけ（受講条件書の別のお知らせは送らない）');
+  assert.equal(h.mails().length, mails + 1, 'メールは招待の 1 通だけ（個別受講条件書の別のお知らせは送らない）');
   const mail = h.mails().at(-1);
   assert.equal(mail.subject, '【ステップワイズ】入塾のお手続きのご案内');
   assert.doesNotMatch(mail.body, /4,500円/, '料金は申込みの画面で見せ、案内のメールには書かない');
   const cond = h.rows('select * from conditions where studentId = ?', sid)[0];
-  assert.deepEqual([cond.status, cond.fee, cond.fromMonth], ['proposed', 4500, '2026-11'], '受講条件書の案ができる');
+  assert.deepEqual([cond.status, cond.fee, cond.fromMonth], ['proposed', 4500, '2026-11'], '個別受講条件書の案ができる');
   // 一覧と生徒の画面に「申込み待ち」
   const list = await h.ok('students/list', { auth });
   assert.equal(list.families.flatMap(f => f.students).find(s => s.id === sid).offered, true);
@@ -46,7 +46,7 @@ test('enrollment: offer → password → one application with consents → enrol
   const page = await h.ok('family/enrollment', { auth: parent });
   assert.equal(page.offers.length, 1);
   assert.deepEqual([page.offers[0].student.familyName, page.offers[0].condition.fee, page.terms.version], ['【テスト】高橋', 4500, TERMS.version]);
-  assert.ok(page.offers[0].condition.docFileId, '受講条件書の案を開ける');
+  assert.ok(page.offers[0].condition.docFileId, '個別受講条件書の案を開ける');
 
   // ③ 申込み: 同意の印・最新の版が要る。項目の検査
   const base = { auth: parent, offerId: o.enrollment.id, termsVersion: TERMS.version, conditionId: cond.id, ...APP };
@@ -62,7 +62,7 @@ test('enrollment: offer → password → one application with consents → enrol
   const done = await h.ok('family/enrollment/apply', { ...base, agree: true });
   assert.deepEqual([done.enrollment.status, done.enrolledOn], ['applied', '2026-11-01'], '開始月の1日が入塾日');
 
-  // ④ そのまま入塾: 体験の印が外れ、規約・受講条件書の同意が、入れた氏名で残る
+  // ④ そのまま入塾: 体験の印が外れ、規約・個別受講条件書の同意が、入れた氏名で残る
   const s = h.rows('select * from students where id = ?', sid)[0], f = h.rows('select * from families where id = ?', fid)[0];
   assert.deepEqual([s.trial, s.enrolledOn, s.familyKana, s.givenKana, s.school], [0, '2026-11-01', 'たかはし', 'かほ', '【テスト】第一中学校']);
   assert.ok(!s.linkCode.startsWith('off.') && s.linkCode.length > 20, '入塾したら生徒の専用リンクが使えるように');
