@@ -52,7 +52,6 @@ export function specialDocR9({ sp, student, family, terms }) {
   .meta { text-align: right; font-size: 13px; line-height: 1.8; }
   .draft { display: inline-block; border: 2px solid #b8860b; color: #8a6200; padding: 0 8px; border-radius: 4px; font-weight: bold; margin-left: 6px; }
   .to { margin-top: 9mm; font-size: 17px; font-weight: 600; border-bottom: 1.5px solid #1e2630; display: inline-block; min-width: 90mm; padding-bottom: 1mm; }
-  .from { margin-top: 2mm; font-size: 13px; }
   .lead { margin: 6mm 0 0; font-size: 14px; }
   .key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #c7ccd2; margin-top: 5mm; border: 1.5px solid #1e2630; border-radius: 6px; overflow: hidden; }
   .key div { padding: 3.5mm 4mm; background: #fff; }
@@ -78,7 +77,6 @@ export function specialDocR9({ sp, student, family, terms }) {
 <div class="sheet">
   <div class="head"><h1>特別単価合意書</h1><div class="meta">第${sp.no}版${final ? '' : '<span class="draft">案</span>'}<br>提示日 ${esc(jst(sp.proposedAt))}${final ? `<br>承認日 ${esc(jst(sp.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
-  <div class="from">ステップワイズ個別指導（代表 麦倉 優輔）より</div>
   <p class="lead"><strong>${esc(name)}さん</strong>（${esc(student.grade || '')}）の「${esc(sp.title)}」は、準備に特別な負担がかかるため、通常の基準単価とは別の単価（特別の基準単価）でお願いします。内容をご確認のうえ、承認をお願いします。</p>
   <dl class="key">${key.map(([k, v, a = '']) => `<div${a}><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
   <h2>指導の内容</h2>

@@ -48,7 +48,6 @@ export function conditionDocR6({ cond, student, family, terms }) {
   .meta { text-align: right; font-size: 13px; line-height: 1.8; }
   .draft { display: inline-block; border: 2px solid #b8860b; color: #8a6200; padding: 0 8px; border-radius: 4px; font-weight: bold; margin-left: 6px; }
   .to { margin-top: 9mm; font-size: 17px; font-weight: 600; border-bottom: 1.5px solid #1e2630; display: inline-block; min-width: 90mm; padding-bottom: 1mm; }
-  .from { margin-top: 2mm; font-size: 13px; }
   .lead { margin: 6mm 0 0; font-size: 14px; }
   .key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #c7ccd2; margin-top: 5mm; border: 1.5px solid #1e2630; border-radius: 6px; overflow: hidden; }
   .key div { padding: 3.5mm 4mm; background: #fff; }
@@ -75,7 +74,6 @@ export function conditionDocR6({ cond, student, family, terms }) {
 <div class="sheet">
   <div class="head"><h1>受講条件書</h1><div class="meta">第${cond.no}版${final ? '' : '<span class="draft">案</span>'}<br>提示日 ${esc(jst(cond.proposedAt))}${final ? `<br>同意日 ${esc(jst(cond.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
-  <div class="from">ステップワイズ個別指導（代表 麦倉 優輔）より</div>
   <p class="lead"><strong>${esc(name)}さん</strong>（${esc(student.grade || '')}）の授業の基本となる条件です。毎月の授業の回数と料金は、別に「受講合意書」でお知らせし、そのつど同意をいただきます。</p>
   <dl class="key">${key.map(([k, v, a = '']) => `<div${a}><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
   <h2>そのほかの約束</h2>
