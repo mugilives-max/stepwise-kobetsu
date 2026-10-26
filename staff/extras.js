@@ -79,7 +79,6 @@ export function termsPage(ctx) {
         <li>今通っている家族には、まだ何も出ません。</li>
         <li>内容を変えるときは、新しい版を作って切り替えます。同意済みの家族には、新しい版にあらためて同意をお願いします（同意するまでは、前の版のままです）。</li></ul></section>
       <form class="reg-form" data-form="terms-decide">
-        <label class="choice"><input type="checkbox" name="confirm" required><span>全文を読み、この版を使うことを確かめました</span></label>
         <div class="stack"><button class="primary wide"${ctx.dis()}>${first ? 'この版を使い始める' : 'この版に切り替える'}</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
   // 同意をお願いする確認（別の画面）
@@ -96,7 +95,6 @@ export function termsPage(ctx) {
       <form class="reg-form" data-form="terms-request">
         <fieldset class="reg-field"><legend>保護者への一言 <span class="opt">任意</span></legend><textarea name="note" rows="3" maxlength="500" placeholder="例：11月からの受講のきまりをまとめました。全文をお読みいただき、同意をお願いします。"></textarea></fieldset>
         <label class="choice"><input type="checkbox" name="mail" checked><span>メールでも知らせる（保護者ページに登録している家族だけ）</span></label>
-        <label class="choice"><input type="checkbox" name="confirm" required><span>この家族に同意をお願いすることを確かめました</span></label>
         <div class="stack"><button class="primary wide"${ctx.dis()}>同意をお願いする</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
   // 0. 全員共通のきまりであること（家族ごとに違うのは受講条件書と受講合意書）。2026-10-25 本人「受講規約って全員共通のやつじゃないですか。それがもっとわかりやすいといい」
@@ -187,7 +185,6 @@ export async function extrasSubmit(ctx, kind, el) {
     if (!termsPick.length) { ctx.say('同意をお願いする家族を選んでください', 'error'); return true; }
     termsStep = 'request'; ctx.say(''); scrollTo(0, 0); return true;
   }
-  if (!v.confirm) { ctx.say('確かめたことに印を付けてください', 'error'); return true; }
   if (kind === 'terms-request') {
     const r = await ctx.call('admin/terms/request', { familyIds: termsPick, note: String(v.note || '').trim(), mail: !!v.mail });
     if (r.ok) { terms = null; termsStep = ''; termsPick = []; scrollTo(0, 0); ctx.say(`${r.requested}家族に同意をお願いしました${r.mailed ? `（メール ${r.mailed}通）` : ''}`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
