@@ -10,13 +10,13 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261026-r13"
+EDITION = "2026-11-20261026-r14"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261026-r13"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261026_R13.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261026-r14"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261026_R14.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "1be82dde60559d53fc08223cd1d9586d519162dd"
+EXPECTED_SOURCE_BLOB = "7b22620ddc62d4fdd3f208a713cd8d2224a49227"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -135,11 +135,11 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:auto; }
 }
 """
-# r13 (2026-10-26 本人「ご利用共通規約ではなくて、「共通規約」でいいなと気付きました。これが正解ですね」):
-# r12 から、規約の名前と版の参照だけを変えた版（条文・表・例の中身は変わらない）。
-# r12 の本文に決まった置き換えだけをしたものと、今の本文が一字一句同じであることを確かめる
-PRIOR_COMMIT = "c057b8b4122c72dacba61a1c84d1a0e16a8e580c"
-TERMS_REPLACEMENTS = [("ご利用共通規約", "共通規約"), ("20261026-r12", "20261026-r13")]
+# r14 (2026-10-26 本人「受講合意書って名前はやっぱり…受講計画合意書って名前にするべきな気がしてきた」→「その名前でok」):
+# r13 から、月ごとの書類の名前（受講合意書→受講計画合意書）と版の参照だけを変えた版（条文・表・例の中身は変わらない）。
+# r13 の本文に決まった置き換えだけをしたものと、今の本文が一字一句同じであることを確かめる
+PRIOR_COMMIT = "934bf44df4b71828771f5c3628bfe9b8da0cae53"
+TERMS_REPLACEMENTS = [("受講合意書", "受講計画合意書"), ("20261026-r13", "20261026-r14")]
 RELATED_REPLACEMENTS = TERMS_REPLACEMENTS
 def renamed(value):
     for old,new in TERMS_REPLACEMENTS:
@@ -169,7 +169,7 @@ for link in body.select('a[href^="#article-"]'):
     if label:
         target="article-"+label[1]+("-item-"+label[2] if label[2] else "")
         assert link["href"]=="#"+target,"Reference label differs from anchor"
-waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261026-r13/waiver/"
+waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261026-r14/waiver/"
 assert [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]] == [waiver_url]
 for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.md","TUITION_AGREEMENT.md","WAIVER_GUIDE.md"]:
     before=subprocess.check_output(["git","show",PRIOR_COMMIT+":"+str(SOURCE.parent.relative_to(ROOT)/filename)],text=True)
@@ -187,13 +187,13 @@ index_html = """<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>共通規約｜ステップワイズ個別指導</title>
 <style>body{font-family:"Yu Gothic","Noto Sans CJK JP",Meiryo,sans-serif;color:#172526;line-height:1.9;margin:36px auto;padding:0 22px;max-width:760px}h1{font-size:1.6rem}h2{font-size:1.2rem;border-bottom:1px solid #b9cdcb;padding-bottom:7px;margin-top:28px}a{color:#126964}li{margin:9px 0}.note{color:#405452}</style></head><body>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>共通規約</h1>
-<p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「個別受講条件書」、月ごとの授業の内容は「受講合意書」で定めます。</p>
+<p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「個別受講条件書」、月ごとの授業の内容は「受講計画合意書」で定めます。</p>
 <h2>共通規約（2026年11月1日から適用）</h2>
-<ul><li><a href="2026-11-20261026-r13/">Web版を読む</a></li><li><a href="2026-11-20261026-r13/stepwise-terms-2026-11-20261026-r13.pdf">PDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261026-r14/">Web版を読む</a></li><li><a href="2026-11-20261026-r14/stepwise-terms-2026-11-20261026-r14.pdf">PDFで開く</a></li></ul>
 <h2>書類の様式</h2>
-<ul><li><a href="2026-11-20261026-r13/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261026-r13/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r13/documents/special/">特別単価合意書</a>（<a href="2026-11-20261026-r13/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r13/documents/agreement/">受講合意書</a>（<a href="2026-11-20261026-r13/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
+<ul><li><a href="2026-11-20261026-r14/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261026-r14/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r14/documents/special/">特別単価合意書</a>（<a href="2026-11-20261026-r14/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r14/documents/agreement/">受講計画合意書</a>（<a href="2026-11-20261026-r14/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
 <h2>キャンセル料金の免除申請</h2>
-<ul><li><a href="2026-11-20261026-r13/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261026-r13/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261026-r14/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261026-r14/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
 <p class="note">ご不明な点は、いつものLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
 </body></html>
 """
