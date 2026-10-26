@@ -68,7 +68,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
   <div class="to">${to}</div>
   <p class="lead">授業の基本となる条件です。毎月の授業の回数と料金は、別に「受講合意書」でお知らせし、そのつど同意をいただきます。</p>
   ${keyTable(key)}
-  <h2>そのほかの約束</h2>
+  <h2>共通の条件</h2>
   ${ruleTable(promises)}
   <p class="terms">この条件は「${esc(termsTitle)}」に基づきます。ここにないことは、規約のとおりです。${termsUrl ? `<br>規約の全文：<span class="url">${esc(termsUrl)}</span>` : ''}</p>
   ${consent}
