@@ -3,6 +3,7 @@
 // 一覧はすっきり、直す・足す・生徒ごとの操作は押すと下から出る画面で（famSheet = { mode, id }）。
 import { sheet, rowButton, rowLink } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
+import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 const STATUS = { invited: ['warn', '招待前・登録待ち'], active: ['', '利用中'], stopped: ['gray', '停止'] };
 const STUDENT_STATUS = { enrolled: ['', '在籍'], paused: ['warn', '休会'], left: ['gray', '退会'] };
 const MODE = { '': '未設定', in_person: '対面', online: 'オンライン' };
@@ -88,10 +89,9 @@ function familySheet(ctx, f) {
     return sheet(esc, s.name + ' の受講条件書' + (base ? `（第${base.no + 1}版）` : ''), `<p class="small muted" style="margin-top:0">お知らせすると保護者にメールが届き、同意まで、この家族は新しい計画を承認できません。</p>
       <form class="stack" data-form="cond-propose" data-id="${esc(s.id)}">
       <div class="row"><label style="flex:1">基本の授業時間（分）<input type="number" name="minutes" min="15" max="300" step="5" required value="${v.minutes}"></label><label style="flex:1">1回の税込の通常の基準単価（円）<input type="number" name="fee" min="0" max="100000" step="10" required value="${v.fee}"></label></div>
-      <div class="row"><label style="flex:1">形式<select name="deliveryMode">${Object.entries(COND_MODE).map(([k, l]) => `<option value="${k}"${k === v.deliveryMode ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label style="flex:1">適用開始月<input type="month" name="fromMonth" required value="${esc(v.fromMonth)}"></label></div>
+      <div class="row"><label style="flex:1">実施形態<select name="deliveryMode">${Object.entries(COND_MODE).map(([k, l]) => `<option value="${k}"${k === v.deliveryMode ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label style="flex:1">適用開始月<input type="month" name="fromMonth" required value="${esc(v.fromMonth)}"></label></div>
       <label>人数（空なら「教室は最大2名／オンラインは1対1」）<input name="groupSize" maxlength="80" value="${esc(v.groupSize)}" placeholder="教室は講師1名につき生徒最大2名"></label>
-      <label class="agree"><input type="checkbox" name="studentContact"${v.studentContact ? ' checked' : ''}> 生徒本人からの連絡を認める（前日23時までの無料のお休み。有料になる連絡は保護者にも知らせます）</label>
-      <label>科目<input name="subjects" maxlength="100" value="${esc(v.subjects)}"></label>
+      <fieldset class="reg-field"><legend>科目</legend>${subjectFields(esc, v.subjects)}</fieldset>
       <label>特記事項（任意）<textarea name="note" maxlength="1000" rows="2">${esc(v.note)}</textarea></label>
       <div class="row"><button class="primary"${ctx.dis()}>保護者にお知らせする</button><button type="button" data-action="fam-sheet" data-mode="student" data-id="${esc(s.id)}">戻る</button></div></form>`, 'fam-close', { wide: true });
   }
@@ -162,7 +162,7 @@ export async function familiesSubmit(ctx, kind, el) {
     r = await ctx.call('admin/families/terms', { id: detail.id, version: v.version, consentedAt: v.consentedAt + '+09:00', consenterName: v.consenterName, via: v.via, note: v.note });
     if (r.ok) { famSheet = null; detail = null; ctx.say('規約の同意を記録しました', 'ok'); return true; }
   } else if (kind === 'cond-propose') {
-    r = await ctx.call('admin/conditions/propose', { studentId: el.dataset.id, minutes: Number(v.minutes), fee: Number(v.fee), deliveryMode: v.deliveryMode, groupSize: v.groupSize, studentContact: v.studentContact === 'on', subjects: v.subjects, note: v.note, fromMonth: v.fromMonth });
+    r = await ctx.call('admin/conditions/propose', { studentId: el.dataset.id, minutes: Number(v.minutes), fee: Number(v.fee), deliveryMode: v.deliveryMode, groupSize: v.groupSize, subjects: readSubjects(el), note: v.note, fromMonth: v.fromMonth });
     if (r.ok) { famSheet = null; detail = null; list = null; ctx.say(`受講条件書（第${r.condition.no}版）を保護者にお知らせしました`, 'ok'); return true; }
   } else if (kind === 'special-propose') {
     r = await ctx.call('admin/specials/propose', { studentId: el.dataset.id, replaceId: el.dataset.replace || undefined, title: v.title, purpose: v.purpose, content: v.content, reason: v.reason, prep: v.prep, minutes: Number(v.minutes), fee: Number(v.fee), fromDate: v.fromDate, toDate: v.toDate, note: v.note });

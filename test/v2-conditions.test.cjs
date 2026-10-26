@@ -22,7 +22,7 @@ test('conditions: the manager proposes, the family must agree before approving a
   assert.equal(h.mails().length, mails + 1, '保護者にお知らせが 1 通');
   assert.match(h.mails().at(-1).subject, /受講条件書/); assert.doesNotMatch(h.mails().at(-1).subject, /通常指導/); // 受講規約 r9 の名称
   const s = h.rows('select baseRate30, deliveryMode, permissions from students where id = ?', kid.id)[0];
-  assert.deepEqual([s.baseRate30, s.deliveryMode, JSON.parse(s.permissions).reschedule], [1500, 'in_person', true], '生徒の登録にも写す');
+  assert.deepEqual([s.baseRate30, s.deliveryMode, JSON.parse(s.permissions).reschedule], [1500, 'in_person', undefined], '基準単価・形式は生徒の登録に写す。生徒本人の連絡は保護者ページの設定なので変えない');
 
   const fc = (await h.ok('family/conditions', { auth: parent })).conditions;
   assert.equal(fc.needs, true); assert.equal(fc.items[0].latest.id, c1.id); assert.equal(fc.items[0].agreed, null);
@@ -41,7 +41,7 @@ test('conditions: the manager proposes, the family must agree before approving a
   const c2 = (await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 2500, deliveryMode: 'online', studentContact: false, subjects: '英語', note: '演習が中心のため', fromMonth: '2026-12' })).condition;
   const st = await h.ok('admin/conditions/get', { auth, studentId: kid.id });
   assert.deepEqual([st.latest.no, st.latest.status, st.agreed.no, st.needs, st.history.length], [2, 'proposed', 1, true, 2]);
-  assert.deepEqual([st.student.baseRate30, st.student.deliveryMode, st.student.studentContact], [833, 'online', false]);
+  assert.deepEqual([st.student.baseRate30, st.student.deliveryMode, st.student.studentContact], [833, 'online', true]); // 生徒本人の連絡は受講条件書では変えない（保護者ページの設定）
   assert.equal((await h.call('admin/conditions/record', { auth, id: c2.id, date: '2026-10-20', via: '' })).error.code, 'needVia');
   const rec = await h.ok('admin/conditions/record', { auth, id: c2.id, date: '2026-10-02', consenterName: '架空 保護者', consentedAt: '2026-10-02T12:00:00+09:00', via: 'LINE', note: '母' });
   assert.deepEqual([rec.latest.status, rec.agreed.no, rec.needs], ['agreed', 2, false]);

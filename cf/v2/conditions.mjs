@@ -84,7 +84,6 @@ export async function proposeCondition(c, me, s, f) {
   const last = await c.db.prepare('select max(no) no from conditions where studentId = ?').bind(s.id).first();
   const no = Number(last && last.no || 0) + 1, id = newId('cd');
   let perms = {}; try { perms = JSON.parse(s.permissions || '{}'); } catch {}
-  perms.reschedule = !!f.studentContact;
   await c.db.batch([
     c.db.prepare("update conditions set status = 'replaced', updatedAt = ? where studentId = ? and status = 'proposed'").bind(now, s.id),
     c.db.prepare('insert into conditions (id, studentId, no, minutes, fee, deliveryMode, groupSize, studentContact, subjects, note, fromMonth, termsVersion, status, proposedAt, proposedBy, createdAt, updatedAt, templateVersion) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -109,7 +108,7 @@ export const conditionRoutes = {
     const s = await studentRow(c, b.studentId); if (!s) fail('notFound', '生徒が見つかりません', 404);
     if (s.status === 'left') fail('left', '退会した生徒には条件を作れません');
     const f = conditionFields(b), { id, no } = await proposeCondition(c, me, s, f);
-    await familyNotice(c, s.id, '受講条件書のお知らせ', `${fullName(s)}さんの受講条件書（第${no}版）をお送りしました。保護者ページの「お支払い」で内容（受講条件書）を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.'+no}),{type:'condition',targets:[{id,version:no}]});
+    await familyNotice(c, s.id, '受講条件書のお知らせ', `${fullName(s)}さんの受講条件書${no > 1 ? `（第${no}版）` : ''}をお送りしました。保護者ページの「お支払い」で内容（受講条件書）を確かめて、同意をお願いします。\n・基本の授業：1回${f.minutes}分 ${f.fee.toLocaleString('ja-JP')}円（税込）\n・形式：${MODES[f.deliveryMode]}\n・適用開始：${f.fromMonth.replace('-', '年')}月\n未回答・既読だけでは同意になりません。変更のご希望は教室へご連絡ください。`,familyTarget('money',{kind:'condition',refs:id+'.'+no}),{type:'condition',targets:[{id,version:no}]});
     await audit(c, 'conditionPropose', id, { studentId: s.id, no, minutes: f.minutes, fee: f.fee, fromMonth: f.fromMonth });
     return { condition: await withDoc(c.db, conditionView(await c.db.prepare('select * from conditions where id = ?').bind(id).first())) };
   },

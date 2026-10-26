@@ -5,6 +5,7 @@ import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261025-la
 import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { ICON } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
+import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 
 let list = null, query = '', hub = null, hubFor = '';
 export function resetStudents() { list = null; hub = null; hubFor = ''; }
@@ -80,6 +81,7 @@ const noteText = n => [n.nextFocus ? '次回: ' + n.nextFocus : '', n.understand
 function summary(ctx, x) {
   const { esc } = ctx, sid = encodeURIComponent(x.student.id);
   let h = x.enrollment ? enrollCard(ctx, x) : '';
+  if (x.student.trial) return h;
   const todo = [];
   if (x.requests.length) todo.push(`<a class="todo" href="#schedule"><span class="b"><strong>連絡 ${x.requests.length}件</strong><small class="muted">${x.requests.map(r => md(r.date) + ' ' + esc(r.subject)).join('・')}</small></span><span class="go">›</span></a>`);
   if (x.pendingRecords.length) todo.push(`<a class="todo" href="#record=${encodeURIComponent(x.pendingRecords[x.pendingRecords.length - 1].id)}"><span class="b"><strong>記録待ち ${x.pendingRecords.length}件</strong><small class="muted">${x.pendingRecords.map(l => md(l.date) + ' ' + esc(l.subject)).join('・')}</small></span><span class="go">›</span></a>`);
@@ -168,12 +170,11 @@ function offerForm(ctx, x, again) {
     <fieldset class="reg-field"><legend>保護者のメールアドレス <span class="req">必須</span></legend>
       <input type="email" name="email" value="${esc(d && !e.familyActive ? d.email : e.email || '')}" ${e.familyActive ? 'readonly' : ''} autocomplete="off" placeholder="parent@example.com">
       ${e.familyActive ? '<p class="reg-help">登録済み（変えるときは家族の画面で）</p>' : ''}</fieldset>
-    <fieldset class="reg-field"><legend>受講条件</legend>
+    <fieldset class="reg-field cond-box"><legend>受講条件</legend>
       <div class="row"><label style="flex:1">開始月<input type="month" name="fromMonth" value="${esc(from)}" required></label><label style="flex:1">1回の時間（分）<input type="number" name="minutes" value="${esc(minutes)}" min="15" max="300" step="5" required></label><label style="flex:1">1回の基準単価（円・税込）<input type="number" name="fee" value="${esc(fee)}" min="0" max="100000" step="10" required></label></div>
+      <div class="cond-sub">実施形態</div>
       <div class="choices" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${Object.entries(MODE).map(([k, l]) => `<label class="choice"><input type="radio" name="deliveryMode" value="${k}"${mode === k ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
-      <label>科目<input name="subjects" value="${esc(d ? d.subjects || '' : (cond && cond.subjects) || b.subjects || '')}" maxlength="100" placeholder="英語・数学"></label>
-      <label class="choice"><input type="checkbox" name="studentContact"${d ? (d.studentContact === 'on' ? ' checked' : '') : !cond || cond.studentContact ? ' checked' : ''}><span>生徒本人からのお休みの連絡を受け付ける</span></label>
-    </fieldset>
+      <div class="cond-sub">科目</div>${subjectFields(esc, d ? d.subjects || '' : (cond && cond.subjects) || b.subjects || '')}</fieldset>
     ${ready ? '' : '<p class="notice error" style="margin:0">ご利用規約をまだ使い始めていません。先に <a href="#terms">設定 → ご利用規約</a> で使い始めてください。</p>'}
     <div class="row"><button class="primary"${ready ? ctx.dis() : ' disabled'}>${again ? 'この条件で送り直す' : '入塾の案内を送る'}</button></div>
     <p class="small muted" style="margin:0">送ると保護者にメールが届きます。保護者が申し込むと、そのまま入塾になります。</p></form>`;
@@ -181,37 +182,40 @@ function offerForm(ctx, x, again) {
 function enrollCard(ctx, x) {
   const { esc } = ctx, e = x.enrollment, o = e.offer, s = x.student, cond = (x.basic.condition && x.basic.condition.latest) || null;
   const row = (k, v) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`;
+  const condTable = c => `<div class="cond-box cond-view"><h3 class="info-head">受講条件</h3><dl class="info-table">${row('開始', jaMonth(c.fromMonth) + 'から')}${row('1回', c.minutes + '分')}${row('基準単価', yen(c.fee) + '（税込）')}${row('実施形態', MODE[c.deliveryMode] || '')}${c.subjects ? row('科目', c.subjects) : ''}</dl></div>`;
   if (o && o.status === 'applied') {
     if (Date.parse(o.appliedAt) < Date.parse(x.today) - 30 * 86400e3) return '';
     const a = o.application || {};
-    return `<section class="reg-card"><div class="reg-card-head"><h2>入塾しました</h2><span class="tag ok">${jaAt(o.appliedAt)}に申込み</span></div>${enrollSteps(4)}
-      <p style="margin:0 0 6px">ご利用規約と受講条件書に同意済み</p>
-      <dl class="reg-rows">${row('保護者', (a.guardian && a.guardian.name) || o.consenterName)}${a.guardian ? row('電話', a.guardian.phone) + row('住所', a.guardian.address) : ''}${row('入塾日', a.enrolledOn || '')}</dl>
+    return `<section class="reg-card"><div class="reg-card-head"><h2>入塾しました</h2></div>${enrollSteps(4)}
+      <dl class="info-table">${row('申込みの日', jaAt(o.appliedAt))}${row('保護者', (a.guardian && a.guardian.name) || o.consenterName)}${a.guardian ? row('電話', a.guardian.phone) + row('住所', a.guardian.address) : ''}${row('入塾日', a.enrolledOn || '')}${row('同意', 'ご利用規約・受講条件書')}</dl>
       <div class="row" style="margin-top:8px"><a class="small-btn primary" href="#plans">${esc(jaMonth(o.fromMonth))}の計画を作る</a></div></section>`;
   }
   if (!s.trial) return '';
   if (!o) return `<section class="reg-card"><div class="reg-card-head"><h2>入塾の手続き</h2></div>${enrollSteps(1)}${offerForm(ctx, x, false)}</section>`;
-  const link = lastInvite && lastInvite.id === o.id && lastInvite.url ? `<p class="small" style="margin:8px 0 4px">メールが届かないときのリンク（7日間有効）</p><p class="copy">${esc(lastInvite.url)}</p><button data-action="copy" data-text="${esc(lastInvite.url)}">リンクをコピー</button>` : '';
-  return `<section class="reg-card"><div class="reg-card-head"><h2>保護者の申込みを待っています</h2><span class="tag warn">${jaAt(o.offeredAt)}に案内</span></div>${enrollSteps(2)}
-    <dl class="reg-rows">${row('送り先', e.email || '')}${cond ? row('受講条件', `${jaMonth(cond.fromMonth)}から・1回${cond.minutes}分 ${yen(cond.fee)}・${MODE[cond.deliveryMode] || ''}${cond.subjects ? '・' + cond.subjects : ''}`) : ''}</dl>${link}
-    <div class="row" style="margin-top:10px"><button data-action="enroll-resend" data-id="${esc(o.id)}"${ctx.dis()}>案内をもう一度送る</button><button data-action="enroll-withdraw" data-id="${esc(o.id)}"${ctx.dis()}>案内を取り消す</button></div>
-    <details style="margin-top:10px"><summary class="small">条件を変えて送り直す</summary>${offerForm(ctx, x, true)}</details></section>`;
+  const act = (k, v, btn) => `<div><dt>${k}</dt><dd class="act"><span>${v}</span>${btn}</dd></div>`;
+  const copy = lastInvite && lastInvite.id === o.id && lastInvite.url ? act('招待のリンク', '7日間有効', `<button class="small-btn" data-action="copy" data-text="${esc(lastInvite.url)}">コピー</button>`) : '';
+  // 2026-10-26 本人「案内した日のような重要な情報は端っこではなく整理して」「同じ見た目のボタンが 3 個並ぶと混乱する」:
+  // ボタンはそれぞれ関係する行の中に。めったに使わず取り消せない「案内を取り消す」はいちばん下に離して
+  return `<section class="reg-card"><div class="reg-card-head"><h2>保護者の申込みを待っています</h2></div>${enrollSteps(2)}
+    <dl class="info-table">${row('案内した日', jaAt(o.offeredAt))}${act('送り先', esc(e.email || ''), `<button class="small-btn" data-action="enroll-resend" data-id="${esc(o.id)}" data-email="${esc(e.email || '')}"${ctx.dis()}>もう一度送る</button>`)}${copy}</dl>${cond ? condTable(cond) : ''}
+    <details style="margin-top:12px"><summary class="small">条件を変えて送り直す</summary>${offerForm(ctx, x, true)}</details>
+    <p class="danger-line"><button class="text-btn danger" data-action="enroll-withdraw" data-id="${esc(o.id)}"${ctx.dis()}>案内を取り消す</button></p></section>`;
 }
 async function enrollDone(ctx, r, okText) {
   if (!r.ok) { if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); return; }
   lastInvite = r.inviteUrl ? { id: r.enrollment.id, url: r.inviteUrl } : null;
   list = null; hub = null; hubFor = '';
-  ctx.say(okText + (r.mailed === false ? '（メールはまだ送られていません。下のリンクを保護者に渡してください）' : ''), r.mailed === false ? 'error' : 'ok');
+  ctx.say(okText + (r.mailed === false ? '（メールはまだ送られていません。下の「招待のリンクをコピー」で保護者に渡してください）' : ''), r.mailed === false ? 'error' : 'ok');
 }
 
 // ---------- 体験生 ----------
 export async function studentsSubmit(ctx, kind, el) {
   if (kind === 'enroll-offer') {
-    const v = Object.fromEntries(new FormData(el).entries());
+    const v = { ...Object.fromEntries(new FormData(el).entries()), subjects: readSubjects(el) };
     offerDraft = { studentId: el.dataset.id, v };
-    if (!v.email || !v.fromMonth || !v.minutes || v.fee === '' || !v.deliveryMode) { ctx.say('メールアドレス・開始月・1回の時間・基準単価・形式を入れてください', 'error'); return true; }
+    if (!v.email || !v.fromMonth || !v.minutes || v.fee === '' || !v.deliveryMode) { ctx.say('メールアドレス・開始月・1回の時間・基準単価・実施形態を入れてください', 'error'); return true; }
     if (!confirm(`${v.email} に入塾の案内を送りますか？`)) return true;
-    const r = await ctx.call('admin/enrollment/offer', { studentId: el.dataset.id, email: v.email, fromMonth: v.fromMonth, minutes: Number(v.minutes), fee: Number(v.fee), deliveryMode: v.deliveryMode, subjects: v.subjects || '', studentContact: v.studentContact === 'on' });
+    const r = await ctx.call('admin/enrollment/offer', { studentId: el.dataset.id, email: v.email, fromMonth: v.fromMonth, minutes: Number(v.minutes), fee: Number(v.fee), deliveryMode: v.deliveryMode, subjects: v.subjects || '' }); // お休みの連絡を生徒本人からも受け付けるかは、保護者が申込みで決める
     if (r.ok) offerDraft = null;
     await enrollDone(ctx, r, '入塾の案内を送りました');
     return true;
@@ -223,7 +227,7 @@ export async function studentsSubmit(ctx, kind, el) {
   return true;
 }
 export async function studentsClick(ctx, a, b) {
-  if (a === 'enroll-resend') { await enrollDone(ctx, await ctx.call('admin/enrollment/resend', { offerId: b.dataset.id }), '案内をもう一度送りました'); return true; }
+  if (a === 'enroll-resend') { if (!confirm(`${b.dataset.email || '保護者'} に入塾の案内をもう一度送りますか？`)) return true; await enrollDone(ctx, await ctx.call('admin/enrollment/resend', { offerId: b.dataset.id }), '案内をもう一度送りました'); return true; }
   if (a === 'enroll-withdraw') {
     if (!confirm('入塾の案内を取り消しますか？（保護者のリンクと受講条件書の案は使えなくなります）')) return true;
     const r = await ctx.call('admin/enrollment/withdraw', { offerId: b.dataset.id });

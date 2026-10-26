@@ -48,7 +48,7 @@ function steps(i) {
 function condRows(esc, o) {
   const c = o.condition || {};
   const row = (k, v) => v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '';
-  return `<dl class="reg-rows">${row('開始', jaMonth(o.fromMonth) + 'から')}${row('通常の基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`)}${row('形式', MODE[c.deliveryMode] || '')}${row('科目', c.subjects || '')}${row('特記事項', c.note || '')}</dl>`;
+  return `<dl class="reg-rows">${row('開始', jaMonth(o.fromMonth) + 'から')}${row('通常の基準単価', `1回${c.minutes}分 ${yen(c.fee)}（税込）`)}${row('実施形態', MODE[c.deliveryMode] || '')}${row('科目', c.subjects || '')}${row('特記事項', c.note || '')}</dl>`;
 }
 function field(esc, key, label, opts = {}) {
   const bad = missing.includes(key);

@@ -42,9 +42,8 @@ async function getStudent(c, id) { const s = await c.db.prepare('select * from s
 async function getFamily(c, id) { const f = await c.db.prepare('select * from families where id = ?').bind(String(id || '')).first(); if (!f) fail('notFound', '家族が見つかりません', 404); return f; }
 async function getOffer(c, id) { const r = await c.db.prepare('select * from enrollmentOffers where id = ?').bind(String(id || '')).first(); if (!r) fail('notFound', '入塾の案内が見つかりません', 404); return r; }
 
-const conditionText = cond => `・開始：${monthText(cond.fromMonth)}から\n・基本の授業：1回${cond.minutes}分 ${yen(cond.fee)}（税込）\n・形式：${MODE_LABEL[cond.deliveryMode] || ''}`;
-const inviteMail = (s, cond) => ({ subject: '【ステップワイズ】入塾のお手続きのご案内', body: url => `${fullName(s)}さんの保護者さま\n\nステップワイズ個別指導です。入塾のお手続きをご案内します。\n7日以内に次のリンクを開き、保護者ページのパスワードを決めてください。続けて、保護者さまの情報のご登録と、ご利用規約・受講条件書のご確認をお願いします。\n\n${url}\n\n${conditionText(cond)}\n\n保護者ページで「同意して入塾を申し込む」を押すと、お申込みが完了します。\nリンクの期限が切れた場合は、いつものLINEまたは mugilives@gmail.com へご連絡ください。\n心当たりがない場合は、このメールを破棄してください。` });
-const activeText = (s, cond) => `${fullName(s)}さんの入塾のお手続きをご案内します。保護者ページの「入塾のお申込み」で、保護者さまの情報とご利用規約・受講条件書をご確認のうえ、お申し込みください。\n${conditionText(cond)}`;
+const inviteMail = (s, cond) => ({ subject: '【ステップワイズ】入塾のお手続きのご案内', body: url => `${fullName(s)}さんの保護者さま\n\nステップワイズ個別指導です。入塾のお手続きをご案内します。\n7日以内に次のリンクを開き、保護者ページのパスワードを決めてください。続けて、保護者さまの情報のご登録と、ご利用規約・受講条件書のご確認をお願いします。\n\n${url}\n\n保護者ページで「同意して入塾を申し込む」を押すと、お申込みが完了します。\nリンクの期限が切れた場合は、いつものLINEまたは mugilives@gmail.com へご連絡ください。\n心当たりがない場合は、このメールを破棄してください。` });
+const activeText = (s, cond) => `${fullName(s)}さんの入塾のお手続きをご案内します。保護者ページの「入塾のお申込み」で、保護者さまの情報とご利用規約・受講条件書をご確認のうえ、お申し込みください。`; // 料金などは申込みの画面で（2026-10-26 本人「料金とかはこの段階では見せなくていい」）
 
 // 案内のメール（パスワードがまだなら招待のリンク、登録済みなら保護者ページのお知らせ）
 async function sendOffer(c, f, s, cond) {

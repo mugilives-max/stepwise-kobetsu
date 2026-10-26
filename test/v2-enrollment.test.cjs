@@ -29,7 +29,7 @@ test('enrollment: offer → password → one application with consents → enrol
   assert.equal(h.mails().length, mails + 1, 'メールは招待の 1 通だけ（受講条件書の別のお知らせは送らない）');
   const mail = h.mails().at(-1);
   assert.equal(mail.subject, '【ステップワイズ】入塾のお手続きのご案内');
-  assert.match(mail.body, /1回90分 4,500円/);
+  assert.doesNotMatch(mail.body, /4,500円/, '料金は申込みの画面で見せ、案内のメールには書かない');
   const cond = h.rows('select * from conditions where studentId = ?', sid)[0];
   assert.deepEqual([cond.status, cond.fee, cond.fromMonth], ['proposed', 4500, '2026-11'], '受講条件書の案ができる');
   // 一覧と生徒の画面に「申込み待ち」

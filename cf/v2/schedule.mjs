@@ -734,7 +734,19 @@ export const scheduleRoutes = {
   'family/schedule': async (c, b) => {
     const me = await requireFamily(c, b), { from, to } = range(b, todayJst(c.now));
     const kids = (await c.db.prepare("select * from students where familyId = ? and status <> 'left'").bind(me.id).all()).results;
-    return { today: todayJst(c.now), students: kids.map(s => ({ id: s.id, name: fullName(s) })), ...(await familyScheduleOf(c, kids.map(s => s.id), from, to)) };
+    return { today: todayJst(c.now), students: kids.map(s => ({ id: s.id, name: fullName(s), studentContact: studentMay(s, 'reschedule') })), ...(await familyScheduleOf(c, kids.map(s => s.id), from, to)) };
+  },
+  // 生徒本人からのお休み・変更の連絡を受け付けるか（保護者ページのアカウントで決める。2026-10-26 本人「保護者ページの設定から操作できるようにするというレベルの内容」）
+  'family/students/contact': async (c, b) => {
+    const me = await requireFamily(c, b);
+    const s = await c.db.prepare("select * from students where id = ? and familyId = ? and status <> 'left'").bind(String(b.studentId || ''), me.id).first();
+    if (!s) fail('notFound', '生徒が見つかりません', 404);
+    if (typeof b.allow !== 'boolean') fail('badValue', '受け付けるかどうかを選んでください');
+    let perms = {}; try { perms = JSON.parse(s.permissions || '{}'); } catch {}
+    perms.reschedule = b.allow;
+    await c.db.prepare('update students set permissions = ?, updatedAt = ?, version = version + 1 where id = ?').bind(JSON.stringify(perms), iso(c.now), s.id).run();
+    await audit(c, 'studentContactSet', s.id, { allow: b.allow, by: 'family' });
+    return { studentId: s.id, studentContact: b.allow };
   },
   'family/lessons/request': async (c, b) => { const me = await requireFamily(c, b); const ids = (await c.db.prepare('select id from students where familyId = ?').bind(me.id).all()).results.map(r => r.id); return lessonRequest(c, ids, { kind: 'family', id: me.id }, b); },
   'family/lessons/agree': async (c, b) => agreeLessons(c, await requireFamily(c, b), b),
