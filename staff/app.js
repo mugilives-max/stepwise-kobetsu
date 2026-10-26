@@ -6,18 +6,18 @@ import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=202610
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
 import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261026-kyotsu';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261025-layout';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261026-kinds';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261026-p4';
-import { plansPage, kindsPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261026-kyotsu';
+import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261026-kinds';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261026-kyotsu';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261025-layout';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261026-kyotsu';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261026-kinds';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261026-p4';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261026-ver';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261026-p4';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261026-p4';
-import { billingPick } from '/staff/billing.js?v=20261026-kyotsu';
+import { billingPick } from '/staff/billing.js?v=20261026-kinds';
 
 const store = session('sw2_staff');
 const ROLE_LABEL = { teacher: '講師', manager: '教室管理者', sysadmin: 'システム管理者' };
@@ -76,7 +76,7 @@ function tabOf(page) {
   if (['plans', 'billing'].includes(page)) return 'monthly';
   if (page === 'payroll') return m ? 'monthly' : 'payroll';
   if (me && me.employmentAccess === false && ['bank', 'employment', 'work'].includes(page)) return 'employment'; // 入職の手続き中は、手続きの画面が入口（振込先・勤務の日はその下）
-  if (['rules','bank','employment','work','staff','staff-stopped','employment-stopped','employment-new', 'account', 'rates', 'kinds', 'terms', 'effects'].includes(page)) return 'settings';
+  if (['rules','bank','employment','work','staff','staff-stopped','employment-stopped','employment-new', 'account', 'rates', 'terms', 'effects'].includes(page)) return 'settings';
   return page;
 }
 // 戻る（入口の下の画面の左上）。来た道をたどる。直接開いたときは、その画面の入口へ
@@ -235,7 +235,6 @@ function render() {
   else if (r.page === 'family' && me.roles.includes('manager')) h = familyDetailPage(ctx, r.id);
   else if (r.page === 'plans' && me.roles.includes('manager')) h = plansPage(ctx);
   else if (r.page === 'billing' && me.roles.includes('manager')) h = billingPage(ctx);
-  else if (r.page === 'kinds' && me.roles.includes('manager')) h = kindsPage(ctx);
   else if (r.page === 'rates' && me.roles.includes('manager')) h = ratesPage(ctx);
   else if (r.page === 'terms' && me.roles.includes('manager')) h = termsPage(ctx);
   else if (r.page === 'docs' && me.roles.includes('manager')) h = docsPage(ctx);

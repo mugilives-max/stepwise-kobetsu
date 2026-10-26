@@ -277,7 +277,7 @@ function decideForm(ctx, l) {
 
 const minutesOptions = v => [30, 45, 60, 90, 120, 150, 180, 210, 240, 270, 300, 360, 390, 420, 480].map(m => `<option value="${m}"${m === Number(v) ? ' selected' : ''}>${m >= 120 ? `${m}分（${Math.floor(m / 60)}時間${m % 60 ? m % 60 + '分' : ''}）` : m + '分'}</option>`).join('');
 const staffOptions = (ctx, v) => '<option value="">未定</option>' + data.staff.filter(s => s.teacher).map(s => `<option value="${ctx.esc(s.id)}"${s.id === v ? ' selected' : ''}>${ctx.esc(s.name)}</option>`).join('');
-const kindOptions = (ctx, v) => data.kinds.map(k => `<option${k === v ? ' selected' : ''}>${ctx.esc(k)}</option>`).join('');
+const kindOptions = (ctx, v) => [...new Set([...data.kinds, ...(v ? [v] : [])])].map(k => `<option${k === v ? ' selected' : ''}>${ctx.esc(k)}</option>`).join('');
 function createForm(ctx, me) {
   const { esc } = ctx, past = !!sel && sel < data.today;
   return `<form class="stack" data-form="sch-create" style="margin:0">

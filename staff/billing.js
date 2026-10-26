@@ -1,18 +1,18 @@
 import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261025-layout';
-// スタッフの画面: 受講合意書（#plans）と請求（#billing、キャンセル料を含む）。5段目。教室管理者だけ。設定の「授業の種類と標準料金」（#kinds）も。
+// スタッフの画面: 受講合意書（#plans）と請求（#billing、キャンセル料を含む）。5段目。教室管理者だけ。種類は「通常」と特別単価合意書の名称（設定の「授業の種類と標準料金」は 2026-10-26 になくした）
 // 受講合意書は月ごとに生徒の行を並べる。請求は月ごとに家族の行を並べ、開くと内訳。
 import { sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 import { formOf, partsOf, planSets, subjectGroups, planTotals, formsText, amountText, periodText, planPreviewHtml, STATUS_LABEL } from '/assets/v2/plan-view.js?v=20261025-layout';
 // 下から出る画面: lineOpen（受講合意書の行）・editing（直す）・consentFor（承諾を記録）・addFor（足す）・openFamily（請求の内訳）・feeOpen（キャンセル料）
-let plans = null, planMonth = '', editing = '', consentFor = '', addFor = '', kindOpen = null, lineOpen = '', feeOpen = '';
+let plans = null, planMonth = '', editing = '', consentFor = '', addFor = '', lineOpen = '', feeOpen = '';
 const unpicked = new Set(); // お知らせから外した下書き（チェックを外したもの）
 export function billingPick(id, on) { if (on) unpicked.delete(id); else unpicked.add(id); }
 let bill = null, billMonth = '', openFamily = '', detail = null, fees = null, billSettings = null;
 let historyRows = null;
 let previewKey = ''; // 受講合意書全体のプレビュー（生徒 × 期間 × 状態のまとまり）。開くだけで何も保存・送信しない
-export function leaveBilling() { historyRows = null; kindOpen = null; lineOpen = editing = consentFor = addFor = openFamily = feeOpen = previewKey = ''; }
-export function resetBilling() { historyRows = null; kindOpen = null; lineOpen = feeOpen = previewKey = ''; plans = null; bill = null; detail = null; fees = null; editing = ''; consentFor = ''; addFor = ''; openFamily = ''; }
+export function leaveBilling() { historyRows = null; lineOpen = editing = consentFor = addFor = openFamily = feeOpen = previewKey = ''; }
+export function resetBilling() { historyRows = null; lineOpen = feeOpen = previewKey = ''; plans = null; bill = null; detail = null; fees = null; editing = ''; consentFor = ''; addFor = ''; openFamily = ''; }
 
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
@@ -122,12 +122,11 @@ function planSheet(ctx) {
 function remindButton(ctx, familyId, n, last) {
   return `<button data-action="pl-remind" data-family="${ctx.esc(familyId)}"${ctx.dis()}>承認のお願いを送る（${n}件）</button>${last ? `<span class="small muted">前回 ${md(new Date(Date.parse(last) + 9 * 3600e3).toISOString().slice(0, 10))}</span>` : ''}`;
 }
-// 受講合意書の行の入力欄（新しく足す・直す）。初期値は授業の種類の標準 → 通常の基準単価
+// 受講合意書の行の入力欄（新しく足す・直す）。種類は「通常」・この生徒の特別単価・この月の授業で使っている種類。初期値は「通常」の90分・個別受講条件書の基準単価
+// （2026-10-26 本人「このページってもはや不要」→ 種類は「通常」と特別単価合意書の名称だけ。授業料の上限は個別受講条件書・特別単価合意書で決まる）
 function lineForm(ctx, s, l) {
-  const { esc } = ctx, kinds = plans.kinds.filter(k => k.active || (l && k.name === l.kind));
-  if (l && !kinds.some(k => k.name === l.kind)) kinds.push({ name: l.kind }); // 種類の一覧に無い種類でも、直すときに勝手に変えない
-  const std = kinds.find(k => k.name === (l ? l.kind : '通常')) || {};
-  const minutes = l ? l.minutes : std.standardMinutes || 60, fee = l ? l.fee : std.standardFee || Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * minutes / 90);
+  const { esc } = ctx, kinds = [...new Set(['通常', ...(s.specials || []).map(x => x.title), ...(s.usedKinds || []), ...(l ? [l.kind] : [])])].map(name => ({ name })); // 直すときは今の種類を勝手に変えない
+  const minutes = l ? l.minutes : 90, fee = l ? l.fee : Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3;
   const parents = s.lines.filter(x => !x.parentId && x.status !== 'declined' && (!l || x.id !== l.id));
   return `<form class="stack" data-form="pl-save" data-student="${esc(s.id)}"${l ? ` data-id="${esc(l.id)}" data-version="${l.version}"` : ''}>
     ${l && l.status !== 'draft' ? '<p class="small notice">直すと承認が消え、下書きに戻ります。</p>' : ''}
@@ -147,25 +146,6 @@ function lineForm(ctx, s, l) {
 function partsInputs(ctx, l) {
   const { esc } = ctx, parts = l ? partsOf(l) : [], n = Math.min(8, Math.max(3, parts.length + 1));
   return `<fieldset class="small" style="border:1px solid var(--line);border-radius:8px;padding:6px 10px"><legend>目的・教材ごとの回数（任意）</legend><div class="parts-in">${Array.from({ length: n }, (_, i) => `<input name="partLabel${i}" maxlength="40" value="${esc(parts[i] ? parts[i].label : '')}" aria-label="目的・教材 ${i + 1}" placeholder="${i === 0 ? '例: 北辰テスト対策' : ''}"><input type="number" name="partCount${i}" min="1" max="60" value="${parts[i] ? parts[i].count : ''}" aria-label="目的・教材 ${i + 1} の回数" placeholder="回数">`).join('')}</div></fieldset>`;
-}
-// 設定の「授業の種類と標準料金」（#kinds）。種類を押すと下から直す画面
-export function kindsPage(ctx) {
-  const { esc } = ctx;
-  needPlans(ctx);
-  let h = ctx.notice();
-  if (plans.loading) return h + '<p class="muted">読み込んでいます…</p>';
-  h += '<div class="group" style="margin-top:12px">' + plans.kinds.map(k => rowButton(esc, 'kind-open', { name: k.name }, `${esc(k.name)}${k.active ? '' : ' <span class="tag gray">使わない</span>'}`,
-    `標準 ${k.standardMinutes ? k.standardMinutes + '分' : '時間なし'}・${k.standardFee ? yen(k.standardFee) : '生徒の通常の基準単価'}`)).join('') + '</div>';
-  h += `<p style="margin-top:12px"><button data-action="kind-open" data-name=""${ctx.dis()}>＋ 種類を足す</button></p>`;
-  if (kindOpen !== null) {
-    const k = plans.kinds.find(x => x.name === kindOpen);
-    const body = `<form class="stack" data-form="kind-save">${k ? `<input type="hidden" name="name" value="${esc(k.name)}">` : '<label>名前<input name="name" maxlength="20" placeholder="例: 講習" required></label>'}
-      <div class="row"><label style="flex:1">標準の時間（分）<input type="number" name="standardMinutes" min="0" max="300" step="15" value="${k ? k.standardMinutes : ''}"></label><label style="flex:1">標準の料金（円）<input type="number" name="standardFee" min="0" max="100000" value="${k ? k.standardFee : ''}"></label></div>
-      <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="active" value="1"${!k || k.active ? ' checked' : ''} style="width:auto"> 受講合意書で使う</label>
-      <button class="primary"${ctx.dis()}>${k ? '保存' : '足す'}</button></form>`;
-    h += sheet(esc, k ? k.name : '授業の種類を足す', body, 'kind-close');
-  }
-  return h;
 }
 
 // ---------- 請求 ----------
@@ -270,9 +250,6 @@ export async function billingSubmit(ctx, kind, el) {
   } else if (kind === 'pl-consent') {
     r = await ctx.call('billing/plans/consent', { id, version, consentedAt: v.consentedAt + '+09:00', consenterName: v.consenterName, via: v.via, approvedCount: num(v.approvedCount), note: v.note });
     msg = '承認として記録しました'; if (r.ok) { consentFor = lineOpen = ''; plans = null; }
-  } else if (kind === 'kind-save') {
-    r = await ctx.call('billing/kinds/save', { name: v.name, standardMinutes: num(v.standardMinutes) || 0, standardFee: num(v.standardFee) || 0, active: v.active === '1' });
-    msg = '授業の種類を保存しました'; if (r.ok) { plans = null; kindOpen = null; }
   } else if (kind === 'fee-decide') {
     r = await ctx.call('billing/fees/decide', { id, version, decision: v.decision, amount: num(v.amount), note: v.note });
     msg = 'キャンセル料を決めました'; if (r.ok) { fees = null; bill = null; feeOpen = ''; }
@@ -310,8 +287,6 @@ export async function billingClick(ctx, a, b) {
     return true;
   }
   let r, msg;
-  if (a === 'kind-open') { kindOpen = b.dataset.name; return true; }
-  if (a === 'kind-close') { kindOpen = null; return true; }
   if (a === 'pl-month') { historyRows = null; planMonth = shift(planMonth, Number(b.dataset.d)); editing = consentFor = addFor = lineOpen = previewKey = ''; return true; }
   if (a === 'pl-line') { lineOpen = b.dataset.id; editing = consentFor = addFor = previewKey = ''; ctx.say(''); return true; }
   if (a === 'fee-open') { feeOpen = b.dataset.id; ctx.say(''); return true; }
