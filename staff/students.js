@@ -152,7 +152,6 @@ function basic(ctx, x) {
 const ESTEPS = ['体験', '入塾の案内', '保護者の申込み', '入塾'];
 let lastInvite = null; // 送った直後だけ出す招待のリンク（保存していないので、あとからは出せない）
 let offerDraft = null; // 入塾の案内の書きかけ（「送りますか？」でキャンセルしたとき・送れなかったときに、入れた内容を残す）
-const nextMonth = today => { const [y, m] = today.split('-').map(Number); return m === 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0'); };
 const jaMonth = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
 const jaAt = t => t ? Number(t.slice(5, 7)) + '月' + Number(t.slice(8, 10)) + '日' : '';
 const MODE = { in_person: '教室', online: 'オンライン', both: '教室とオンライン' };
@@ -162,8 +161,8 @@ function enrollSteps(i) {
 function offerForm(ctx, x, again) {
   const { esc } = ctx, e = x.enrollment, b = x.basic, s = x.student, cond = (b.condition && b.condition.latest) || null;
   const d = offerDraft && offerDraft.studentId === s.id ? offerDraft.v : null;
-  const fee = d ? d.fee : cond ? cond.fee : (b.baseFee90 || ''), minutes = d ? d.minutes : cond ? cond.minutes : 90, mode = d ? d.deliveryMode : cond ? cond.deliveryMode : (s.deliveryMode || 'in_person');
-  const from = d ? d.fromMonth : cond && again ? cond.fromMonth : nextMonth(x.today.slice(0, 7));
+  const fee = d ? d.fee : cond ? cond.fee : (b.baseFee90 || 4500), minutes = d ? d.minutes : cond ? cond.minutes : 90, mode = d ? d.deliveryMode : cond ? cond.deliveryMode : (s.deliveryMode || 'in_person');
+  const from = d ? d.fromMonth : cond && again ? cond.fromMonth : x.today.slice(0, 7); // 開始は今月（申し込んだ日に入塾。2026-10-26 本人「翌月からスタートだと間に合わない」）
   const ready = e.termsReady;
   return `<form class="reg-form" data-form="enroll-offer" data-id="${esc(s.id)}" novalidate>
     <fieldset class="reg-field"><legend>保護者のメールアドレス <span class="req">必須</span></legend>
