@@ -16,6 +16,8 @@ export function conditionDocR6({ cond, student, family, terms }) {
   const termsTitle = (terms && terms.title) || 'ご利用規約';
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
+    ['生徒', `${esc(name)}さん`, ' class="wide"'],
+    ['学年', esc(student.grade || '')],
     ['1回の授業', `${cond.minutes}分`],
     ['1回の授業料（上限）', `${yen(cond.fee)}<small>（税込）</small>`],
     ['開始', `${esc(monthJa(cond.fromMonth))}から`],
@@ -74,7 +76,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
 <div class="sheet">
   <div class="head"><h1>受講条件書</h1><div class="meta">第${cond.no}版${final ? '' : '<span class="draft">案</span>'}<br>提示日 ${esc(jst(cond.proposedAt))}${final ? `<br>同意日 ${esc(jst(cond.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
-  <p class="lead"><strong>${esc(name)}さん</strong>（${esc(student.grade || '')}）の授業の基本となる条件です。毎月の授業の回数と料金は、別に「受講合意書」でお知らせし、そのつど同意をいただきます。</p>
+  <p class="lead">授業の基本となる条件です。毎月の授業の回数と料金は、別に「受講合意書」でお知らせし、そのつど同意をいただきます。</p>
   <dl class="key">${key.map(([k, v, a = '']) => `<div${a}><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
   <h2>そのほかの約束</h2>
   <ul class="rules">${promises.map(([k, v]) => `<li><b>${k}</b><span>${v}</span></li>`).join('')}</ul>

@@ -16,6 +16,8 @@ export function specialDocR9({ sp, student, family, terms }) {
   const termsTitle = (terms && terms.title) || 'ご利用規約';
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
+    ['生徒', `${esc(name)}さん`, ' class="wide"'],
+    ['学年', esc(student.grade || '')],
     ['指導の名称', `${esc(sp.title)}`],
     ['1回の授業', `${sp.minutes}分`],
     ['1回の授業料（上限）', `${yen(sp.fee)}<small>（税込）</small>`],
@@ -56,6 +58,7 @@ export function specialDocR9({ sp, student, family, terms }) {
   .key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #c7ccd2; margin-top: 5mm; border: 1.5px solid #1e2630; border-radius: 6px; overflow: hidden; }
   .key div { padding: 3.5mm 4mm; background: #fff; }
   .key div.wide3 { grid-column: span 3; }
+  .key div.wide { grid-column: span 2; }
   .key dt { font-size: 12px; font-weight: 600; }
   .key dd { margin: 1mm 0 0; font-size: 19px; font-weight: 700; line-height: 1.35; }
   .key dd small { font-size: 12px; font-weight: 600; }
@@ -77,7 +80,7 @@ export function specialDocR9({ sp, student, family, terms }) {
 <div class="sheet">
   <div class="head"><h1>特別単価合意書</h1><div class="meta">第${sp.no}版${final ? '' : '<span class="draft">案</span>'}<br>提示日 ${esc(jst(sp.proposedAt))}${final ? `<br>承認日 ${esc(jst(sp.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
-  <p class="lead"><strong>${esc(name)}さん</strong>（${esc(student.grade || '')}）の「${esc(sp.title)}」は、準備に特別な負担がかかるため、通常の基準単価とは別の単価（特別の基準単価）でお願いします。内容をご確認のうえ、承認をお願いします。</p>
+  <p class="lead">「${esc(sp.title)}」は、準備に特別な負担がかかるため、通常の基準単価とは別の単価（特別の基準単価）でお願いします。内容をご確認のうえ、承認をお願いします。</p>
   <dl class="key">${key.map(([k, v, a = '']) => `<div${a}><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
   <h2>指導の内容</h2>
   <ul class="rules">${detail.map(([k, v]) => `<li><b>${k}</b><span>${v}</span></li>`).join('')}</ul>
