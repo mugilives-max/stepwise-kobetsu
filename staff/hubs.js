@@ -59,7 +59,7 @@ export function settingsPage(ctx, me) {
   else if(me.contractType==='employee')h+='<div class="group">'+row('#employment','file','#2f6fde','自分の雇用・勤務')+'</div>';
   if(me.contractType==='owner'||me.contractType==='employee')h+='<div class="group">'+row('#rules','file','#7a5bd6','講師マニュアル')+'</div>'; // 雇用契約書 第9条7項
   if(me.employmentAccess===false)return h;
-  if (roles.includes('manager')) h += '<div class="sec-title">教室の運営</div><div class="group">' + (me.contractType==='owner'?row('#rates', 'yen', '#2e9b5f', '時給と源泉徴収'):'') + row('#kinds', 'plan', '#5b6672', '授業の種類と標準料金') + row('#terms', 'file', '#c98a00', 'ご利用共通規約') + row('#docs', 'file', '#5b6672', '書類のひな形') + row('#effects', 'mail', '#d0533c', '送信の記録と控え') + '</div>';
+  if (roles.includes('manager')) h += '<div class="sec-title">教室の運営</div><div class="group">' + (me.contractType==='owner'?row('#rates', 'yen', '#2e9b5f', '時給と源泉徴収'):'') + row('#kinds', 'plan', '#5b6672', '授業の種類と標準料金') + row('#terms', 'file', '#c98a00', '共通規約') + row('#docs', 'file', '#5b6672', '書類のひな形') + row('#effects', 'mail', '#d0533c', '送信の記録と控え') + '</div>';
   // 検証環境（2026-10-19。本番とは別の、架空のデータで試す場所。docs/SYSTEM.md 6-0）は別のタブで開く
   const staging = `<a class="todo-row" href="https://stepwise-staging.stepwise-edu.workers.dev/" target="_blank" rel="noopener">${ibox('check', '#7a2e0e', '検証環境')}<span class="v"><span class="lbl">検証環境</span></span><span class="go">↗</span></a>`;
   if (roles.includes('sysadmin')) h += '<div class="sec-title">システム</div><div class="group">' + row('#staff', 'person', '#7b4fd6', 'スタッフ') + staging + '</div>';

@@ -20,4 +20,8 @@ test('agreement documents keep the old wording unless the row refers to ご利�
   assert.equal(agreementLayout([rec('ご利用共通規約')]), AGREEMENT_LAYOUT_R12);
   const r12 = agreementDocHtml({ records: [rec('ご利用共通規約')], documentId: 'AG-z' });
   assert.match(r12, /適用されるご利用共通規約に基づき/); assert.match(r12, /参照する個別受講条件書 ID/); assert.match(r12, new RegExp('書類様式：' + AGREEMENT_LAYOUT_R12));
+  // r13（同日）: 名前は「共通規約」
+  assert.equal(agreementLayout([rec('共通規約')]), AGREEMENT_LAYOUT_R12);
+  const r13 = agreementDocHtml({ records: [rec('共通規約')], documentId: 'AG-w' });
+  assert.match(r13, /適用される共通規約に基づき/); assert.doesNotMatch(r13, /ご利用/); assert.match(r13, /参照する個別受講条件書 ID/);
 });

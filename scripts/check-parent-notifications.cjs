@@ -127,7 +127,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await h.ok('admin/terms/set',{auth,version:'synthetic-new',title:'【テスト】規約',url:'https://example.invalid/terms'});
   await h.ok('admin/terms/request',{auth,familyIds:[fam.id]});
   await page.goto(origin+'/family/#money');
-  await page.getByText('受講合意書の承認には、先に上のご利用共通規約・個別受講条件書への同意が必要です。',{exact:true}).waitFor();
+  await page.getByText('受講合意書の承認には、先に上の共通規約・個別受講条件書への同意が必要です。',{exact:true}).waitFor();
   assert.equal(await page.locator('[data-form="plan-approve"] button.primary:enabled').count(),0);
   await page.setViewportSize({width:1280,height:900});
   const documentIcons=await page.locator('button.btn svg').evaluateAll(es=>es.map(x=>x.getBoundingClientRect().width));

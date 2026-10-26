@@ -1,6 +1,6 @@
-// ご利用共通規約の版と同意の記録（migrations-v2/0016_terms.sql・0034_terms_requests.sql）。
+// 共通規約の版と同意の記録（migrations-v2/0016_terms.sql・0034_terms_requests.sql）。
 // 「使う規約を決める」と「保護者に同意をお願いする」は別の操作（2026-10-20 本人「決定するのと、同意をお願いするのが同時…気持ち悪い」）。
-// - 使う規約（今の版）は settings に置く（教室管理者が「設定 → ご利用共通規約」で決める）。これから作る書面と、新しく入塾する家族の申込みはこの版による
+// - 使う規約（今の版）は settings に置く（教室管理者が「設定 → 共通規約」で決める）。これから作る書面と、新しく入塾する家族の申込みはこの版による
 // - 決めただけでは、今の家族には何も出ない。代表が家族を選んで同意をお願いすると（admin/terms/request）、その家族の保護者ページに同意のお願いが出る
 // - お願いしている家族は、同意するまで受講合意書を承認できない（billing.mjs）。お願いしていない家族は、規約 第28条のとおり前の約束のまま
 // - 保護者は保護者ページで全文を読んで同意する（family/terms/accept）
@@ -99,7 +99,7 @@ export const termsRoutes = {
   'admin/terms/request': async (c, b) => {
     const me = await requireStaff(c, b, 'manager');
     const terms = await currentTerms(c.db);
-    if (!terms.version) fail('noTerms', '先に、ご利用共通規約を使い始めてください');
+    if (!terms.version) fail('noTerms', '先に、共通規約を使い始めてください');
     const ids = [...new Set((Array.isArray(b.familyIds) ? b.familyIds : []).map(String))];
     if (!ids.length) fail('needFamilies', '同意をお願いする家族を選んでください');
     if (ids.length > 300) fail('tooMany', '一度に選べるのは300家族までです');
@@ -117,7 +117,7 @@ export const termsRoutes = {
     if (!stmts.length) fail('nothingToRequest', '選んだ家族は、もう同意済みか、同意をお願いしているところです');
     await c.db.batch(stmts);
     const held = !(await isLive(c));
-    for (const { f, mailed } of done) if (mailed) c.effects.push({ kind: 'mail', to: f.email, name: 'ステップワイズ個別指導', subject: '【ステップワイズ】ご利用共通規約への同意のお願い',
+    for (const { f, mailed } of done) if (mailed) c.effects.push({ kind: 'mail', to: f.email, name: 'ステップワイズ個別指導', subject: '【ステップワイズ】共通規約への同意のお願い',
       body: `${f.guardianName ? f.guardianName + ' 様' : '保護者さま'}\n\nステップワイズ個別指導です。「${terms.title}」${terms.from ? `（${Number(terms.from.slice(5, 7))}月${Number(terms.from.slice(8))}日から）` : ''}への同意をお願いいたします。\n${note ? note + '\n' : ''}\n保護者ページで全文をお読みいただき、「同意する」を押してください。同意いただくまで、次の受講合意書は承認できません。\n\n確認する：\n${FAMILY_URL}#money\n\nご不明な点は、いつものLINEまたは mugilives@gmail.com へご連絡ください。`,
       replyTo: 'mugilives@gmail.com', notice: null, testOnly: !!f.testOnly, audience: 'family', held });
     await audit(c, 'termsRequested', terms.version, { families: done.map(x => x.f.id), mailed: done.filter(x => x.mailed).length });
@@ -139,7 +139,7 @@ export const termsRoutes = {
     if (!f) fail('notFound', '家族が見つかりません', 404);
     const terms = await currentTerms(c.db);
     const version = String(b.version || terms.version || '').trim(), date = String(b.date || ''), via = String(b.via || '').trim(), note = String(b.note || '').trim();
-    if (!version) fail('needVersion', '規約の版がまだありません。設定の「ご利用共通規約」で決めてください');
+    if (!version) fail('needVersion', '規約の版がまだありません。設定の「共通規約」で決めてください');
     if (date && !validDate(date)) fail('badDate', '同意をもらった日を確かめてください');
     if (!via || via.length > 40) fail('needVia', '同意の方法（書面・LINE など）を入れてください');
     if (note.length > 300) fail('tooLong', 'メモは300文字以内にしてください');
