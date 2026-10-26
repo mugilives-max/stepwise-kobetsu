@@ -60,6 +60,9 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
   await approve(p,{approvedCount:3});await approve(english);
   const saved=refs(row(p.id),row(english.id));
   await page.reload();
+  // 塾が記録した承認は「確認」をお願いせず、決まった計画の一覧（月ごと）に出る（2026-10-26）
+  await page.locator('details.ph summary').first().click();
+  assert.equal(await page.getByRole('button',{name:'内容が違うときは問い合わせる'}).count()>0,true,'違うときだけ問い合わせられる');
   const approvedPopup=page.waitForEvent('popup');await page.getByRole('button',{name:'印刷・PDF保存',exact:true}).first().click();
   const approved=await approvedPopup;await approved.getByRole('heading',{name:'受講合意書の控え',exact:true}).waitFor();
   assert.match(await approved.locator('body').innerText(),/31,500円/);

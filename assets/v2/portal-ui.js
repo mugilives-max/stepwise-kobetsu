@@ -184,12 +184,14 @@ export function planHistory(lines, { multi }) {
   return '<div class="group">' + groups.map(([m, ls]) => {
     const total = ls.reduce((s, l) => s + (l.status === 'approved' ? l.approvedCount * l.fee : 0), 0);
     return `<details class="ph"><summary><span class="b"><b>${monthLabel(m)}</b><small>${ls.map(l => `${multi ? given(l.studentName) + ' ' : ''}${l.subject}${l.status === 'approved' ? ` ${l.approvedCount}回` : '（見送り）'}`).map(esc).join('・')}</small></span><span class="amt">${yen(total)}</span></summary>
-      <div class="pl-list">${planSubjects(ls, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span><span class="n"><small>${l.status === 'approved' ? `${l.approvedCount}回・1回 ${yen(l.fee)}<br>${esc(l.consentDate)}・${esc(l.approvedVia)}${l.familyAck === 'inquiry' ? '・問い合わせ中' : ''}` : '見送り'}</small></span><span class="amt">${l.status === 'approved' ? yen(l.approvedCount * l.fee) : ''}</span></div>`)}</div>${agreementDocumentButtons(ls)}</details>`;
+      <div class="pl-list">${planSubjects(ls, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span><span class="n"><small>${l.status === 'approved' ? `${l.approvedCount}回・1回 ${yen(l.fee)}<br>${esc(l.consentDate)}・${esc(l.approvedVia)}${l.familyAck === 'inquiry' ? '・問い合わせ中' : ''}` : '見送り'}</small></span><span class="amt">${l.status === 'approved' ? yen(l.approvedCount * l.fee) : ''}</span></div>`)}</div>${agreementDocumentButtons(ls)}${(rec => rec.length ? `<p class="small" style="margin:6px 0 0"><button type="button" class="text-btn" data-action="plan-inquiry" data-refs="${esc(JSON.stringify(rec.map(l => ({ id: l.id, version: l.version }))))}" data-month="${esc(m)}">内容が違うときは問い合わせる</button></p>` : '')(ls.filter(l => l.status === 'approved' && l.approvedBy === 'staff' && !l.familyAck))}</details>`;
   }).join('') + '</div>';
 }
+// 2026-10-26 本人「受講合意書の承認と確認で２つ出ていますが意味が分からない」→ 保護者にお願いするのは承認だけ。
+// 塾が記録した承認（LINE など）は確認をお願いせず、決まった計画の一覧に出す（違うときだけ、その月から問い合わせる）
 export function planGroups(plans) {
-  const asks = plans.filter(l => l.status === 'proposed'), acks = plans.filter(l => l.status === 'approved' && l.approvedBy === 'staff' && !l.familyAck);
-  const others = plans.filter(l => !asks.includes(l) && !acks.includes(l));
+  const asks = plans.filter(l => l.status === 'proposed'), acks = [];
+  const others = plans.filter(l => !asks.includes(l));
   return { asks: groupByMonth(asks), acks: groupByMonth(acks), others };
 }
 export const inquirySheet = (month, note, busy) => sheet(esc, `${monthLabel(month)}の受講計画合意書について`, `<textarea id="inquiry-note" rows="3" maxlength="500" placeholder="例: 英語は 4 回ではなく 3 回で話していました">${esc(note || '')}</textarea><div class="row" style="margin-top:10px"><button class="primary wide" data-action="send-inquiry" data-month="${esc(month)}"${busy ? ' disabled' : ''}>${busy ? '送っています…' : '先生に伝える'}</button></div>`, 'close-sheet');
