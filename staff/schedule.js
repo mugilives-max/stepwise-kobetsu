@@ -28,7 +28,7 @@ const adjustingLessons = () => data.adjustingAll || data.lessons.filter(l => l.s
 const soon = l => l.date <= addDays(data.today, 5); // 5 日以内（調整中のままなら確認をお願いするか、合意を記録して確定）
 // 月ごとに読んだ予定をとっておく（スワイプで月を変えたとき、すぐ出せるように。前後の月は先に読んでおく）。予定を変えたら捨てる
 let cache = {}, swipeAt = 0, slideIn = '';
-// 月の表では、生徒ごとに授業をまとめ、まだ決まっていないものがあればその色で出す
+// 月の表では、授業ごとに時刻と名前を、段階の色で出す
 const RANK = { held: 0, proposed: 1, decided: 2, done: 3 };
 
 function prefetchNear(ctx) {
@@ -80,8 +80,8 @@ export function schedulePage(ctx, me) {
     const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable')).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''}</span>`)
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
       .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));
-    const by = {}; ls.forEach(l => { const g = by[l.studentId] = by[l.studentId] || { n: 0, rank: 9 }; g.n++; g.rank = Math.min(g.rank, RANK[l.status]); });
-    const chips = Object.entries(by).map(([sid, g]) => `<span class="nm r${g.rank}">${esc(short[sid] || '')}${g.n > 1 ? `<small>×${g.n}</small>` : ''}</span>`);
+    // 授業ごとに時刻と名前（「×2」でまとめない。2026-10-27 本人「その根本の原因は「×N」でまとめてしまう表記ですね」）
+    const chips = ls.slice().sort((a, b) => a.start.localeCompare(b.start)).map(l => `<span class="nm t2 r${RANK[l.status]}"><small class="tm">${l.start}</small><b>${esc(short[l.studentId] || '')}</b></span>`);
     const lines = bars.concat(chips), shown = lines.slice(0, 4), more = lines.length - shown.length;
     const wd = new Date(d + 'T00:00:00Z').getUTCDay();
     h += `<button class="cell${ymOf(d) !== month ? ' out' : ''}${d === sel ? ' sel' + (shownSel && shownSel !== sel ? ' enter' : '') : ''}${d === data.today ? ' today' : ''}" data-action="sch-day" data-date="${d}" aria-label="${mdw(d)} 授業${ls.length}件">`
