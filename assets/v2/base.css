@@ -997,3 +997,10 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .stu-list .srow .b .tag { align-self: center; }
 .stu-tools { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .stu-tools .search { flex: 1; margin: 0; }
+/* 授業の多い日（2026-10-27 本人「授業が多すぎて表示がうまくできない」）: パソコンは授業を1行で「18:00〜19:30 実祈 英語」。5行まで */
+@media (min-width: 720px) {
+  .month2 .cell { height: 112px; }
+  .month2 .nm.t2 { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; overflow: hidden; line-height: 1.35; }
+  .month2 .nm.t2 .tm { display: inline; flex: none; font-size: 10px; }
+  .month2 .nm.t2 b { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+}
