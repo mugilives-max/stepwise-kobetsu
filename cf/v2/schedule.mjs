@@ -11,7 +11,7 @@ import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
 // 2通り（2026-10-27 本人「大雑把に言えば２通りでいい…LINEとかで日程の調整をしたら、両者の合意が取れたらそれを塾側がシステムに反映する。あるいは、既に合意されている日程をシステムからリンクを送って…承認お願いします…スムーズであるというのが何よりも大事」）:
 //   ① LINE・対面で合意した日時を、塾が「確定」で入れる（send: 'decide'）
 //   ② 塾が日程を送り、保護者が保護者ページで「承認する」（send: 'ask'。締め切り・自動確定なし）
-//   受講計画合意書に入らない授業も、その授業への合意があれば請求する（cf/v2/lesson-plan.mjs。受講計画合意書には足さない。2026-10-27 本人「自動で受講計画に足すのはやめましょう」）
+//   受講計画書に入らない授業も、その授業への合意があれば請求する（cf/v2/lesson-plan.mjs。受講計画書には足さない。2026-10-27 本人「自動で受講計画に足すのはやめましょう」）
 // カレンダー・Meet と保護者へのメールは、切り替え（settings.live）まで実際には行わない（effects に held で残る）。
 import { fail, newId, iso, audit, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
@@ -195,7 +195,7 @@ export function lessonFields(b, base = {}) {
   out.staffId = String(out.staffId || '');
   return out;
 }
-// 重なりの確かめ。同じ生徒の授業が重なれば断る。同じ講師は対面2人までなら確かめを求め、オンラインが入るか3人以上なら断る。休み・授業ができない日は、force がなければ確かめを求める
+// 重なりの確かめ。同じ生徒の授業が重なれば断る。同じ講師は2人までなら確かめを求め、3人以上なら断る（対面・オンラインとも。共通規約 r15 第4条）。休み・授業ができない日は、force がなければ確かめを求める
 // New onboarding accounts need confirmed preparation before a future assignment.
 // Actual past work remains recordable; legacy accounts keep their current behaviour.
 async function checkEmploymentAssignment(c,x,meeting=false) {
@@ -220,11 +220,10 @@ export async function checkConflicts(c, candidates, { force, exceptId = '', more
   candidates.forEach((x, i) => {
     const others = lessons.concat(candidates.filter((_, j) => j !== i));
     if (others.some(o => o.studentId === x.studentId && overlap(o, x))) errors.push(`${x.date} ${x.start} は同じ生徒の授業と重なっています`);
-    // 同じ講師の授業の重なり: 対面どうしなら2人まで（2人同時の授業。確かめてから）。オンラインが入るなら同時にはできない。給与は講師が働いた時間で数える（重なりは1回。cf/v2/payroll.mjs）
+    // 同じ講師の授業の重なり: 2人まで（2人同時の授業。確かめてから）。オンラインも同じ（2026-10-27 本人「オンラインも例外なく1:2まで行える」）。給与は講師が働いた時間で数える（重なりは1回。cf/v2/payroll.mjs）
     const same = x.staffId ? others.filter(o => o.staffId === x.staffId && overlap(o, x)) : [];
     if (same.length) {
-      if (x.deliveryMode === 'online' || same.some(o => o.deliveryMode === 'online')) errors.push(`${x.date} ${x.start} は同じ講師の授業と重なっています（オンラインの授業は同時にできません）`);
-      else if (same.some((o, k) => same.some((p, m) => m > k && overlap(o, p)))) errors.push(`${x.date} ${x.start} は同じ講師の授業が3つ重なります（同時の授業は2人まで）`);
+      if (same.some((o, k) => same.some((p, m) => m > k && overlap(o, p)))) errors.push(`${x.date} ${x.start} は同じ講師の授業が3つ重なります（同時の授業は2人まで）`);
       else warnings.push(`${x.date} ${x.start} は同じ講師のほかの授業と同時（2人同時）になります`);
     }
     const span = o => o.start ? { date: o.date, start: o.start, minutes: toMin(o.end) - toMin(o.start) } : { date: o.date, start: '00:00', minutes: 1440 };
@@ -330,7 +329,7 @@ async function familyScheduleOf(c, studentIds, from, to) {
   // 新しい決まりの授業で、開始を遅らせる・キャンセルを選べるものには、取消料の計算に使う1回の授業料を添える（画面で今の金額を出す）
   const quote = {};
   for (const l of lessons) if (choicesFor(l, c.now).includes('cancel') && await usesRate(c.db, l)) quote[l.id] = await lessonFee(c.db, l);
-  // 承認待ちの授業のうち、受講計画合意書の回数を超える分（承認すると追加になる。1回の授業料）
+  // 承認待ちの授業のうち、受講計画書の回数を超える分（承認すると追加になる。1回の授業料）
   const extra = {};
   for (const sid of studentIds) { const asking = lessons.filter(l => l.studentId === sid && stageOf(l) === 'asking'); if (asking.length) Object.assign(extra, await extrasFor(c.db, sid, asking)); }
   return {
@@ -540,7 +539,7 @@ export const scheduleRoutes = {
     if (done && candidates.some(x => x.date > today)) fail('future', '実施済みで登録できるのは今日までの授業です');
     if (!done && candidates.some(x => x.date < today)) fail('past', '過去の日付には授業を作れません。実施した授業なら「実施済みとして登録」にしてください');
     candidates.forEach(x => { x.id = newId('ls'); });
-    // ② の承認のお願いには、受講計画の外の授業の授業料を書く（受講計画合意書には足さない。2026-10-27 本人「自動で受講計画に足すのはやめましょう」）
+    // ② の承認のお願いには、受講計画の外の授業の授業料を書く（受講計画書には足さない。2026-10-27 本人「自動で受講計画に足すのはやめましょう」）
     // ① 確定で入れる授業が受講計画を超えるときは、重なりの確認と一緒に確かめる
     const extras = (mode === 'ask' || decide) && !trial ? await extrasFor(c.db, s.id, candidates) : {};
     await checkConflicts(c, candidates, { force: !!b.force, more: decide ? overPlanWarnings(candidates, extras) : [] });

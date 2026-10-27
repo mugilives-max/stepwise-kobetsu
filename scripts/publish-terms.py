@@ -10,13 +10,13 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261026-r14"
+EDITION = "2026-11-20261027-r15"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261026-r14"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261026_R14.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261027-r15"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261027_R15.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "7b22620ddc62d4fdd3f208a713cd8d2224a49227"
+EXPECTED_SOURCE_BLOB = "7dd32c5ecc7402c68c08b4247f2009605b543c84"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -60,8 +60,8 @@ for heading in body.find_all(["h1", "h2", "h3"]):
 
 ids = [tag["id"] for tag in body.select("[id]")]
 assert len(ids) == len(set(ids)), "Duplicate anchors"
-assert len([v for v in ids if re.fullmatch(r"article-\d+", v)]) == 33
-assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 151
+assert len([v for v in ids if re.fullmatch(r"article-\d+", v)]) == 31
+assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 142
 assert len([v for v in ids if re.fullmatch(r"chapter-\d+", v)]) == 8
 assert len(body.find_all("table")) == 5
 for link in body.select('a[href^="#"]'):
@@ -135,48 +135,66 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:auto; }
 }
 """
-# r14 (2026-10-26 本人「受講合意書って名前はやっぱり…受講計画合意書って名前にするべきな気がしてきた」→「その名前でok」):
-# r13 から、月ごとの書類の名前（受講合意書→受講計画合意書）と版の参照だけを変えた版（条文・表・例の中身は変わらない）。
-# r13 の本文に決まった置き換えだけをしたものと、今の本文が一字一句同じであることを確かめる
-PRIOR_COMMIT = "934bf44df4b71828771f5c3628bfe9b8da0cae53"
-TERMS_REPLACEMENTS = [("受講合意書", "受講計画合意書"), ("20261026-r13", "20261026-r14")]
-RELATED_REPLACEMENTS = TERMS_REPLACEMENTS
-def renamed(value):
-    for old,new in TERMS_REPLACEMENTS:
-        value = value.replace(old,new)
-    return value
+# r15 (2026-10-27): 本人の設計思想（AGENTS.md「授業の日程と合意の考え方」）に合わせて作り直した版。
+# 合意は授業ごと、受講計画書は補助、日程は人が決めてシステムは記録、システムは自動で確定しない。第13〜15条を第13条に、第3章を並べ替え、番号をふり直した（全31条）。
+# 本人 2026-10-27「受講計画書にしよう」「それでいい、番号のふり直しに進もう」「授業形式でオンラインも例外なく1:2まで行えるという内容にしましょう」。
+# 正本は点検した下書き（DRAFT_20261027.md）。見出しと下書きのメモ・適用日の文だけを公開用にしたものと、一字一句同じであることを確かめる
+PRIOR_COMMIT = "1b8fe3316370df93262aecde62087523df92c5e1"  # r14
+DRAFT = (SOURCE.parent / "DRAFT_20261027.md").read_text(encoding="utf-8")
+draft_head = "# 共通規約（下書き 2026-10-27）\n\n"
+assert DRAFT.startswith(draft_head)
+expected_source = "# 共通規約\n\n" + DRAFT[DRAFT.index("ステップワイズ個別指導\n"):]
+expected_source = expected_source.replace("**保護者がこの版に同意した日から適用（新たに入塾する場合は、お申込みの日から）**","**保護者がこの版に同意した日から適用します（新たに入塾する場合は、お申込みの日から）。**").replace("20261026-r14","20261027-r15")
+assert expected_source == source, "TERMS.md differs from the reviewed draft"
+# r14 からの番号の対応: 旧第16〜33条 → 第14〜31条（旧第14・15条は第13条にまとめた）
+def renumbered(value):
+    value = value.replace("20261026-r14","20261027-r15").replace("受講計画合意書","受講計画書")
+    value = re.sub(r"第(\d+)条", lambda m: "第%d条" % (int(m[1])-2 if int(m[1]) >= 16 else int(m[1])), value)
+    return re.sub(r"article-(\d+)", lambda m: "article-%d" % (int(m[1])-2 if int(m[1]) >= 16 else int(m[1])), value)
 prior_source = subprocess.check_output(["git","show",PRIOR_COMMIT+":docs/terms-restructure-2026-11/TERMS.md"],text=True)
-expected_source = prior_source
-for old,new in TERMS_REPLACEMENTS:
-    assert old in expected_source, old
-    expected_source = expected_source.replace(old,new)
-assert expected_source==source, "Unexpected changes besides the names and edition references"
 CLAUSE_PATTERN = r'(<a id="(article-\d+-item-\d+)"></a>\n\n\d+\. )([\s\S]*?)(?=\n\n<a id=|$)'
 def clauses(value):
     return {m[2]:m[3].strip() for m in re.finditer(CLAUSE_PATTERN,value)}
 old_clauses,new_clauses = clauses(prior_source),clauses(source)
-assert len(old_clauses)==151 and set(old_clauses)==set(new_clauses)
-changes={k for k in old_clauses if old_clauses[k]!=new_clauses[k]}
-assert all(renamed(old_clauses[k])==new_clauses[k] for k in changes), changes
+assert len(old_clauses)==151 and len(new_clauses)==142
+kept = set(renumbered(v) for v in old_clauses.values()) & set(new_clauses.values())
+changes = {k for k,v in new_clauses.items() if v not in kept}
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
-assert [renamed(t) for t in old_tables]==new_tables, "Tables changed"
-for phrase in ["特殊指導","通常指導","受講条件書（","受講規約"]:
+# 料金・負担率・接続不良の表と例は、番号の対応のほかは r14 と同じ（書類の表だけ変えた）
+assert len(old_tables)==len(new_tables)==5 and [renumbered(t) for t in old_tables[1:]]==new_tables[1:], "Fee tables changed"
+assert "受講計画書（必要な場合のみ）" in new_tables[0]
+for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","受講計画合意書","確認待ち","調整中","この日程で大丈夫","当面1対1"]:
     assert phrase not in source,phrase
-assert len(ids)==196
+assert "教室指導・オンライン指導とも、講師1名につき生徒最大2名" in source
+assert len(ids)==185
 for link in body.select('a[href^="#article-"]'):
     label=re.fullmatch(r"第(\d+)条(?:第(\d+)項)?",link.get_text())
     if label:
         target="article-"+label[1]+("-item-"+label[2] if label[2] else "")
         assert link["href"]=="#"+target,"Reference label differs from anchor"
-waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261026-r14/waiver/"
+waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261027-r15/waiver/"
 assert [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]] == [waiver_url]
+# 関連書類（空欄様式・免除申請の案内）は、r14 からの見直した文だけを変えた
+RELATED_CHANGES={
+ "TEACHING_CONDITIONS_REGULAR.md":[("具体的な対象期間・科目・回数・適用単価は、別途「受講計画書」で合意します。","授業は、授業ごとに日時と授業料に合意して行います。まとまった回数の授業は、必要な場合に「受講計画書」で前もって合意できます。"),
+  ("この書類への合意だけで月ごとの授業の実施が承認されるものではありません。料金・教材・連絡・取消しなどの扱いは、適用する共通規約によります（第2・3条・第5条～第8条・第14条）。","この書類への合意だけで授業の実施が承認されるものではありません。料金・教材・連絡・取消しなどの扱いは、適用する共通規約によります（第2・3条・第5条～第10条・第14条）。")],
+ "TEACHING_CONDITIONS_SPECIAL.md":[("月ごとの具体的な回数等は「受講計画書」で別途合意します。内容・基準単価・期間を変更する場合は新しい特別単価合意書への承認が必要です。詳細は適用する共通規約によります（第5条～第7条・第10・12・26条）。","この単価を用いる授業は、授業ごとの合意、または必要な場合は「受講計画書」で示します。内容・基準単価・期間を変更する場合は新しい特別単価合意書への承認が必要です。詳細は適用する共通規約によります（第5条～第7条・第9条・第11条・第12条・第24条）。")],
+ "TUITION_AGREEMENT.md":[("保護者・塾のどちらからも案を提示できます。","まとまった回数の授業を前もって合意し、授業ごとに授業料を確かめる手間を省くための書類です（必須ではありません）。保護者・塾のどちらからも案を提示できます。"),
+  ("| 対象月 | 　　　　年　　月 |\n",""),
+  ("各行の適用単価は、対応する対象月の承認済み基準単価を上限とします。異なる月・期間・時間・単価は分けて記録してください。複数月分をまとめる場合も、月ごとの対象期間と合意を区別します。","各行の適用単価は、対象期間に承認済みの基準単価を上限とします。異なる期間・時間・単価は分けて記録してください。"),
+  ("変更・追加には事前の双方の合意が必要です。","回数を超える授業や対象期間外の授業は、授業ごとの事前の合意で行えます。この書類の条件の変更には、変更版への事前の双方の合意が必要です。"),
+  ("具体的な日時は日程調整カレンダー等で調整し、規約第4章に従って確定（予約）します。日時一覧を同時に承認する場合の添付資料名・版：　　　　　　　　　。","具体的な日時は、LINE・面談・電話等で相談して決め、共通規約第4章により予約になります。"),
+  ("詳細は適用する共通規約によります（第7条・第9条～第15条）。","詳細は適用する共通規約によります（第7条・第9条～第15条）。")],
+ "WAIVER_GUIDE.md":[("第16・22・24・25・31条","第14・20・22・23・29条")],
+}
 for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.md","TUITION_AGREEMENT.md","WAIVER_GUIDE.md"]:
-    before=subprocess.check_output(["git","show",PRIOR_COMMIT+":"+str(SOURCE.parent.relative_to(ROOT)/filename)],text=True)
-    for old,new in RELATED_REPLACEMENTS:
+    before=renumbered(subprocess.check_output(["git","show",PRIOR_COMMIT+":"+str(SOURCE.parent.relative_to(ROOT)/filename)],text=True))
+    for old,new in RELATED_CHANGES[filename]:
+        assert before.count(old)==1,(filename,old)
         before=before.replace(old,new)
     after=(SOURCE.parent/filename).read_text(encoding="utf-8")
-    assert before==after and not any(phrase in after for phrase in ["特殊指導","通常指導","受講条件書（","受講規約"]),filename
+    assert before==after and not any(phrase in after for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","受講計画合意書"]),filename
 
 html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>共通規約｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">共通規約と書類の一覧</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
 (OUT / "index.html").write_text(html, encoding="utf-8")
@@ -187,13 +205,13 @@ index_html = """<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>共通規約｜ステップワイズ個別指導</title>
 <style>body{font-family:"Yu Gothic","Noto Sans CJK JP",Meiryo,sans-serif;color:#172526;line-height:1.9;margin:36px auto;padding:0 22px;max-width:760px}h1{font-size:1.6rem}h2{font-size:1.2rem;border-bottom:1px solid #b9cdcb;padding-bottom:7px;margin-top:28px}a{color:#126964}li{margin:9px 0}.note{color:#405452}</style></head><body>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>共通規約</h1>
-<p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「個別受講条件書」、月ごとの授業の内容は「受講計画合意書」で定めます。</p>
-<h2>共通規約（2026年11月1日から適用）</h2>
-<ul><li><a href="2026-11-20261026-r14/">Web版を読む</a></li><li><a href="2026-11-20261026-r14/stepwise-terms-2026-11-20261026-r14.pdf">PDFで開く</a></li></ul>
+<p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「個別受講条件書」で定めます。まとまった回数の授業は「受講計画書」で前もって合意できます。</p>
+<h2>共通規約（ご家庭が同意した日から適用）</h2>
+<ul><li><a href="2026-11-20261027-r15/">Web版を読む</a></li><li><a href="2026-11-20261027-r15/stepwise-terms-2026-11-20261027-r15.pdf">PDFで開く</a></li></ul>
 <h2>書類の様式</h2>
-<ul><li><a href="2026-11-20261026-r14/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261026-r14/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r14/documents/special/">特別単価合意書</a>（<a href="2026-11-20261026-r14/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r14/documents/agreement/">受講計画合意書</a>（<a href="2026-11-20261026-r14/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
+<ul><li><a href="2026-11-20261027-r15/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261027-r15/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261027-r15/documents/special/">特別単価合意書</a>（<a href="2026-11-20261027-r15/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261027-r15/documents/agreement/">受講計画書</a>（<a href="2026-11-20261027-r15/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
 <h2>キャンセル料金の免除申請</h2>
-<ul><li><a href="2026-11-20261026-r14/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261026-r14/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261027-r15/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261027-r15/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
 <p class="note">ご不明な点は、いつものLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
 </body></html>
 """
@@ -218,13 +236,13 @@ with sync_playwright() as p:
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Mobile overflow"
     page.locator("#article-2-item-2").scroll_into_view_if_needed()
     page.screenshot(path=str(REVIEW / "mobile-documents.png"))
-    page.locator("#article-18-item-4").scroll_into_view_if_needed()
+    page.locator("#article-16-item-4").scroll_into_view_if_needed()
     page.screenshot(path=str(REVIEW / "mobile-fees.png"))
     for table in page.locator("table").all():
         assert table.bounding_box()["width"] <= 354, "Mobile table overflow"
     page.locator("#article-13-item-2").scroll_into_view_if_needed()
     page.screenshot(path=str(REVIEW / "mobile-stages.png"))
-    page.locator("#article-14-item-3").scroll_into_view_if_needed()
+    page.locator("#article-10-item-3").scroll_into_view_if_needed()
     page.screenshot(path=str(REVIEW / "mobile-confirmation.png"))
     page.set_viewport_size({"width":320,"height":844})
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Narrow mobile overflow"
@@ -269,14 +287,14 @@ font_match = subprocess.check_output(["fc-match", "Noto Sans CJK JP", "-f", "%{f
 assert "Noto Sans CJK JP" in font_match, "Japanese font unavailable"
 
 report = {
-    "edition":EDITION, "effective_date":"2026-11-01",
+    "edition":EDITION, "effective_date":"保護者がこの版に同意した日（新たに入塾する場合はお申込みの日）",
     "source_path":str(SOURCE.relative_to(ROOT)),
     "source_git_blob":EXPECTED_SOURCE_BLOB,
     "source_commit":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),
     "html_sha256":hashlib.sha256((OUT / "index.html").read_bytes()).hexdigest(),
     "pdf_sha256":hashlib.sha256((OUT / PDF_NAME).read_bytes()).hexdigest(),
     "old_blobs_preserved":OLD,
-    "chapters":8,"articles":33,"numbered_paragraphs":151,"tables":5,
+    "chapters":8,"articles":31,"numbered_paragraphs":142,"tables":5,
     "markdown_to_html_full_text_equal":True,
     "internal_links_valid":True,"mobile_overflow":False,
     "pdf_pages":len(pdf),"pdf_text_blocks_verified":len(checks),
@@ -290,8 +308,9 @@ REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="
 
 report["prior_source_commit"] = PRIOR_COMMIT
 report["reviewed_changed_paragraphs"] = len(changes)
-report["unchanged_paragraphs"] = len(old_clauses)-len(changes)
+report["unchanged_paragraphs"] = len(new_clauses)-len(changes)
 report["only_reviewed_source_changes"] = True
+report["source_equals_reviewed_draft"] = "DRAFT_20261027.md"
 report["deferred_conditions_unchanged"] = True
 report["fee_tables_and_examples_unchanged"] = True
 report["related_documents_reviewed_text_equal"] = True

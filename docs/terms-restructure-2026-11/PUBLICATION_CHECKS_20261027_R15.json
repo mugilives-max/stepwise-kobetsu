@@ -1,0 +1,80 @@
+{
+  "edition": "2026-11-20261027-r15",
+  "effective_date": "保護者がこの版に同意した日（新たに入塾する場合はお申込みの日）",
+  "source_path": "docs/terms-restructure-2026-11/TERMS.md",
+  "source_git_blob": "7dd32c5ecc7402c68c08b4247f2009605b543c84",
+  "source_commit": "65162a224d3be357516ecb1eae8db365cd4c9a2c",
+  "html_sha256": "0d0273cf36fd42a7c38ad022b46cc96f36b95ce2ecb59e3666c342563f13676a",
+  "pdf_sha256": "14a8b1319702b529f1bff23c3ed1f42fdfa5d5c35c3775ba490cd96ee4157d0a",
+  "old_blobs_preserved": {},
+  "chapters": 8,
+  "articles": 31,
+  "numbered_paragraphs": 142,
+  "tables": 5,
+  "markdown_to_html_full_text_equal": true,
+  "internal_links_valid": true,
+  "mobile_overflow": false,
+  "pdf_pages": 13,
+  "pdf_text_blocks_verified": 313,
+  "pdf_missing_text_blocks": 0,
+  "pdf_fonts": [
+    "DejaVuSans",
+    "NotoSansCJKjp-Bold",
+    "NotoSansCJKjp-Regular",
+    "WenQuanYiZenHei"
+  ],
+  "pdf_fonts_embedded": true,
+  "embedded_font_programs": 256,
+  "japanese_font_match": "Noto Sans CJK JP",
+  "visual_review_images": 27,
+  "anchors": 185,
+  "mobile_widths_checked": [
+    390,
+    320
+  ],
+  "prior_source_commit": "1b8fe3316370df93262aecde62087523df92c5e1",
+  "reviewed_changed_paragraphs": 33,
+  "unchanged_paragraphs": 109,
+  "only_reviewed_source_changes": true,
+  "source_equals_reviewed_draft": "DRAFT_20261027.md",
+  "deferred_conditions_unchanged": true,
+  "fee_tables_and_examples_unchanged": true,
+  "related_documents_reviewed_text_equal": true,
+  "preparation_distribution_unchanged": true,
+  "forms": [
+    {
+      "name": "個別受講条件書",
+      "source": "TEACHING_CONDITIONS_REGULAR.md",
+      "pages": 1,
+      "text_verified": true,
+      "fonts_embedded": true,
+      "pdf_sha256": "66c291fd4dfcc75eb3c9f67cac1d6355a61a388e9619c5552d832ccd7b576203"
+    },
+    {
+      "name": "特別単価合意書",
+      "source": "TEACHING_CONDITIONS_SPECIAL.md",
+      "pages": 1,
+      "text_verified": true,
+      "fonts_embedded": true,
+      "pdf_sha256": "a57cff946fbcb52d14eca68494d43df845cf5631f2af36e89b4a14dad2438c20"
+    },
+    {
+      "name": "受講計画書",
+      "source": "TUITION_AGREEMENT.md",
+      "pages": 1,
+      "text_verified": true,
+      "fonts_embedded": true,
+      "pdf_sha256": "8de744a41090d29724259833de9d81410eeaa89a8de3f84b4a1702f12bc95acd"
+    },
+    {
+      "name": "キャンセル料金の免除申請のご案内",
+      "source": "WAIVER_GUIDE.md",
+      "pages": 2,
+      "text_verified": true,
+      "fonts_embedded": true,
+      "pdf_sha256": "516f6c007c9eefd5da4255784fb01d1a206e3a6a6b6130e86dca4ca0e09added"
+    }
+  ],
+  "waiver_links_verified": true,
+  "total_pdf_pages": 18
+}

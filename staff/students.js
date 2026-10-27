@@ -134,8 +134,8 @@ function grades(ctx, x) {
   const pk = seriesPick(g.exams, x.student.id);
   return h + pk.bar + trendBox(pk.list, x.student.id) + examPager(pk.list, x.student.id, e => examCard(e, { sheets: (g.files || []).filter(f => f.examId === e.id && f.status !== 'dismissed') }));
 }
-// 授業の計画（月ごと）: 受講計画合意書ではなく授業そのもの（2026-10-27 本人「今度は授業の計画に焦点を当てる」「受講計画書にない授業が承認済みであるかどうかが不明なのが問題」）。
-// 科目ごとの授業の数、合意待ち（保護者に承認をお願いする）、合意の記録がない授業（合意を記録）、授業料の見込み。受講計画合意書はあるときだけ1行で
+// 授業の計画（月ごと）: 受講計画書ではなく授業そのもの（2026-10-27 本人「今度は授業の計画に焦点を当てる」「受講計画書にない授業が承認済みであるかどうかが不明なのが問題」）。
+// 科目ごとの授業の数、合意待ち（保護者に承認をお願いする）、合意の記録がない授業（合意を記録）、授業料の見込み。受講計画書はあるときだけ1行で
 let spMonth = '', spData = null, spKey = '';
 const ymAdd = (ym, n) => { const [y, m] = ym.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1)); return t.toISOString().slice(0, 7); };
 function lessonPlan(ctx, x) {

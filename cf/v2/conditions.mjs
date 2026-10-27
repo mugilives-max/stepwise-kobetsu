@@ -67,7 +67,7 @@ export function conditionFields(b) {
   if (!MODES[deliveryMode]) fail('badMode', '指導の形式（教室・オンライン・両方）を選んでください');
   if (note.length > 1000) fail('tooLong', '特記事項は1000文字以内にしてください');
   if (!validMonth(fromMonth)) fail('badMonth', '適用開始月を YYYY-MM で入れてください');
-  return { minutes, fee, deliveryMode, groupSize: groupSize || (deliveryMode === 'online' ? 'オンラインは1対1' : deliveryMode === 'in_person' ? '教室は講師1名につき生徒最大2名' : '教室は講師1名につき生徒最大2名、オンラインは1対1'), studentContact: b.studentContact === true ? 1 : 0, subjects, note, fromMonth };
+  return { minutes, fee, deliveryMode, groupSize: groupSize || '講師1名につき生徒最大2名', studentContact: b.studentContact === true ? 1 : 0, subjects, note, fromMonth };
 }
 function studentRow(c, id) { return c.db.prepare('select * from students where id = ?').bind(String(id || '')).first(); }
 

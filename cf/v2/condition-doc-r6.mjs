@@ -21,7 +21,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
   const key = [
     ['生徒', [['氏名', esc(name)], ['学年', esc(student.grade || '')]]],
     ['授業', [['適用期間', `${esc(monthJa(cond.fromMonth))}から、条件変更日まで`], ['1回の授業', `${cond.minutes}分`], ['1回の授業料（上限）', `${yen(cond.fee)}<small>（税込）</small>`],
-      ['科目', esc(cond.subjects || '毎月の受講計画合意書で決めます')], ['実施形態', `${esc(MODES[cond.deliveryMode] || cond.deliveryMode)}${cond.groupSize ? `<small class="note">${esc(cond.groupSize)}</small>` : ''}`]]],
+      ['科目', esc(cond.subjects || '授業ごとに決めます')], ['実施形態', `${esc(MODES[cond.deliveryMode] || cond.deliveryMode)}${cond.groupSize ? `<small class="note">${esc(cond.groupSize)}</small>` : ''}`]]],
   ];
   const promises = [
     // 授業料の決め方はここで説明しない（2026-10-26 本人「授業料の項目は不要。ここで説明するべきものではない」）
@@ -66,7 +66,7 @@ export function conditionDocR6({ cond, student, family, terms }) {
 <div class="sheet">
   <div class="head"><h1>個別受講条件書${final ? '' : '<span class="draft">案</span>'}</h1><div class="meta">${verText(cond.no) ? verText(cond.no) + '<br>' : ''}提示日 ${esc(jst(cond.proposedAt))}${final ? `<br>同意日 ${esc(jst(cond.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
-  <p class="lead">授業の基本となる条件です。毎月の授業の回数と料金は、別に「受講計画合意書」でお知らせし、そのつど同意をいただきます。</p>
+  <p class="lead">授業の基本となる条件です。授業は、授業ごとに日時と授業料に合意して行います。まとまった回数の授業は「受講計画書」で前もって合意できます。</p>
   <h2>個別の条件</h2>
   ${keyTable(key)}
   <h2>共通の条件</h2>

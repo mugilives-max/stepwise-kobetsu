@@ -129,3 +129,21 @@ test('the document route uses the new layout for versions saved after 2026-10-26
  const d=await h.ok('family/plans/document',{auth:parent,refs:refs(row(p.id))});
  assert.equal(d.layoutVersion,'20261026-r13');assert.match(d.html,/【テスト】架空 保護者 様/);assert.match(d.html,/<h2>取り決め<\/h2>/);
 });
+
+// 2026-10-27 本人「受講計画書にしよう」: 共通規約 r15 を使う規約に決めたあとに作った行だけ「受講計画書」。前からの行は名前を変えない
+test('plan lines created after r15 is adopted are titled 受講計画書; earlier ones keep 受講計画合意書',async()=>{
+ const {usesNameR15,agreementDocHtmlR13}=await import('../cf/v2/agreement-doc-20261026.mjs');
+ const {h,auth,plan,refs}=await agreementFixture();
+ h.clock=Date.parse('2026-10-27T05:00:00.000Z'); // 2026-10-26 の書式の後
+ const before=await plan();
+ assert.match((await h.ok('billing/plans/document',{auth,refs:refs(before)})).html,/<h1>受講計画合意書/);
+ h.clock+=60e3;
+ await h.ok('admin/terms/set',{auth,version:'2026-11-20261027-r15',url:'https://www.stepwise-education.jp/terms/2026-11-20261027-r15/',title:'共通規約'});
+ h.clock+=60e3;
+ const after=await plan({subject:'英語'});
+ const doc=await h.ok('billing/plans/document',{auth,refs:refs(after)});
+ assert.match(doc.html,/<h1>受講計画書<span class="draft">案/);assert.equal(doc.layoutVersion,'20261027-r15');
+ assert.match(doc.html,/回数を超える授業や対象期間外の授業は、授業ごとに合意して行えます/);assert.doesNotMatch(doc.html,/承認のない授業は行いません/);
+ assert.match((await h.ok('billing/plans/document',{auth,refs:refs(before)})).html,/<h1>受講計画合意書/,'前からの行はそのまま');
+ assert.equal(usesNameR15([{line:{createdAt:'2026-10-28T00:00:00.000Z'}}],''),false,'r15 を決めていなければ前の名前');
+});

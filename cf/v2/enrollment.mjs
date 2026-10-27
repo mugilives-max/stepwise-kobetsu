@@ -1,7 +1,7 @@
 // 入塾の案内と申込み（2026-10-18 本人決定。migrations-v2/0032_family_enrollment.sql）。
 // 体験 → ① 代表が「入塾の案内を送る」（保護者のメールと受講条件。個別受講条件書の案ができ、招待のメールが届く）
 //      → ② 保護者がパスワードを決める → ③ 保護者が 1 つの画面で申込み（保護者の情報・生徒の情報の確認・共通規約と個別受講条件書への同意）
-//      → ④ そのまま入塾（体験の印を外し、代表にメール）。そのあとは毎月の受講計画合意書。
+//      → ④ そのまま入塾（体験の印を外し、代表にメール）。そのあとは授業ごとの合意（まとまった回数なら受講計画書）。
 // - 申込みのあと代表の確認は挟まない（本人「そのまま入塾」）。受講条件は案内のときに代表が決める。
 // - 申込みの内容（受講申込書の控え）は enrollmentOffers.application に残し、変えない（トリガー）。
 // - 規約の同意・個別受講条件書の同意・申込み・入塾は 1 回の書き込み（batch）で行う。同意者名は保護者が入れた氏名。
@@ -204,7 +204,7 @@ export const enrollmentRoutes = {
     ]);
     await storeDoc(c, cond.id); // 同意済みの個別受講条件書
     const name = app.student.familyName + ' ' + app.student.givenName;
-    await staffNotice(c, `【入塾の申込み】${name}さん`, `${name}さん（${app.student.grade}）の入塾の申込みがありました。\n保護者：${app.guardian.name}\n開始：${monthText(r.fromMonth)}から（入塾日 ${enrolledOn}）\n共通規約・個別受講条件書（第${cond.no}版）に同意済みです。${monthText(r.fromMonth)}の計画（受講計画合意書）を作って送ってください。`);
+    await staffNotice(c, `【入塾の申込み】${name}さん`, `${name}さん（${app.student.grade}）の入塾の申込みがありました。\n保護者：${app.guardian.name}\n開始：${monthText(r.fromMonth)}から（入塾日 ${enrolledOn}）\n共通規約・個別受講条件書（第${cond.no}版）に同意済みです。${monthText(r.fromMonth)}からの授業の日程を保護者と相談してください（まとまった回数の授業なら、受講計画書も作れます）。`);
     await audit(c, 'enrollmentApplied', r.id, { studentId: s.id, conditionId: cond.id, termsVersion: terms.version });
     return { enrollment: offerView(await getOffer(c, r.id)), enrolledOn };
   },
