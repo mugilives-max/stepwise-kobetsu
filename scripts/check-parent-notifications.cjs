@@ -45,17 +45,20 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await context.addInitScript(({parent,auth,clock,kid})=>{if(!localStorage.getItem('sw2_family'))localStorage.setItem('sw2_family',parent);localStorage.setItem('sw2_staff',auth);sessionStorage.setItem('sw2_family_kid',kid);Date.now=()=>clock;},{parent,auth,clock:h.clock,kid:kid.id});
   const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));page.on('dialog',d=>d.accept());
   await page.goto(origin+'/family/#confirm?student='+sis.id+'&month=2026-10');
-  await page.locator('[data-action="agree-all"]').first().waitFor();
-  assert.equal(await page.locator('[data-action="agree-all"]').count(),2,'two deadline groups for selected second child');
+  // 授業日時の承認は予定の画面で（2026-10-27）: リンクは予定へ。選んだ授業だけ承認する
+  await page.locator('[data-action="ask-all"]').waitFor();
+  assert.match(page.url(),/#schedule\?student=/);
   assert.match(await page.locator('#app').innerText(),/二郎/);
-  const refs=await page.locator('[data-action="agree-all"]').evaluateAll(es=>es.flatMap(e=>JSON.parse(e.dataset.refs)));
-  assert.deepEqual(refs.map(x=>x.id).sort(),[b.id,near.id].sort());
+  await page.locator('[data-action="ask-all"]').click();
+  await page.locator('[data-action="ask-send"]').waitFor();
+  assert.match(await page.locator('[data-action="ask-send"]').innerText(),/承認する（2件）/);
   await page.screenshot({path:path.join(out,'01-schedule-mobile.png'),fullPage:true});
-  await page.locator('[data-action="agree-all"]').first().click();
-  await page.getByRole('status').filter({hasText:'1件を確定しました'}).waitFor();
+  await page.locator('[data-action="ask-send"]').click();
+  await page.getByRole('status').filter({hasText:'2件を承認しました'}).waitFor();
+  assert.deepEqual(h.rows('select status from lessons where id in (?,?) order by id',b.id,near.id).map(r=>r.status),['decided','decided']);
   assert.equal(h.rows('select status from lessons where id=?',a.id)[0].status,'proposed','other child untouched');
-  assert.equal(h.rows("select count(*) n from lessons where status='decided'")[0].n,1);
-  report.checks.push('second child deep link, distinct deadlines, exact displayed IDs/versions, no other-child approval');
+  assert.equal(h.rows("select count(*) n from lessons where status='decided'")[0].n,2);
+  report.checks.push('second child deep link opens the schedule; selected lessons approved; no other-child approval');
 
   await page.goto(origin+'/family/#'+target);
   await page.locator('[data-form="plan-approve"]').waitFor();
@@ -159,7 +162,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await autoConfirm({db:h2.db2,env:h2.env,now:Date.parse('2026-09-05T00:10:00+09:00'),effects:[],actor:{kind:'system',id:'test'}});
   // Capture auto-confirm effects without delivering them.
   await h2.ok('schedule/lessons/create',{auth:au,studentId:ki.id,date:'2026-09-12',start:'17:00',minutes:90,subject:'数学',deliveryMode:'in_person',send:'ask'});
-  h2.db2._sqlite.prepare("update lessons set noticeState='external',noticeAt=askedAt where status='proposed'").run();
+  h2.db2._sqlite.prepare("update lessons set noticeState='external',noticeAt=askedAt,confirmBy='2026-09-04' where status='proposed'").run(); // 2026-10-27 より前に締め切りを付けて送った授業（今は締め切りを付けない）
   const cx={db:h2.db2,env:h2.env,now:Date.parse('2026-09-05T00:10:00+09:00'),effects:[],actor:{kind:'system',id:'test'}};
   await autoConfirm(cx);
   const {recordEffects}=await import('../cf/v2/effects.mjs');await recordEffects(h2.db2,cx.effects,h2.clock);

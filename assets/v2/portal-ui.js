@@ -59,23 +59,27 @@ const statusText = l => {
   return t;
 };
 // 日付ごとにまとめた授業の一覧（白い枠）。行を押すと data-action="lesson" で下から出る画面
-export function lessonRows(lessons, { names = {}, today = '', emptyText = 'これからの授業はありません。', bare = false } = {}) {
+// pick: { on: Set, can: l => bool }。選べる授業（承認待ち）の行の左に、承認する授業を選ぶ印（2026-10-27 本人「この画面と予定の画面は統一されるべき…他の予定との兼ね合いも見たいでしょうし。つまり、「授業日程の承認」→「予定」ページへと移る」）
+export function lessonRows(lessons, { names = {}, today = '', emptyText = 'これからの授業はありません。', bare = false, pick = null } = {}) {
   if (!lessons.length) return bare ? '' : `<p class="muted small">${emptyText}</p>`;
   let h = '', last = '';
   for (const l of lessons) {
     if (l.date !== last && !bare) { if (last) h += '</div>'; h += `<div class="day-head2${l.date === today ? ' today' : ''}">${mdw(l.date)}${l.date === today ? '<small>今日</small>' : ''}</div><div class="group">`; last = l.date; }
     const faded = ['rested', 'cancelled'].includes(l.status);
+    const ck = pick && pick.can(l), on = ck && pick.on.has(l.id);
+    if (ck) h += `<div class="lrow-pick"><button type="button" class="ck${on ? ' on' : ''}" data-action="ask-pick" data-id="${esc(l.id)}" aria-pressed="${on}" aria-label="${esc(md(l.date))} ${l.start} ${esc(l.subject)}を承認する授業に選ぶ">✓</button>`;
     h += `<button type="button" class="lrow pl${faded ? ' faded' : ''}" data-action="lesson" data-id="${esc(l.id)}"><span class="t">${l.start}<small>〜${endOf(l.start, l.minutes)}</small></span>
       <span class="b"><span class="nm">${names[l.studentId] ? `<b>${esc(given(names[l.studentId]))}</b> ` : ''}${esc(l.subject)}${l.kind && l.kind !== '通常' ? `<small>（${esc(l.kind)}）</small>` : ''}${l.deliveryMode === 'online' ? '<small class="muted">・オンライン</small>' : ''}</span>
       <span class="tags">${statusText(l).join('')}</span></span><span class="go">›</span></button>`;
+    if (ck) h += '</div>';
   }
   return bare ? h : h + '</div>';
 }
 // 予定表の「選んだ日」の 1 日分: テスト・行事と授業を 1 つの白い枠に
-export function dayRows(date, lessons, events, { names = {}, canDelete = () => false } = {}) {
+export function dayRows(date, lessons, events, { names = {}, canDelete = () => false, pick = null } = {}) {
   const ls = lessons.filter(l => l.date === date).sort((a, b) => a.start.localeCompare(b.start)), evs = events.filter(e => e.date <= date && date <= e.dateTo);
   if (!ls.length && !evs.length) return '<p class="muted small" style="margin:4px 2px 10px">予定はありません。</p>';
-  return '<div class="group">' + evs.map(e => `<div class="evrow"><span class="t"><small>${e.start ? e.start + '〜' + e.end : '終日'}</small></span><span class="b"><span class="nm">${esc(e.title || EVENT_KIND[e.kind])}</span><small>${[names[e.studentId] ? esc(given(names[e.studentId])) : '', e.title ? EVENT_KIND[e.kind] : ''].filter(Boolean).join('・')}</small></span>${canDelete(e) ? `<button type="button" class="x" data-action="del-event" data-id="${esc(e.id)}" aria-label="消す">${picon('x')}</button>` : '<span></span>'}</div>`).join('') + lessonRows(ls, { names, bare: true }) + '</div>';
+  return '<div class="group">' + evs.map(e => `<div class="evrow"><span class="t"><small>${e.start ? e.start + '〜' + e.end : '終日'}</small></span><span class="b"><span class="nm">${esc(e.title || EVENT_KIND[e.kind])}</span><small>${[names[e.studentId] ? esc(given(names[e.studentId])) : '', e.title ? EVENT_KIND[e.kind] : ''].filter(Boolean).join('・')}</small></span>${canDelete(e) ? `<button type="button" class="x" data-action="del-event" data-id="${esc(e.id)}" aria-label="消す">${picon('x')}</button>` : '<span></span>'}</div>`).join('') + lessonRows(ls, { names, bare: true, pick }) + '</div>';
 }
 // 次の授業（ホームの一番上）。押すと同じ下から出る画面
 export function nextLessonHero(l, { names = {}, today = '' } = {}) {
