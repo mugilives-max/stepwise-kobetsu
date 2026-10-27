@@ -24,7 +24,7 @@ async function world({ scope = '' } = {}) {
   const trial = await h.ok('admin/trials/create', { auth, familyName: '【テスト】高田', givenName: '体験', grade: '中3' });
   const w = (route, body = {}) => h.call(route, { ...body, serviceWriteKey: WKEY });
   const wok = async (route, body = {}) => { const r = await w(route, body); assert.equal(r.ok, true, route + ' ' + JSON.stringify(r)); return r; };
-  const familyMails = to => h.mails().filter(m => m.to === to && /日程の確認|日時を変更/.test(m.subject));
+  const familyMails = to => h.mails().filter(m => m.to === to && /日程の承認|日時を変更/.test(m.subject));
   const count = sql => h.rows(sql)[0].n;
   return { h, auth, A, B, a, b: bb, trialId: trial.studentId, w, wok, familyMails, count };
 }

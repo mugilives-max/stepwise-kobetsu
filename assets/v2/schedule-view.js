@@ -7,7 +7,7 @@ import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=2
 export const STATUS = {
   held: ['gray', '下書き'], proposed: ['warn', '調整中'], decided: ['', '確定'], done: ['ok', '実施済み'], rested: ['gray', 'お休み'], cancelled: ['danger', 'キャンセル'],
 };
-export const ASKING = ['ask', '確認待ち'];
+export const ASKING = ['ask', '承認待ち']; // 保護者の承認待ち（2026-10-27）
 export const stageLabel = l => l.status === 'proposed' && l.asked ? ASKING[1] : (STATUS[l.status] || ['', l.status])[1];
 const byText = l => automaticDeadline(l) ? ' ' + Number(l.confirmBy.slice(5, 7)) + '/' + Number(l.confirmBy.slice(8)) + 'まで' : '';
 export const REQUEST = { move: '日時の変更のお願い', rest: 'お休みの連絡', late: '開始を遅らせたい', cancel: 'キャンセル' };

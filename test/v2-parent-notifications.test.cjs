@@ -51,10 +51,11 @@ test('missing or duplicate item receipts remain unknown',async()=>{
   assert.equal(r.unknown,1);
  }
 });
-test('failed schedule mail holds automatic confirmation until a new notice with a fresh response window',async()=>{
+test('failed schedule mail holds automatic confirmation (lessons asked with a deadline before 2026-10-27); a new notice has no deadline',async()=>{
  const {h,auth,kid,parent}=await agreementFixture();
  await h.ok('schedule/lessons/create',{auth,studentId:kid.id,date:'2026-10-20',start:'17:00',minutes:60,subject:'数学',deliveryMode:'in_person',send:'ask'});
  const row=()=>h.rows('select * from lessons')[0];
+ h.db2._sqlite.prepare("update lessons set confirmBy = '2026-10-05'").run();
  const {autoConfirm}=await import('../cf/v2/schedule.mjs'),{scheduleDelivery}=await import('../cf/v2/notice-policy.mjs');
  const n={notice:{type:'schedule',targets:[{id:row().id,askedAt:row().askedAt,noticeId:row().noticeId}]}};
  await scheduleDelivery(h.db2,n,'failed',new Date(h.clock).toISOString());
@@ -64,8 +65,10 @@ test('failed schedule mail holds automatic confirmation until a new notice with 
  assert.equal((await autoConfirm(c)).confirmed,0);
  h.clock=Date.parse('2026-10-06T12:00:00+09:00');
  await h.ok('schedule/lessons/renotify',{auth,studentId:kid.id,lessonIds:[row().id],via:'LINE',note:'【テスト】10/6 12:00 に 10/9 締切を伝えた'});
- assert.equal(row().confirmBy,'2026-10-09');assert.equal(row().noticeState,'external');
- c.now=Date.parse('2026-10-10T00:10:00+09:00');assert.equal((await autoConfirm(c)).confirmed,1);
+ assert.equal(row().confirmBy,'');assert.equal(row().noticeState,'external');
+ c.now=Date.parse('2026-10-10T00:10:00+09:00');assert.equal((await autoConfirm(c)).confirmed,0,'締め切りのないお願いは自動で確定しない');
+ const l=(await h.ok('family/schedule',{auth:parent})).lessons[0];
+ await h.ok('family/lessons/agree',{auth:parent,lessons:[{id:l.id,version:l.version}]});
  assert.equal((await h.ok('family/schedule',{auth:parent})).lessons[0].status,'decided');
 });
 test('changed and used targets cannot be retried',async()=>{

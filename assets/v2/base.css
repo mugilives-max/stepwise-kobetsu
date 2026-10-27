@@ -958,3 +958,11 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .danger-line { margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--line); text-align: right; }
 .cond-view { margin-top: 14px; padding: 10px 14px 4px; }
 .cond-view .info-head { margin: 0; }
+
+/* 授業の入れ方: 確定で入れる / 保護者に承認をお願いする（2026-10-27） */
+.send-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.send-seg label { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-weight: 700; }
+.send-seg label small { font-weight: 400; font-size: 12.5px; color: var(--muted); }
+.send-seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.send-seg label:has(input:checked) { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.send-seg label:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
