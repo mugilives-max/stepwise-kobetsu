@@ -126,22 +126,23 @@ function homePage() {
   // やること（押すとその画面へ）。行の下は値（だれ・どの月・締め切り・金額）だけ
   const todo = [], { asks, acks } = planGroups(money.plans);
   const enroll = enrollTodo(ectx()), covers = enrollCovers(ectx()); if (enroll) todo.push(enroll); // 入塾のお申込み（いちばん上）。申込みで規約・条件書にもまとめて同意する
-  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#agree', 'file', '#c98a00', '共通規約への同意', money.terms.current.title || '', 1]);
+  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#agree', 'file', '#c98a00', '共通規約への同意', '', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs && !covers.students.has(x.studentId)) : [];
   if (needConds.length) todo.push(['#agree', 'file', '#c98a00', '個別受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・'), needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
-  if (needSpecials.length) todo.push(['#agree', 'file', '#c98a00', '特別単価合意書の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・'), needSpecials.length]);
-  // 保護者が見るページ: 何の・誰のことかを言う（2026-10-27 本人「受講計画の承認」「授業日時の承認」「入金待ちのお支払い」「お子様の宿題」）
+  if (needSpecials.length) todo.push(['#agree', 'file', '#c98a00', '特別単価合意書の承認', [...new Set(needSpecials.map(x => `${given(x.studentName)}さん`))].join('・'), needSpecials.length]);
+  // 保護者が見るページ: 何の・誰のことかを言う（2026-10-27 本人「受講計画の承認」「授業日時の承認」「入金待ちのお支払い」「お子様の宿題」）。
+  // 2行の薄い字にしない・金額は出さない。添える言葉は1行で「入金待ちのお支払い（9月）」のように（同日 本人）
   if (asks.length) todo.push(['#plan', 'plan', '#5b6672', '受講計画の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
   const asking = askingLessons(sched.lessons);
   const askBy = asking.map(automaticDeadline).filter(Boolean).sort()[0];
   if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '授業日時の承認', askBy ? md(askBy) + 'まで' : '', asking.length]);
   const due = money.invoices.filter(v => v.status === 'confirmed');
-  if (due.length) todo.push(['#money', 'yen', '#c0392b', '入金待ちのお支払い', due.map(v => `${monthLabel(v.month)}分 ${yen(v.total)}`).join('・'), due.length]);
+  if (due.length) todo.push(['#money', 'yen', '#c0392b', '入金待ちのお支払い', due.map(v => monthLabel(v.month)).join('・'), due.length]);
   const hw = learning.homework.filter(w => w.status === 'open');
   if (hw.length) todo.push(['#learning', 'homework', '#7b4fd6', 'お子様の宿題', '', hw.length]);
   h += secTitle('やること');
-  h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}</span>${note ? `<small>${esc(note)}</small>` : ''}</span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">やることはありません。</p>';
+  h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}${note ? `（${esc(note)}）` : ''}</span></span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">やることはありません。</p>';
   // そのあとの授業（最大 4 件）
   const more = next.slice(1, 5);
   if (more.length) h += secTitle('そのあとの授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { names: names(), today: sched.today });
