@@ -180,11 +180,11 @@ function planSheet(ctx) {
 function remindButton(ctx, familyId, n, last) {
   return `<button data-action="pl-remind" data-family="${ctx.esc(familyId)}"${ctx.dis()}>承認のお願いを送る（${n}件）</button>${last ? `<span class="small muted">前回 ${md(new Date(Date.parse(last) + 9 * 3600e3).toISOString().slice(0, 10))}</span>` : ''}`;
 }
-// 受講計画書の行の入力欄（新しく足す・直す）。種類は「通常」・この生徒の特別単価・この月の授業で使っている種類。初期値は「通常」の90分・個別受講条件書の基準単価
+// 受講計画書の行の入力欄（新しく足す・直す）。種類は「通常」・この生徒の特別単価・この月の授業で使っている種類。初期値は「通常」の90分・個別受講条件書の授業料
 // （2026-10-26 本人「このページってもはや不要」→ 種類は「通常」と特別単価合意書の名称だけ。授業料の上限は個別受講条件書・特別単価合意書で決まる）
 function lineForm(ctx, s, l) {
   const { esc } = ctx, kinds = [...new Set(['通常', ...(s.specials || []).map(x => x.title), ...(s.usedKinds || []), ...(l ? [l.kind] : [])])].map(name => ({ name })); // 直すときは今の種類を勝手に変えない
-  const minutes = l ? l.minutes : 90, fee = l ? l.fee : Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3 || ''; // 基準単価がまだない生徒は空欄（0円で作らない）
+  const minutes = l ? l.minutes : 90, fee = l ? l.fee : Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3 || ''; // 授業料がまだない生徒は空欄（0円で作らない）
   const parents = s.lines.filter(x => !x.parentId && x.status !== 'declined' && (!l || x.id !== l.id));
   return `<form class="stack" data-form="pl-save" data-student="${esc(s.id)}"${l ? ` data-id="${esc(l.id)}" data-version="${l.version}"` : ''}>
     ${l && l.status !== 'draft' ? '<p class="small notice">直すと承認が消え、下書きに戻ります。</p>' : ''}
@@ -193,7 +193,7 @@ function lineForm(ctx, s, l) {
     <label>回数<input type="number" name="count" min="1" max="60" value="${l ? l.count : 4}" style="width:5em" required></label>
     <label>1回の時間（分）<input type="number" name="minutes" min="15" max="300" step="15" value="${minutes}" style="width:6em" required></label>
     <label>1回の授業料（円）<input type="number" name="fee" min="0" max="100000" value="${fee}" style="width:7em" required></label></div>
-    <div class="small muted">通常の基準単価（90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}）なら 60分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 60 / 90))}・120分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 120 / 90))}</div>
+    <div class="small muted">個別受講条件書の授業料（90分 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}）なら 60分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 60 / 90))}・120分 ${yen(Math.floor((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3) * 120 / 90))}</div>
     <div class="row"><label>期間<input type="date" name="startDate" value="${l ? l.startDate : plans.month + '-01'}" required></label><label>〜<input type="date" name="endDate" value="${l ? l.endDate : monthEnd(plans.month)}" required></label>
     <label>追加の受講計画書<select name="parentId"><option value="">ふつうの受講計画書</option>${parents.map(p => `<option value="${esc(p.id)}"${l && l.parentId === p.id ? ' selected' : ''}>${esc(p.subject)}（${md(p.startDate)}〜${md(p.endDate)}）への追加</option>`).join('')}</select></label></div>
     <label>保護者への説明（任意）<input name="comment" maxlength="500" value="${esc(l ? l.comment : '')}" placeholder="例: 2学期中間テストに向けて計算の復習"></label>

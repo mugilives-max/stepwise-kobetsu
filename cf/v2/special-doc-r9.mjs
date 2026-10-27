@@ -69,7 +69,7 @@ export function specialDocR9({ sp, student, family, terms }) {
 <div class="sheet">
   <div class="head"><h1>特別単価合意書${final ? '' : '<span class="draft">案</span>'}</h1><div class="meta">${verText(sp.no) ? verText(sp.no) + '<br>' : ''}提示日 ${esc(jst(sp.proposedAt))}${final ? `<br>承認日 ${esc(jst(sp.agreedAt))}` : ''}</div></div>
   <div class="to">${to}</div>
-  <p class="lead">「${esc(sp.title)}」は、準備に特別な負担がかかるため、通常の基準単価とは別の単価（特別の基準単価）でお願いします。内容をご確認のうえ、承認をお願いします。</p>
+  <p class="lead">「${esc(sp.title)}」は、準備に特別な負担がかかるため、個別受講条件書の授業料とは別の単価（特別単価）でお願いします。内容をご確認のうえ、承認をお願いします。</p>
   ${keyTable(key)}
   <h2>指導の内容</h2>
   ${ruleTable(detail)}

@@ -35,8 +35,8 @@ function studentFields(b, base = {}) {
   for (const [k, max] of Object.entries(TEXT_LIMITS)) if (b[k] !== undefined) {
     const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = k === 'grade' ? normGrade(v) : v;
   }
-  // 通常の基準単価は 90 分の授業料（baseFee90）。baseRate30（30 分）は互換のために一緒に書く。baseRate30 だけ送られたら × 3
-  if (b.baseFee90 !== undefined) { const n = Number(b.baseFee90); if (!Number.isInteger(n) || n < 0 || n > 300000) fail('badRate', '通常の基準単価（90分）は0〜300,000円の整数で入れてください'); out.baseFee90 = n; out.baseRate30 = Math.round(n / 3); }
+  // 個別受講条件書の授業料は 90 分の授業料（baseFee90）。baseRate30（30 分）は互換のために一緒に書く。baseRate30 だけ送られたら × 3
+  if (b.baseFee90 !== undefined) { const n = Number(b.baseFee90); if (!Number.isInteger(n) || n < 0 || n > 300000) fail('badRate', '授業料（90分）は0〜300,000円の整数で入れてください'); out.baseFee90 = n; out.baseRate30 = Math.round(n / 3); }
   else if (b.baseRate30 !== undefined) { const n = Number(b.baseRate30); if (!Number.isInteger(n) || n < 0 || n > 100000) fail('badRate', '基本単価（30分）は0〜100,000円の整数で入れてください'); out.baseRate30 = n; out.baseFee90 = n * 3; }
   if (b.deliveryMode !== undefined) { if (!['', 'in_person', 'online'].includes(b.deliveryMode)) fail('badMode', '授業の形式を選んでください'); out.deliveryMode = b.deliveryMode; }
   if (b.status !== undefined) { if (!['enrolled', 'paused', 'left'].includes(b.status)) fail('badStatus', '在籍の状態を選んでください'); out.status = b.status; }

@@ -1,10 +1,10 @@
 import { familyTarget } from '../../assets/v2/family-target.js';
 // 個別受講条件書（共通規約の「個別受講条件書」。migrations-v2/0018_conditions.sql）
-// - 教室管理者が生徒ごとに「条件を決めてお知らせ」する（admin/conditions/propose）。基本の授業時間と1回の税込の通常の基準単価、形式、人数、
+// - 教室管理者が生徒ごとに「条件を決めてお知らせ」する（admin/conditions/propose）。基本の授業時間と1回の税込の授業料、形式、人数、
 //   生徒本人の連絡の可否、科目、特記、適用開始月。お知らせすると保護者にメールが届き、保護者ページに同意のお願いが出る
 // - 保護者は保護者ページで内容を見て同意する（family/conditions/agree）。同意していない条件がある家族は、計画を承認できない（規約と同じ）
 // - 書面・LINE でもらった承諾は、教室管理者が記録する（admin/conditions/record）
-// - お知らせした内容は生徒の登録（通常の基準単価・形式・生徒本人の連絡の許可）にも写す。見込みの料金や生徒ページの連絡がそのまま合う
+// - お知らせした内容は生徒の登録（個別受講条件書の授業料・形式・生徒本人の連絡の許可）にも写す。見込みの料金や生徒ページの連絡がそのまま合う
 import { fail, newId, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
@@ -63,7 +63,7 @@ export function conditionFields(b) {
   const minutes = Number(b.minutes), fee = Number(b.fee), deliveryMode = String(b.deliveryMode || ''), groupSize = String(b.groupSize || '').trim().slice(0, 80);
   const subjects = String(b.subjects || '').trim().slice(0, 100), note = String(b.note || '').trim(), fromMonth = String(b.fromMonth || '').trim();
   if (!Number.isInteger(minutes) || minutes < 15 || minutes > 300) fail('badMinutes', '基本の授業時間は15〜300分で入れてください');
-  if (!Number.isInteger(fee) || fee < 0 || fee > 100000) fail('badFee', '1回の通常の基準単価は0〜100,000円の整数で入れてください');
+  if (!Number.isInteger(fee) || fee < 0 || fee > 100000) fail('badFee', '1回の授業料は0〜100,000円の整数で入れてください');
   if (!MODES[deliveryMode]) fail('badMode', '指導の形式（教室・オンライン・両方）を選んでください');
   if (note.length > 1000) fail('tooLong', '特記事項は1000文字以内にしてください');
   if (!validMonth(fromMonth)) fail('badMonth', '適用開始月を YYYY-MM で入れてください');
@@ -77,7 +77,7 @@ async function markAgreed(c, row, { at, via, by, note, evidence }) {
   if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
 }
 
-// 条件の新しい版を作る（前の proposed は replaced）。生徒の登録（基準単価・形式・生徒本人の連絡）にも写し、書面の案を置く。
+// 条件の新しい版を作る（前の proposed は replaced）。生徒の登録（授業料・形式・生徒本人の連絡）にも写し、書面の案を置く。
 // お知らせのメールは呼ぶ側で（入塾の案内は、招待のメールにまとめる。enrollment.mjs）
 export async function proposeCondition(c, me, s, f) {
   const now = iso(c.now), terms = await currentTerms(c.db);

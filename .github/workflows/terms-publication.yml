@@ -45,16 +45,16 @@ jobs:
         with:
           name: terms-publication-review
           path: |
-            terms/2026-11-20261027-r15/
-            docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261027_R15.json
-            docs/terms-restructure-2026-11/publication-preview-20261027-r15/
+            terms/2026-11-20261028-r16/
+            docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R16.json
+            docs/terms-restructure-2026-11/publication-preview-20261028-r16/
           if-no-files-found: warn
           retention-days: 30
       - name: Commit generated files to the work branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- terms/2026-11-20261027-r15 terms/index.html docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261027_R15.json docs/terms-restructure-2026-11/publication-preview-20261027-r15
+          git add -- terms/2026-11-20261028-r16 terms/index.html docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R16.json docs/terms-restructure-2026-11/publication-preview-20261028-r16
           if ! git diff --cached --quiet; then
             git commit -m "docs: generate adopted terms HTML and PDF on GitHub"
             git push origin "HEAD:$GITHUB_REF_NAME"
