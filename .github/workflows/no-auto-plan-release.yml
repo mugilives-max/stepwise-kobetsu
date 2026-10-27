@@ -1,0 +1,47 @@
+name: No auto plan release
+on:
+  push:
+    branches: ['claude/no-auto-plan-release-20261027']
+    paths: ['scripts/no-auto-plan-release-request.json', 'scripts/release-no-auto-plan.mjs', '.github/workflows/no-auto-plan-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: stepwise-production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'mugilives-max/stepwise-kobetsu'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: release-control
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: b80bdc0aa17e32d9898a98bde76076f0525b129c
+          path: release-source
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: c7df044f6f53b0c33a74dbbd8f7f72d1758f6386
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: release-source
+      - run: npm ci
+        working-directory: baseline
+      - name: Check pinned release
+        run: |
+          node --check release-control/scripts/release-no-auto-plan.mjs
+      - name: Preserve records and perform explicitly requested operation
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: node release-control/scripts/release-no-auto-plan.mjs
