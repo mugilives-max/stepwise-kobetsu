@@ -18,19 +18,19 @@ const PLAN = { draft: ['下書き', 'gray'], proposed: ['承認待ち', 'warn'],
 // ---------- 一覧 ----------
 // 上の帯に「生徒」と人数。右の丸い「＋」で家族の登録・一覧へ。家族ごとに白い枠、行の頭に名字の1文字の丸、記録待ち・連絡は小さな印と数
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
-const PLUS = '<path d="M12 5v14M5 12h14"/>', SEARCH = '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>';
+const SEARCH = '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>';
 const AV = ['#2f6fde', '#2e9b5f', '#7b4fd6', '#d0533c', '#138a8a', '#c98a00', '#5b6672'];
 const avColor = t => AV[[...String(t)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 9973, 7) % AV.length];
 const initial = name => (String(name).replace(/^[【\[（(「『\s]+/, '') || '?').slice(0, 1); // 【テスト】などの括弧は飛ばす
-// 上の「＋」1つで、体験生の登録と家族の登録（2026-10-27 本人「上部のプラスボタンと、＋体験生を登録っていうのは役割がかぶっているので、まとめるべき」）
+// 「＋ 生徒を追加」1つで、体験生の登録と家族の登録（2026-10-27 本人「上部のプラスボタンと、＋体験生を登録っていうのは役割がかぶっているので、まとめるべき」）
 let addOpen = '';
-export const studentsBar = () => list && list.families ? { title: '生徒', sub: `${list.families.reduce((n, f) => n + f.students.filter(s => s.status !== 'left').length, 0)}人`, right: list.manager ? `<button type="button" class="ibtn" data-action="stu-add" aria-label="生徒を追加"><svg viewBox="0 0 24 24" aria-hidden="true">${PLUS}</svg></button>` : '' } : null;
+export const studentsBar = () => list && list.families ? { title: '生徒', sub: `${list.families.reduce((n, f) => n + f.students.filter(s => s.status !== 'left').length, 0)}人`, right: '' } : null; // 追加はヘッダーではなく一覧の上（2026-10-27 本人「これはヘッダーに存在するべきではない」）
 export function studentsPage(ctx) {
   const { esc } = ctx;
   if (!list) { list = { loading: true }; ctx.call('students/list').then(r => { list = r.ok ? r : { families: [], error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
   let h = ctx.notice();
   if (list.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
-  h += `<label class="search"><svg viewBox="0 0 24 24" aria-hidden="true">${SEARCH}</svg><input type="search" data-input="stu-query" value="${esc(query)}" placeholder="名前・ふりがなで探す" aria-label="生徒を探す"></label>`;
+  h += `<div class="stu-tools"><label class="search"><svg viewBox="0 0 24 24" aria-hidden="true">${SEARCH}</svg><input type="search" data-input="stu-query" value="${esc(query)}" placeholder="名前・ふりがなで探す" aria-label="生徒を探す"></label>${list.manager ? `<button type="button" class="small-btn primary" data-action="stu-add">＋ 生徒を追加</button>` : ''}</div>`;
   const q = query.trim();
   const match = s => !q || s.name.includes(q) || s.kana.includes(q);
   // 1つの枠に全員（2026-10-27 本人「もっとまとめられないかな。家族ごとに隙間が多すぎる」「○○さんの家族っていうのは情報量が0」）。
