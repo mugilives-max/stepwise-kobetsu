@@ -77,7 +77,7 @@ export function schedulePage(ctx, me) {
     const ls = data.lessons.filter(l => l.date === d && l.status in RANK);
     const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable')).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''}</span>`)
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
-      .concat(data.meetings.filter(m => m.date === d).map(() => '<span class="bar meeting">面談</span>'));
+      .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));
     const by = {}; ls.forEach(l => { const g = by[l.studentId] = by[l.studentId] || { n: 0, rank: 9 }; g.n++; g.rank = Math.min(g.rank, RANK[l.status]); });
     const chips = Object.entries(by).map(([sid, g]) => `<span class="nm r${g.rank}">${esc(short[sid] || '')}${g.n > 1 ? `<small>×${g.n}</small>` : ''}</span>`);
     const lines = bars.concat(chips), shown = lines.slice(0, 4), more = lines.length - shown.length;
@@ -191,7 +191,7 @@ function oneDay(ctx, me, manager, nameOf, staffOf, d, first) {
   h += '<div class="rows">';
   evs.forEach(g => { h += `<div class="ev ${g.kind}"><span class="t">${g.start ? g.start + '〜' : '終日'}</span><span class="b">${EVENT_KIND[g.kind]}：${esc(g.items.map(e => e.studentName).filter(Boolean).join('・'))} ${esc(g.title)}</span>${manager ? `<button class="x" data-action="sch-ev-del" data-ids="${esc(g.items.map(e => e.id).join(','))}" data-n="${g.items.length}" aria-label="消す"${ctx.dis()}>×</button>` : ''}</div>`; });
   offs.forEach(o => { h += `<div class="ev off"><span class="t">${o.start ? o.start + '〜' + o.end : '終日'}</span><span class="b">休み：${esc(o.staffId ? staffOf[o.staffId] || '' : '教室全体')} ${esc(o.note)}</span>${manager || o.staffId === me.id ? `<button class="x" data-action="sch-off-del" data-id="${esc(o.id)}" aria-label="消す"${ctx.dis()}>×</button>` : ''}</div>`; });
-  mts.forEach(m => { h += `<div class="ev meeting"><span class="t">${m.start}〜${endOf(m.start, m.minutes)}</span><span class="b">面談：${m.withName ? esc(m.withName) + ' ' : ''}${esc(m.title)}${m.deliveryMode === 'online' ? '（オンライン）' : ''}</span><button class="x" data-action="sch-mt-cancel" data-id="${esc(m.id)}" aria-label="取りやめる"${ctx.dis()}>×</button></div>`; });
+  mts.forEach(m => { h += `<div class="ev meeting"><span class="t">${m.start}〜${endOf(m.start, m.minutes)}</span><span class="b">面談：${esc(m.withLabel || m.withName || '')}${m.title && m.title !== '面談' ? ' ' + esc(m.title) : ''}${m.deliveryMode === 'online' ? '（オンライン）' : ''}</span><button class="x" data-action="sch-mt-cancel" data-id="${esc(m.id)}" aria-label="取りやめる"${ctx.dis()}>×</button></div>`; });
   ls.forEach(l => {
     h += `<button class="lesson s-${l.status}" data-action="sch-open" data-id="${esc(l.id)}"><span class="t">${l.start}<small>〜${endOf(l.start, l.minutes)}</small></span>`
       + `<span class="b"><span><strong>${esc(nameOf[l.studentId] || '')}</strong> ${esc(l.subject)}${l.kind !== '通常' ? '<small>（' + esc(l.kind) + '）</small>' : ''}${l.deliveryMode === 'online' ? ' <small class="muted">オンライン</small>' : ''}</span>`
