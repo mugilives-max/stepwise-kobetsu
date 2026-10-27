@@ -116,7 +116,7 @@ async function minCountFor(c, line) {
 function usageOf(sb, pendingLessons) {
   const out = {};
   // done: 実施済み（受講計画合意書をどれだけ使ったか。2026-10-27 本人「どれくらい授業を消費しているのか…後どれくらい授業を実施すればいいのか」）
-  for (const l of sb.lines) out[l.id] = { assigned: sb.used[l.id] || 0, done: sb.lessons.filter(ls => ls.status === 'done' && sb.line[ls.id] === l.id).length, tentative: pendingLessons.filter(ls => lineMatches(l, ls)).length };
+  for (const l of sb.lines) out[l.id] = { assigned: sb.used[l.id] || 0, done: sb.lessons.filter(ls => ls.status === 'done' && sb.line[ls.id] && sb.line[ls.id].id === l.id).length, tentative: pendingLessons.filter(ls => lineMatches(l, ls)).length };
   return out;
 }
 
