@@ -8,7 +8,7 @@ import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enroll
 import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261027-ease16';
-import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261027-ease';
+import { EVENT_KIND, endOf } from '/assets/v2/schedule-view.js?v=20261027-ease';
 import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-ease10';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
@@ -192,7 +192,7 @@ function schedulePage() {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
     const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`);
     // 授業ごとに時刻と科目（全員を出すときは科目の代わりに名。狭い表で切れないように）。2026-10-27 本人「時間帯もカレンダー上の表記で分かるようにしたい」
-    const chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => { const on = askOn.has(l.id) && l.status === 'proposed'; return `<span class="nm t2 r${RANK[l.status]}${on ? ' on' : ''}"><small class="tm">${on ? '✓ ' : ''}${l.start}</small><b>${multi ? esc(shortName(l.studentId)) : esc(l.subject)}</b></span>`; });
+    const chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => { const on = askOn.has(l.id) && l.status === 'proposed'; return `<span class="nm t2 r${RANK[l.status]}${on ? ' on' : ''}"><small class="tm">${on ? '✓ ' : ''}${l.start}<span class="te">〜${endOf(l.start, l.minutes)}</span></small><b>${multi ? esc(shortName(l.studentId)) + `<span class="sj"> ${esc(l.subject)}</span>` : esc(l.subject)}</b></span>`; });
     return { lines: bars.concat(chips), count: ls.length };
   };
   const pick = { on: askOn, can: l => choosable.some(x => x.id === l.id) };

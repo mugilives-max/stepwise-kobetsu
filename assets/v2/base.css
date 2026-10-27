@@ -987,3 +987,13 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .home-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 0; }
 .home-links .todo-row { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 @media (max-width: 380px) { .home-links { grid-template-columns: 1fr; } }
+/* 月の表: 終了時刻も（2026-10-27 本人「時間がこのフォントサイズなら終了時刻も表示できるはず」）。狭い画面では開始の下に */
+.month2 .nm.t2 .te { white-space: nowrap; }
+@media (max-width: 560px) { .month2 .nm.t2 .te { display: block; } .month2 .cell { height: 100px; } .month2 .nm.t2 .sj { display: none; } } /* 名と科目（2026-10-27 本人「ここに科目も表示できるはず」）。スマホでは名だけ */
+/* 生徒の一覧: 1つの枠、1行（2026-10-27） */
+.stu-list { margin-top: 12px; }
+.stu-list .srow { padding: 8px 0; }
+.stu-list .srow .b { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
+.stu-list .srow .b .tag { align-self: center; }
+.stu-tools { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.stu-tools .search { flex: 1; margin: 0; }
