@@ -1,5 +1,5 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
-import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-pages';
+import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-ease7';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-pages2';
 import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ease3';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
@@ -222,7 +222,7 @@ function confirmPage() {
   const all=askingLessons(forKid(sched.lessons));
   if(!all.length)return h+'<p>承認をお願いしている授業はありません。</p><p><a href="#schedule">予定を見る</a></p>';
   const many=new Set(all.map(l=>l.studentId)).size>1;
-  h+='<p class="small" style="margin:4px 0 0">都合の悪い授業は、押して外してください。</p>';
+  if(all.some(l=>!hasOpen(l)))h+='<p class="small" style="margin:4px 0 0">都合の悪い授業は、押して外してください。</p>';
   for(const ym of [...new Set(all.map(l=>l.date.slice(0,7)))].sort()) h+=askCalendar(ym,all.filter(l=>l.date.slice(0,7)===ym),many);
   // 前に締め切りを付けてお願いした授業（2026-10-27 より前）だけ、締め切りを書く（取り消せない結果なので）
   const by=all.map(automaticDeadline).filter(Boolean).sort()[0];

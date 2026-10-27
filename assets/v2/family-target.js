@@ -24,5 +24,5 @@ export function targetParts(raw) {
   return { path, student: p.get('student') || '', month: p.get('month') || '', kind: p.get('kind') || '',
     refs: (p.get('refs') || '').split(',').filter(Boolean).map(x => { const [id,version] = x.split('.'); return {id,version:Number(version)}; }) };
 }
-export const targetPurpose = raw => ({confirm:'授業日時を確認する',schedule:'授業の予定を確認する',money:'書類・料金を確認する',learning:'学習の記録を確認する'}[targetParts(raw).path] || '保護者ページを開く');
+export const targetPurpose = raw => ({confirm:'授業日時を承認する',schedule:'授業の予定を確認する',money:'書類・料金を確認する',learning:'学習の記録を確認する'}[targetParts(raw).path] || '保護者ページを開く');
 export const targetRefs = rows => rows.map(x => x.id + '.' + x.version).join(',');
