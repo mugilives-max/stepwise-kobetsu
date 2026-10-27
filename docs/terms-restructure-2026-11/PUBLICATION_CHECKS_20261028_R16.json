@@ -2,20 +2,20 @@
   "edition": "2026-11-20261028-r16",
   "effective_date": "保護者がこの版に同意した日（新たに入塾する場合はお申込みの日）",
   "source_path": "docs/terms-restructure-2026-11/TERMS.md",
-  "source_git_blob": "d5f342f0a4b6f49a46c66b1eaf2b23c20d024a4f",
-  "source_commit": "149326076a09a8a78dc4c69964c7aaa00c673930",
-  "html_sha256": "d14e0bf6eb75d0ac530204d383352ee23213e4812ce891602449e837eed4012c",
-  "pdf_sha256": "3f2808f92e3c1bb5e91f9c33c79d3e1f070c4034a60b7f535d4508494ddb62e1",
+  "source_git_blob": "7fe7656ee158fc2f749a16ee4732093b7a25609f",
+  "source_commit": "8b92c41050c6c20ac8e7b2fc90419ee2bf872bfd",
+  "html_sha256": "68fec4b5c1c1f29073fd84bad9f3688c2324535ce6a33e307418408eb972710d",
+  "pdf_sha256": "f7c8476698384fb78e4575b231c4101b2c797c6db55751c14b2e96e32aa08cf6",
   "old_blobs_preserved": {},
   "chapters": 8,
   "articles": 29,
-  "numbered_paragraphs": 105,
+  "numbered_paragraphs": 104,
   "tables": 5,
   "markdown_to_html_full_text_equal": true,
   "internal_links_valid": true,
   "mobile_overflow": false,
   "pdf_pages": 10,
-  "pdf_text_blocks_verified": 272,
+  "pdf_text_blocks_verified": 271,
   "pdf_missing_text_blocks": 0,
   "pdf_fonts": [
     "DejaVuSans",
@@ -24,17 +24,17 @@
     "WenQuanYiZenHei"
   ],
   "pdf_fonts_embedded": true,
-  "embedded_font_programs": 249,
+  "embedded_font_programs": 248,
   "japanese_font_match": "Noto Sans CJK JP",
   "visual_review_images": 24,
-  "anchors": 146,
+  "anchors": 145,
   "mobile_widths_checked": [
     390,
     320
   ],
   "prior_source_commit": "a2fa69abaf5be8420078167f578af61e53e47321",
-  "reviewed_changed_paragraphs": 57,
-  "unchanged_paragraphs": 48,
+  "reviewed_changed_paragraphs": 60,
+  "unchanged_paragraphs": 44,
   "only_reviewed_source_changes": true,
   "source_equals_reviewed_draft": "DRAFT_20261027.md",
   "deferred_conditions_unchanged": true,
@@ -48,7 +48,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "ac2b474c4d7ef341e5b557cf05b823a676e700ef3bcab95f01ab759aad296e53"
+      "pdf_sha256": "5f95d0cb4b7fcec115b0da346813ad9bb74ecc7fee019f7ec56628245134f991"
     },
     {
       "name": "特別単価合意書",
@@ -56,7 +56,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "955ae4173edb1ec1f4ab51aad91d29447814a0c42b267295877b1d767858cfb4"
+      "pdf_sha256": "5c09a9f690d1069d5d2ee46a51319f077060d3495a7281af5f61f4c2524ec936"
     },
     {
       "name": "受講計画書",
@@ -64,7 +64,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "dc2eba0eb7d6b12bcdb970a4b96d5d31cf3ebd25160162caf2a3218d29a70838"
+      "pdf_sha256": "52b8a9d4faea4f050623910e2b6d08b2dd61d423d829b565d016b6ffd88e11eb"
     },
     {
       "name": "キャンセル料金の免除申請のご案内",
@@ -72,7 +72,7 @@
       "pages": 2,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "0f3eb44b04083a76c4e88bb3e938888a76b6e23226a872fcaba4a643f476f8ef"
+      "pdf_sha256": "0ba136c720547afcf474046c32f5ffe06a614630118cd1e03d4889ec12c95da6"
     }
   ],
   "waiver_links_verified": true,
