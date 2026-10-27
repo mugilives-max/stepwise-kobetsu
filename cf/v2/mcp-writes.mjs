@@ -128,7 +128,7 @@ async function noticePlan(c, b) {
     const willSend = !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
     const reason = willSend ? '' : !s.familyEmail ? '家族のメールが無い' : s.familyStatus !== 'active' ? '保護者ページの登録がまだ' : 'テスト用の家族（送らない）';
     const body = askText(fullName(s), mine.map((l, i) => ({ ...l, confirmBy: bys[i] })));
-    mails.push({ studentId: sid, student: studentLabel(s), to: maskEmail(s.familyEmail), willSend, reason, subject: '【ステップワイズ】授業の日程の確認のお願い',
+    mails.push({ studentId: sid, student: studentLabel(s), to: maskEmail(s.familyEmail), willSend, reason, subject: '【ステップワイズ】授業の日程の承認のお願い',
       body, lineText: `【ステップワイズ】${body}\n${FAMILY_URL}#confirm`, lessonIds: mine.map(l => l.id) });
   }
   // 選ばれていない未送信の授業（同じ生徒）。送らないことを見せる

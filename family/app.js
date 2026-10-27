@@ -1,15 +1,15 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
-import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-pages';
+import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-ease7';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-pages2';
-import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ack';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ease3';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
-import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
-import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-pages2';
+import { monthCalendar, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261027-ease16';
+import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261027-ease';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-ease10';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -84,7 +84,7 @@ const ICON = {
   money: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
 };
 const TABS = [['home', 'ホーム'], ['schedule', '予定'], ['learning', '学習'], ['money', 'お支払い']];
-const TITLE = { home: 'ホーム', schedule: '予定', confirm: '日程の確認', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み', plan: '受講計画合意書の承認', agree: '同意のお願い', contracts: '契約・同意の控え' };
+const TITLE = { home: 'ホーム', schedule: '予定', confirm: '予定', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み', plan: '受講計画の承認', agree: '同意のお願い', contracts: '契約・同意の控え' };
 // 前の URL（#events・#grades）も開けるように
 const pageOf = p => p === 'events' ? 'schedule' : p === 'grades' ? 'learning' : p;
 
@@ -126,27 +126,31 @@ function homePage() {
   // やること（押すとその画面へ）。行の下は値（だれ・どの月・締め切り・金額）だけ
   const todo = [], { asks, acks } = planGroups(money.plans);
   const enroll = enrollTodo(ectx()), covers = enrollCovers(ectx()); if (enroll) todo.push(enroll); // 入塾のお申込み（いちばん上）。申込みで規約・条件書にもまとめて同意する
-  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#agree', 'file', '#c98a00', '共通規約への同意', money.terms.current.title || '', 1]);
+  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#agree', 'file', '#c98a00', '共通規約への同意', '', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs && !covers.students.has(x.studentId)) : [];
   if (needConds.length) todo.push(['#agree', 'file', '#c98a00', '個別受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・'), needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
-  if (needSpecials.length) todo.push(['#agree', 'file', '#c98a00', '特別単価合意書の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・'), needSpecials.length]);
-  if (asks.length) todo.push(['#plan', 'plan', '#5b6672', '受講計画合意書の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
+  if (needSpecials.length) todo.push(['#agree', 'file', '#c98a00', '特別単価の承認', [...new Set(needSpecials.map(x => `${given(x.studentName)}さん`))].join('・'), needSpecials.length]);
+  // 保護者が見るページ: 何の・誰のことかを言う（2026-10-27 本人「受講計画の承認」「授業日時の承認」「入金待ちのお支払い」「お子様の宿題」）。
+  // 2行の薄い字にしない・金額は出さない。添える言葉は1行で「入金待ちのお支払い（9月）」のように（同日 本人）
+  if (asks.length) todo.push(['#plan', 'plan', '#5b6672', '受講計画の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
   const asking = askingLessons(sched.lessons);
   const askBy = asking.map(automaticDeadline).filter(Boolean).sort()[0];
-  if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '日程の確認', askBy ? md(askBy) + 'まで' : '', asking.length]);
+  if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '授業日時の承認', askBy ? md(askBy) + 'まで' : '', asking.length]);
   const due = money.invoices.filter(v => v.status === 'confirmed');
-  if (due.length) todo.push(['#money', 'yen', '#c0392b', 'お支払い', due.map(v => `${monthLabel(v.month)}分 ${yen(v.total)}`).join('・'), due.length]);
-  const hw = learning.homework.filter(w => w.status === 'open');
-  if (hw.length) todo.push(['#learning', 'homework', '#7b4fd6', '宿題', '', hw.length]);
-  h += secTitle('やること');
-  h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}</span>${note ? `<small>${esc(note)}</small>` : ''}</span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">やることはありません。</p>';
+  if (due.length) todo.push(['#money', 'yen', '#c0392b', '入金待ちのお支払い', due.map(v => monthLabel(v.month)).join('・'), due.length]);
+  // 宿題は保護者が対応することではないので、ここに置かない（下の「授業記録」と並べる。2026-10-27 本人）。見出しは「対応が必要なこと」（同日 本人「やることっていうのが名前として微妙」）
+  h += secTitle('対応が必要なこと');
+  h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}${note ? `（${esc(note)}）` : ''}</span></span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">対応が必要なことはありません。</p>';
   // そのあとの授業（最大 4 件）
   const more = next.slice(1, 5);
   if (more.length) h += secTitle('そのあとの授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { names: names(), today: sched.today });
   const tests = sched.events.filter(e => e.kind === 'test' && e.dateTo >= sched.today).slice(0, 2);
   if (tests.length) h += secTitle('テスト') + eventRows(tests, { names: multiKids() ? names() : {}, today: sched.today });
-  if (learning.records.length) h += secTitle('新しい授業の記録', '<a class="more" href="#learning">すべて見る ›</a>') + recordCards(learning.records, learning.homework, { names: multiKids() ? names() : {}, limit: 1 });
+  // 授業記録と宿題（2026-10-27 本人「新しい授業の記録ってのは要らない…宿題は…下の方に移動して、「授業記録」というのと並べて」）
+  const hw = learning.homework.filter(w => w.status === 'open');
+  h += `<div class="home-links"><a class="todo-row" href="#learning">${ibox('book', '#2f6fd6', '授業記録')}<span class="v"><span class="lbl">授業記録</span></span><span></span><span class="go">›</span></a>`
+    + `<a class="todo-row" href="#learning">${ibox('homework', '#7b4fd6', 'お子様の宿題')}<span class="v"><span class="lbl">お子様の宿題</span></span><span class="cnt">${hw.length || ''}</span><span class="go">›</span></a></div>`;
   return h;
 }
 // 予定: 月の表（スタッフと同じ動き）。子どもを選べる。日を押すとその日の一覧、授業を押すと下から出る画面で「変更・お休みの連絡」。テスト・行事を知らせるは上の帯の右
@@ -173,44 +177,44 @@ function schedulePage() {
   const d = calData[cal.month], multi = multiKids() && !kid, nm = names();
   const lessons = forKid(d.lessons).filter(l => l.status !== 'held'), events = forKid(d.events);
   const asking = askingLessons(lessons), adjusting = lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= d.today);
-  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px"><a href="#confirm">日程を確認してください（${asking.length}件）›</a></p>`;
+  // 承認待ち（この月に限らず）。選んで「承認する」
+  const askAll = askingLessons(forKid(sched.lessons)), choosable = askAll.filter(l => !hasOpen(l)), picked = choosable.filter(l => askOn.has(l.id));
+  if (askAll.length) {
+    const months = [...new Set(askAll.map(l => l.date.slice(0, 7)))].sort().map(monthLabel).join('・'), allOn = choosable.length && picked.length === choosable.length;
+    h += `<div class="ask-head notice small"><span>承認待ちの授業 ${askAll.length}件（${months}）。承認する授業を選んでください。</span>${choosable.length ? `<button type="button" class="small-btn" data-action="ask-all">${allOn ? '選択を外す' : 'すべて選ぶ'}</button>` : ''}</div>`;
+    const pend = [...new Set(askAll.filter(l => l.planPending).map(l => l.date.slice(0, 7)))].sort();
+    if (pend.length) h += `<p class="small" style="margin:4px 0">${pend.map(monthLabel).join('・')}の受講計画（科目・回数・料金）の承認もお願いします。<a href="#plan">受講計画を見る ›</a></p>`;
+    const extra = askAll.filter(l => l.extraFee);
+    if (extra.length) h += `<p class="small" style="margin:4px 0">受講計画の回数を超える授業が${extra.length}回あります（${extra.map(l => esc(md(l.date)) + ' ' + esc(l.subject) + ' ' + yen(l.extraFee)).join('・')}）。承認すると、受講計画に追加になります。</p>`;
+  }
   if (adjusting.length) h += `<p style="margin:0 0 6px"><span class="tag warn">調整中 ${adjusting.length}件</span></p>`;
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
     const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`);
-    let chips;
-    if (multi) { const by = {}; ls.forEach(l => { const g = by[l.studentId] = by[l.studentId] || { n: 0, rank: 9 }; g.n++; g.rank = Math.min(g.rank, RANK[l.status]); }); chips = Object.entries(by).map(([sid, g]) => `<span class="nm r${g.rank}">${esc(shortName(sid))}${g.n > 1 ? `<small>×${g.n}</small>` : ''}</span>`); }
-    else chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => `<span class="nm r${RANK[l.status]}">${esc(l.subject)}</span>`);
+    // 授業ごとに時刻と科目（全員を出すときは科目の代わりに名。狭い表で切れないように）。2026-10-27 本人「時間帯もカレンダー上の表記で分かるようにしたい」
+    const chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => { const on = askOn.has(l.id) && l.status === 'proposed'; return `<span class="nm t2 r${RANK[l.status]}${on ? ' on' : ''}"><small class="tm">${on ? '✓ ' : ''}${l.start}</small><b>${multi ? esc(shortName(l.studentId)) : esc(l.subject)}</b></span>`; });
     return { lines: bars.concat(chips), count: ls.length };
   };
-  const day = (date, first) => cal.dayHead(date, first) + dayRows(date, lessons, events, { names: multi ? nm : {}, canDelete: e => e.createdByKind === 'family' });
+  const pick = { on: askOn, can: l => choosable.some(x => x.id === l.id) };
+  const day = (date, first) => cal.dayHead(date, first) + dayRows(date, lessons, events, { names: multi ? nm : {}, canDelete: e => e.createdByKind === 'family', pick });
   h += cal.html(esc, { cell, day });
+  if (picked.length) h += `<div class="ask-go"><button class="primary wide" data-action="ask-send"${dis()}>承認する（${picked.length}件）</button></div>`;
   return h;
 }
 // 確認待ち（今日以降・始まっていない・連絡を出していない）
 function askingLessons(lessons) { return lessons.filter(l => l.status === 'proposed' && l.asked && Date.parse(l.date+'T'+l.start+':00+09:00') > Date.now()); }
 const hasOpen = l => (l.requests || []).some(r => r.status === 'open');
-// 日程の確認（メール・LINE のリンク #confirm）: 確認待ちの授業を並べて「この日程で大丈夫」（規約 r9 第14条1項）。都合の悪い授業は押して連絡
-// 子ども × 締め切りのまとまりごとに見出し。締め切りがあるまとまりだけ「連絡がなければ確定」を書く（取り消せない結果なので）
-function confirmPage() {
-  if(need('sched'))return loading;
-  let h=kidPicker(true)+noticeHtml();
-  const all=askingLessons(forKid(sched.lessons)), groups=new Map();
-  if(!all.length)return h+'<p>確認待ちの授業はありません。</p><p><a href="#schedule">予定を見る</a></p>';
-  for(const l of all) {
-    const eligible=!!automaticDeadline(l);
-    const key=l.studentId+'|'+(eligible?l.confirmBy:'');
-    if(!groups.has(key))groups.set(key,{student:l.studentId,by:eligible?l.confirmBy:'',rows:[]});
-    groups.get(key).rows.push(l);
-  }
-  for(const g of groups.values()) {
-    const ok=g.rows.filter(l=>!hasOpen(l)), refs=ok.map(l=>({id:l.id,version:l.version}));
-    h+='<h2>'+esc(names()[g.student]||'')+(g.by?' · '+esc(md(g.by))+'まで':'')+'</h2>';
-    if(g.by)h+='<p class="small">'+esc(md(g.by))+'までにご連絡がなければ、この日程で確定します。</p>';
-    h+=lessonRows(g.rows,{names:names(),today:sched.today});
-    if(ok.length)h+='<button class="primary wide" data-action="agree-all" data-refs="'+esc(JSON.stringify(refs))+'"'+dis()+'>この日程で大丈夫（'+ok.length+'件を確定）</button>';
-  }
-  return h;
+// 授業日時の承認は予定の画面で（2026-10-27 本人「この画面と予定の画面は統一されるべき…他の予定との兼ね合いも見たいでしょうし。つまり、「授業日程の承認」→「予定」ページへと移る」）。
+// #confirm（ホームの「授業日時の承認」・メール・LINE のリンク）は、承認待ちの最初の月の予定を開く
+const askOn = new Set(); // 承認する授業（押して選んだもの。チェックが付く）。選ばなかった授業は承認待ちのまま
+function confirmToSchedule() {
+  if (need('sched')) return loading;
+  const first = askingLessons(forKid(sched.lessons)).map(l => l.date).sort()[0];
+  if (!cal) cal = monthCalendar({ today: sched.today, onChange: () => render() });
+  const t = route().target || '', next = t.replace(/^confirm/, 'schedule') || 'schedule';
+  if (first && !targetParts(t).month) { cal.month = first.slice(0, 7); cal.sel = first; }
+  history.replaceState(null, '', '#' + next); appliedTarget = next; // 子ども・月の指定はそのまま（予定の画面で同じものを読み直さない）
+  return schedulePage();
 }
 // 学習: 子どもを選んで「記録と宿題」「成績」
 function learningPage(sub) {
@@ -352,7 +356,7 @@ function render() {
   if (r.page === 'invite') h = invitePage(r.token);
   else if (r.page === 'reset') h = `<h1>新しいパスワード</h1>${noticeHtml()}${newPasswordForm('reset', 'パスワードを変える')}${helpLinks}`;
   else if (!me) h = r.page === 'forgot' ? `<h1>パスワードの再設定</h1>${noticeHtml()}<form class="stack" data-form="forgot"><label>メールアドレス<input type="email" name="email" required></label><button class="primary"${dis()}>再設定のメールを送る</button></form><p><a href="#">ログインに戻る</a></p>` : loginPage();
-  else h = page === 'schedule' ? schedulePage() : page === 'confirm' ? confirmPage() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'plan' ? planPage() : page === 'agree' ? agreePage() : page === 'contracts' ? contractsPage() : page === 'account' ? accountPage() : page === 'enroll' ? enrollPage(ectx()) : homePage();
+  else h = page === 'schedule' ? schedulePage() : page === 'confirm' ? confirmToSchedule() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'plan' ? planPage() : page === 'agree' ? agreePage() : page === 'contracts' ? contractsPage() : page === 'account' ? accountPage() : page === 'enroll' ? enrollPage(ectx()) : homePage();
   app.className = !me ? 'narrow' : '';
   renderBar(me ? page : '');
   keepSheet(app, () => { app.innerHTML = previewBar() + h + sheetHtml(); });
@@ -430,6 +434,13 @@ app.addEventListener('click', ev => {
   if (enrollClick(ectx(), a, b)) { ev.preventDefault(); return; }
   if (a === 'kid') { kid = b.dataset.id; try { sessionStorage.setItem(KID_KEY, kid); } catch {} ev.preventDefault(); return render(); }
   if (a === 'lesson') { sheetState = { kind: 'lesson', id: b.dataset.id, pick: '', note: '' }; return render(); }
+  if (a === 'ask-pick') { const id = b.dataset.id; if (askOn.has(id)) askOn.delete(id); else askOn.add(id); return render(); }
+  if (a === 'ask-all') {
+    const ls = askingLessons(forKid(sched.lessons)).filter(l => !hasOpen(l)), all = ls.every(l => askOn.has(l.id));
+    ls.forEach(l => all ? askOn.delete(l.id) : askOn.add(l.id));
+    if (!all && ls.length && cal && !ls.some(l => l.date.slice(0, 7) === cal.month)) { cal.month = ls[0].date.slice(0, 7); cal.sel = ls[0].date; } // 選んだ授業の月を出す
+    return render();
+  }
   if (a === 'pick') { captureSheetInputs(); sheetState.pick = b.dataset.c; return render(); }
   if (a === 'close-sheet') { closeSheet(); return render(); }
   if (a === 'add-event') { sheetState = { kind: 'event' }; return render(); }
@@ -441,13 +452,20 @@ app.addEventListener('click', ev => {
   captureSheetInputs();
   run(async () => {
     let r;
-    if (a === 'agree' || a === 'agree-all') {
+    if (a === 'ask-send') {
+      const all = askingLessons(forKid(sched.lessons)).filter(l => !hasOpen(l)), ok = all.filter(l => askOn.has(l.id)), off = all.filter(l => !askOn.has(l.id));
+      if (!ok.length) return;
+      if (!confirm(`${ok.length}件をこの日時で承認します（予約になります。前日23時まではお休みにできます）。` + (off.length ? `
+選ばなかった${off.length}件は、承認待ちのまま残ります。` : ''))) return;
+      r = await call('family/lessons/agree', { lessons: ok.map(l => ({ id: l.id, version: l.version })) }, store.get());
+      if (r.ok) { askOn.clear(); closeSheet(); sched = null; calData = {}; return say(`${r.decided}件を承認しました。ありがとうございます`, 'ok'); }
+    } else if (a === 'agree' || a === 'agree-all') {
       // 画面で見ている確認待ち（id と版）をそのまま送る。見ていたものと違えば、サーバーは何も確定しない
       const list = a === 'agree' ? [{id:b.dataset.id,version:Number(b.dataset.version)}] : JSON.parse(b.dataset.refs || '[]');
       if (!list.length) return;
-      if (!confirm(`${list.length === 1 ? 'この授業' : list.length + '件の授業'}をこの日時で確定しますか？（予約になります。前日23時まではお休みにできます）`)) return;
+      if (!confirm(`${list.length === 1 ? 'この授業' : list.length + '件の授業'}をこの日時で承認しますか？（予約になります。前日23時まではお休みにできます）`)) return;
       r = await call('family/lessons/agree', { lessons: list.map(l => ({ id: l.id, version: l.version })) }, store.get());
-      if (r.ok) { closeSheet(); sched = null; calData = {}; return say(`${r.decided}件を確定しました。ありがとうございます`, 'ok'); }
+      if (r.ok) { closeSheet(); sched = null; calData = {}; return say(`${r.decided}件を承認しました。ありがとうございます`, 'ok'); }
     } else if (a === 'send-change') {
       const s = sheetState; if (!s || s.kind !== 'lesson' || !s.pick) return;
       r = await call('family/lessons/request', { lessonId: s.id, kind: s.pick, note: (s.note || '').trim() }, store.get());

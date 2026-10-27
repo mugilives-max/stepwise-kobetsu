@@ -38,7 +38,7 @@ export function monthCalendar({ today, onChange }) {
         + `<span class="num${wd === 0 ? ' sun' : wd === 6 ? ' sat' : ''}">${Number(d.slice(8))}</span>${shown.join('')}${more > 0 ? `<span class="more">+${more}</span>` : ''}</button>`;
     }
     h += '</div></div>';
-    if (!cal.calOpen || !phone()) h += '<div class="cal-handle" role="separator" aria-label="下へ引くと月全体に戻る"><span></span></div>';
+    if (!cal.calOpen || !phone()) h += '<div class="cal-handle" role="separator" aria-label="押すか下へ引くと月全体に戻る"><span></span></div>';
     const changed = cal.shownSel && cal.shownSel !== cal.sel; cal.shownSel = cal.sel;
     const showDay = !cal.calOpen || !phone(), leaving = cal.calOpen && !cal.wasOpen && phone();
     if (showDay || leaving) {
@@ -130,9 +130,10 @@ export function monthCalendar({ today, onChange }) {
     const apply = d => { const q = Math.min(1, d / Math.max(1, full - twoH)); win.style.maxHeight = twoH + (full - twoH) * q + 'px'; win.scrollTop = top0 * (1 - q); day.style.opacity = String(1 - q * 0.7); };
     hd.onpointerdown = e => { y0 = lastY = e.clientY; lastT = e.timeStamp; dy = 0; v = 0; twoH = win.offsetHeight; full = win.scrollHeight; top0 = win.scrollTop; try { hd.setPointerCapture(e.pointerId); } catch {} hd.classList.add('grab'); };
     hd.onpointermove = e => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); v = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT); lastY = e.clientY; lastT = e.timeStamp; apply(dy); };
-    const end = () => {
+    const end = e => {
       if (y0 === null) return; y0 = null; hd.classList.remove('grab');
-      const close = dy > 70 || (v > 0.5 && dy > 16), fromD = dy, toD = close ? Math.max(1, full - twoH) : 0, ms = close ? 260 : 220, t0 = performance.now(), ease = q => 1 - Math.pow(1 - q, 3);
+      const close = dy > 70 || (v > 0.5 && dy > 16) || (dy < 6 && e && e.type === 'pointerup'), // 押しただけでも月全体へ（2026-10-27 本人「タップするだけで下にバーが下がるように」）
+      fromD = dy, toD = close ? Math.max(1, full - twoH) : 0, ms = close ? 260 : 220, t0 = performance.now(), ease = q => 1 - Math.pow(1 - q, 3);
       const step = now => {
         const q = Math.min(1, (now - t0) / ms); apply(fromD + (toD - fromD) * ease(q));
         if (q < 1) return requestAnimationFrame(step);

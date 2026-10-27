@@ -9,8 +9,8 @@ import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=202
 // - 受講計画合意書（月ごとに 1 枚。承認は月に 1 回）、請求、キャンセル料
 // - テスト・行事
 import { esc } from '/assets/v2/api.js';
-import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261025-layout';
+import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261027-ease';
+import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261027-ease';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 import { sheet, ICON } from '/staff/ui.js?v=20261025-layout';
 import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261026-keikaku';
@@ -54,28 +54,32 @@ const statusText = l => {
   // 調整中（相談中・締め切りなし）と確認待ち（「この日程で大丈夫」か締め切りで確定）
   // 2026-10-27 本人「確認待ち・ご返事が必要…誰が確認待ちなのか…誰の返事か…何の返事か分からない」→ 誰が何をするかを言う。保護者には「日程を確認してください」、生徒には「保護者の確認待ち」
   const student = typeof location !== 'undefined' && location.pathname.startsWith('/student');
-  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">${student ? '保護者の確認待ち' : '日程を確認してください'}${automaticDeadline(l) ? `（${md(l.confirmBy)}まで）` : ''}</span>` : '<span class="tag warn">調整中</span>');
+  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">${student ? '保護者の承認待ち' : '承認してください'}${automaticDeadline(l) ? `（${md(l.confirmBy)}まで）` : ''}</span>` : '<span class="tag warn">調整中</span>');
   else if (l.status !== 'decided') t.push(`<span class="tag ${cls}">${label}</span>`);
   return t;
 };
 // 日付ごとにまとめた授業の一覧（白い枠）。行を押すと data-action="lesson" で下から出る画面
-export function lessonRows(lessons, { names = {}, today = '', emptyText = 'これからの授業はありません。', bare = false } = {}) {
+// pick: { on: Set, can: l => bool }。選べる授業（承認待ち）の行の左に、承認する授業を選ぶ印（2026-10-27 本人「この画面と予定の画面は統一されるべき…他の予定との兼ね合いも見たいでしょうし。つまり、「授業日程の承認」→「予定」ページへと移る」）
+export function lessonRows(lessons, { names = {}, today = '', emptyText = 'これからの授業はありません。', bare = false, pick = null } = {}) {
   if (!lessons.length) return bare ? '' : `<p class="muted small">${emptyText}</p>`;
   let h = '', last = '';
   for (const l of lessons) {
     if (l.date !== last && !bare) { if (last) h += '</div>'; h += `<div class="day-head2${l.date === today ? ' today' : ''}">${mdw(l.date)}${l.date === today ? '<small>今日</small>' : ''}</div><div class="group">`; last = l.date; }
     const faded = ['rested', 'cancelled'].includes(l.status);
+    const ck = pick && pick.can(l), on = ck && pick.on.has(l.id);
+    if (ck) h += `<div class="lrow-pick"><button type="button" class="ck${on ? ' on' : ''}" data-action="ask-pick" data-id="${esc(l.id)}" aria-pressed="${on}" aria-label="${esc(md(l.date))} ${l.start} ${esc(l.subject)}を承認する授業に選ぶ">✓</button>`;
     h += `<button type="button" class="lrow pl${faded ? ' faded' : ''}" data-action="lesson" data-id="${esc(l.id)}"><span class="t">${l.start}<small>〜${endOf(l.start, l.minutes)}</small></span>
       <span class="b"><span class="nm">${names[l.studentId] ? `<b>${esc(given(names[l.studentId]))}</b> ` : ''}${esc(l.subject)}${l.kind && l.kind !== '通常' ? `<small>（${esc(l.kind)}）</small>` : ''}${l.deliveryMode === 'online' ? '<small class="muted">・オンライン</small>' : ''}</span>
       <span class="tags">${statusText(l).join('')}</span></span><span class="go">›</span></button>`;
+    if (ck) h += '</div>';
   }
   return bare ? h : h + '</div>';
 }
 // 予定表の「選んだ日」の 1 日分: テスト・行事と授業を 1 つの白い枠に
-export function dayRows(date, lessons, events, { names = {}, canDelete = () => false } = {}) {
+export function dayRows(date, lessons, events, { names = {}, canDelete = () => false, pick = null } = {}) {
   const ls = lessons.filter(l => l.date === date).sort((a, b) => a.start.localeCompare(b.start)), evs = events.filter(e => e.date <= date && date <= e.dateTo);
   if (!ls.length && !evs.length) return '<p class="muted small" style="margin:4px 2px 10px">予定はありません。</p>';
-  return '<div class="group">' + evs.map(e => `<div class="evrow"><span class="t"><small>${e.start ? e.start + '〜' + e.end : '終日'}</small></span><span class="b"><span class="nm">${esc(e.title || EVENT_KIND[e.kind])}</span><small>${[names[e.studentId] ? esc(given(names[e.studentId])) : '', e.title ? EVENT_KIND[e.kind] : ''].filter(Boolean).join('・')}</small></span>${canDelete(e) ? `<button type="button" class="x" data-action="del-event" data-id="${esc(e.id)}" aria-label="消す">${picon('x')}</button>` : '<span></span>'}</div>`).join('') + lessonRows(ls, { names, bare: true }) + '</div>';
+  return '<div class="group">' + evs.map(e => `<div class="evrow"><span class="t"><small>${e.start ? e.start + '〜' + e.end : '終日'}</small></span><span class="b"><span class="nm">${esc(e.title || EVENT_KIND[e.kind])}</span><small>${[names[e.studentId] ? esc(given(names[e.studentId])) : '', e.title ? EVENT_KIND[e.kind] : ''].filter(Boolean).join('・')}</small></span>${canDelete(e) ? `<button type="button" class="x" data-action="del-event" data-id="${esc(e.id)}" aria-label="消す">${picon('x')}</button>` : '<span></span>'}</div>`).join('') + lessonRows(ls, { names, bare: true, pick }) + '</div>';
 }
 // 次の授業（ホームの一番上）。押すと同じ下から出る画面
 export function nextLessonHero(l, { names = {}, today = '' } = {}) {
@@ -97,7 +101,7 @@ export function lessonSheet(l, state, { names = {}, canRequest = true, canAgree 
     body += `<div class="ls-req"><div><b>${REQUEST[req.kind]}</b>${req.note ? `<div class="small muted">${esc(req.note)}</div>` : ''}</div>${canRequest ? `<button data-action="withdraw" data-id="${esc(req.id)}"${busy ? ' disabled' : ''}>連絡を取り下げる</button>` : ''}</div>`;
     return sheet(esc, title, body, 'close-sheet');
   }
-  if (canAgree && canRequest && l.status === 'proposed' && l.asked) body += `<div style="margin:0 0 10px"><button class="primary wide" data-action="agree" data-id="${esc(l.id)}" data-version="${l.version}"${busy ? ' disabled' : ''}>この日程で大丈夫</button></div>`;
+  if (canAgree && canRequest && l.status === 'proposed' && l.asked) body += `${l.extraFee ? `<p class="small">受講計画の回数を超える授業です。承認すると、受講計画に追加になります（${Number(l.extraFee).toLocaleString('ja-JP')}円）。</p>` : ''}<div style="margin:0 0 10px"><button class="primary wide" data-action="agree" data-id="${esc(l.id)}" data-version="${l.version}"${busy ? ' disabled' : ''}>承認する</button></div>`;
   const choices = canRequest ? (l.choices || []) : [];
   if (!choices.length) {
     const why = !canRequest ? '連絡は保護者の方からお願いします。' : ['rested', 'cancelled', 'done'].includes(l.status) ? '' : '授業が始まっているため、先生に直接お知らせください。';

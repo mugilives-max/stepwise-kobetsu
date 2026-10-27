@@ -1,8 +1,10 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 // スタッフの画面: 予定（3段目）。月の予定表・選んだ日の授業・連絡への対応・授業を作る・休み・面談。
-// 授業の段階（2026-10-14 本人決定）: 下書き → 調整中（見せるだけ・メールなし）→ 確認待ち（締め切りとメール 1 通・LINE に貼る文）→ 確定
+// 授業の入れ方は2通り（2026-10-27 本人「大雑把に言えば２通りでいい…スムーズであるというのが何よりも大事」）:
+//   ① LINE・対面で合意した → 「確定」で入れる  ② 塾から日程を送る → 保護者が保護者ページで「承認する」（締め切り・自動確定なし）
+// 前からの下書き・調整中は「対応すること」から進められる
 // 教室管理者はすべて、講師は自分の担当の授業と自分の休みだけ。
-import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261025-layout';
+import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261027-ease';
 import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 
 let month = null, data = null, sel = null, sheet = null, families = null, loadedFor = '';
@@ -26,7 +28,7 @@ const adjustingLessons = () => data.adjustingAll || data.lessons.filter(l => l.s
 const soon = l => l.date <= addDays(data.today, 5); // 5 日以内（調整中のままなら確認をお願いするか、合意を記録して確定）
 // 月ごとに読んだ予定をとっておく（スワイプで月を変えたとき、すぐ出せるように。前後の月は先に読んでおく）。予定を変えたら捨てる
 let cache = {}, swipeAt = 0, slideIn = '';
-// 月の表では、生徒ごとに授業をまとめ、まだ決まっていないものがあればその色で出す
+// 月の表では、授業ごとに時刻と名前を、段階の色で出す
 const RANK = { held: 0, proposed: 1, decided: 2, done: 3 };
 
 function prefetchNear(ctx) {
@@ -78,15 +80,15 @@ export function schedulePage(ctx, me) {
     const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable')).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''}</span>`)
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
       .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));
-    const by = {}; ls.forEach(l => { const g = by[l.studentId] = by[l.studentId] || { n: 0, rank: 9 }; g.n++; g.rank = Math.min(g.rank, RANK[l.status]); });
-    const chips = Object.entries(by).map(([sid, g]) => `<span class="nm r${g.rank}">${esc(short[sid] || '')}${g.n > 1 ? `<small>×${g.n}</small>` : ''}</span>`);
+    // 授業ごとに時刻と名前（「×2」でまとめない。2026-10-27 本人「その根本の原因は「×N」でまとめてしまう表記ですね」）
+    const chips = ls.slice().sort((a, b) => a.start.localeCompare(b.start)).map(l => `<span class="nm t2 r${RANK[l.status]}"><small class="tm">${l.start}</small><b>${esc(short[l.studentId] || '')}</b></span>`);
     const lines = bars.concat(chips), shown = lines.slice(0, 4), more = lines.length - shown.length;
     const wd = new Date(d + 'T00:00:00Z').getUTCDay();
     h += `<button class="cell${ymOf(d) !== month ? ' out' : ''}${d === sel ? ' sel' + (shownSel && shownSel !== sel ? ' enter' : '') : ''}${d === data.today ? ' today' : ''}" data-action="sch-day" data-date="${d}" aria-label="${mdw(d)} 授業${ls.length}件">`
       + `<span class="num${wd === 0 ? ' sun' : wd === 6 ? ' sat' : ''}">${Number(d.slice(8))}</span>${shown.join('')}${more > 0 ? `<span class="more">+${more}</span>` : ''}</button>`;
   }
   h += '</div></div>';
-  if (!calOpen || !phone()) h += `<div class="cal-handle" role="separator" aria-label="下へ引くと月全体に戻る"><span></span></div>`; // 取っ手: 下へ引くと閉じる（押しただけでは何もしない）
+  if (!calOpen || !phone()) h += `<div class="cal-handle" role="separator" aria-label="押すか下へ引くと月全体に戻る"><span></span></div>`; // 取っ手: 下へ引くか、押すと閉じる（月全体へ）
   const changed = shownSel && shownSel !== sel; shownSel = sel;
   const showDay = !calOpen || !phone(), leaving = calOpen && !wasOpen && phone();
   if (showDay || leaving) h += `<div class="sch-day${changed && showDay && !wasOpen ? ' enter' : ''}${leaving ? ' leaving' : ''}">${dayPanel(ctx, me, manager, nameOf, staffOf)}</div>`;
@@ -163,9 +165,10 @@ function bindDrag(ctx) {
   const apply = d => { const q = Math.min(1, d / Math.max(1, full - twoH)); win.style.maxHeight = twoH + (full - twoH) * q + 'px'; win.scrollTop = top0 * (1 - q); day.style.opacity = String(1 - q * 0.7); };
   hd.onpointerdown = e => { y0 = lastY = e.clientY; lastT = e.timeStamp; dy = 0; v = 0; twoH = win.offsetHeight; full = win.scrollHeight; top0 = win.scrollTop; try { hd.setPointerCapture(e.pointerId); } catch {} hd.classList.add('grab'); };
   hd.onpointermove = e => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); v = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT); lastY = e.clientY; lastT = e.timeStamp; apply(dy); };
-  const end = () => {
+  const end = e => {
     if (y0 === null) return; y0 = null; hd.classList.remove('grab');
-    const close = dy > 70 || (v > 0.5 && dy > 16), fromD = dy, toD = close ? Math.max(1, full - twoH) : 0, ms = close ? 260 : 220, t0 = performance.now(), ease = q => 1 - Math.pow(1 - q, 3);
+    const close = dy > 70 || (v > 0.5 && dy > 16) || (dy < 6 && e && e.type === 'pointerup'), // 押しただけでも月全体へ（2026-10-27 本人「タップするだけで下にバーが下がるように」）
+      fromD = dy, toD = close ? Math.max(1, full - twoH) : 0, ms = close ? 260 : 220, t0 = performance.now(), ease = q => 1 - Math.pow(1 - q, 3);
     const step = now => {
       const q = Math.min(1, (now - t0) / ms); apply(fromD + (toD - fromD) * ease(q));
       if (q < 1) return requestAnimationFrame(step);
@@ -219,9 +222,9 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
       const main = [], sub = [], danger = [];
       const future = l.date >= data.today;
       if (manager && future && l.status === 'held') main.push(`<button data-action="sch-show-one" data-id="${esc(l.id)}"${ctx.dis()}>調整中として見せる</button>`);
-      if(manager && future && l.status==='proposed' && l.asked && (!['sent','external'].includes(l.noticeState) || (l.confirmBy && !automaticDeadline(l)))) main.push('<p class="notice">自動確定を保留中（通知の確認待ち）</p><button data-action="sch-renotify" data-id="'+esc(l.id)+'">再案内・回答期間を確認</button>');
-      if (manager && future && (l.status === 'held' || (l.status === 'proposed' && !l.asked))) main.push(`<button class="primary" data-action="sch-ask-one" data-id="${esc(l.id)}"${ctx.dis()}>確認をお願いする</button>`);
-      if (manager && ['held', 'proposed'].includes(l.status)) main.push(`<button${l.status === 'proposed' && l.asked ? ' class="primary"' : ''} data-action="sch-decide" data-id="${esc(l.id)}"${ctx.dis()}>確定する</button>`);
+      if(manager && future && l.status==='proposed' && l.asked && l.confirmBy && (!['sent','external'].includes(l.noticeState) || !automaticDeadline(l))) main.push('<p class="notice">自動確定を保留中（通知の確認待ち）</p><button data-action="sch-renotify" data-id="'+esc(l.id)+'">再案内・回答期間を確認</button>');
+      if (manager && future && (l.status === 'held' || (l.status === 'proposed' && !l.asked))) main.push(`<button data-action="sch-ask-one" data-id="${esc(l.id)}"${ctx.dis()}>保護者に承認をお願いする</button>`);
+      if (manager && ['held', 'proposed'].includes(l.status)) main.push(`<button class="primary" data-action="sch-decide" data-id="${esc(l.id)}"${ctx.dis()}>確定する</button>`);
       if (l.status === 'decided' && past && mine) main.push(`<button class="primary" data-action="sch-done" data-id="${esc(l.id)}"${ctx.dis()}>実施済みにする</button>`);
       if (['decided', 'done'].includes(l.status) && past && mine) main.push(`<a class="btn" href="#record=${encodeURIComponent(l.id)}">記録を書く</a>`);
       if (manager && ['held', 'proposed', 'decided'].includes(l.status)) sub.push(`<button data-action="sch-edit" data-id="${esc(l.id)}"${ctx.dis()}>日時・内容を直す</button>`);
@@ -263,7 +266,7 @@ function stageGroup(ctx, sid, nameOf, stage) {
   const n = picked.length, dis = n ? ctx.dis() : ' disabled';
   const buttons = trial ? `<button class="primary" data-action="sch-ask" data-sid="${esc(sid)}" data-stage="${stage}"${dis}>選んだ ${n}件を確定にする</button>`
     : (stage === 'held' ? `<button data-action="sch-show" data-sid="${esc(sid)}"${dis}>選んだ ${n}件を調整中として見せる</button>` : '')
-      + `<button class="primary" data-action="sch-ask" data-sid="${esc(sid)}" data-stage="${stage}"${dis}>選んだ ${n}件の確認をお願いする</button>`;
+      + `<button class="primary" data-action="sch-ask" data-sid="${esc(sid)}" data-stage="${stage}"${dis}>選んだ ${n}件の承認をお願いする</button>`;
   return `<div class="held-group" style="margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px"><div style="display:flex;align-items:center;gap:8px"><strong>${esc(nameOf[sid] || '')}</strong>${trial ? ' <span class="tag gray">体験</span>' : ''}</div>${rows}
     <div class="row" style="margin-top:6px">${buttons}</div></div>`;
 }
@@ -282,13 +285,13 @@ function createForm(ctx, me) {
   const { esc } = ctx, past = !!sel && sel < data.today;
   return `<form class="stack" data-form="sch-create" style="margin:0">
     <label>生徒<select name="studentId" required>${data.students.map(s => `<option value="${esc(s.id)}"${s.trial ? ' data-trial="1"' : ''}>${esc(s.name)}${s.trial ? '（体験）' : ''}</option>`).join('')}</select></label>
-    <p class="small muted trial-hint">体験は無料。下書き以外はそのまま確定（お知らせなし）</p>
+    <p class="small muted trial-hint">体験は無料。そのまま確定（お知らせなし）</p>
     <div class="row"><label style="flex:1">日付<input type="date" name="date" value="${sel || ''}" required></label><label style="flex:1">開始<input type="time" name="start" value="17:00" step="300" required></label><label style="flex:1">長さ<select name="minutes">${minutesOptions(90)}</select></label></div>
     <div class="row"><label style="flex:1">科目<input name="subject" maxlength="30" required placeholder="数学"></label><label style="flex:1">種類<select name="kind">${kindOptions(ctx, '通常')}</select></label>
       <label style="flex:1">形式<select name="deliveryMode"><option value="in_person">対面</option><option value="online">オンライン</option></select></label></div>
     <div class="row"><label style="flex:1">担当<select name="staffId">${staffOptions(ctx, me.id)}</select></label><label style="flex:1">くり返し<select name="repeat">${[1, 2, 3, 4, 5, 8, 12].map(n => `<option value="${n}">${n === 1 ? 'この日だけ' : '毎週×' + n + '回'}</option>`).join('')}</select></label></div>
-    <label>段階<select name="send">${past ? '' : '<option value="hold">下書き（塾だけ）</option><option value="show">調整中として見せる（メールなし）</option><option value="ask">確認をお願いする（締め切りつき・保護者にメール 1 通）</option>'}<option value="done"${past ? ' selected' : ''}>実施済みとして登録</option></select></label>
-    ${past ? '<p class="small muted">お知らせは送りません。授業料はその月の承認済みの計画（同じ科目・種類）に入ります。</p>' : ''}
+    ${past ? '<input type="hidden" name="send" value="done"><p class="small muted">実施済みとして登録します。</p>'
+      : '<div class="send-seg" role="radiogroup" aria-label="入れ方"><label><input type="radio" name="send" value="decide" checked> 確定で入れる<small>LINE・対面で合意した</small></label><label><input type="radio" name="send" value="ask"> 保護者に承認をお願いする<small>メールで日程を送る</small></label></div>'}
     <div class="row"><button class="primary"${ctx.dis()}>作る</button></div></form>`;
 }
 function editForm(ctx, l) {
@@ -346,18 +349,19 @@ async function after(ctx, r, okMessage) {
   return true;
 }
 
-const askNote = r => (r.confirmBy ? `（締め切り ${Number(r.confirmBy.slice(5, 7))}/${Number(r.confirmBy.slice(8))}）` : '') + (r.near ? `。日が近い ${r.near}件は締め切りなし（保護者の返事か、合意を記録して確定）` : '');
+const askNote = () => '（保護者が承認すると確定します）';
 // 段階を進める: show 調整中として見せる（メールなし）/ ask 確認をお願いする（メール 1 通・LINE に貼る文を出す）。体験生は確定にする
 async function stageMove(ctx, how, sid, ids, rest) {
   const st = data.students.find(x => x.id === sid) || {}, trial = !!st.trial;
   const ask = trial ? `${st.name || ''}さんの体験の授業 ${ids.length}件を確定にして、Google カレンダーに入れますか？（メールは送りません）`
     : how === 'show' ? `${st.name || ''}さんの授業 ${ids.length}件を調整中として、保護者・生徒のページに出しますか？（メールは送りません）`
-    : `${st.name || ''}さんの授業 ${ids.length}件の確認をお願いしますか？ 締め切りを付けて、保護者にメールを 1 通送ります。`;
+    : `${st.name || ''}さんの授業 ${ids.length}件の承認を、保護者にメールでお願いしますか？`;
   if (!confirm(ask + (rest ? `\n印を外した ${rest}件はそのまま残ります。` : ''))) return true;
-  const r = await ctx.call(how === 'show' ? 'schedule/lessons/show' : 'schedule/lessons/ask', { studentId: sid, lessonIds: ids });
+  let r = await ctx.call(how === 'show' ? 'schedule/lessons/show' : 'schedule/lessons/ask', { studentId: sid, lessonIds: ids });
+  if (!r.ok && r.error && r.error.needForce && confirm(r.error.message)) r = await ctx.call('schedule/lessons/ask', { studentId: sid, lessonIds: ids, force: true });
   if (r.ok) ids.forEach(x => unpicked.delete(x));
-  await after(ctx, r, r.ok ? (r.trial ? `${r.sent}件を確定にしました` : how === 'show' ? `${r.shown}件を調整中として見せました（メールなし）` : `${r.asked}件の確認をお願いしました${askNote(r)}`) + (r.left ? `（下書き ${r.left}件は残っています）` : '') : '');
-  if (r.ok && r.lineText) sheet = { kind: 'line', title: '確認をお願いしました', text: r.lineText };
+  await after(ctx, r, r.ok ? (r.trial ? `${r.sent}件を確定にしました` : how === 'show' ? `${r.shown}件を調整中として見せました（メールなし）` : `${r.asked}件の承認をお願いしました${askNote(r)}`) + (r.left ? `（下書き ${r.left}件は残っています）` : '') : '');
+  if (r.ok && r.lineText) sheet = { kind: 'line', title: '承認をお願いしました', text: r.lineText };
   return true;
 }
 
@@ -365,12 +369,12 @@ export async function scheduleSubmit(ctx, kind, el) {
   const v = values(el);
   if (kind === 'sch-create') {
     const body = { studentId: v.studentId, date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, repeat: v.send === 'done' ? 1 : Number(v.repeat), send: v.send || 'hold', hold: v.send === 'hold', done: v.send === 'done' };
-    if (v.send === 'ask' && !confirm('締め切りを付けて、保護者に確認のお願いのメールを 1 通送ります。よろしいですか？')) return true;
+    if (v.send === 'ask' && !confirm('保護者に日程の承認のお願いをメールで送ります。よろしいですか？')) return true;
     let r = await ctx.call('schedule/lessons/create', body);
     if ((await after(ctx, r, '')) === 'force') r = await ctx.call('schedule/lessons/create', { ...body, force: true });
     if (r.ok) {
-      sheet = r.lineText ? { kind: 'line', title: '確認をお願いしました', text: r.lineText } : null; cache = {}; sel = v.date;
-      ctx.say(r.trial ? `体験の授業を${r.created}件、確定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.held ? `${r.created}件を下書きで作りました` : r.shown ? `${r.created}件を調整中として見せました（メールなし）` : `${r.created}件の確認をお願いしました${askNote(r)}`, 'ok'); data = null; loadedFor = '';
+      sheet = r.lineText ? { kind: 'line', title: '承認をお願いしました', text: r.lineText } : null; cache = {}; sel = v.date;
+      ctx.say(r.trial ? `体験の授業を${r.created}件、確定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.decided ? `${r.created}件を確定しました${r.extra ? `（受講計画合意書に ${r.extra}回追加）` : ''}` : r.held ? `${r.created}件を下書きで作りました` : r.shown ? `${r.created}件を調整中として見せました（メールなし）` : `${r.created}件の承認をお願いしました${askNote(r)}`, 'ok'); data = null; loadedFor = '';
     }
     return true;
   }
@@ -423,7 +427,12 @@ export async function scheduleClick(ctx, a, b) {
   if (a === 'sch-tardy') { sheet = { kind: 'lesson', id, tardy: true }; return true; }
   if (a === 'sch-cancel' && l && rateRule(l)) { sheet = { kind: 'lesson', id, cancel: true }; return true; } // 新しい決まり: 連絡を受けた時刻を入れる画面
   if (a === 'sch-edit-cancel') { sheet = sheet && sheet.id ? { kind: 'lesson', id: sheet.id } : null; return true; }
-  if (a === 'sch-decide') { sheet = { kind: 'lesson', id, decide: true }; return true; }
+  if (a === 'sch-decide' && l) {
+    if (!confirm('LINE・対面などで保護者と合意した日時として確定しますか？')) return true;
+    let r = await ctx.call('schedule/lessons/decide', { id: l.id, version: l.version, withExtras: true });
+    if (!r.ok && r.error && r.error.needForce && confirm(r.error.message)) r = await ctx.call('schedule/lessons/decide', { id: l.id, version: l.version, withExtras: true, force: true });
+    await after(ctx, r, '確定しました'); return true;
+  }
   if (a === 'sch-copy') { const t = document.querySelector('.line-copy'); try { await navigator.clipboard.writeText(t.value); ctx.say('コピーしました', 'ok'); } catch { t.select(); ctx.say('選んだ文をコピーしてください', ''); } return true; }
   if (a === 'sch-unsend' && l) {
     if (!confirm('この授業を下書きに戻しますか？ 保護者・生徒のページから消えます（メールは送りません）。')) return true;

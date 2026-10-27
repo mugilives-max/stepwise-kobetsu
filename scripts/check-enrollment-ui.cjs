@@ -105,7 +105,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   const s=h.rows('select trial, enrolledOn from students where id = ?',trial.studentId)[0];
   assert.deepEqual([s.trial,s.enrolledOn],[0,'2026-10-02'],'申し込んだ日にそのまま入塾（開始は今月）');
   assert.equal(h.rows('select consenterName from termsConsents')[0].consenterName,'【テスト】架空 花子','同意者名は入れた氏名');
-  await parent.goto(origin+'/family/#home');await parent.getByText('やること',{exact:true}).waitFor();
+  await parent.goto(origin+'/family/#home');await parent.getByText('対応が必要なこと',{exact:true}).waitFor();
   assert.equal((await parent.locator('#app').innerText()).includes('共通規約への同意'),false,'申込みで同意したので、別に求めない');
   report.checks.push('parent: password then the application page, required fields marked, confirm records nothing, consent required, enrolled at once with the typed name');
   // 3. 代表: 入塾した

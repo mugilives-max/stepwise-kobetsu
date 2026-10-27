@@ -105,7 +105,7 @@ button.small-btn.warn { background: var(--warn-soft); border-color: #f1d9ad; col
 .month2 .wd { text-align: center; font-size: 11.5px; color: var(--muted); padding: 3px 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .month2 .wd.sun, .month2 .num.sun { color: #c0392b; }
 .month2 .wd.sat, .month2 .num.sat { color: #1f5fb4; }
-.month2 .cell { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 1px; min-width: 0; height: 74px; padding: 2px 2px 3px; overflow: hidden; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 11px; line-height: 1.3; }
+.month2 .cell { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 1px; min-width: 0; height: 86px; padding: 2px 2px 3px; overflow: hidden; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 11px; line-height: 1.3; }
 .month2 .cell:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .month2 .cell.out { background: #f6f8fa; }
 .month2 .cell.out > * { opacity: .55; }
@@ -117,7 +117,7 @@ button.small-btn.warn { background: var(--warn-soft); border-color: #f1d9ad; col
 .month2 .nm.r0 { color: var(--muted); border: 1px dashed #c9d2dc; }
 .month2 .nm.r1 { background: var(--warn-soft); color: #7a4f08; }
 .month2 .nm.r2 { background: #e3ecfb; color: #173f8a; }
-.month2 .nm.r3 { color: #5b6672; }
+.month2 .nm.r3 { background: var(--ok-soft); color: #23704a; } /* 実施済みも同じ形で（2026-10-27 本人「実施済みのものに関しても同じようなスタイルで」） */
 .month2 .bar { color: var(--white); font-size: 10.5px; }
 .month2 .bar.test { background: #d9480f; font-weight: 700; } /* テストは大事な予定なので、灰色にせず目立つ色に（2026-10-27 本人「重要さが表示に反映されていません」） */
 .month2 .bar.event { background: #a23b3b; }
@@ -958,3 +958,32 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .danger-line { margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--line); text-align: right; }
 .cond-view { margin-top: 14px; padding: 10px 14px 4px; }
 .cond-view .info-head { margin: 0; }
+
+/* 授業の入れ方: 確定で入れる / 保護者に承認をお願いする（2026-10-27） */
+.send-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.send-seg label { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; font-weight: 700; }
+.send-seg label small { font-weight: 400; font-size: 12.5px; color: var(--muted); }
+.send-seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.send-seg label:has(input:checked) { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.send-seg label:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* 授業日時の承認は予定の画面で（2026-10-27 本人「この画面と予定の画面は統一されるべき」）: 承認待ちの帯・選ぶ印・承認するボタン */
+.ask-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; }
+.lrow-pick { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 6px; border-bottom: 1px solid var(--line); }
+.group > .lrow-pick:last-child { border-bottom: 0; }
+.lrow-pick > .lrow { border-bottom: 0; }
+.lrow-pick .ck { all: unset; box-sizing: border-box; cursor: pointer; width: 28px; height: 28px; border-radius: 8px; border: 2px solid #e3b45c; background: var(--warn-soft); color: transparent; display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+.lrow-pick .ck.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.lrow-pick .ck:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.month2 .nm.on { background: var(--primary); color: #fff; }
+.ask-go { position: sticky; bottom: 12px; z-index: 5; margin: 12px 0 0; }
+@media (max-width: 720px) { body.has-tabs .ask-go { bottom: calc(68px + env(safe-area-inset-bottom)); } }
+
+/* 予定の月の表: 時刻と科目の2行（2026-10-27） */
+.month2 .nm.t2 { white-space: normal; line-height: 1.15; padding: 1px 2px; }
+.month2 .nm.t2 .tm { display: block; font-size: 9.5px; margin: 0; opacity: .85; }
+.month2 .nm.t2 b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; }
+/* ホームの下: 授業記録と宿題を並べる */
+.home-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 0; }
+.home-links .todo-row { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+@media (max-width: 380px) { .home-links { grid-template-columns: 1fr; } }

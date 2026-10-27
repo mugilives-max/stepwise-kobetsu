@@ -18,12 +18,12 @@ async function world() {
 const lessonsOf = h => h.rows('select * from lessons order by date, start');
 const at = (h, iso) => { h.clock = Date.parse(iso); };
 
-test('a manager sends 仮予定 with a deadline; held ones stay hidden until the schedule is sent once', async () => {
+test('a manager asks for approval without a deadline; held ones stay hidden until the schedule is sent once', async () => {
   const { h, auth, parent, lesson } = await world();
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-09' });
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-11-03', repeat: 2 });
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-03', start: '10:00' });
-  assert.deepEqual(lessonsOf(h).map(l => [l.date, l.status, l.confirmBy]), [['2026-10-03', 'proposed', ''], ['2026-10-09', 'proposed', '2026-10-05'], ['2026-11-03', 'proposed', '2026-10-25'], ['2026-11-10', 'proposed', '2026-10-25']]);
+  assert.deepEqual(lessonsOf(h).map(l => [l.date, l.status, l.confirmBy]), [['2026-10-03', 'proposed', ''], ['2026-10-09', 'proposed', ''], ['2026-11-03', 'proposed', ''], ['2026-11-10', 'proposed', '']]);
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-12-01', hold: true });
   assert.equal((await h.ok('family/schedule', { auth: parent, to: '2026-12-31' })).lessons.length, 4, '未送信は保護者に見せない');
   assert.equal((await h.ok('schedule/lessons/sendHeld', { auth, studentId: lesson.studentId, lessonIds: [lessonsOf(h).at(-1).id] })).sent, 1);
@@ -61,8 +61,8 @@ test('確認をお願いする（古い名前 sendHeld）: 選んだ下書きだ
   assert.deepEqual(held().map(l => l.status), ['proposed', 'proposed', 'held']);
   const fm = h.mails().slice(mails0).filter(m => m.audience === 'family');
   assert.equal(fm.length, 1, '保護者に 1 回');
-  assert.match(fm[0].subject, /授業の日程の確認のお願い/);
-  assert.match(fm[0].body, /11\/4\(水\) 17:00〜18:00 数学\n・11\/11/, '選んだ授業を並べる');
+  assert.match(fm[0].subject, /授業の日程の承認のお願い/);
+  assert.match(fm[0].body, /11\/4\(水\) 17:00〜18:00 数学[^\n]*\n・11\/11/, '選んだ授業を並べる');
   assert.doesNotMatch(fm[0].body, /12\/2/, '選ばなかった授業は書かない');
   assert.match(fm[0].body, /#confirm\?student=[^\s]+/, '保護者ページの「日程の確認」を開く');
   assert.match(r.lineText, /^【ステップワイズ】[\s\S]*family\/#confirm$/, 'LINE に貼る文');
@@ -122,12 +122,12 @@ test('parents: お休み before 23:00 the day before is free and immediate; afte
   assert.equal(back.lesson.status, 'decided', '開始前なら取り下げて元に戻せる');
 });
 
-test('the nightly run decides 仮予定 past their deadline once, but not ones with an open date-change request', async () => {
+test('the nightly run decides 仮予定 asked with a deadline (before 2026-10-27) once, but not ones with an open date-change request', async () => {
   const { h, auth, parent, lesson } = await world();
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-09' }); await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-08' });
   const second = lessonsOf(h).find(l => l.date === '2026-10-09');
   await h.ok('family/lessons/request', { auth: parent, lessonId: second.id, kind: 'move', note: '別の日に' });
-  h.db2._sqlite.prepare("update lessons set noticeState = 'external', noticeAt = askedAt where askedAt <> ''").run(); // synthetic delivered notice
+  h.db2._sqlite.prepare("update lessons set noticeState = 'external', noticeAt = askedAt, confirmBy = '2026-10-05' where askedAt <> ''").run(); // synthetic delivered notice with an old deadline
   const { runV2Scheduled } = await import('../cf/v2/index.mjs');
   assert.equal((await runV2Scheduled(h.env, Date.parse('2026-10-05T00:10:00+09:00'))).confirmed, 0, '締め切りの日のうちは決めない');
   const r = await runV2Scheduled(h.env, Date.parse('2026-10-06T00:10:00+09:00'));
