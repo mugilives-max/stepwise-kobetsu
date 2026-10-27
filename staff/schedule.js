@@ -378,7 +378,7 @@ export async function scheduleSubmit(ctx, kind, el) {
     if ((await after(ctx, r, '')) === 'force') r = await ctx.call('schedule/lessons/create', { ...body, force: true });
     if (r.ok) {
       sheet = r.lineText ? { kind: 'line', title: '承認をお願いしました', text: r.lineText } : null; cache = {}; sel = v.date;
-      ctx.say(r.trial ? `体験の授業を${r.created}件、確定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.decided ? `${r.created}件を確定しました${r.extra ? `（受講計画合意書に ${r.extra}回追加）` : ''}` : r.held ? `${r.created}件を下書きで作りました` : r.shown ? `${r.created}件を調整中として見せました（メールなし）` : `${r.created}件の承認をお願いしました${askNote(r)}`, 'ok'); data = null; loadedFor = '';
+      ctx.say(r.trial ? `体験の授業を${r.created}件、確定で入れました` : r.done ? `${r.created}件を実施済みで登録しました` : r.decided ? `${r.created}件を確定しました` : r.held ? `${r.created}件を下書きで作りました` : r.shown ? `${r.created}件を調整中として見せました（メールなし）` : `${r.created}件の承認をお願いしました${askNote(r)}`, 'ok'); data = null; loadedFor = '';
     }
     return true;
   }
@@ -433,8 +433,7 @@ export async function scheduleClick(ctx, a, b) {
   if (a === 'sch-edit-cancel') { sheet = sheet && sheet.id ? { kind: 'lesson', id: sheet.id } : null; return true; }
   if (a === 'sch-decide' && l) {
     if (!confirm('LINE・対面などで保護者と合意した日時として確定しますか？')) return true;
-    let r = await ctx.call('schedule/lessons/decide', { id: l.id, version: l.version, withExtras: true });
-    if (!r.ok && r.error && r.error.needForce && confirm(r.error.message)) r = await ctx.call('schedule/lessons/decide', { id: l.id, version: l.version, withExtras: true, force: true });
+    const r = await ctx.call('schedule/lessons/decide', { id: l.id, version: l.version });
     await after(ctx, r, '確定しました'); return true;
   }
   if (a === 'sch-copy') { const t = document.querySelector('.line-copy'); try { await navigator.clipboard.writeText(t.value); ctx.say('コピーしました', 'ok'); } catch { t.select(); ctx.say('選んだ文をコピーしてください', ''); } return true; }

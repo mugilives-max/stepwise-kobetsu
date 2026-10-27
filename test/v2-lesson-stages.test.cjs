@@ -48,7 +48,7 @@ test('作る: 下書き（見えない）・調整中（見えるがメールな
   const r2 = await h.ok('schedule/lessons/create', { ...L, date: '2026-10-22', send: 'ask', repeat: 2 });
   assert.deepEqual([r2.asked, r2.confirmBy], [true, '']);
   assert.equal(familyMails().length, 1, '承認のお願いはまとめて 1 通');
-  assert.match(familyMails()[0].body, /10\/22\(木\) 17:00〜18:00 数学（受講計画に追加・3,000円）\n・10\/29\(木\)[\s\S]*「承認する」を押すと、この日時で確定します/);
+  assert.match(familyMails()[0].body, /10\/22\(木\) 17:00〜18:00 数学（受講計画の外・1回 3,000円）\n・10\/29\(木\)[\s\S]*「承認する」を押すと、この日時で確定します/);
   assert.doesNotMatch(familyMails()[0].body, /ご連絡がなければ/, '返事がなくても確定しない');
   assert.match(r2.lineText, /^【ステップワイズ】架空 一郎さんの授業の日程の承認をお願いします。[\s\S]*https:\/\/www\.stepwise-education\.jp\/family\/#confirm$/);
   fl = (await h.ok('family/schedule', { auth: parent, to: '2026-10-31' })).lessons;
@@ -173,46 +173,28 @@ test('スタッフの「今日」: 調整中のまま 5 日以内に来る授業
 
 // 2通り（2026-10-27 本人「LINEとかで…合意が取れたらそれを塾側がシステムに反映する。あるいは…リンクを送って…承認お願いします」
 // 「受講計画合意書とセットで承認する…計画の分を超えていますがよろしいですかって聞く」）
-test('2通り: ① 確定で入れる（メールなし）・② 承認のお願い（締め切りなし）。受講計画合意書を超える分は、その授業への合意で1回足す', async () => {
+test('2通り: ① 確定で入れる（メールなし）・② 承認のお願い（締め切りなし）。受講計画合意書の外の授業も、合意で請求に入る（受講計画合意書には足さない）', async () => {
   const { h, auth, kid, parent, L, familyMails, row, ids } = await world();
   const pl = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-10-01', endDate: '2026-10-31', count: 1, minutes: 60, fee: 2800 })).line;
   await h.ok('billing/plans/consent', { auth, id: pl.id, version: pl.version, consentedAt: '2026-10-02T03:00:00Z', via: 'LINE', consenterName: '【テスト】架空 保護者' });
-  const n0 = familyMails().length;
-  // ① 計画の中: そのまま確定
+  const n0 = familyMails().length, lines0 = h.rows('select count(*) n from planLines')[0].n;
+  // ① 確定で入れる: 計画の中も外も、そのまま確定（確かめの一言なし）
   const r1 = await h.ok('schedule/lessons/create', { ...L, date: '2026-10-20', send: 'decide' });
-  assert.deepEqual([r1.decided, r1.extra], [true, 0]);
-  const [a] = ids();
-  assert.deepEqual([row(a).status, row(a).agreement, !!row(a).calendarEventId], ['decided', 'LINE・対面などで合意（塾が登録）', true]);
-  // ① 計画を超える: 「よろしいですか」→ 足して確定
-  const w = await h.call('schedule/lessons/create', { ...L, date: '2026-10-21', send: 'decide' });
-  assert.equal(w.error.code, 'needForce');
-  assert.match(w.error.message, /受講計画合意書の回数を超える授業が1回あります（10\/21 数学、1回 2,800円）/);
-  assert.equal(ids().length, 1, '確かめる前は何も作らない');
-  const r2 = await h.ok('schedule/lessons/create', { ...L, date: '2026-10-21', send: 'decide', force: true });
-  assert.equal(r2.extra, 1);
+  const r2 = await h.ok('schedule/lessons/create', { ...L, date: '2026-10-21', send: 'decide' });
+  assert.deepEqual([r1.decided, r2.decided], [true, true]);
+  const [a, b] = ids();
+  assert.deepEqual([row(b).status, row(b).agreement, !!row(b).calendarEventId], ['decided', 'LINE・対面などで合意（塾が登録）', true]);
   assert.equal(familyMails().length, n0, '① はメールなし');
-  let add = h.rows("select * from planLines where parentId = ? order by startDate", pl.id);
-  assert.deepEqual(add.map(l => [l.status, l.startDate, l.endDate, l.count, l.fee, l.approvedBy.startsWith('staff:'), l.consenterName]), [['approved', '2026-10-21', '2026-10-21', 1, 2800, true, '架空家']]);
-  // ② 承認のお願い: 保護者の画面に「追加」と金額。承認すると足す
+  // ② 承認のお願い: 受講計画の外の授業には授業料を書く。承認すると確定
   await h.ok('schedule/lessons/create', { ...L, date: '2026-10-22', send: 'ask' });
   const c = ids()[2];
   assert.deepEqual([row(c).status, row(c).confirmBy, !!row(c).askedAt], ['proposed', '', true]);
-  assert.match(familyMails().at(-1).body, /10\/22\(木\) 17:00〜18:00 数学（受講計画に追加・2,800円）/);
-  const fl = (await h.ok('family/schedule', { auth: parent, to: '2026-10-31' })).lessons.find(l => l.id === c);
-  assert.equal(fl.extraFee, 2800);
+  assert.match(familyMails().at(-1).body, /10\/22\(木\) 17:00〜18:00 数学（受講計画の外・1回 2,800円）/);
+  assert.equal((await h.ok('family/schedule', { auth: parent, to: '2026-10-31' })).lessons.find(l => l.id === c).extraFee, 2800);
   await h.ok('family/lessons/agree', { auth: parent, lessons: [{ id: c, version: row(c).version }] });
-  add = h.rows("select * from planLines where parentId = ? order by startDate", pl.id);
-  assert.deepEqual(add.map(l => [l.startDate, l.approvedBy, l.approvedVia]), [['2026-10-21', add[0].approvedBy, add[0].approvedVia], ['2026-10-22', 'family', '保護者ページ（授業の日程の承認）']]);
-  // 3回とも請求に入る（受講計画合意書を作り直さない）
-  const { studentBilling } = await import('../cf/v2/plan-calc.mjs');
-  const sb = await studentBilling(h.db2, kid.id);
-  assert.deepEqual(ids().map(id => !!sb.line[id]), [true, true, true]);
-  // 管理画面の「確定する」（withExtras）も同じく確かめる
-  await h.ok('schedule/lessons/create', { ...L, date: '2026-10-23', send: 'ask' });
-  const d = ids()[3];
-  const w2 = await h.call('schedule/lessons/decide', { auth, id: d, version: row(d).version, withExtras: true });
-  assert.equal(w2.error.code, 'needForce');
-  await h.ok('schedule/lessons/decide', { auth, id: d, version: row(d).version, withExtras: true, force: true });
-  assert.equal(h.rows("select * from planLines where parentId = ?", pl.id).length, 3);
+  // 受講計画合意書には足さない（2026-10-27 本人「自動で受講計画に足すのはやめましょう」）。合意があるので請求には入る
+  assert.equal(h.rows('select count(*) n from planLines')[0].n, lines0);
+  const plan = await h.ok('students/plan', { auth, studentId: kid.id, month: '2026-10' });
+  assert.deepEqual([plan.unrecorded.length, plan.estimate], [0, 8400], '3回とも合意あり。計画の外の2回も同じ科目の計画の単価');
 });
 

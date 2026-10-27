@@ -11,7 +11,7 @@ import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
 // 2通り（2026-10-27 本人「大雑把に言えば２通りでいい…LINEとかで日程の調整をしたら、両者の合意が取れたらそれを塾側がシステムに反映する。あるいは、既に合意されている日程をシステムからリンクを送って…承認お願いします…スムーズであるというのが何よりも大事」）:
 //   ① LINE・対面で合意した日時を、塾が「確定」で入れる（send: 'decide'）
 //   ② 塾が日程を送り、保護者が保護者ページで「承認する」（send: 'ask'。締め切り・自動確定なし）
-//   受講計画合意書の回数を超える授業は、その授業への合意で受講計画合意書に1回足す（cf/v2/plan-extra.mjs）
+//   受講計画合意書に入らない授業も、その授業への合意があれば請求する（cf/v2/lesson-plan.mjs。受講計画合意書には足さない。2026-10-27 本人「自動で受講計画に足すのはやめましょう」）
 // カレンダー・Meet と保護者へのメールは、切り替え（settings.live）まで実際には行わない（effects に held で残る）。
 import { fail, newId, iso, audit, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
@@ -20,7 +20,7 @@ import { isLive } from './accounts.mjs';
 import { createCancelFee, dropCancelFee, usesRate, setRateFee, lessonFee, parseParts, cancelRuleFrom } from './plan-calc.mjs';
 import { ratePct } from '../../assets/v2/cancel-rate.js';
 import { isPreviewToken, previewSubject } from './preview.mjs';
-import { extrasFor, extraWarning, addExtras } from './plan-extra.mjs';
+import { extrasFor } from './plan-extra.mjs';
 
 const CAL_PREFIX = '【塾】';
 const ACTIVE = ['held', 'proposed', 'decided', 'done'];
@@ -151,8 +151,8 @@ export const lessonLine = l => `・${mdText(l.date)} ${l.start}〜${endText(l.st
 // 確認のお願いの本文（メールと LINE で同じ）。lessons は締め切り（confirmBy）を付けたあとの行
 export function askText(name, lessons) {
   const extra = lessons.filter(l => l.extraFee);
-  let t = `${name}さんの授業の日程の承認をお願いします。\n` + lessons.map(l => lessonLine(l) + (l.extraFee ? `（受講計画に追加・${Number(l.extraFee).toLocaleString('ja-JP')}円）` : '')).join('\n') + '\n';
-  if (extra.length) t += '「追加」の授業は受講計画の回数を超える分です。承認すると、受講計画に追加になります。\n';
+  let t = `${name}さんの授業の日程の承認をお願いします。\n` + lessons.map(l => lessonLine(l) + (l.extraFee ? `（受講計画の外・1回 ${Number(l.extraFee).toLocaleString('ja-JP')}円）` : '')).join('\n') + '\n';
+  if (extra.length) t += '「受講計画の外」の授業は、承認すると、この授業料で受講します。\n';
   return t + '保護者ページで「承認する」を押すと、この日時で確定します。ご都合の悪い授業は、その授業を押してお知らせください。';
 }
 // スタッフ（教室管理者）あてのお知らせ
@@ -448,9 +448,6 @@ async function agreeLessons(c, me, b) {
     done.push({...next,calendarEventId:marker});
     await audit(c,'lessonAgree',l.id);
   }
-  // 受講計画合意書の回数を超える授業: この承認で受講計画合意書に1回足す（承認したのは保護者）
-  const bySidRows = {}; done.forEach(l => { (bySidRows[l.studentId] = bySidRows[l.studentId] || []).push(l); });
-  for (const [sid, list] of Object.entries(bySidRows)) await addExtras(c, sid, list, { by: 'family', via: '保護者ページ（授業の日程の承認）', consenterName: who, recordedByName: who });
   const bySid = {}; done.forEach(l => { (bySid[l.studentId] = bySid[l.studentId] || []).push(l); });
   for (const [sid, list] of Object.entries(bySid)) { const s = await studentRow(c, sid); await staffNotice(c, `【日程の確認】${fullName(s)}さん`, `${fullName(s)}さんの保護者が日程を承認しました。次の授業を確定しました。\n${list.map(lessonLine).join('\n')}`); }
   return { decided: done.length, lessons: done.map(l => lessonView(l)) };
@@ -538,11 +535,10 @@ export const scheduleRoutes = {
     const done = mode === 'done', trial = !!s.trial && !done && mode !== 'hold', decide = mode === 'decide' && !trial; // 体験生はお知らせ先がないので、そのまま確定
     if (done && candidates.some(x => x.date > today)) fail('future', '実施済みで登録できるのは今日までの授業です');
     if (!done && candidates.some(x => x.date < today)) fail('past', '過去の日付には授業を作れません。実施した授業なら「実施済みとして登録」にしてください');
-    // 受講計画合意書の回数を超える授業: ① は先に「よろしいですか」（2026-10-27 本人）
     candidates.forEach(x => { x.id = newId('ls'); });
-    const extras = (decide || (mode === 'ask' && !trial)) ? await extrasFor(c.db, s.id, candidates) : {};
-    const warn = decide ? extraWarning(candidates, extras, 'decide') : []; // ② は保護者の承認の画面に「追加」を出す
-    await checkConflicts(c, candidates, { force: !!b.force, more: warn });
+    // ② の承認のお願いには、受講計画の外の授業の授業料を書く（受講計画合意書には足さない。2026-10-27 本人「自動で受講計画に足すのはやめましょう」）
+    const extras = mode === 'ask' && !trial ? await extrasFor(c.db, s.id, candidates) : {};
+    await checkConflicts(c, candidates, { force: !!b.force });
     const hold = mode === 'hold', ask = mode === 'ask' && !trial, bys = ask ? confirmByFor(candidates.map(x => x.date), today, b.confirmBy || '') : candidates.map(() => '');
     const status = done ? 'done' : hold ? 'held' : trial || decide ? 'decided' : 'proposed';
     const stmts = candidates.map((x, i) => c.db.prepare('insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, confirmBy, askedAt, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -558,16 +554,13 @@ export const scheduleRoutes = {
       return { created: candidates.length, decided: true, trial: true };
     }
     if (decide) {
-      const me = await c.db.prepare('select name from staff where id = ?').bind(c.actor.id).first();
-      const fam = await c.db.prepare('select guardianName, name from families where id = ?').bind(s.familyId).first();
       const agreement = String(b.agreement || '').trim().slice(0, 200) || 'LINE・対面などで合意（塾が登録）';
       for (const x of candidates) {
         const l = await getLesson(c, x.id);
         await c.db.prepare("update lessons set decidedAt = ?, decidedBy = ?, agreement = ?, calendarEventId = ? where id = ?").bind(iso(c.now), 'staff:' + c.actor.id, agreement, await calendarEffect(c, 'create', l, fullName(s)), l.id).run();
       }
-      const added = await addExtras(c, s.id, candidates, { by: 'staff:' + c.actor.id, via: agreement, consenterName: fam ? fam.guardianName || fam.name || '' : '', recordedByName: me ? me.name || '' : '' });
-      await audit(c, 'lessonsDecide', s.id, { count: candidates.length, extra: added.length });
-      return { created: candidates.length, decided: true, extra: added.length };
+      await audit(c, 'lessonsDecide', s.id, { count: candidates.length });
+      return { created: candidates.length, decided: true };
     }
     let lineText = '';
     if (ask) {
@@ -606,15 +599,9 @@ export const scheduleRoutes = {
     if (!['held', 'proposed'].includes(l.status)) fail('badStatus', '下書き・調整中・確認待ちの授業だけ確定できます');
     const s = await studentRow(c, l.studentId);
     const agreement = String(b.agreement || '').trim().slice(0, 200) || 'LINE・対面などで合意（塾が登録）';
-    // withExtras: 管理画面の「確定する」（2026-10-27）。受講計画合意書を超える分は確かめてから足す。古い呼び出し（MCP など）は今までどおり
-    const extras = b.withExtras ? await extrasFor(c.db, s.id, [l]) : {}, warn = extraWarning([l], extras, 'decide');
-    if (warn.length && !b.force) fail('needForce', warn.join('。') + '。よろしいですか？', 409, { needForce: true });
     const next = await setLesson(c, l, { status: 'decided', decidedAt: iso(c.now), decidedBy: 'staff:' + c.actor.id, agreement, calendarEventId: '' });
     const done = await setLesson(c, next, { calendarEventId: await calendarEffect(c, 'create', next, fullName(s)) });
     await closeRequests(c, l.id, ['move'], 'staff:' + c.actor.id);
-    const me = await c.db.prepare('select name from staff where id = ?').bind(c.actor.id).first();
-    const fam = await c.db.prepare('select guardianName, name from families where id = ?').bind(s.familyId).first();
-    if (b.withExtras) await addExtras(c, s.id, [done], { by: 'staff:' + c.actor.id, via: agreement, consenterName: fam ? fam.guardianName || fam.name || '' : '', recordedByName: me ? me.name || '' : '' });
     await audit(c, 'lessonDecide', l.id);
     return { lesson: lessonView(done) };
   },

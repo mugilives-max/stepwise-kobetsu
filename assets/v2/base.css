@@ -1026,3 +1026,9 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .sp-est { margin: 12px 2px 0; }
 .sp-plans { margin: 6px 2px 0; }
 @media (max-width: 560px) { .sp-tbl .sp-fee { display: none; } .sp-tbl th, .sp-tbl td { padding: 7px 6px; } }
+/* 授業料の総額（確定・見込み・計画） */
+.sp-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 0; }
+.sp-sum > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); display: grid; gap: 2px; }
+.sp-sum span { font-size: 12px; color: var(--muted); }
+.sp-sum b { font-size: 18px; }
+@media (max-width: 420px) { .sp-sum b { font-size: 15px; } .sp-sum > div { padding: 8px; } }

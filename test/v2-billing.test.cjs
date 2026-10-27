@@ -361,6 +361,7 @@ test('lessons agreed one by one are billed without a plan; lessons without any a
   const plan9 = await h.ok('students/plan', { auth, studentId: sis.id, month: '2026-09' });
   assert.deepEqual(plan9.unrecorded.map(l => l.id), [s2.id]);
   assert.deepEqual(plan9.subjects.map(g => [g.subject, g.total, g.done]), [['英語', 2, 2]]);
+  assert.deepEqual([plan9.fixedTotal, plan9.estimate, plan9.planTotal], [7000, 7000, 0], '確定・見込み・計画の総額');
   const cur = h.rows('select * from lessons where id = ?', s2.id)[0];
   assert.equal((await h.call('schedule/lessons/agreement', { auth, id: s2.id, version: cur.version, agreement: '' })).error.code, 'needAgreement');
   await h.ok('schedule/lessons/agreement', { auth, id: s2.id, version: cur.version, agreement: '【テスト】LINE 9/16 お母さんと合意' });

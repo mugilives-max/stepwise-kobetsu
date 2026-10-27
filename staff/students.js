@@ -154,7 +154,8 @@ function lessonPlan(ctx, x) {
     h += `<div class="sp-block"><div class="sp-bh"><b>合意待ちの授業 ${d.waiting.length}件</b>${ask.length ? `<button type="button" class="small-btn primary" data-action="sp-ask" data-ids="${esc(ask.join(','))}"${ctx.dis()}>保護者に承認をお願いする（${ask.length}件）</button>` : '<span class="small muted">保護者の承認待ち</span>'}</div><ul>${d.waiting.map(l => `<li>${row(l)}<span class="muted small"> ${l.asked ? '承認待ち' : l.status === 'held' ? '下書き' : '調整中'}</span></li>`).join('')}</ul></div>`;
   }
   if (d.unrecorded.length) h += `<div class="sp-block warn"><div class="sp-bh"><b>合意の記録がない授業 ${d.unrecorded.length}件</b><span class="small">記録するまで請求に入りません</span></div><ul>${d.unrecorded.map(l => `<li>${row(l)}<span class="muted small"> ${l.status === 'done' ? '実施済み' : '確定'}</span><button type="button" class="text-btn" data-action="sp-agree" data-id="${esc(l.id)}" data-version="${l.version}"${ctx.dis()}>合意を記録</button></li>`).join('')}</ul></div>`;
-  h += `<p class="sp-est">この月の授業料の見込み <b>${yen(d.estimate)}</b></p>`;
+  // 授業料の総額: 確定（実施済み・確定）・カレンダーの見込み（合意待ちも）・計画（受講計画書）
+  h += `<div class="sp-sum"><div><span>確定</span><b>${yen(d.fixedTotal)}</b></div><div><span>カレンダーの見込み</span><b>${yen(d.estimate)}</b></div><div><span>計画${d.planPending ? '（承認待ちを含む）' : ''}</span><b>${d.plans.length ? yen(d.planTotal) : '-'}</b></div></div>`;
   if (d.plans.length) h += `<p class="small muted sp-plans">受講計画書：${d.plans.map(p => `${esc(md(p.startDate))}〜${esc(md(p.endDate))} ${esc(p.subject)}${kindText(p.kind)} ${p.count}回（使用 ${p.used}回）${p.status === 'approved' ? '' : '・承認待ち'}`).join('／')} <a href="#plans">開く</a></p>`;
   return h;
 }
