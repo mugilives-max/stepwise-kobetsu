@@ -33,7 +33,8 @@ function statement(db, sql, bound) {
   const prep = () => db.prepare(sql);
   return {
     _isSelect: /^\s*select/i.test(sql),
-    bind: (...args) => withArgs(args),
+    // 本番の D1 と同じく、1回の問い合わせに渡せる値は100個まで（2026-10-27 授業が100件を超えて予定が開かなくなった）
+    bind: (...args) => { if (args.length > 100) throw new Error('D1_ERROR: too many SQL variables (' + args.length + ' > 100)'); return withArgs(args); },
     async first(column) {
       const row = prep().get(...bound) || null;
       if (row && column !== undefined) return row[column] === undefined ? null : row[column];

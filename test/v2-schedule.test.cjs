@@ -263,3 +263,18 @@ test('meetings can be with someone who is not registered yet (name only), and th
   assert.equal((await h.call('schedule/meetings/create', { auth, date: '2026-10-11', start: '17:00', minutes: 30 })).error.code, 'needWho');
   assert.equal((await h.call('schedule/meetings/create', { auth, familyId: 'fa_nothing', date: '2026-10-11', start: '17:00', minutes: 30 })).error.code, 'notFound');
 });
+
+// D1 は1回の問い合わせに渡せる値が100個まで（2026-10-27 授業が100件を超えて本番の予定が開かなくなった）
+test('the staff and family schedules open with more than 100 lessons in the range', async () => {
+  const { h, auth, parent, lesson } = await world();
+  const ids = [];
+  for (let d = 1; d <= 28; d++) for (const start of ['09:00', '11:00', '13:00', '15:00']) {
+    const date = '2026-11-' + String(d).padStart(2, '0');
+    h.db2._sqlite.prepare("insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, createdAt, updatedAt) values (?, ?, ?, ?, ?, 60, '数学', '通常', 'online', 'decided', ?, ?)")
+      .run('ls_many_' + date + start, lesson.studentId, lesson.staffId, date, start, '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z');
+  }
+  const staff = await h.ok('schedule/staff/range', { auth, from: '2026-11-01', to: '2026-11-30' });
+  assert.equal(staff.lessons.length >= 112, true);
+  const fam = await h.ok('family/schedule', { auth: parent, from: '2026-11-01', to: '2026-11-30' });
+  assert.equal(fam.lessons.length >= 112, true);
+});

@@ -41,7 +41,7 @@ async function load(ctx) {
   const from = gridStart(month), to = addDays(from, 41);
   loadedFor = month;
   const r = await ctx.call('schedule/staff/range', { from, to });
-  if (!r.ok) { if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); data = { lessons: [], openRequests: [], events: [], unavailability: [], meetings: [], students: [], staff: [], kinds: ['通常'], today: '', error: true }; }
+  if (!r.ok) { if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); data = { lessons: [], openRequests: [], events: [], unavailability: [], meetings: [], students: [], staff: [], kinds: ['通常'], today: t, error: true }; if (!sel) sel = t; } // 読めなくても画面は出す（エラーを見せる）
   else { data = r; cache[month] = r; if (!sel) sel = r.today; prefetchNear(ctx); }
   ctx.render();
 }
