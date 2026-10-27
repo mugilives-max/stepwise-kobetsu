@@ -4,7 +4,7 @@
 // 鍵は端末に保存して URL から消す。保護者が「保護者だけ」にした操作はできない。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
-import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261027-dense';
+import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261027-dense2';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261027-ease';
 import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261027-ease10';
 
