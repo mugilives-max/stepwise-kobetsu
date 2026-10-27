@@ -244,7 +244,8 @@ export const billingRoutes = {
         if (lines.some(l => ['draft', 'proposed'].includes(l.status) && lineMatches(l, ls))) continue; // 承認待ち・下書きの受講計画合意書に入る
         const home = lines.find(l => l.status === 'approved' && !l.parentId && lineMatches(l, ls));
         if (home) over[home.id] = (over[home.id] || 0) + 1;
-        unplannedList.push({ id: ls.id, date: ls.date, start: ls.start, subject: ls.subject, kind: ls.kind || '通常', status: ls.status, over: !!home });
+        // 請求を止めるのは、確定・実施済みなのに合意の記録がない授業だけ（合意があれば受講計画合意書がなくても請求する。合意待ちは保護者の承認で決まる）
+        if (['decided', 'done'].includes(ls.status) && !agreedByLesson(ls)) unplannedList.push({ id: ls.id, date: ls.date, start: ls.start, subject: ls.subject, kind: ls.kind || '通常', status: ls.status, over: !!home });
       }
       rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseFee90: base90(s), baseRate30: s.baseRate30, specials, usedKinds,
         lines: await Promise.all(lines.map(async l => lineView(l, { ...usage[l.id], planned: planned[l.id] || 0, over: (over[l.id] || 0) + (pendOver[l.id] || 0), locked: await lineLocked(c, l.id) }))),

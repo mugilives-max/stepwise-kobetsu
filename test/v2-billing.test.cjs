@@ -333,8 +333,7 @@ test('the plan list shows how many lessons each line is over, and lists the less
   const st = (await h.ok('billing/plans/list', { auth, month: '2026-09' })).students.find(s => s.id === kid.id);
   const row = st.lines.find(l => l.id === a.id);
   assert.deepEqual([row.planned, row.over], [2, 1], '2回の計画に3回: 超過1回');
-  assert.equal(st.unplanned, 1);
-  assert.deepEqual(st.unplannedList.map(x => [x.date, x.over]), [['2026-09-22', true]]);
+  assert.equal(st.unplanned, 0, '超えた授業も合意（塾の確定）があれば請求できる');
 });
 
 test('a line waiting for approval counts the lessons that would go into it', async () => {
