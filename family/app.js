@@ -1,4 +1,4 @@
-import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principles';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-ease7';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-pages2';
 import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ease3';
@@ -8,8 +8,8 @@ import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enroll
 import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261027-dense2';
-import { EVENT_KIND, endOf } from '/assets/v2/schedule-view.js?v=20261027-ease';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-noauto';
+import { EVENT_KIND, endOf } from '/assets/v2/schedule-view.js?v=20261027-principles';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-principles';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';

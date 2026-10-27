@@ -1,10 +1,10 @@
-import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principles';
 // スタッフの画面: 予定（3段目）。月の予定表・選んだ日の授業・連絡への対応・授業を作る・休み・面談。
 // 授業の入れ方は2通り（2026-10-27 本人「大雑把に言えば２通りでいい…スムーズであるというのが何よりも大事」）:
 //   ① LINE・対面で合意した → 「確定」で入れる  ② 塾から日程を送る → 保護者が保護者ページで「承認する」（締め切り・自動確定なし）
 // 前からの下書き・調整中は「対応すること」から進められる
 // 教室管理者はすべて、講師は自分の担当の授業と自分の休みだけ。
-import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261027-ease';
+import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261027-principles';
 import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 
 let month = null, data = null, sel = null, sheet = null, families = null, loadedFor = '';

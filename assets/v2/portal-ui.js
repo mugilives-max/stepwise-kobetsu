@@ -1,4 +1,4 @@
-import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principles';
 import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261025-layout';
 import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261027-pages2';
 // 保護者・生徒の画面で共通に使う部品（作り直し v2）。
@@ -9,8 +9,8 @@ import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=202
 // - 受講計画合意書（月ごとに 1 枚。承認は月に 1 回）、請求、キャンセル料
 // - テスト・行事
 import { esc } from '/assets/v2/api.js';
-import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261027-ease';
-import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261027-ease';
+import { mdw, endOf, STATUS, REQUEST, choiceOf, EVENT_KIND, eventForm } from '/assets/v2/schedule-view.js?v=20261027-principles';
+import { hwText, hwSubject } from '/assets/v2/learning-view.js?v=20261027-principles';
 import { partText } from '/assets/v2/cancel-rate.js?v=20261025-layout';
 import { sheet, ICON } from '/staff/ui.js?v=20261025-layout';
 import { formOf, subjectGroups, subjectInfoHtml, formsText } from '/assets/v2/plan-view.js?v=20261026-keikaku';
