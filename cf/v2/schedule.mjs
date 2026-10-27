@@ -148,6 +148,10 @@ const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const mdText = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8)) + '(' + WD[new Date(d + 'T00:00:00Z').getUTCDay()] + ')';
 const endText = (start, minutes) => { const m = toMin(start) + Number(minutes); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
 export const lessonLine = l => `・${mdText(l.date)} ${l.start}〜${endText(l.start, l.minutes)} ${l.subject}${l.kind && l.kind !== '通常' ? '（' + l.kind + '）' : ''}`;
+// 「確定で入れる」「確定する」で、受講計画を超える授業を確かめる文（2026-10-27 本人「システム側で、受講計画を超える授業ですが承認しますか？って確認を入れればいい」）
+// 受講計画のない期間の授業と、承認待ちの受講計画に入る授業は確かめない（超えるものがない）
+export const overPlanWarnings = (lessons, extras) => lessons.filter(l => extras[l.id] && extras[l.id].fee && extras[l.id].inPeriod)
+  .map(l => `${mdText(l.date)} ${l.start} ${l.subject}は受講計画を超える授業です（1回 ${Number(extras[l.id].fee).toLocaleString('ja-JP')}円）`);
 // 確認のお願いの本文（メールと LINE で同じ）。lessons は締め切り（confirmBy）を付けたあとの行
 export function askText(name, lessons) {
   const extra = lessons.filter(l => l.extraFee);
@@ -330,7 +334,7 @@ async function familyScheduleOf(c, studentIds, from, to) {
   const extra = {};
   for (const sid of studentIds) { const asking = lessons.filter(l => l.studentId === sid && stageOf(l) === 'asking'); if (asking.length) Object.assign(extra, await extrasFor(c.db, sid, asking)); }
   return {
-    lessons: lessons.map(l => { const v = lessonView(l, { choices: choicesFor(l, c.now), requests: requests.filter(r => r.lessonId === l.id).map(requestView), ...(l.id in quote ? { feeBase: quote[l.id] } : {}), ...(extra[l.id] && extra[l.id].fee ? { extraFee: extra[l.id].fee } : {}), ...(extra[l.id] && extra[l.id].pending ? { planPending: true } : {}) }); delete v.staffId; return v; }),
+    lessons: lessons.map(l => { const v = lessonView(l, { choices: choicesFor(l, c.now), requests: requests.filter(r => r.lessonId === l.id).map(requestView), ...(l.id in quote ? { feeBase: quote[l.id] } : {}), ...(extra[l.id] && extra[l.id].fee ? { extraFee: extra[l.id].fee, ...(extra[l.id].inPeriod ? { overPlan: true } : {}) } : {}), ...(extra[l.id] && extra[l.id].pending ? { planPending: true } : {}) }); delete v.staffId; return v; }),
     events: events.map(eventView),
   };
 }
@@ -537,8 +541,9 @@ export const scheduleRoutes = {
     if (!done && candidates.some(x => x.date < today)) fail('past', '過去の日付には授業を作れません。実施した授業なら「実施済みとして登録」にしてください');
     candidates.forEach(x => { x.id = newId('ls'); });
     // ② の承認のお願いには、受講計画の外の授業の授業料を書く（受講計画合意書には足さない。2026-10-27 本人「自動で受講計画に足すのはやめましょう」）
-    const extras = mode === 'ask' && !trial ? await extrasFor(c.db, s.id, candidates) : {};
-    await checkConflicts(c, candidates, { force: !!b.force });
+    // ① 確定で入れる授業が受講計画を超えるときは、重なりの確認と一緒に確かめる
+    const extras = (mode === 'ask' || decide) && !trial ? await extrasFor(c.db, s.id, candidates) : {};
+    await checkConflicts(c, candidates, { force: !!b.force, more: decide ? overPlanWarnings(candidates, extras) : [] });
     const hold = mode === 'hold', ask = mode === 'ask' && !trial, bys = ask ? confirmByFor(candidates.map(x => x.date), today, b.confirmBy || '') : candidates.map(() => '');
     const status = done ? 'done' : hold ? 'held' : trial || decide ? 'decided' : 'proposed';
     const stmts = candidates.map((x, i) => c.db.prepare('insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, confirmBy, askedAt, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -598,6 +603,8 @@ export const scheduleRoutes = {
     const l = await getLesson(c, b.id); sameVersion(l, b);
     if (!['held', 'proposed'].includes(l.status)) fail('badStatus', '下書き・調整中・確認待ちの授業だけ確定できます');
     const s = await studentRow(c, l.studentId);
+    const over = s.trial ? [] : overPlanWarnings([l], await extrasFor(c.db, s.id, [l]));
+    if (over.length && !b.force) fail('needForce', over.join('。') + '。それでも確定しますか？', 409, { needForce: true });
     const agreement = String(b.agreement || '').trim().slice(0, 200) || 'LINE・対面などで合意（塾が登録）';
     const next = await setLesson(c, l, { status: 'decided', decidedAt: iso(c.now), decidedBy: 'staff:' + c.actor.id, agreement, calendarEventId: '' });
     const done = await setLesson(c, next, { calendarEventId: await calendarEffect(c, 'create', next, fullName(s)) });

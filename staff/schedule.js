@@ -391,8 +391,9 @@ export async function scheduleSubmit(ctx, kind, el) {
     return true;
   }
   if (kind === 'sch-decide') {
-    const r = await ctx.call('schedule/lessons/decide', { id: el.dataset.id, version: Number(el.dataset.version), agreement: v.agreement || '' });
-    await after(ctx, r, '確定しました');
+    const body = { id: el.dataset.id, version: Number(el.dataset.version), agreement: v.agreement || '' };
+    // 受講計画を超える授業は、確かめてから確定する（needForce）
+    if (await after(ctx, await ctx.call('schedule/lessons/decide', body), '確定しました') === 'force') await after(ctx, await ctx.call('schedule/lessons/decide', { ...body, force: true }), '確定しました');
     return true;
   }
   if (kind === 'sch-cancel') {
@@ -433,8 +434,9 @@ export async function scheduleClick(ctx, a, b) {
   if (a === 'sch-edit-cancel') { sheet = sheet && sheet.id ? { kind: 'lesson', id: sheet.id } : null; return true; }
   if (a === 'sch-decide' && l) {
     if (!confirm('LINE・対面などで保護者と合意した日時として確定しますか？')) return true;
-    const r = await ctx.call('schedule/lessons/decide', { id: l.id, version: l.version });
-    await after(ctx, r, '確定しました'); return true;
+    const body = { id: l.id, version: l.version };
+    if (await after(ctx, await ctx.call('schedule/lessons/decide', body), '確定しました') === 'force') await after(ctx, await ctx.call('schedule/lessons/decide', { ...body, force: true }), '確定しました');
+    return true;
   }
   if (a === 'sch-copy') { const t = document.querySelector('.line-copy'); try { await navigator.clipboard.writeText(t.value); ctx.say('コピーしました', 'ok'); } catch { t.select(); ctx.say('選んだ文をコピーしてください', ''); } return true; }
   if (a === 'sch-unsend' && l) {
