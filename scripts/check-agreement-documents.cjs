@@ -43,12 +43,12 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
    await tab.pdf({path:path.join(out,name+'.pdf'),format:'A4',preferCSSPageSize:true,printBackground:true,displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="width:100%;text-align:center;font-size:8px;color:#666"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'});
    report.pdfs.push(name);
   };
-  await page.goto(origin+'/family/#money');
+  await page.goto(origin+'/family/#plan'); // 受講計画合意書の承認は専用の画面（2026-10-27）
   await page.locator('[data-plan-count="'+p.id+'"]').selectOption('3');
   await page.locator('input[data-consenter="2026-11"]').fill('【テスト】入力中の保護者');
   const before=h.rows('select * from planLines');
   const popupPromise=page.waitForEvent('popup');
-  await page.getByRole('button',{name:'提示された案を印刷・PDF保存'}).click();
+  await page.getByRole('button',{name:'書面を見る'}).first().click();
   const draft=await popupPromise;await draft.getByRole('heading',{name:'受講合意書（案）',exact:true}).waitFor();
   assert.match(await draft.locator('body').innerText(),/36,000円/,'proposal uses saved counts, not unsaved input');
   assert.equal(await page.locator('[data-plan-count="'+p.id+'"]').inputValue(),'3');
@@ -59,11 +59,11 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
   report.checks.push('family proposal popup preserves form inputs and does not approve');
   await approve(p,{approvedCount:3});await approve(english);
   const saved=refs(row(p.id),row(english.id));
-  await page.reload();
-  // 塾が記録した承認は「確認」をお願いせず、決まった計画の一覧（月ごと）に出る（2026-10-26）
+  await page.goto(origin+'/family/#contracts');await page.reload();
+  // 塾が記録した承認は「確認」をお願いせず、契約・同意の控えの決まった計画（月ごと）に出る（2026-10-26・27）
   await page.locator('details.ph summary').first().click();
   assert.equal(await page.getByRole('button',{name:'内容が違うときは問い合わせる'}).count()>0,true,'違うときだけ問い合わせられる');
-  const approvedPopup=page.waitForEvent('popup');await page.getByRole('button',{name:'印刷・PDF保存',exact:true}).first().click();
+  const approvedPopup=page.waitForEvent('popup');await page.locator('details.ph[open]').getByRole('button',{name:'印刷・PDF保存',exact:true}).first().click();
   const approved=await approvedPopup;await approved.getByRole('heading',{name:'受講合意書の控え',exact:true}).waitFor();
   assert.match(await approved.locator('body').innerText(),/31,500円/);
   await savePdf(approved,'approved');await approved.close();

@@ -156,17 +156,19 @@ const period = l => l.startDate.slice(8) === '01' && Number(l.endDate.slice(8)) 
 const formLabel = l => { const f = formOf(l.kind); return `<span><span class="tag">${esc(f.form)}</span>${f.detail ? ` <span class="tag gray">${esc(f.detail)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''}</span>`; };
 const planSubjects = (lines, multi, lineHtml) => subjectGroups(lines, l => (multi ? l.studentId + '|' : '') + l.subject).map(g =>
   `<div class="pl-subj"><div class="pl-subj-head"><strong>${multi ? esc(given(g.lines[0].studentName)) + ' ' : ''}${esc(g.subject)}</strong><small>${esc(formsText(g.forms))}</small></div>${subjectInfoHtml(g, esc)}${g.lines.map(lineHtml).join('')}</div>`).join('');
-// 承認をお願いしている月。counts: { [lineId]: 承認する回数 }（画面で変えた値）
+// 承認をお願いしている月。counts: { [lineId]: 承認する回数 }（画面で変えた値）。2026-10-27 作り直し: 生徒・科目ごとの表
+// （科目と 1 回の時間・授業料／回数／金額）と合計、書面、同意する人、承認する。種類のタグ・「見込み」・注意書きの段落は出さない（書面の「取り決め」）
 export function planApprovalCard(month, lines, { multi, counts = {}, dis = '', consenterName = '' }) {
   const n = l => counts[l.id] === undefined ? l.count : counts[l.id];
   const total = lines.reduce((s, l) => s + n(l) * l.fee, 0);
-  const rows = planSubjects(lines, multi, l => `<div class="pl"><span class="b">${formLabel(l)}${period(l) ? `<small class="muted">${period(l)}</small>` : ''}</span>
-      <span class="n"><select name="count-${esc(l.id)}" data-plan-count="${esc(l.id)}" aria-label="回数">${Array.from({ length: l.count - l.minCount + 1 }, (_, i) => l.count - i).map(k => `<option value="${k}"${n(l) === k ? ' selected' : ''}>${k}回</option>`).join('')}${l.minCount === 0 ? `<option value="0"${n(l) === 0 ? ' selected' : ''}>見送る</option>` : ''}</select><small>1回 ${esc(l.minutes)}分・${yen(l.fee)}</small></span>
-      <span class="amt">${yen(n(l) * l.fee)}</span></div>${l.minCount ? `<div class="small muted pl-note">決まっている授業 ${l.minCount}回</div>` : ''}`);
-  return `<form class="pcard ask" data-form="plan-approve" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講計画合意書（案）</strong><span class="tag warn">承認をお願いします</span></div>
-    <div class="pl-list">${rows}</div><div class="pc-total"><span>合計（見込み）</span><strong>${yen(total)}</strong></div>
-    <p class="small muted">承認は、表示した科目・回数・時間・料金の範囲で授業を実施できるようにするものです。予約や授業料の事前購入ではありません。授業日時は別に確認します。</p>
-    ${agreementDocumentButtons(lines,{label:'提示された案を印刷・PDF保存'})}
+  const rows = lines.map(l => `<tr><th scope="row"><strong>${multi ? esc(given(l.studentName)) + ' ' : ''}${esc(l.subject)}</strong>${l.kind && l.kind !== '通常' ? `<span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? '<span class="tag">追加</span>' : ''}
+      <small>1回 ${esc(l.minutes)}分・${yen(l.fee)}${period(l) ? `・${period(l)}` : ''}</small>${l.comment ? `<small>${esc(l.comment)}</small>` : ''}</th>
+    <td class="n"><select name="count-${esc(l.id)}" data-plan-count="${esc(l.id)}" aria-label="${esc(l.subject)}の回数">${Array.from({ length: l.count - l.minCount + 1 }, (_, i) => l.count - i).map(k => `<option value="${k}"${n(l) === k ? ' selected' : ''}>${k}回</option>`).join('')}${l.minCount === 0 ? `<option value="0"${n(l) === 0 ? ' selected' : ''}>見送る</option>` : ''}</select>${l.minCount ? `<small>決まっている授業 ${l.minCount}回</small>` : ''}</td>
+    <td class="amt">${yen(n(l) * l.fee)}</td></tr>`).join('');
+  return `<form class="pcard plan-ask" data-form="plan-approve" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講計画合意書</strong></div>
+    <table class="plan-tbl"><thead><tr><th scope="col">科目</th><th scope="col">回数</th><th scope="col">金額</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><th scope="row" colspan="2">合計</th><td class="amt">${yen(total)}</td></tr></tfoot></table>
+    ${agreementDocumentButtons(lines,{label:'書面を見る'})}
     ${consenterField(month, consenterName)}<button class="primary wide"${dis}>この内容で承認する</button></form>`;
 }
 // 先生が記録した承諾（LINE など）を確かめてもらう月
