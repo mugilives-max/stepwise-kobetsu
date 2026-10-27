@@ -64,6 +64,8 @@ test('the month bill: approved lessons at the plan fee, unapproved ones wait, op
   const a = await plan(kid.id, { count: 2 });
   await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' });
   const l1 = await lesson(kid.id, '2026-09-08'), l2 = await lesson(kid.id, '2026-09-15', '17:00', '数学', 90), l3 = await lesson(kid.id, '2026-09-22'), s1 = await lesson(sis.id, '2026-09-10', '18:00', '英語');
+  // 計画に入らない2件は、授業ごとの合意の記録がない授業にする（記録があれば計画がなくても請求する。下のテスト）
+  h.db2._sqlite.prepare("update lessons set decidedBy = '', agreement = '' where id in (?, ?)").run(l3.id, s1.id);
   h.clock = at('2026-10-02T12:00:00');
   for (const l of [l1, l2, l3]) await done(l);
   let p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
@@ -148,13 +150,14 @@ test('auto close runs only after the switch-over, from the 3rd, and holds famili
   const other = (await h.ok('admin/students/create', { auth, familyId: fam2.id, familyName: '見本', givenName: '太郎', baseRate30: 1750 })).student;
   for (const s of [kid, other]) { const a = await plan(s.id); await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' }); }
   const l1 = await lesson(kid.id, '2026-09-08'), l2 = await lesson(other.id, '2026-09-08', '19:00'), l3 = await lesson(sis.id, '2026-09-09');
+  h.db2._sqlite.prepare("update lessons set decidedBy = '', agreement = '' where id = ?").run(l3.id); // 合意の記録がない授業
   h.clock = at('2026-10-02T12:00:00'); for (const l of [l1, l2, l3]) await done(l);
   const { runV2Scheduled } = await import('../cf/v2/index.mjs');
   assert.equal((await runV2Scheduled(h.env, at('2026-10-03T00:10:00'))).invoices.skipped, 'notLive');
   h.db2._sqlite.prepare("insert into settings (key, value, updatedAt) values ('live', '1', '')").run();
   assert.equal((await runV2Scheduled(h.env, at('2026-10-02T00:10:00'))).invoices.skipped, 'beforeClose');
   const r = (await runV2Scheduled(h.env, at('2026-10-03T00:10:00'))).invoices;
-  assert.deepEqual([r.month, r.confirmed, r.held], ['2026-09', 1, 1], '花子さんの授業に計画がない家族は止める');
+  assert.deepEqual([r.month, r.confirmed, r.held], ['2026-09', 1, 1], '花子さんの授業に計画も合意の記録もない家族は止める');
   assert.equal(h.rows('select familyId from invoices')[0].familyId, fam2.id);
   assert.ok(h.mails().some(m => /9月分の請求で確かめることがあります/.test(m.subject)));
 });
@@ -340,4 +343,29 @@ test('a line waiting for approval counts the lessons that would go into it', asy
   await lesson(kid.id, '2026-09-08'); await lesson(kid.id, '2026-09-15'); await lesson(kid.id, '2026-09-22');
   const row = (await h.ok('billing/plans/list', { auth, month: '2026-09' })).students.find(s => s.id === kid.id).lines.find(l => l.id === a.id);
   assert.deepEqual([row.status, row.planned, row.over], ['draft', 2, 1]);
+});
+
+// 受講計画合意書がなくても、授業ごとの合意があれば請求する（2026-10-27 本人「受講計画書がなかったとしても、それらの合意があれば問題がない」）
+test('lessons agreed one by one are billed without a plan; lessons without any agreement record wait, and recording the agreement releases them', async () => {
+  const { h, auth, kid, sis, plan, line, lesson, done } = await world();
+  const a = await plan(kid.id, { count: 1 });
+  await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' });
+  const l1 = await lesson(kid.id, '2026-09-08'), l2 = await lesson(kid.id, '2026-09-15'), s1 = await lesson(sis.id, '2026-09-10', '18:00', '英語'), s2 = await lesson(sis.id, '2026-09-17', '18:00', '英語');
+  h.db2._sqlite.prepare("update lessons set decidedBy = '', agreement = '' where id = ?").run(s2.id);
+  h.clock = at('2026-10-02T12:00:00');
+  for (const l of [l1, l2, s1, s2]) await done(l);
+  let p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
+  assert.deepEqual(p.students.find(s => s.studentId === kid.id).items.map(i => i.amount), [3200, 3200], '計画を超えた授業も、合意があれば同じ科目の計画の単価で');
+  const sisRow = p.students.find(s => s.studentId === sis.id);
+  assert.deepEqual([sisRow.items.map(i => i.amount), sisRow.pending.length], [[3500], 1], '計画のない授業は基本単価。合意の記録がない授業は待つ');
+  // 生徒の授業の計画: 合意の記録がない授業として出る。記録すると請求に入る
+  const plan9 = await h.ok('students/plan', { auth, studentId: sis.id, month: '2026-09' });
+  assert.deepEqual(plan9.unrecorded.map(l => l.id), [s2.id]);
+  assert.deepEqual(plan9.subjects.map(g => [g.subject, g.total, g.done]), [['英語', 2, 2]]);
+  const cur = h.rows('select * from lessons where id = ?', s2.id)[0];
+  assert.equal((await h.call('schedule/lessons/agreement', { auth, id: s2.id, version: cur.version, agreement: '' })).error.code, 'needAgreement');
+  await h.ok('schedule/lessons/agreement', { auth, id: s2.id, version: cur.version, agreement: '【テスト】LINE 9/16 お母さんと合意' });
+  p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
+  assert.deepEqual(p.students.find(s => s.studentId === sis.id).items.map(i => i.amount), [3500, 3500]);
+  assert.equal((await h.ok('students/plan', { auth, studentId: sis.id, month: '2026-09' })).unrecorded.length, 0);
 });

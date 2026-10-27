@@ -1008,3 +1008,21 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .pl-n { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .pl-unplanned ul { margin: 4px 0 0; padding-left: 1.2em; }
 .pl-unplanned li { margin: 1px 0; }
+/* 生徒の授業の計画（2026-10-27 本人「授業の計画に焦点を当てる」） */
+.sp-head { display: flex; align-items: center; gap: 8px; margin: 14px 0 8px; }
+.sp-head strong { font-size: 17px; }
+.sp-tbl { width: 100%; border-collapse: collapse; background: var(--white); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 14px; }
+.sp-tbl th, .sp-tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.sp-tbl thead th { font-size: 12px; color: var(--muted); font-weight: 600; background: #f6f8fa; }
+.sp-tbl tbody th, .sp-tbl thead th:first-child { text-align: left; white-space: normal; }
+.sp-tbl tbody tr:last-child th, .sp-tbl tbody tr:last-child td { border-bottom: 0; }
+.sp-tbl .warn-text { color: #a86f12; }
+.sp-block { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); }
+.sp-block.warn { border-color: #f0c36d; background: var(--warn-soft); }
+.sp-bh { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.sp-block ul { margin: 6px 0 0; padding-left: 1.2em; }
+.sp-block li { margin: 3px 0; }
+.sp-block li .text-btn { margin-left: 8px; }
+.sp-est { margin: 12px 2px 0; }
+.sp-plans { margin: 6px 2px 0; }
+@media (max-width: 560px) { .sp-tbl .sp-fee { display: none; } .sp-tbl th, .sp-tbl td { padding: 7px 6px; } }

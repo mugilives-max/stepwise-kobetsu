@@ -18,6 +18,7 @@ import { agreedSpecialFor, familySpecials } from './specials.mjs';
 import { todayJst, addDays, familyNotice, staffNotice } from './schedule.mjs';
 import { validMonth, monthEnd, shiftMonth, lineCap, lessonAmount, lineMatches, studentBilling, estimateFor, assignLines, parseParts, PART_LABEL, base90 } from './plan-calc.mjs';
 import { partsOf } from '../../assets/v2/plan-view.js';
+import { agreedByLesson, feeOutsidePlan } from './lesson-plan.mjs';
 
 const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(Date.parse(d + 'T00:00:00Z'));
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
@@ -136,6 +137,9 @@ export async function monthPreview(c, familyId, month, { ignoreInvoiceId = '' } 
       if (ls.status === 'decided') { if (ls.date <= today) out.issues.push(`${row.name}さん ${md(ls.date)} ${ls.subject} が実施済みになっていません`); continue; }
       const line = sb.line[ls.id], base = { lessonId: ls.id, date: ls.date, start: ls.start, minutes: ls.minutes, subject: ls.subject, lessonKind: ls.kind, carried: ls.date < from };
       if (line) row.items.push({ kind: 'lesson', ...base, planLineId: line.id, amount: lessonAmount(line, ls), label: '' });
+      // 受講計画合意書に入らなくても、授業ごとの合意の記録があれば請求する（2026-10-27 本人「受講計画書がなかったとしても、それらの合意があれば問題がない」）。
+      // 単価は同じ科目の受講計画合意書 → 特別単価合意書 → 個別受講条件書（cf/v2/lesson-plan.mjs feeOutsidePlan）。記録がない授業は確かめるまで待つ
+      else if (agreedByLesson(ls)) row.items.push({ kind: 'lesson', ...base, planLineId: '', amount: await feeOutsidePlan(c.db, s, sb.lines, ls), label: '' });
       else row.pending.push({ ...base, estimate: estimateFor(sb.lines, s, ls) });
     }
     const fees = (await c.db.prepare("select f.*, l.date, l.start, l.minutes, l.subject from cancellationFees f join lessons l on l.id = f.lessonId where f.studentId = ? and l.date <= ? and (f.invoiceId = '' or f.invoiceId = ?) order by l.date, l.start").bind(s.id, end, ignoreInvoiceId || '-').all()).results;
