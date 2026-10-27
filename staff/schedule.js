@@ -80,8 +80,11 @@ export function schedulePage(ctx, me) {
     const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable')).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''}</span>`)
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
       .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));
-    // 授業ごとに時刻と名前（「×2」でまとめない。2026-10-27 本人「その根本の原因は「×N」でまとめてしまう表記ですね」）
-    const chips = ls.slice().sort((a, b) => a.start.localeCompare(b.start)).map(l => `<span class="nm t2 r${RANK[l.status]}"><small class="tm">${l.start}<span class="te">〜${endOf(l.start, l.minutes)}</span></small><b>${esc(short[l.studentId] || '')}<span class="sj"> ${esc(l.subject)}</span></b></span>`);
+    // 開始時刻と名前だけ（2026-10-27 本人「まだあまり整理できていない」→「開始＋名前だけ」）。同じ開始時刻は1行に「13:00 実祈・岡野」。
+    // 終わりの時刻・科目は右（スマホは下）の一覧で。色はその時刻のうち一番決まっていない段階
+    const byStart = new Map();
+    ls.slice().sort((a, b) => a.start.localeCompare(b.start)).forEach(l => { const g = byStart.get(l.start) || { rank: 9, names: [] }; g.rank = Math.min(g.rank, RANK[l.status]); g.names.push(short[l.studentId] || ''); byStart.set(l.start, g); });
+    const chips = [...byStart].map(([start, g]) => `<span class="nm t2 r${g.rank}"><small class="tm">${start}</small><b>${esc(g.names.join('・'))}</b></span>`);
     // マスに出す行の数（2026-10-27 本人「授業が多すぎて表示がうまくできない」）: パソコンは5つ、スマホは2つまで出し、それより多いときは「+n」（途中で切らない）
     const lines = bars.concat(chips), cap = phone() ? 3 : 6, shown = lines.length > cap ? lines.slice(0, cap - 1) : lines, more = lines.length - shown.length;
     const wd = new Date(d + 'T00:00:00Z').getUTCDay();
