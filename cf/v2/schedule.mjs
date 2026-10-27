@@ -321,7 +321,8 @@ async function familyScheduleOf(c, studentIds, from, to) {
   const lessons = (await c.db.prepare(`select * from lessons where studentId in ${q} and date between ? and ? and status <> 'held' order by date, start`).bind(...studentIds, from, to).all()).results;
   const events = (await c.db.prepare(`select * from sharedEvents where studentId in ${q} and dateTo >= ? and date <= ? order by date`).bind(...studentIds, from, to).all()).results;
   const ids = lessons.map(l => l.id);
-  const requests = ids.length ? (await c.db.prepare(`select * from lessonRequests where lessonId in (${ids.map(() => '?').join(', ')}) and status <> 'withdrawn' order by receivedAt`).bind(...ids).all()).results : [];
+  // 授業の id を1つずつ渡さない（D1 は1回の問い合わせに渡せる値が100個まで。2026-10-27 授業が100件を超えて予定が開かなくなった）
+  const requests = ids.length ? (await c.db.prepare(`select r.* from lessonRequests r join lessons l on l.id = r.lessonId where l.studentId in ${q} and l.date between ? and ? and l.status <> 'held' and r.status <> 'withdrawn' order by r.receivedAt`).bind(...studentIds, from, to).all()).results : [];
   // 新しい決まりの授業で、開始を遅らせる・キャンセルを選べるものには、取消料の計算に使う1回の授業料を添える（画面で今の金額を出す）
   const quote = {};
   for (const l of lessons) if (choicesFor(l, c.now).includes('cancel') && await usesRate(c.db, l)) quote[l.id] = await lessonFee(c.db, l);
@@ -488,7 +489,9 @@ export const scheduleRoutes = {
     const students = (await c.db.prepare('select * from students').all()).results.filter(s => !allowed || allowed.includes(s.id));
     const staff = (await c.db.prepare("select id, name, roles, status from staff where status = 'active'").all()).results;
     const ids = lessons.map(l => l.id);
-    const requests = ids.length ? (await c.db.prepare(`select * from lessonRequests where lessonId in (${ids.map(() => '?').join(', ')}) and status <> 'withdrawn'`).bind(...ids).all()).results : [];
+    // 授業の id を1つずつ渡さない（D1 は1回の問い合わせに渡せる値が100個まで。2026-10-27 授業が100件を超えて予定が開かなくなった）
+    const shownIds = new Set(ids);
+    const requests = ids.length ? (await c.db.prepare("select r.* from lessonRequests r join lessons l on l.id = r.lessonId where l.date between ? and ? and r.status <> 'withdrawn'").bind(from, to).all()).results.filter(r => shownIds.has(r.lessonId)) : [];
     const openRequests = manager ? (await c.db.prepare("select r.*, l.date, l.start, l.subject, l.status lessonStatus from lessonRequests r join lessons l on l.id = r.lessonId where r.status = 'open' order by r.receivedAt").all()).results : [];
     const nameOf = Object.fromEntries(students.map(s => [s.id, fullName(s)]));
     const events = (await c.db.prepare('select * from sharedEvents where dateTo >= ? and date <= ? order by date').bind(from, to).all()).results.filter(e => !allowed || allowed.includes(e.studentId));
