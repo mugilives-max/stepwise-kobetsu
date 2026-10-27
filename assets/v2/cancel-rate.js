@@ -1,5 +1,5 @@
 // 取消料の計算（規約案 第4条。docs/CANCELLATION_POLICY_DESIGN.md 4）。サーバー（cf/v2/plan-calc.mjs）と画面の両方で使うので、ほかを import しない。
-// 取消料 = 1回の授業料 ×（行わなかった分数 ÷ 予定の分数）× 率。10円未満は切り捨て。
+// 取消料 = 1回の授業料 ×（行わなかった分数 ÷ 予定の分数）× 率。1円未満は切り捨て（共通規約 r16 第14条3項。2026-10-28 本人「1円未満にそろえて」。前は10円未満）。
 // 率は 1/720 を単位にした整数で持つ（25% = 180、100% = 720。開始3時間前から開始までは 1分ごとに 3 ずつ上がる）。
 // - 前日23時まで: 0（日時の変更・お休み）
 // - 前日23時〜開始3時間前: 25%
@@ -23,7 +23,7 @@ export function cancelRate(date, start, receivedMs) {
 // 取消料（円）。整数だけで計算する
 export function cancelAmount(baseFee, plannedMinutes, minutes, rate) {
   if (!(plannedMinutes > 0) || !(minutes > 0) || !(rate > 0)) return 0;
-  return Math.floor(baseFee * minutes * rate / (plannedMinutes * RATE_FULL * 10)) * 10;
+  return Math.floor(baseFee * minutes * rate / (plannedMinutes * RATE_FULL));
 }
 // 表示用の率（%、小数1けた）
 export const ratePct = rate => Math.round(rate * 100 / 72) / 10;

@@ -16,7 +16,7 @@ OUT = ROOT / "terms" / EDITION
 REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261028-r16"
 REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R16.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "7fe7656ee158fc2f749a16ee4732093b7a25609f"
+EXPECTED_SOURCE_BLOB = "863ddaa1d9f2fc3cb4e180f45d80824450fc3956"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -161,8 +161,15 @@ kept = set(renumbered(v) for v in old_clauses.values()) & set(new_clauses.values
 changes = {k for k,v in new_clauses.items() if v not in kept}
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
-# 料金・負担率・接続不良の表と例は r15 と同じ（書類の表だけ変えた）
-assert len(old_tables)==len(new_tables)==5 and [renumbered(t) for t in old_tables[1:]]==new_tables[1:], "Fee tables changed"
+# 料金・負担率・接続不良の表は r15 と同じ。別表1の金額だけ、キャンセル料金を1円未満の切り捨てにそろえた分を変えた（本人 2026-10-28「1円未満にそろえて」）
+TABLE_CHANGES=[("| 1,120円 | 1,120円 |","| 1,125円 | 1,125円 |"),("| 3,370円 | 3,370円 |","| 3,375円 | 3,375円 |"),("| 3,930円 | 3,930円 |","| 3,937円 | 3,937円 |"),
+  ("| 4,500円 | 1,120円 | 5,620円 |","| 4,500円 | 1,125円 | 5,625円 |"),("| 3,000円 | 1,310円 | 4,310円 |","| 3,000円 | 1,312円 | 4,312円 |")]
+def table_changed(t):
+    for old,new in TABLE_CHANGES:
+        t=t.replace(old,new)
+    return t
+assert len(old_tables)==len(new_tables)==5 and [table_changed(renumbered(t)) for t in old_tables[1:]]==new_tables[1:], "Fee tables changed"
+assert "10円未満" not in source
 assert "受講計画書（必要な場合のみ）" in new_tables[0]
 for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","受講計画合意書","確認待ち","調整中","この日程で大丈夫","当面1対1","基準単価","適用単価","日程調整カレンダー"]:
     assert phrase not in source,phrase
