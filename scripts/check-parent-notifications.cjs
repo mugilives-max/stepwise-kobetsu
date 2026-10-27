@@ -103,7 +103,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   assert.equal(resetBody.ok,true,JSON.stringify(resetBody.error));
   assert.equal(resetBody.returnTo,target);
   await cp.waitForFunction(t=>location.hash==='#'+t,target);
-  await cp.locator('.bar-title').filter({hasText:'受講計画合意書の承認'}).waitFor(); // お知らせのリンクは承認の画面で開く（2026-10-27）
+  await cp.locator('.bar-title').filter({hasText:'受講計画の承認'}).waitFor(); // お知らせのリンクは承認の画面で開く（2026-10-27）
   report.checks.push('login context and cross-browser password-reset return');
   await cp.goto(origin+'/family/#invite=invalid');
   await cp.getByRole('link',{name:'mugilives@gmail.com',exact:true}).waitFor();
