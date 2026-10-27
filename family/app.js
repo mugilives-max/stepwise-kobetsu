@@ -192,7 +192,7 @@ function schedulePage() {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
     const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`);
     // 授業ごとに時刻と科目（全員を出すときは科目の代わりに名。狭い表で切れないように）。2026-10-27 本人「時間帯もカレンダー上の表記で分かるようにしたい」
-    const chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => { const on = askOn.has(l.id) && l.status === 'proposed'; return `<span class="nm t2 r${RANK[l.status]}${on ? ' on' : ''}"><small class="tm">${on ? '✓ ' : ''}${l.start}<span class="te">〜${endOf(l.start, l.minutes)}</span></small><b>${multi ? esc(shortName(l.studentId)) : esc(l.subject)}</b></span>`; });
+    const chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => { const on = askOn.has(l.id) && l.status === 'proposed'; return `<span class="nm t2 r${RANK[l.status]}${on ? ' on' : ''}"><small class="tm">${on ? '✓ ' : ''}${l.start}<span class="te">〜${endOf(l.start, l.minutes)}</span></small><b>${multi ? esc(shortName(l.studentId)) + `<span class="sj"> ${esc(l.subject)}</span>` : esc(l.subject)}</b></span>`; });
     return { lines: bars.concat(chips), count: ls.length };
   };
   const pick = { on: askOn, can: l => choosable.some(x => x.id === l.id) };

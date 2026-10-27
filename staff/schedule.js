@@ -81,7 +81,7 @@ export function schedulePage(ctx, me) {
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
       .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));
     // 授業ごとに時刻と名前（「×2」でまとめない。2026-10-27 本人「その根本の原因は「×N」でまとめてしまう表記ですね」）
-    const chips = ls.slice().sort((a, b) => a.start.localeCompare(b.start)).map(l => `<span class="nm t2 r${RANK[l.status]}"><small class="tm">${l.start}<span class="te">〜${endOf(l.start, l.minutes)}</span></small><b>${esc(short[l.studentId] || '')}</b></span>`);
+    const chips = ls.slice().sort((a, b) => a.start.localeCompare(b.start)).map(l => `<span class="nm t2 r${RANK[l.status]}"><small class="tm">${l.start}<span class="te">〜${endOf(l.start, l.minutes)}</span></small><b>${esc(short[l.studentId] || '')}<span class="sj"> ${esc(l.subject)}</span></b></span>`);
     const lines = bars.concat(chips), shown = lines.slice(0, 4), more = lines.length - shown.length;
     const wd = new Date(d + 'T00:00:00Z').getUTCDay();
     h += `<button class="cell${ymOf(d) !== month ? ' out' : ''}${d === sel ? ' sel' + (shownSel && shownSel !== sel ? ' enter' : '') : ''}${d === data.today ? ' today' : ''}" data-action="sch-day" data-date="${d}" aria-label="${mdw(d)} 授業${ls.length}件">`
