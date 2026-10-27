@@ -16,7 +16,7 @@ OUT = ROOT / "terms" / EDITION
 REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261027-r15"
 REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261027_R15.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "1bcf9a49591ceb6eb72890e0afa3d807d5d65ee8"
+EXPECTED_SOURCE_BLOB = "dda15c7172473ab589dfe06e3ea124e9b55e5853"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -139,12 +139,18 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
 # あるいは、既に合意されている日程をシステムからリンクを送って…承認お願いします…スムーズであるというのが何よりも大事」
 # 「受講計画合意書とセットで承認する…計画の分を超えていますがよろしいですかって聞く」):
 # r14 から、日時の確定を2通りにし（締め切り・自動確定・直前の提案の特則をなくす）、回数を超える授業はその授業への合意で追加できるようにした。
+# 2026-10-27 追加（本人「受講計画合意書は補助的に用いるものであるという位置づけが良い…長期的にまとまった授業を実施する際に毎回聞くのは大変だから、その手間を簡略化する目的で、事前に授業回数とかを確認する」）:
+# 受講契約は授業ごと（第9条）。受講計画合意書は必須でない補助（第10条）。
 # 変えたのは下の条項と表だけ。ほかの条項・表は r14 と一字一句同じであることを確かめる
 PRIOR_COMMIT = "1b8fe3316370df93262aecde62087523df92c5e1"
 EDITION_REPLACEMENTS = [("20261026-r14", "20261027-r15")]
-CHANGED = {"article-2-item-2","article-10-item-1","article-11-item-2","article-11-item-3","article-11-item-4","article-11-item-5","article-12-item-2",
-  "article-13-item-2","article-13-item-3","article-13-item-4","article-14-item-1","article-14-item-2","article-14-item-3","article-15-item-1","article-16-item-1"}
-REMOVED = {"article-14-item-4","article-14-item-5","article-15-item-2","article-15-item-3"}
+CHANGED = {"article-2-item-1","article-2-item-2","article-2-item-3","article-4-item-1","article-6-item-5","article-7-item-1",
+  "article-9-item-1","article-9-item-2","article-9-item-3","article-10-item-1","article-10-item-2","article-10-item-3",
+  "article-11-item-2","article-11-item-3","article-11-item-4","article-11-item-5","article-11-item-6","article-12-item-2",
+  "article-13-item-1","article-13-item-2","article-13-item-3","article-13-item-4","article-14-item-1","article-14-item-2","article-14-item-3",
+  "article-15-item-1","article-16-item-1","article-26-item-1","article-28-item-2"}
+REMOVED = {"article-9-item-4","article-9-item-5","article-14-item-4","article-14-item-5","article-15-item-2","article-15-item-3"}
+ADDED = {"article-10-item-4","article-10-item-5"}
 def renamed(value):
     for old,new in EDITION_REPLACEMENTS:
         value = value.replace(old,new)
@@ -154,13 +160,13 @@ CLAUSE_PATTERN = r'(<a id="(article-\d+-item-\d+)"></a>\n\n\d+\. )([\s\S]*?)(?=\
 def clauses(value):
     return {m[2]:m[3].strip() for m in re.finditer(CLAUSE_PATTERN,value)}
 old_clauses,new_clauses = clauses(prior_source),clauses(source)
-assert len(old_clauses)==151 and len(new_clauses)==147 and set(old_clauses)-set(new_clauses)==REMOVED and set(new_clauses)<=set(old_clauses)
-changes={k for k in new_clauses if renamed(old_clauses[k])!=new_clauses[k]}
+assert len(old_clauses)==151 and len(new_clauses)==147 and set(old_clauses)-set(new_clauses)==REMOVED and set(new_clauses)-set(old_clauses)==ADDED
+changes={k for k in new_clauses if k in old_clauses and renamed(old_clauses[k])!=new_clauses[k]}
 assert changes==CHANGED, changes ^ CHANGED
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
 assert len(old_tables)==len(new_tables) and [renamed(t) for t in old_tables[1:]]==new_tables[1:], "Tables changed besides the document table of article 2"
-assert "その授業への合意で追加できます" in new_tables[0]
+assert "日時の合意だけで受講できます" in new_tables[0] and "受講計画合意書（必要な場合のみ）" in new_tables[0]
 for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","確認待ち","調整中","締め切り","この日程で大丈夫"]:
     assert phrase not in source,phrase
 assert len(ids)==192
@@ -171,7 +177,7 @@ for link in body.select('a[href^="#article-"]'):
         assert link["href"]=="#"+target,"Reference label differs from anchor"
 waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261027-r15/waiver/"
 assert [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]] == [waiver_url]
-RELATED_CHANGES={"TUITION_AGREEMENT.md":[("変更・追加には事前の双方の合意が必要です。","回数を超える授業は、その授業への事前の合意で追加できます（共通規約第12条第2項）。その他の変更には事前の双方の合意が必要です。")]}
+RELATED_CHANGES={"TUITION_AGREEMENT.md":[("保護者・塾のどちらからも案を提示できます。合意前は","まとまった回数の授業を前もって合意し、授業ごとに授業料を確かめる手間を省くための書類です（共通規約第10条。必須ではありません）。保護者・塾のどちらからも案を提示できます。合意前は"),("変更・追加には事前の双方の合意が必要です。","回数を超える授業は、授業ごとの事前の合意で行えます（共通規約第9条・第12条第2項）。その他の変更には事前の双方の合意が必要です。")]}
 for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.md","TUITION_AGREEMENT.md","WAIVER_GUIDE.md"]:
     before=renamed(subprocess.check_output(["git","show",PRIOR_COMMIT+":"+str(SOURCE.parent.relative_to(ROOT)/filename)],text=True))
     for old,new in RELATED_CHANGES.get(filename,[]):
