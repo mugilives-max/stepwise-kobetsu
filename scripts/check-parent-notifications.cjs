@@ -68,8 +68,9 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await form.getByRole('button',{name:'この内容で承認する',exact:true}).click();
   await page.getByRole('status').filter({hasText:'の受講計画合意書を承認しました'}).waitFor();
   assert.equal(row(p.id).status,'approved');assert.equal(row(p2.id).status,'proposed');
-  await page.reload();await page.getByText('すべての書類・料金を見る',{exact:false}).waitFor();
+  await page.reload();await page.getByText('承認をお願いしている受講計画合意書はありません。',{exact:false}).waitFor();
   assert.equal(await page.locator('[data-form="plan-approve"]').count(),0);
+  await page.goto(origin+'/family/#contracts');await page.locator('details.ph').first().waitFor({state:'attached'}); // 承認した控えは、アカウントの「契約・同意の控え」（2026-10-27）
   assert.ok(await page.locator('[data-action="agreement-doc"]').count()>0,'approved PDF action retained');
   report.checks.push('agreement link excludes new proposal; completion, return visit and PDF copy');
 
@@ -102,7 +103,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   assert.equal(resetBody.ok,true,JSON.stringify(resetBody.error));
   assert.equal(resetBody.returnTo,target);
   await cp.waitForFunction(t=>location.hash==='#'+t,target);
-  await cp.getByText('すべての書類・料金を見る',{exact:false}).waitFor();
+  await cp.locator('.bar-title').filter({hasText:'受講計画合意書の承認'}).waitFor(); // お知らせのリンクは承認の画面で開く（2026-10-27）
   report.checks.push('login context and cross-browser password-reset return');
   await cp.goto(origin+'/family/#invite=invalid');
   await cp.getByRole('link',{name:'mugilives@gmail.com',exact:true}).waitFor();
@@ -126,12 +127,13 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   report.checks.push('condition and special-condition links show the exact proposed document number');
   await h.ok('admin/terms/set',{auth,version:'synthetic-new',title:'【テスト】規約',url:'https://example.invalid/terms'});
   await h.ok('admin/terms/request',{auth,familyIds:[fam.id]});
-  await page.goto(origin+'/family/#money');
-  await page.getByText('受講計画合意書の承認には、先に上の共通規約・個別受講条件書への同意が必要です。',{exact:true}).waitFor();
+  await page.goto(origin+'/family/#plan');
+  await page.locator('p.notice').filter({hasText:'共通規約・個別受講条件書への同意'}).waitFor();
   assert.equal(await page.locator('[data-form="plan-approve"] button.primary:enabled').count(),0);
+  await page.goto(origin+'/family/#agree');await page.locator('button.btn svg').first().waitFor();
   await page.setViewportSize({width:1280,height:900});
   const documentIcons=await page.locator('button.btn svg').evaluateAll(es=>es.map(x=>x.getBoundingClientRect().width));
-  assert.ok(documentIcons.length>=2 && documentIcons.every(w=>w<=24),'document buttons keep small icons');
+  assert.ok(documentIcons.length>=1 && documentIcons.every(w=>w<=24),'document buttons keep small icons');
   await page.screenshot({path:path.join(out,'05-prerequisites-desktop.png'),fullPage:true,animations:'disabled'});
   report.checks.push('prerequisites explained next to disabled approval');
   await page.goto(origin+'/family/#home');await page.getByText('やること',{exact:true}).waitFor();

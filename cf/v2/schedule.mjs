@@ -28,6 +28,24 @@ export const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * DAY
 const nextMonthStart = d => { const [y, m] = d.split('-').map(Number); return (m === 12 ? (y + 1) + '-01' : y + '-' + String(m + 1).padStart(2, '0')) + '-01'; };
 const toMin = hm => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + m; };
 const startMs = (date, start) => Date.parse(date + 'T' + start + ':00+09:00');
+// 決定した授業は、予定の終わりの時刻を過ぎたら実施済みにする（2026-10-27 本人「授業予定時刻が過ぎたら自動で実施済みに変えること…
+// 手間を減らして管理するためのツールが逆に登録などの煩雑な操作を増やしてしまっている」）。毎晩の処理と、操作のたびに（cf/v2/index.mjs）。
+// 実施しなかった授業（欠席など）は、請求・給与に入る前なら、あとからキャンセル・お休みにできる
+export async function settlePastLessons(c) {
+  const rows = (await c.db.prepare("select id, date, start, minutes from lessons where status = 'decided' and date <= ?").bind(todayJst(c.now)).all()).results
+    .filter(l => startMs(l.date, l.start) + Number(l.minutes || 0) * 60000 <= c.now);
+  if (!rows.length) return 0;
+  const now = iso(c.now);
+  await c.db.batch(rows.flatMap(l => [
+    // 版（version）は上げない: 状態が変わるだけで、開いている画面の操作（キャンセルの記録など）を古い版として断らない
+    c.db.prepare("update lessons set status = 'done', updatedAt = ? where id = ? and status = 'decided'").bind(now, l.id),
+    c.db.prepare("update lessonRequests set status = 'done', resolvedAt = ?, resolvedBy = 'auto', updatedAt = ?, version = version + 1 where lessonId = ? and status = 'open' and kind = 'late'").bind(now, now, l.id),
+  ]));
+  await audit({ ...c, actor: null }, 'lessonAutoDone', '', { ids: rows.map(l => l.id) });
+  return rows.length;
+}
+// 実施済みでも、請求・給与に入っていなければ直せる（自動で実施済みにした授業の欠席など）
+const settledOpen = l => l.status === 'done' && !l.invoiceId && !l.payrollId;
 export const freeDeadline = date => Date.parse(date + 'T23:00:00+09:00') - DAY; // 前日23時
 const overlap = (a, b) => a.date === b.date && toMin(a.start) < toMin(b.start) + Number(b.minutes) && toMin(b.start) < toMin(a.start) + Number(a.minutes);
 const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(Date.parse(d + 'T00:00:00Z'));
@@ -53,7 +71,7 @@ export const stageOf = l => l.status === 'held' ? 'draft' : l.status === 'propos
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
 export function lessonView(l, extra = {}) {
   return { id: l.id, studentId: l.studentId, staffId: l.staffId, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, deliveryMode: l.deliveryMode,
-    noticeState: l.noticeState || '', noticeAt: l.noticeAt || '', status: l.status, stage: stageOf(l), asked: !!l.askedAt, confirmBy: l.confirmBy, meetUrl: l.meetUrl, lateStart: !!l.lateStart, lostMinutes: Number(l.lostMinutes || 0), version: l.version, ...extra };
+    noticeState: l.noticeState || '', noticeAt: l.noticeAt || '', status: l.status, locked: !!(l.invoiceId || l.payrollId), stage: stageOf(l), asked: !!l.askedAt, confirmBy: l.confirmBy, meetUrl: l.meetUrl, lateStart: !!l.lateStart, lostMinutes: Number(l.lostMinutes || 0), version: l.version, ...extra };
 }
 // 連絡を受けた時刻（新しい決まりの取消料）。b.noNotice = 連絡なし（''）。b.receivedAt は ISO か 'YYYY-MM-DDTHH:MM'（日本時間）。空なら fallback（ふつうは今）
 function noticeAt(c, b, fallback) {
@@ -598,7 +616,7 @@ export const scheduleRoutes = {
   'schedule/lessons/rest': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const l = await getLesson(c, b.id); sameVersion(l, b);
-    if (!['proposed', 'decided'].includes(l.status)) fail('badStatus', '調整中・確認待ち・確定した授業だけお休みにできます');
+    if (!['proposed', 'decided'].includes(l.status) && !settledOpen(l)) fail('badStatus', '調整中・確認待ち・確定した授業（請求・給与の前の実施済みも）だけお休みにできます');
     const next = await setLesson(c, l, { status: 'rested' });
     if (l.status === 'decided') await calendarEffect(c, 'delete', l, '');
     await closeRequests(c, l.id, ['move', 'late', 'rest'], 'staff:' + c.actor.id);
@@ -608,7 +626,7 @@ export const scheduleRoutes = {
   'schedule/lessons/cancel': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const l = await getLesson(c, b.id); sameVersion(l, b);
-    if (l.status !== 'decided') fail('badStatus', '決定した授業だけキャンセルにできます');
+    if (l.status !== 'decided' && !settledOpen(l)) fail('badStatus', '決定した授業（請求・給与の前の実施済みも）だけキャンセルにできます');
     let fee = null, next;
     if (await usesRate(c.db, l)) {
       // 新しい決まり: 連絡を受けた時刻（b.receivedAt。連絡なしは b.noNotice）の率で自動に計算（規約案 第4・5条）
@@ -634,8 +652,10 @@ export const scheduleRoutes = {
   // 実施済み（教室管理者か、担当の講師）
   'schedule/lessons/done': async (c, b) => {
     const me = await requireStaff(c, b, 'manager', 'teacher');
-    const l = await getLesson(c, b.id); sameVersion(l, b);
+    const l = await getLesson(c, b.id);
     if (!rolesOf(me).includes('manager') && l.staffId !== me.id) fail('forbidden', '担当の授業だけ実施済みにできます', 403);
+    if (l.status === 'done') return { lesson: lessonView(l) }; // 終わりの時刻を過ぎて、もう実施済み（settlePastLessons）
+    sameVersion(l, b);
     if (l.status !== 'decided') fail('badStatus', '決定した授業だけ実施済みにできます');
     if (l.date > todayJst(c.now)) fail('future', 'まだ授業の日になっていません');
     const next = await setLesson(c, l, { status: 'done' });

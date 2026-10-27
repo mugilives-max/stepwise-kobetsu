@@ -6,7 +6,7 @@ import { call, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261027-ack';
+import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261027-pages2';
 
 const app = document.getElementById('app'), nav = document.getElementById('nav');
 const KEY = 'sw2_student_k';
@@ -96,7 +96,7 @@ function render() {
   } else {
     // ホーム: 次の授業（大きく）・宿題（左の丸を押して「できた」）・次のテスト
     h += `${preview ? '' : prep()}${noticeHtml()}`;
-    const next = upcoming();
+    const next = upcoming().filter(l => l.status === 'decided'); // ホームは確定した授業だけ（2026-10-27）
     h += nextLessonHero(next[0], { today: sched.today });
     h += secTitle('宿題');
     if (needLearning()) h += loadingHtml;

@@ -1,6 +1,6 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
-import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261025-layout';
-import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-ack';
+import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-pages';
+import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-pages2';
 import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ack';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
@@ -9,7 +9,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-ack';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-pages2';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -31,7 +31,7 @@ const specialChecked = {}; // 特別単価の「承認します」の印
 
 // ログインしていないときに開いた画面（メール・LINE のリンク。例 #confirm）。ログインや再設定のあと、その画面へ戻す
 const NEXT_KEY = 'sw2_family_next';
-const PAGES = ['home', 'schedule', 'confirm', 'learning', 'money', 'account', 'events', 'grades', 'enroll'];
+const PAGES = ['home', 'schedule', 'confirm', 'learning', 'money', 'account', 'events', 'grades', 'enroll', 'plan', 'agree', 'contracts'];
 const decodeLink = v => {try{return decodeURIComponent(v);}catch{return '';}};
 function route() {
   const h = location.hash;
@@ -84,7 +84,7 @@ const ICON = {
   money: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
 };
 const TABS = [['home', 'ホーム'], ['schedule', '予定'], ['learning', '学習'], ['money', 'お支払い']];
-const TITLE = { home: 'ホーム', schedule: '予定', confirm: '日程の確認', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み' };
+const TITLE = { home: 'ホーム', schedule: '予定', confirm: '日程の確認', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み', plan: '受講計画合意書の承認', agree: '同意のお願い', contracts: '契約・同意の控え' };
 // 前の URL（#events・#grades）も開けるように
 const pageOf = p => p === 'events' ? 'schedule' : p === 'grades' ? 'learning' : p;
 
@@ -121,17 +121,17 @@ const secTitle = (t, extra = '') => `<div class="sec-title">${t}${extra}</div>`;
 function homePage() {
   if (need('sched', 'learning', 'money')) return loading;
   let h = `${prep()}${noticeHtml()}`;
-  const next = upcoming();
+  const next = upcoming().filter(l => l.status === 'decided'); // ホームは確定した授業だけ。確定前の授業は「やること」の日程の確認に（2026-10-27 本人「配置が違う」）
   h += nextLessonHero(next[0], { names: names(), today: sched.today });
   // やること（押すとその画面へ）。行の下は値（だれ・どの月・締め切り・金額）だけ
   const todo = [], { asks, acks } = planGroups(money.plans);
   const enroll = enrollTodo(ectx()), covers = enrollCovers(ectx()); if (enroll) todo.push(enroll); // 入塾のお申込み（いちばん上）。申込みで規約・条件書にもまとめて同意する
-  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#money', 'file', '#c98a00', '共通規約への同意', money.terms.current.title || '', 1]);
+  if (money.terms && money.terms.needs && !covers.terms) todo.push(['#agree', 'file', '#c98a00', '共通規約への同意', money.terms.current.title || '', 1]);
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs && !covers.students.has(x.studentId)) : [];
-  if (needConds.length) todo.push(['#money', 'file', '#c98a00', '個別受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・'), needConds.length]);
+  if (needConds.length) todo.push(['#agree', 'file', '#c98a00', '個別受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・'), needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
-  if (needSpecials.length) todo.push(['#money', 'file', '#c98a00', '特別単価合意書の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・'), needSpecials.length]);
-  if (asks.length) todo.push(['#money', 'plan', '#5b6672', '受講計画合意書の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
+  if (needSpecials.length) todo.push(['#agree', 'file', '#c98a00', '特別単価合意書の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・'), needSpecials.length]);
+  if (asks.length) todo.push(['#plan', 'plan', '#5b6672', '受講計画合意書の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
   const asking = askingLessons(sched.lessons);
   const askBy = asking.map(automaticDeadline).filter(Boolean).sort()[0];
   if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '日程の確認', askBy ? md(askBy) + 'まで' : '', asking.length]);
@@ -173,7 +173,7 @@ function schedulePage() {
   const d = calData[cal.month], multi = multiKids() && !kid, nm = names();
   const lessons = forKid(d.lessons).filter(l => l.status !== 'held'), events = forKid(d.events);
   const asking = askingLessons(lessons), adjusting = lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= d.today);
-  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px"><a href="#confirm">日程の確認待ち ${asking.length}件 ›</a></p>`;
+  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px"><a href="#confirm">日程を確認してください（${asking.length}件）›</a></p>`;
   if (adjusting.length) h += `<p style="margin:0 0 6px"><span class="tag warn">調整中 ${adjusting.length}件</span></p>`;
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
@@ -205,7 +205,7 @@ function confirmPage() {
   }
   for(const g of groups.values()) {
     const ok=g.rows.filter(l=>!hasOpen(l)), refs=ok.map(l=>({id:l.id,version:l.version}));
-    h+='<h2>'+esc(names()[g.student]||'')+' · '+(g.by?esc(md(g.by))+'まで':'ご返事が必要です')+'</h2>';
+    h+='<h2>'+esc(names()[g.student]||'')+(g.by?' · '+esc(md(g.by))+'まで':'')+'</h2>';
     if(g.by)h+='<p class="small">'+esc(md(g.by))+'までにご連絡がなければ、この日程で確定します。</p>';
     h+=lessonRows(g.rows,{names:names(),today:sched.today});
     if(ok.length)h+='<button class="primary wide" data-action="agree-all" data-refs="'+esc(JSON.stringify(refs))+'"'+dis()+'>この日程で大丈夫（'+ok.length+'件を確定）</button>';
@@ -232,7 +232,7 @@ function moneySelection() {
   const t=targetParts(route().target||''), match=x=>t.refs.some(r=>r.id===x.id), exact=x=>t.refs.some(r=>r.id===x.id && r.version===(x.version ?? x.no));
   let header='', plans=money.plans, invoices=money.invoices.filter(x=>x.status!=='void'), fees=money.fees, conds=money.conditions?.items||[], specials=money.specials?.items||[];
   if(!t.kind || !t.refs.length)return {header,plans,invoices,fees,conds,specials};
-  header='<p class="notice"><a href="#money">すべての書類・料金を見る ›</a></p>';
+  header=['invoice','fee'].includes(t.kind)?'<p class="notice"><a href="#money">すべての請求・料金を見る ›</a></p>':''; // 承認・同意は専用の画面（#plan・#agree）なので、お支払いへのリンクは出さない
   if(t.kind==='plan') {
     plans=money.plans.filter(match);
     const stale=plans.some(l=>l.status==='proposed'&&!exact(l)) || plans.length!==t.refs.length;
@@ -262,38 +262,60 @@ function moneySelection() {
   }
   return {header,plans,invoices,fees,conds,specials};
 }
-// お支払い: 受講計画合意書（月ごとに 1 枚）・授業料・キャンセル料
-function moneyPage() {
+// 2026-10-27 本人「受講計画合意書の承認は「お支払い」でするべきことではない」→「その形で作り直して」:
+// 保護者が来る用事ごとに画面を分ける。承認（#plan）・同意（#agree）は「やること」とメールのリンクから、その 1 枚へ。
+// お支払い（#money）は請求とキャンセル料だけ。過去の契約・同意の控え（#contracts）はアカウントから
+const noneLeft = text => `<p class="muted" style="margin-top:16px">${text}</p><p><a href="#home">ホームへ</a></p>`;
+// 受講計画合意書の承認（月ごとに 1 枚。先に共通規約・個別受講条件書への同意が要る）
+function planPage() {
   if (need('money')) return loading;
-  const multi = new Set(money.plans.map(l => l.studentId).concat(money.fees.map(f => f.studentId))).size > 1;
-  let h = noticeHtml();
-  const selected=moneySelection(); h+=selected.header;
-  const { asks, acks, others } = planGroups(selected.plans), needTerms = !!(money.terms && money.terms.needs);
-  const covers = enrollCovers(ectx()), needConds = selected.conds.filter(x => x.needs && !covers.students.has(x.studentId)), blocked = needTerms || (money.conditions?.items||[]).some(x=>x.needs);
-  const needSpecials = selected.specials.filter(x=>x.status==='proposed');
-  if (asks.length || acks.length || blocked || needSpecials.length) {
-    h += secTitle('確かめていただきたいこと');
-    if (covers.terms) h += `<div class="group" style="margin-bottom:12px"><a class="todo-row" href="#enroll">${ibox('file', '#c0392b', '入塾のお申込み')}<span class="v"><span class="lbl">入塾のお申込み</span></span><span class="go">›</span></a></div>`;
-    else if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
-    h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id], consenterName: consentNames[x.latest.id] || me.guardianName || '' })).join('');
-    h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id], consenterName: consentNames[x.id] || me.guardianName || '' })).join('');
-    if(blocked && asks.length) h += '<p class="notice">受講計画合意書の承認には、先に上の共通規約・個別受講条件書への同意が必要です。</p>';
-    h += asks.map(([m, ls]) => planApprovalCard(m, ls, { multi, counts: planCounts, consenterName: consentNames[m] || me.guardianName || '', dis: dis() || (blocked ? ' disabled' : '') })).join('');
-    h += acks.map(([m, ls]) => planAckCard(m, ls, { multi, dis: dis() })).join('');
-  }
-  h += secTitle('授業料') + invoiceRows(selected.invoices);
-  if (selected.fees.length) h += secTitle('キャンセル料・取消料') + feeRows(selected.fees, { multi });
-  if (others.length) h += secTitle('受講計画合意書') + planHistory(others, { multi });
-  if (money.terms && !needTerms) h += termsLine(money.terms);
-  if (money.conditions) h += conditionLine(money.conditions.items);
-  if (money.specials) h += specialLine(money.specials.items);
-  h += '<p><button data-action="contracts-open">過去の契約・同意の控え</button></p>' + contractArchive(contracts);
+  const multi = new Set(money.plans.map(l => l.studentId)).size > 1;
+  const selected = moneySelection(), { asks } = planGroups(selected.plans);
+  let h = noticeHtml() + selected.header;
+  if (!asks.length) return h + noneLeft('承認をお願いしている受講計画合意書はありません。');
+  const blocked = !!(money.terms && money.terms.needs) || (money.conditions?.items || []).some(x => x.needs);
+  if (blocked) h += '<p class="notice">先に<a href="#agree">共通規約・個別受講条件書への同意</a>をお願いします。</p>';
+  return h + asks.map(([m, ls]) => planApprovalCard(m, ls, { multi, counts: planCounts, consenterName: consentNames[m] || me.guardianName || '', dis: dis() || (blocked ? ' disabled' : '') })).join('');
+}
+// 同意のお願い（共通規約・個別受講条件書・特別単価合意書）
+function agreePage() {
+  if (need('money')) return loading;
+  const selected = moneySelection(), covers = enrollCovers(ectx()), needTerms = !!(money.terms && money.terms.needs);
+  const needConds = selected.conds.filter(x => x.needs && !covers.students.has(x.studentId)), needSpecials = selected.specials.filter(x => x.status === 'proposed');
+  let h = noticeHtml() + selected.header;
+  if (covers.terms) h += `<div class="group" style="margin:12px 0"><a class="todo-row" href="#enroll">${ibox('file', '#c0392b', '入塾のお申込み')}<span class="v"><span class="lbl">入塾のお申込み</span></span><span class="go">›</span></a></div>`;
+  else if (needTerms) h += termsCard(money.terms, { busy, checked: termsChecked, consenterName: consentNames.terms || me.guardianName || '' });
+  h += needConds.map(x => conditionCard(x, { busy, checked: !!condChecked[x.latest.id], consenterName: consentNames[x.latest.id] || me.guardianName || '' })).join('');
+  h += needSpecials.map(x => specialCard(x, { busy, checked: !!specialChecked[x.id], consenterName: consentNames[x.id] || me.guardianName || '' })).join('');
+  if (!covers.terms && !needTerms && !needConds.length && !needSpecials.length) h += noneLeft('同意をお願いしているものはありません。');
   return h;
 }
+// お支払い: 授業料の請求とキャンセル料だけ
+function moneyPage() {
+  if (need('money')) return loading;
+  const multi = new Set(money.fees.map(f => f.studentId)).size > 1;
+  const selected = moneySelection();
+  let h = noticeHtml() + selected.header;
+  h += secTitle('授業料') + invoiceRows(selected.invoices);
+  if (selected.fees.length) h += secTitle('キャンセル料・取消料') + feeRows(selected.fees, { multi });
+  return h;
+}
+// 契約・同意の控え（アカウントから）: 今の共通規約・個別受講条件書・特別単価合意書、決まった受講計画合意書、過去の控え
+function contractsPage() {
+  if (need('money')) return loading;
+  const multi = new Set(money.plans.map(l => l.studentId)).size > 1, { others } = planGroups(money.plans);
+  let h = noticeHtml();
+  if (money.terms) h += termsLine(money.terms);
+  if (money.conditions) h += conditionLine(money.conditions.items);
+  if (money.specials) h += specialLine(money.specials.items);
+  if (others.length) h += secTitle('受講計画合意書') + planHistory(others, { multi });
+  return h + '<p><button data-action="contracts-open">前の版も見る</button></p>' + contractArchive(contracts);
+}
+
 function accountPage() {
   if (previewToken) return `<p class="muted">プレビューでは使えません。</p>`;
   need('sched');
-  return `<p>${esc(me.name)}（${esc(me.email)}）</p>${money && money.terms ? termsLine(money.terms) : ''}${noticeHtml()}${kids().length ? `<h2>生徒さん本人からのお休みの連絡</h2><div class="choices">${kids().map(k => `<label class="choice"><input type="checkbox" data-contact="${esc(k.id)}"${k.studentContact ? ' checked' : ''}${dis()}><span>${esc(k.name)}さん本人から受け付ける</span></label>`).join('')}</div>` : ''}<h2>パスワードを変える</h2><form class="stack" data-form="password"><input type="email" value="${esc(me.email)}" autocomplete="username" hidden>
+  return `<p>${esc(me.name)}（${esc(me.email)}）</p>${noticeHtml()}<div class="group" style="margin:12px 0"><a class="todo-row" href="#contracts">${ibox('file', '#5b6672', '契約・同意の控え')}<span class="v"><span class="lbl">契約・同意の控え</span></span><span class="go">›</span></a></div>${kids().length ? `<h2>生徒さん本人からのお休みの連絡</h2><div class="choices">${kids().map(k => `<label class="choice"><input type="checkbox" data-contact="${esc(k.id)}"${k.studentContact ? ' checked' : ''}${dis()}><span>${esc(k.name)}さん本人から受け付ける</span></label>`).join('')}</div>` : ''}<h2>パスワードを変える</h2><form class="stack" data-form="password"><input type="email" value="${esc(me.email)}" autocomplete="username" hidden>
     <label>今のパスワード<input type="password" name="current" autocomplete="current-password" required></label><label>新しいパスワード（12文字以上）<input type="password" name="next" autocomplete="new-password" minlength="12" required></label>
     <label>もう一度<input type="password" name="confirm" autocomplete="new-password" minlength="12" required></label><button class="primary"${dis()}>変える</button></form><h2>ログアウト</h2><p><button data-action="logout"${dis()}>この端末からログアウト</button></p>`;
 }
@@ -318,7 +340,9 @@ function renderBar(page) {
 }
 function render() {
   applyTarget();
-  const r = route(), page = pageOf(r.page.split('/')[0]), sub = r.page.split('/')[1];
+  // メールのリンク（#money?kind=plan など）は、用事の画面で開く
+  const r = route(), kind0 = targetParts(r.target || '').kind, page0 = pageOf(r.page.split('/')[0]), sub = r.page.split('/')[1];
+  const page = page0 === 'money' && kind0 === 'plan' ? 'plan' : page0 === 'money' && ['condition', 'special'].includes(kind0) ? 'agree' : page0;
   const tabs = me && page !== 'enroll'; // 入塾のお申込みの間は手続きだけ
   nav.innerHTML = tabs ? TABS.map(([k, l]) => `<a href="#${k}" class="${page === k ? 'on' : ''}"${page === k ? ' aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg><span>${l}</span></a>`).join('') : '';
   document.body.classList.toggle('has-tabs', tabs);
@@ -328,7 +352,7 @@ function render() {
   if (r.page === 'invite') h = invitePage(r.token);
   else if (r.page === 'reset') h = `<h1>新しいパスワード</h1>${noticeHtml()}${newPasswordForm('reset', 'パスワードを変える')}${helpLinks}`;
   else if (!me) h = r.page === 'forgot' ? `<h1>パスワードの再設定</h1>${noticeHtml()}<form class="stack" data-form="forgot"><label>メールアドレス<input type="email" name="email" required></label><button class="primary"${dis()}>再設定のメールを送る</button></form><p><a href="#">ログインに戻る</a></p>` : loginPage();
-  else h = page === 'schedule' ? schedulePage() : page === 'confirm' ? confirmPage() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'account' ? accountPage() : page === 'enroll' ? enrollPage(ectx()) : homePage();
+  else h = page === 'schedule' ? schedulePage() : page === 'confirm' ? confirmPage() : page === 'learning' ? learningPage(sub || (r.page === 'grades' ? 'grades' : '')) : page === 'money' ? moneyPage() : page === 'plan' ? planPage() : page === 'agree' ? agreePage() : page === 'contracts' ? contractsPage() : page === 'account' ? accountPage() : page === 'enroll' ? enrollPage(ectx()) : homePage();
   app.className = !me ? 'narrow' : '';
   renderBar(me ? page : '');
   keepSheet(app, () => { app.innerHTML = previewBar() + h + sheetHtml(); });

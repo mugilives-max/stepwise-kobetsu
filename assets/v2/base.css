@@ -119,7 +119,7 @@ button.small-btn.warn { background: var(--warn-soft); border-color: #f1d9ad; col
 .month2 .nm.r2 { background: #e3ecfb; color: #173f8a; }
 .month2 .nm.r3 { color: #5b6672; }
 .month2 .bar { color: var(--white); font-size: 10.5px; }
-.month2 .bar.test { background: #8a94a0; }
+.month2 .bar.test { background: #d9480f; font-weight: 700; } /* テストは大事な予定なので、灰色にせず目立つ色に（2026-10-27 本人「重要さが表示に反映されていません」） */
 .month2 .bar.event { background: #a23b3b; }
 .month2 .bar.off { background: #c3cad2; color: #3d4752; }
 .month2 .bar.meeting { background: #6a4fb3; }
@@ -140,6 +140,7 @@ button.small-btn.warn { background: var(--warn-soft); border-color: #f1d9ad; col
 .rows .lesson.s-rested, .rows .lesson.s-cancelled { opacity: .6; }
 .rows .ev .t { font-weight: 400; font-size: 12px; }
 .rows .ev.test .b, .rows .ev.event .b { color: var(--ink); }
+.rows .ev.test { box-shadow: inset 3px 0 0 #d9480f; } .rows .ev.test .b { font-weight: 700; }
 .rows .x { border: 0; background: none; color: var(--muted); font-size: 18px; padding: 2px 8px; }
 
 /* ---- 下から出る画面（パソコンでは真ん中） ---- */
@@ -918,6 +919,18 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .agree-docs .t small { display: block; font-weight: 400; color: var(--muted); }
 .agree-docs .small-btn { flex: none; }
 .reg-field input[readonly] { background: #eef2f6; color: var(--ink); }
+/* 受講計画合意書の承認（保護者 #plan）2026-10-27: 科目・回数・金額の表 */
+.plan-tbl { width: 100%; border-collapse: collapse; margin: 10px 0 12px; }
+.plan-tbl th, .plan-tbl td { border-bottom: 1px solid var(--line); padding: 10px 6px; text-align: left; vertical-align: middle; color: var(--ink); }
+.plan-tbl thead th { font-size: 12.5px; color: var(--muted); font-weight: 600; border-bottom: 1.5px solid var(--ink); padding-top: 0; }
+.plan-tbl tbody th { font-weight: 400; }
+.plan-tbl tbody th strong { font-size: 15.5px; margin-right: 6px; }
+.plan-tbl tbody th small, .plan-tbl td small { display: block; font-size: 13px; color: var(--muted); }
+.plan-tbl .n { width: 7em; }
+.plan-tbl .n select { width: 100%; }
+.plan-tbl .amt, .plan-tbl thead th:last-child { text-align: right; white-space: nowrap; width: 6.5em; }
+.plan-tbl tbody .amt { font-weight: 700; }
+.plan-tbl tfoot th, .plan-tbl tfoot td { border-bottom: 0; border-top: 1.5px solid var(--ink); font-weight: 700; font-size: 16px; }
 .info-table { margin: 6px 0 0; }
 .info-table > div { display: grid; grid-template-columns: 7em minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line); }
 .info-table > div:first-child { border-top: 0; }

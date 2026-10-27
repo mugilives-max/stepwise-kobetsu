@@ -43,7 +43,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===origin||u.protocol==='data:')return route.continue();report.externalRequests.push(u.origin);return route.abort();});
   await context.addInitScript(({parent,auth})=>{localStorage.setItem('sw2_family',parent);localStorage.setItem('sw2_staff',auth);},{parent,auth});
   const page=await context.newPage(), errors=[]; page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(origin+'/family/#money');
+  await page.goto(origin+'/family/#agree'); // 同意は専用の画面（2026-10-27）
   await page.locator('input[data-consenter="'+pendingCondition.id+'"]').fill('架空 太郎');
   await page.locator('[data-cond-agree="'+pendingCondition.id+'"]').check();
   assert.equal(await page.locator('input[data-consenter="'+pendingCondition.id+'"]').inputValue(),'架空 太郎');
@@ -51,7 +51,8 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   await page.locator('[data-special-agree="'+pendingSpecial.id+'"]').check();
   assert.equal(await page.locator('input[data-consenter="'+pendingSpecial.id+'"]').inputValue(),'架空 花子');
   report.checks.push('pending basic and special condition cards render and retain explicit names');
-  await page.getByRole('button',{name:'過去の契約・同意の控え',exact:true}).click();
+  await page.goto(origin+'/family/#contracts'); // 控えはアカウントの「契約・同意の控え」（2026-10-27）
+  await page.getByRole('button',{name:'前の版も見る',exact:true}).click();
   await page.locator('summary').filter({hasText:'受講計画合意書の履歴'}).click();
   await page.getByText('第2版・2026-05-01〜2026-05-31',{exact:false}).waitFor();
   assert.match(await page.locator('#app').innerText(),/架空 保護者/);
@@ -59,6 +60,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   assert.deepEqual(links,['https://example.invalid/old']);
   const lineHtml=await page.evaluate(async()=>{const {termsLine}=await import('/assets/v2/portal-ui.js?v=20261014-names');return termsLine({agreed:{version:'old',at:'2026-10-02',url:'https://example.invalid/old'},current:{url:'https://example.invalid/new'}});});
   assert.match(lineHtml,/example\.invalid\/old/);assert.doesNotMatch(lineHtml,/example\.invalid\/new/);
+  await page.goto(origin+'/family/#agree'); // 共通規約への同意は専用の画面（2026-10-27）
   const nameInput=page.locator('input[data-consenter="terms"]');
   await nameInput.fill('架空 太郎'); await page.locator('#terms-agree').check();
   assert.equal(await nameInput.inputValue(),'架空 太郎','rerender preserves explicit name');

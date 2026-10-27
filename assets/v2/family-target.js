@@ -1,5 +1,5 @@
 // Shared allowlist. Business links locate records; server authorization is always required.
-const pages = new Set(['home','schedule','confirm','learning','money','account','events','grades','enroll']);
+const pages = new Set(['home','schedule','confirm','learning','money','account','events','grades','enroll','plan','agree','contracts']);
 const idOK = s => /^[A-Za-z0-9_-]{1,100}$/.test(s);
 export function safeFamilyTarget(raw) {
   if (typeof raw !== 'string' || raw.length > 14000 || /[\\\\\r\n]/.test(raw)) return '';
