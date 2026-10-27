@@ -139,7 +139,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   assert.ok(documentIcons.length>=1 && documentIcons.every(w=>w<=24),'document buttons keep small icons');
   await page.screenshot({path:path.join(out,'05-prerequisites-desktop.png'),fullPage:true,animations:'disabled'});
   report.checks.push('prerequisites explained next to disabled approval');
-  await page.goto(origin+'/family/#home');await page.getByText('やること',{exact:true}).waitFor();
+  await page.goto(origin+'/family/#home');await page.getByText('対応が必要なこと',{exact:true}).waitFor();
   report.checks.push('home overview remains usable after notification-target navigation');
 
   const sampleInv={id:'iv_synthetic',month:'2026-09',status:'void',total:4500,version:2,voidReason:'【テスト】内訳訂正',items:[],dueDate:'2026-10-23',dueNote:'LINEで合意'};

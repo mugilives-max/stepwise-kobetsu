@@ -139,16 +139,18 @@ function homePage() {
   if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '授業日時の承認', askBy ? md(askBy) + 'まで' : '', asking.length]);
   const due = money.invoices.filter(v => v.status === 'confirmed');
   if (due.length) todo.push(['#money', 'yen', '#c0392b', '入金待ちのお支払い', due.map(v => monthLabel(v.month)).join('・'), due.length]);
-  const hw = learning.homework.filter(w => w.status === 'open');
-  if (hw.length) todo.push(['#learning', 'homework', '#7b4fd6', 'お子様の宿題', '', hw.length]);
-  h += secTitle('やること');
-  h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}${note ? `（${esc(note)}）` : ''}</span></span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">やることはありません。</p>';
+  // 宿題は保護者が対応することではないので、ここに置かない（下の「授業記録」と並べる。2026-10-27 本人）。見出しは「対応が必要なこと」（同日 本人「やることっていうのが名前として微妙」）
+  h += secTitle('対応が必要なこと');
+  h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}${note ? `（${esc(note)}）` : ''}</span></span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">対応が必要なことはありません。</p>';
   // そのあとの授業（最大 4 件）
   const more = next.slice(1, 5);
   if (more.length) h += secTitle('そのあとの授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { names: names(), today: sched.today });
   const tests = sched.events.filter(e => e.kind === 'test' && e.dateTo >= sched.today).slice(0, 2);
   if (tests.length) h += secTitle('テスト') + eventRows(tests, { names: multiKids() ? names() : {}, today: sched.today });
-  if (learning.records.length) h += secTitle('新しい授業の記録', '<a class="more" href="#learning">すべて見る ›</a>') + recordCards(learning.records, learning.homework, { names: multiKids() ? names() : {}, limit: 1 });
+  // 授業記録と宿題（2026-10-27 本人「新しい授業の記録ってのは要らない…宿題は…下の方に移動して、「授業記録」というのと並べて」）
+  const hw = learning.homework.filter(w => w.status === 'open');
+  h += `<div class="home-links"><a class="todo-row" href="#learning">${ibox('book', '#2f6fd6', '授業記録')}<span class="v"><span class="lbl">授業記録</span></span><span></span><span class="go">›</span></a>`
+    + `<a class="todo-row" href="#learning">${ibox('homework', '#7b4fd6', 'お子様の宿題')}<span class="v"><span class="lbl">お子様の宿題</span></span><span class="cnt">${hw.length || ''}</span><span class="go">›</span></a></div>`;
   return h;
 }
 // 予定: 月の表（スタッフと同じ動き）。子どもを選べる。日を押すとその日の一覧、授業を押すと下から出る画面で「変更・お休みの連絡」。テスト・行事を知らせるは上の帯の右
@@ -189,9 +191,8 @@ function schedulePage() {
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
     const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`);
-    let chips;
-    if (multi) { const by = {}; ls.forEach(l => { const g = by[l.studentId] = by[l.studentId] || { n: 0, rank: 9 }; g.n++; g.rank = Math.min(g.rank, RANK[l.status]); }); chips = Object.entries(by).map(([sid, g]) => `<span class="nm r${g.rank}">${esc(shortName(sid))}${g.n > 1 ? `<small>×${g.n}</small>` : ''}</span>`); }
-    else chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => `<span class="nm r${RANK[l.status]}${askOn.has(l.id) && l.status === 'proposed' ? ' on' : ''}">${askOn.has(l.id) && l.status === 'proposed' ? '✓' : ''}${esc(l.subject)}</span>`);
+    // 授業ごとに時刻と科目（子どもが2人以上なら名も）。2026-10-27 本人「時間帯もカレンダー上の表記で分かるようにしたい」
+    const chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => { const on = askOn.has(l.id) && l.status === 'proposed'; return `<span class="nm t2 r${RANK[l.status]}${on ? ' on' : ''}"><small class="tm">${on ? '✓ ' : ''}${l.start}</small><b>${multi ? esc(shortName(l.studentId)) + ' ' : ''}${esc(l.subject)}</b></span>`; });
     return { lines: bars.concat(chips), count: ls.length };
   };
   const pick = { on: askOn, can: l => choosable.some(x => x.id === l.id) };
