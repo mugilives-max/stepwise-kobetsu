@@ -3,7 +3,7 @@
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261027-ease';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261027-ease';
 import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
-import { ICON } from '/staff/ui.js?v=20261025-layout';
+import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 
@@ -22,19 +22,15 @@ const PLUS = '<path d="M12 5v14M5 12h14"/>', SEARCH = '<circle cx="11" cy="11" r
 const AV = ['#2f6fde', '#2e9b5f', '#7b4fd6', '#d0533c', '#138a8a', '#c98a00', '#5b6672'];
 const avColor = t => AV[[...String(t)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 9973, 7) % AV.length];
 const initial = name => (String(name).replace(/^[【\[（(「『\s]+/, '') || '?').slice(0, 1); // 【テスト】などの括弧は飛ばす
-export const studentsBar = () => list && list.families ? { title: '生徒', sub: `${list.families.reduce((n, f) => n + f.students.filter(s => s.status !== 'left').length, 0)}人`, right: list.manager ? `<a class="ibtn" href="#families" aria-label="家族を登録する・家族の一覧"><svg viewBox="0 0 24 24" aria-hidden="true">${PLUS}</svg></a>` : '' } : null;
+// 上の「＋」1つで、体験生の登録と家族の登録（2026-10-27 本人「上部のプラスボタンと、＋体験生を登録っていうのは役割がかぶっているので、まとめるべき」）
+let addOpen = '';
+export const studentsBar = () => list && list.families ? { title: '生徒', sub: `${list.families.reduce((n, f) => n + f.students.filter(s => s.status !== 'left').length, 0)}人`, right: list.manager ? `<button type="button" class="ibtn" data-action="stu-add" aria-label="生徒を追加"><svg viewBox="0 0 24 24" aria-hidden="true">${PLUS}</svg></button>` : '' } : null;
 export function studentsPage(ctx) {
   const { esc } = ctx;
   if (!list) { list = { loading: true }; ctx.call('students/list').then(r => { list = r.ok ? r : { families: [], error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
   let h = ctx.notice();
   if (list.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
   h += `<label class="search"><svg viewBox="0 0 24 24" aria-hidden="true">${SEARCH}</svg><input type="search" data-input="stu-query" value="${esc(query)}" placeholder="名前・ふりがなで探す" aria-label="生徒を探す"></label>`;
-  // 体験生（まだ入塾していない人）を臨時で登録する。登録すると予定表で授業を入れられる（種類「体験」・無料）
-  if (list.manager) h += `<details class="trial-new"><summary>＋ 体験生を登録</summary><form class="stack" data-form="trial-create">
-    <div class="row"><label style="flex:1">名字<input name="familyName" maxlength="40" required placeholder="高橋"></label><label style="flex:1">名前<input name="givenName" maxlength="40" placeholder="香帆"></label><label style="flex:1">学年<select name="grade">${gradeOptions(esc, '')}</select></label></div>
-    <label>学校<input name="school" maxlength="60" placeholder="〇〇中学校"></label>
-    <label>メモ（紹介・志望など）<input name="note" maxlength="1000"></label>
-    <div class="row"><button class="primary"${ctx.dis()}>登録する</button></div></form></details>`;
   const q = query.trim();
   const match = s => !q || s.name.includes(q) || s.kana.includes(q);
   // 1つの枠に全員（2026-10-27 本人「もっとまとめられないかな。家族ごとに隙間が多すぎる」「○○さんの家族っていうのは情報量が0」）。
@@ -50,6 +46,12 @@ export function studentsPage(ctx) {
   }).join('') + '</div>';
   const any = shown.length > 0;
   if (!any) h += '<p class="muted small" style="margin-top:14px">見つかりませんでした。</p>';
+  if (addOpen === 'menu') h += sheet(esc, '生徒を追加', `<div class="group">${rowButton(esc, 'stu-add-trial', {}, '体験生を登録', '')}${rowButton(esc, 'stu-add-family', {}, '家族を登録（入塾）', '')}</div>`, 'stu-add-close');
+  if (addOpen === 'trial') h += sheet(esc, '体験生を登録', `<form class="stack" data-form="trial-create">
+    <div class="row"><label style="flex:1">名字<input name="familyName" maxlength="40" required placeholder="高橋"></label><label style="flex:1">名前<input name="givenName" maxlength="40" placeholder="香帆"></label><label style="flex:1">学年<select name="grade">${gradeOptions(esc, '')}</select></label></div>
+    <label>学校<input name="school" maxlength="60" placeholder="〇〇中学校"></label>
+    <label>メモ（紹介・志望など）<input name="note" maxlength="1000"></label>
+    <div class="row"><button class="primary"${ctx.dis()}>登録する</button></div></form>`, 'stu-add-close');
   return h;
 }
 export function studentsInput(ctx, name, el) {
@@ -224,10 +226,14 @@ export async function studentsSubmit(ctx, kind, el) {
   if (kind !== 'trial-create') return false;
   const v = Object.fromEntries(new FormData(el).entries());
   const r = await ctx.call('admin/trials/create', { familyName: v.familyName, givenName: v.givenName, grade: v.grade, school: v.school, note: v.note });
-  if (r.ok) { list = null; ctx.say(`${v.familyName}${v.givenName ? ' ' + v.givenName : ''}さんを体験生で登録しました`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+  if (r.ok) { list = null; addOpen = ''; ctx.say(`${v.familyName}${v.givenName ? ' ' + v.givenName : ''}さんを体験生で登録しました`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;
 }
 export async function studentsClick(ctx, a, b) {
+  if (a === 'stu-add') { addOpen = 'menu'; return true; }
+  if (a === 'stu-add-trial') { addOpen = 'trial'; return true; }
+  if (a === 'stu-add-close') { addOpen = ''; return true; }
+  if (a === 'stu-add-family') { addOpen = ''; location.hash = '#families'; return true; }
   if (a === 'enroll-resend') { if (!confirm(`${b.dataset.email || '保護者'} に入塾の案内をもう一度送りますか？`)) return true; await enrollDone(ctx, await ctx.call('admin/enrollment/resend', { offerId: b.dataset.id }), '案内をもう一度送りました'); return true; }
   if (a === 'enroll-withdraw') {
     if (!confirm('入塾の案内を取り消しますか？（保護者のリンクと個別受講条件書の案は使えなくなります）')) return true;
