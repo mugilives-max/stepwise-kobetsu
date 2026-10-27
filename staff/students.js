@@ -134,9 +134,33 @@ function grades(ctx, x) {
   const pk = seriesPick(g.exams, x.student.id);
   return h + pk.bar + trendBox(pk.list, x.student.id) + examPager(pk.list, x.student.id, e => examCard(e, { sheets: (g.files || []).filter(f => f.examId === e.id && f.status !== 'dismissed') }));
 }
+// 授業の計画（月ごと）: 受講計画合意書ではなく授業そのもの（2026-10-27 本人「今度は授業の計画に焦点を当てる」「受講計画書にない授業が承認済みであるかどうかが不明なのが問題」）。
+// 科目ごとの授業の数、合意待ち（保護者に承認をお願いする）、合意の記録がない授業（合意を記録）、授業料の見込み。受講計画合意書はあるときだけ1行で
+let spMonth = '', spData = null, spKey = '';
+const ymAdd = (ym, n) => { const [y, m] = ym.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1)); return t.toISOString().slice(0, 7); };
+function lessonPlan(ctx, x) {
+  const { esc } = ctx, sid = x.student.id;
+  if (!spMonth) spMonth = x.today.slice(0, 7);
+  const key = sid + '|' + spMonth;
+  if (spKey !== key) { spKey = key; spData = null; ctx.call('students/plan', { studentId: sid, month: spMonth }).then(r => { if (spKey !== key) return; spData = r.ok ? r : { error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
+  let h = `<div class="sp-head"><button type="button" class="icon" data-action="sp-month" data-n="-1" aria-label="前の月">‹</button><strong>${Number(spMonth.slice(0, 4))}年${Number(spMonth.slice(5))}月</strong><button type="button" class="icon" data-action="sp-month" data-n="1" aria-label="次の月">›</button><span class="grow"></span><a class="small-btn primary" href="#schedule">＋ 授業を入れる</a></div>`;
+  if (!spData) return h + '<p class="muted small">読み込んでいます…</p>';
+  if (spData.error) return h + `<p class="notice error">${esc(spData.error)}</p>`;
+  const d = spData, kindText = k => k && k !== '通常' ? `（${esc(k)}）` : '';
+  h += d.subjects.length ? `<table class="sp-tbl"><thead><tr><th>科目</th><th>予定</th><th>実施</th><th>確定</th><th>合意待ち</th><th class="sp-fee">1回</th></tr></thead><tbody>${d.subjects.map(g => `<tr><th>${esc(g.subject)}${kindText(g.kind)}</th><td>${g.total}回</td><td>${g.done || '-'}</td><td>${g.decided || '-'}</td><td>${g.waiting ? `<b class="warn-text">${g.waiting}</b>` : '-'}</td><td class="sp-fee">${g.minutes}分 ${yen(g.fee)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">この月の授業はまだありません。</p>';
+  const row = l => `${esc(md(l.date))} ${esc(l.start)} ${esc(l.subject)}${kindText(l.kind)}`;
+  if (d.waiting.length) {
+    const ask = d.waiting.filter(l => !l.asked).map(l => l.id);
+    h += `<div class="sp-block"><div class="sp-bh"><b>合意待ちの授業 ${d.waiting.length}件</b>${ask.length ? `<button type="button" class="small-btn primary" data-action="sp-ask" data-ids="${esc(ask.join(','))}"${ctx.dis()}>保護者に承認をお願いする（${ask.length}件）</button>` : '<span class="small muted">保護者の承認待ち</span>'}</div><ul>${d.waiting.map(l => `<li>${row(l)}<span class="muted small"> ${l.asked ? '承認待ち' : l.status === 'held' ? '下書き' : '調整中'}</span></li>`).join('')}</ul></div>`;
+  }
+  if (d.unrecorded.length) h += `<div class="sp-block warn"><div class="sp-bh"><b>合意の記録がない授業 ${d.unrecorded.length}件</b><span class="small">記録するまで請求に入りません</span></div><ul>${d.unrecorded.map(l => `<li>${row(l)}<span class="muted small"> ${l.status === 'done' ? '実施済み' : '確定'}</span><button type="button" class="text-btn" data-action="sp-agree" data-id="${esc(l.id)}" data-version="${l.version}"${ctx.dis()}>合意を記録</button></li>`).join('')}</ul></div>`;
+  h += `<p class="sp-est">この月の授業料の見込み <b>${yen(d.estimate)}</b></p>`;
+  if (d.plans.length) h += `<p class="small muted sp-plans">受講計画書：${d.plans.map(p => `${esc(md(p.startDate))}〜${esc(md(p.endDate))} ${esc(p.subject)}${kindText(p.kind)} ${p.count}回（使用 ${p.used}回）${p.status === 'approved' ? '' : '・承認待ち'}`).join('／')} <a href="#plans">開く</a></p>`;
+  return h;
+}
 function money(ctx, x) {
   const { esc } = ctx;
-  return '<h2>今月・来月の計画</h2>' + planList(esc, x.plans) + '<p class="small"><a href="#plans">計画の画面を開く</a></p>'
+  return lessonPlan(ctx, x)
     + '<h2>家族の請求（最近6か月）</h2>' + (x.invoices.length ? '<div class="rows">' + x.invoices.map(v => `<div class="ev"><span class="t">${Number(v.month.slice(5))}月分</span><span class="b" style="color:var(--ink)">${yen(v.total)}</span><span><span class="tag ${(INV[v.status] || ['', 'gray'])[1]}">${(INV[v.status] || [v.status])[0]}</span></span></div>`).join('') + '</div>' : '<p class="muted small">まだ請求はありません。</p>')
     + '<p class="small"><a href="#billing">請求の画面を開く</a></p>';
 }
@@ -230,6 +254,21 @@ export async function studentsSubmit(ctx, kind, el) {
   return true;
 }
 export async function studentsClick(ctx, a, b) {
+  if (a === 'sp-month') { spMonth = ymAdd(spMonth, Number(b.dataset.n)); return true; }
+  if (a === 'sp-ask') {
+    const ids = String(b.dataset.ids || '').split(',').filter(Boolean); if (!ids.length || !hub) return true;
+    if (!confirm(`${ids.length}件の授業の承認を、保護者にメールでお願いしますか？`)) return true;
+    let r = await ctx.call('schedule/lessons/ask', { studentId: hub.student.id, lessonIds: ids });
+    if (!r.ok && r.error && r.error.needForce && confirm(r.error.message)) r = await ctx.call('schedule/lessons/ask', { studentId: hub.student.id, lessonIds: ids, force: true });
+    if (r.ok) { spKey = ''; ctx.say(`${r.asked}件の承認をお願いしました`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
+  if (a === 'sp-agree') {
+    const text = prompt('いつ・どの方法で・だれと合意したか（例: LINE 10/20 お母さんと合意）'); if (!text) return true;
+    const r = await ctx.call('schedule/lessons/agreement', { id: b.dataset.id, version: Number(b.dataset.version), agreement: text });
+    if (r.ok) { spKey = ''; ctx.say('合意を記録しました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   if (a === 'stu-add') { addOpen = 'menu'; return true; }
   if (a === 'stu-add-trial') { addOpen = 'trial'; return true; }
   if (a === 'stu-add-close') { addOpen = ''; return true; }
