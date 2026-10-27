@@ -16,7 +16,7 @@ OUT = ROOT / "terms" / EDITION
 REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261028-r16"
 REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R16.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "1029e22f965b321b8b9b871d3e0e685ae88c0077"
+EXPECTED_SOURCE_BLOB = "7f7e73debd8b32344b8e89a68e2c7d52cebad32f"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
