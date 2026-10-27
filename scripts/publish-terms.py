@@ -10,13 +10,13 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261026-r14"
+EDITION = "2026-11-20261027-r15"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261026-r14"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261026_R14.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261027-r15"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261027_R15.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "7b22620ddc62d4fdd3f208a713cd8d2224a49227"
+EXPECTED_SOURCE_BLOB = "1bcf9a49591ceb6eb72890e0afa3d807d5d65ee8"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -61,7 +61,7 @@ for heading in body.find_all(["h1", "h2", "h3"]):
 ids = [tag["id"] for tag in body.select("[id]")]
 assert len(ids) == len(set(ids)), "Duplicate anchors"
 assert len([v for v in ids if re.fullmatch(r"article-\d+", v)]) == 33
-assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 151
+assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 147
 assert len([v for v in ids if re.fullmatch(r"chapter-\d+", v)]) == 8
 assert len(body.find_all("table")) == 5
 for link in body.select('a[href^="#"]'):
@@ -135,45 +135,47 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:auto; }
 }
 """
-# r14 (2026-10-26 本人「受講合意書って名前はやっぱり…受講計画合意書って名前にするべきな気がしてきた」→「その名前でok」):
-# r13 から、月ごとの書類の名前（受講合意書→受講計画合意書）と版の参照だけを変えた版（条文・表・例の中身は変わらない）。
-# r13 の本文に決まった置き換えだけをしたものと、今の本文が一字一句同じであることを確かめる
-PRIOR_COMMIT = "934bf44df4b71828771f5c3628bfe9b8da0cae53"
-TERMS_REPLACEMENTS = [("受講合意書", "受講計画合意書"), ("20261026-r13", "20261026-r14")]
-RELATED_REPLACEMENTS = TERMS_REPLACEMENTS
+# r15 (2026-10-27 本人「大雑把に言えば２通りでいい…LINEとかで日程の調整をしたら、両者の合意が取れたらそれを塾側がシステムに反映する
+# あるいは、既に合意されている日程をシステムからリンクを送って…承認お願いします…スムーズであるというのが何よりも大事」
+# 「受講計画合意書とセットで承認する…計画の分を超えていますがよろしいですかって聞く」):
+# r14 から、日時の確定を2通りにし（締め切り・自動確定・直前の提案の特則をなくす）、回数を超える授業はその授業への合意で追加できるようにした。
+# 変えたのは下の条項と表だけ。ほかの条項・表は r14 と一字一句同じであることを確かめる
+PRIOR_COMMIT = "1b8fe3316370df93262aecde62087523df92c5e1"
+EDITION_REPLACEMENTS = [("20261026-r14", "20261027-r15")]
+CHANGED = {"article-2-item-2","article-10-item-1","article-11-item-2","article-11-item-3","article-11-item-4","article-11-item-5","article-12-item-2",
+  "article-13-item-2","article-13-item-3","article-13-item-4","article-14-item-1","article-14-item-2","article-14-item-3","article-15-item-1","article-16-item-1"}
+REMOVED = {"article-14-item-4","article-14-item-5","article-15-item-2","article-15-item-3"}
 def renamed(value):
-    for old,new in TERMS_REPLACEMENTS:
+    for old,new in EDITION_REPLACEMENTS:
         value = value.replace(old,new)
     return value
 prior_source = subprocess.check_output(["git","show",PRIOR_COMMIT+":docs/terms-restructure-2026-11/TERMS.md"],text=True)
-expected_source = prior_source
-for old,new in TERMS_REPLACEMENTS:
-    assert old in expected_source, old
-    expected_source = expected_source.replace(old,new)
-assert expected_source==source, "Unexpected changes besides the names and edition references"
 CLAUSE_PATTERN = r'(<a id="(article-\d+-item-\d+)"></a>\n\n\d+\. )([\s\S]*?)(?=\n\n<a id=|$)'
 def clauses(value):
     return {m[2]:m[3].strip() for m in re.finditer(CLAUSE_PATTERN,value)}
 old_clauses,new_clauses = clauses(prior_source),clauses(source)
-assert len(old_clauses)==151 and set(old_clauses)==set(new_clauses)
-changes={k for k in old_clauses if old_clauses[k]!=new_clauses[k]}
-assert all(renamed(old_clauses[k])==new_clauses[k] for k in changes), changes
+assert len(old_clauses)==151 and len(new_clauses)==147 and set(old_clauses)-set(new_clauses)==REMOVED and set(new_clauses)<=set(old_clauses)
+changes={k for k in new_clauses if renamed(old_clauses[k])!=new_clauses[k]}
+assert changes==CHANGED, changes ^ CHANGED
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
-assert [renamed(t) for t in old_tables]==new_tables, "Tables changed"
-for phrase in ["特殊指導","通常指導","受講条件書（","受講規約"]:
+assert len(old_tables)==len(new_tables) and [renamed(t) for t in old_tables[1:]]==new_tables[1:], "Tables changed besides the document table of article 2"
+assert "その授業への合意で追加できます" in new_tables[0]
+for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","確認待ち","調整中","締め切り","この日程で大丈夫"]:
     assert phrase not in source,phrase
-assert len(ids)==196
+assert len(ids)==192
 for link in body.select('a[href^="#article-"]'):
     label=re.fullmatch(r"第(\d+)条(?:第(\d+)項)?",link.get_text())
     if label:
         target="article-"+label[1]+("-item-"+label[2] if label[2] else "")
         assert link["href"]=="#"+target,"Reference label differs from anchor"
-waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261026-r14/waiver/"
+waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261027-r15/waiver/"
 assert [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]] == [waiver_url]
+RELATED_CHANGES={"TUITION_AGREEMENT.md":[("変更・追加には事前の双方の合意が必要です。","回数を超える授業は、その授業への事前の合意で追加できます（共通規約第12条第2項）。その他の変更には事前の双方の合意が必要です。")]}
 for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.md","TUITION_AGREEMENT.md","WAIVER_GUIDE.md"]:
-    before=subprocess.check_output(["git","show",PRIOR_COMMIT+":"+str(SOURCE.parent.relative_to(ROOT)/filename)],text=True)
-    for old,new in RELATED_REPLACEMENTS:
+    before=renamed(subprocess.check_output(["git","show",PRIOR_COMMIT+":"+str(SOURCE.parent.relative_to(ROOT)/filename)],text=True))
+    for old,new in RELATED_CHANGES.get(filename,[]):
+        assert before.count(old)==1,filename
         before=before.replace(old,new)
     after=(SOURCE.parent/filename).read_text(encoding="utf-8")
     assert before==after and not any(phrase in after for phrase in ["特殊指導","通常指導","受講条件書（","受講規約"]),filename
@@ -189,11 +191,11 @@ index_html = """<!doctype html>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>共通規約</h1>
 <p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「個別受講条件書」、月ごとの授業の内容は「受講計画合意書」で定めます。</p>
 <h2>共通規約（2026年11月1日から適用）</h2>
-<ul><li><a href="2026-11-20261026-r14/">Web版を読む</a></li><li><a href="2026-11-20261026-r14/stepwise-terms-2026-11-20261026-r14.pdf">PDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261027-r15/">Web版を読む</a></li><li><a href="2026-11-20261027-r15/stepwise-terms-2026-11-20261027-r15.pdf">PDFで開く</a></li></ul>
 <h2>書類の様式</h2>
-<ul><li><a href="2026-11-20261026-r14/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261026-r14/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r14/documents/special/">特別単価合意書</a>（<a href="2026-11-20261026-r14/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261026-r14/documents/agreement/">受講計画合意書</a>（<a href="2026-11-20261026-r14/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
+<ul><li><a href="2026-11-20261027-r15/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261027-r15/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261027-r15/documents/special/">特別単価合意書</a>（<a href="2026-11-20261027-r15/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261027-r15/documents/agreement/">受講計画合意書</a>（<a href="2026-11-20261027-r15/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
 <h2>キャンセル料金の免除申請</h2>
-<ul><li><a href="2026-11-20261026-r14/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261026-r14/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261027-r15/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261027-r15/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
 <p class="note">ご不明な点は、いつものLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
 </body></html>
 """
