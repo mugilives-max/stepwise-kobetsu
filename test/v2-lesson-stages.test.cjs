@@ -218,3 +218,27 @@ test('「確定する」も、受講計画を超える授業は確かめる。�
   await h.ok('schedule/lessons/create', { ...L, subject: '英語', date: '2026-10-23', send: 'decide' });
   assert.equal(ids().length, 4);
 });
+
+// 2026-10-27 本人「他の曜日の授業を代わりに実施したいなどの要望が生徒から直接受けた場合…請求の総量は保護者との合意を超えない」（規約下書き 第11条3項）
+test('代わりに実施した: 行った授業を実施済みで入れ、予定の授業はお休み（取消料なし）。保護者に 1 通。長く・高くはできない', async () => {
+  const { h, auth, kid, L, familyMails, row, ids } = await world();
+  await h.ok('schedule/lessons/create', { ...L, date: '2026-10-09', send: 'decide' });
+  const planned = ids()[0], n0 = familyMails().length;
+  const swap = x => h.call('schedule/lessons/swap', { auth, id: planned, version: row(planned).version, date: '2026-10-02', start: '10:00', ...x });
+  assert.equal((await swap({ minutes: 90 })).error.code, 'overFee');
+  assert.equal((await swap({ date: '2026-10-03' })).error.code, 'future');
+  assert.equal((await swap({ kind: '特別' })).error.code, 'badKind');
+  const r = await swap({ subject: '英語' });
+  assert.equal(r.ok, true);
+  assert.deepEqual([row(planned).status, row(planned).note], ['rested', '10/2(金) 10:00 に代わりに実施']);
+  const d = row(r.done);
+  assert.deepEqual([d.status, d.date, d.start, d.minutes, d.subject, d.agreement], ['done', '2026-10-02', '10:00', 60, '英語', '10/9(金) 17:00 数学の授業の代わりに実施']);
+  assert.equal(h.rows('select count(*) n from cancellationFees where lessonId = ?', planned)[0].n, 0, '取消料なし');
+  assert.equal(familyMails().length, n0 + 1);
+  assert.match(familyMails().at(-1).body, /10\/9\(金\) 17:00 数学 の授業を、10\/2\(金\) 10:00〜11:00（英語）に代わりに行いました。10\/9\(金\) の授業はお休みになります。/);
+  // お休みにした授業は、もう代わりにできない
+  assert.equal((await h.call('schedule/lessons/swap', { auth, id: planned, version: row(planned).version, date: '2026-10-02', start: '13:00' })).error.code, 'badStatus');
+  // 合意の記録がある実施済みなので、計画がなくても「合意の記録がない授業」に出ない
+  const plan = await h.ok('students/plan', { auth, studentId: kid.id, month: '2026-10' });
+  assert.deepEqual([plan.unrecorded.length, plan.subjects.map(s => [s.subject, s.done])], [0, [['英語', 1]]]);
+});

@@ -659,6 +659,30 @@ export const scheduleRoutes = {
     await audit(c, 'lessonRest', l.id);
     return { lesson: lessonView(next) };
   },
+  // 予定の授業の代わりに、その場で授業をした（規約下書き 第11条3項。2026-10-27 本人「他の曜日の授業を代わりに実施したいなどの要望が生徒から直接受けた場合…
+  // 請求の総量は保護者との合意を超えない」）。行った授業を実施済みで入れ、予定の授業はお休み（取消料なし）にして、保護者に 1 通知らせる
+  'schedule/lessons/swap': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const l = await getLesson(c, b.id); sameVersion(l, b);
+    if (l.status !== 'decided') fail('badStatus', '実施予定の授業だけ、代わりに実施できます');
+    if (startMs(l.date, l.start) <= c.now) fail('started', '始まった授業の代わりにはできません');
+    const n = { ...lessonFields(b, l), studentId: l.studentId, id: newId('ls') };
+    if (n.date > todayJst(c.now)) fail('future', '代わりに行った授業は、今日までの日付で入れてください');
+    if (n.kind !== l.kind) fail('badKind', '代わりの授業は、予定の授業と同じ種類にしてください');
+    if (n.minutes > Number(l.minutes) || await lessonFee(c.db, n) > await lessonFee(c.db, l)) fail('overFee', '代わりの授業は、予定の授業より長く・高くできません（保護者と合意した授業料を超えないように）');
+    await checkConflicts(c, [n], { force: !!b.force, exceptId: l.id });
+    const s = await studentRow(c, l.studentId), was = `${mdText(l.date)} ${l.start} ${l.subject}`, now = iso(c.now);
+    // 予定の授業を先にお休みにする（ほかの操作と重なったら、何も入れない）
+    const next = await setLesson(c, l, { status: 'rested', note: [l.note, `${mdText(n.date)} ${n.start} に代わりに実施`].filter(Boolean).join('\n').slice(0, 1000) });
+    await c.db.prepare("insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, agreement, decidedAt, decidedBy, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 'done', ?, ?, ?, ?, ?)")
+      .bind(n.id, l.studentId, n.staffId, n.date, n.start, n.minutes, n.subject, n.kind, n.deliveryMode, `${was}の授業の代わりに実施`, now, 'staff:' + c.actor.id, now, now).run();
+    await calendarEffect(c, 'delete', l, '');
+    await closeRequests(c, l.id, ['move', 'late', 'rest'], 'staff:' + c.actor.id);
+    await familyNotice(c, l.studentId, '授業を代わりの日時に行いました', `${fullName(s)}さんの ${was} の授業を、${mdText(n.date)} ${n.start}〜${endText(n.start, n.minutes)}（${n.subject}）に代わりに行いました。${mdText(l.date)} の授業はお休みになります。`,
+      familyTarget('schedule', { student: l.studentId, month: n.date.slice(0, 7) }), { type: 'lesson', targets: [{ id: l.id, version: next.version }] });
+    await audit(c, 'lessonSwap', l.id, { doneId: n.id, date: n.date, start: n.start });
+    return { lesson: lessonView(next), done: n.id };
+  },
   'schedule/lessons/cancel': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const l = await getLesson(c, b.id); sameVersion(l, b);
