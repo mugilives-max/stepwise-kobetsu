@@ -26,7 +26,8 @@ export const homeRoutes = {
     const add = (key, label, count, link, note = '') => { if (count) todo.push({ key, label, count, link, note }); };
     if (manager) add('requests', '生徒・保護者からの連絡', range.openRequests.length, '#schedule', '変更・お休み・キャンセル');
     if (manager && near) add('adjusting', '調整中のまま近づいている授業', near.n, '#schedule', '5日以内。確認をお願いするか、合意を記録して確定');
-    add('records', '記録待ちの授業', pending.lessons.length, '#records', pending.lessons.some(l => l.draft) ? '下書きを含む' : '');
+    // 授業記録は努力義務（2026-10-27 本人「授業記録はあくまで努力義務程度に抑えておこうかな。もう管理の方で手間がかかってしまって、逆にシステムに苦しめられています」）: 書いていない記録は数えない。書きかけ（下書き）だけ出す
+    add('records', '書きかけの授業記録', pending.lessons.filter(l => l.draft).length, '#records', '');
     add('handover', '読んでいない引き継ぎメモ', pending.unreadHandover, '#records');
     add('homework', '宿題の確認待ち', reported.homework.length, '#records', '生徒・保護者が「できた」と知らせた');
     if (manager) add('sheets', '届いた成績票', grades.files.length, '#grades', '点数を取り込む');

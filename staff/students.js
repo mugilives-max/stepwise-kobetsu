@@ -43,7 +43,7 @@ export function studentsPage(ctx) {
     h += `<div class="fam-head"><span>${esc(f.name || '')}</span>${list.manager && f.id ? `<a class="mini-btn" href="#family=${encodeURIComponent(f.id)}" aria-label="${esc(f.name || '家族')}の連絡先・招待"><svg viewBox="0 0 24 24" aria-hidden="true">${PERSON}</svg></a>` : ''}</div>`;
     h += '<div class="group">' + ss.map(s => {
       const sub = [s.trial ? (s.offered ? '<span class="tag warn">入塾の申込み待ち</span>' : '<span class="tag warn">体験</span>') : '', esc(s.grade || ''), s.status === 'paused' ? '休会' : s.status === 'left' ? '退会' : '', s.testOnly ? 'テスト' : '', s.next ? '次 ' + md(s.next.slice(0, 10)) + ' ' + esc(s.next.slice(11)) : ''].filter(Boolean).join('・');
-      const badges = (s.requests ? `<span class="pill red" title="連絡">${svg('mail')}${s.requests}</span>` : '') + (s.pendingRecords ? `<span class="pill warn" title="記録待ち">${svg('pencil')}${s.pendingRecords}</span>` : '');
+      const badges = (s.requests ? `<span class="pill red" title="連絡">${svg('mail')}${s.requests}</span>` : '') ; // 記録待ちの印は出さない（授業記録は努力義務。2026-10-27）
       return `<a class="srow${s.status === 'left' ? ' left' : ''}" href="#student=${encodeURIComponent(s.id)}"><span class="av" style="background:${avColor(s.name)}" aria-hidden="true">${esc(initial(s.name))}</span>
         <span class="b"><strong>${esc(s.name)}</strong><small class="muted">${sub}</small></span><span class="badges">${badges}</span><span class="go">›</span></a>`;
     }).join('') + '</div>';
@@ -84,7 +84,7 @@ function summary(ctx, x) {
   if (x.student.trial) return h;
   const todo = [];
   if (x.requests.length) todo.push(`<a class="todo" href="#schedule"><span class="b"><strong>連絡 ${x.requests.length}件</strong><small class="muted">${x.requests.map(r => md(r.date) + ' ' + esc(r.subject)).join('・')}</small></span><span class="go">›</span></a>`);
-  if (x.pendingRecords.length) todo.push(`<a class="todo" href="#record=${encodeURIComponent(x.pendingRecords[x.pendingRecords.length - 1].id)}"><span class="b"><strong>記録待ち ${x.pendingRecords.length}件</strong><small class="muted">${x.pendingRecords.map(l => md(l.date) + ' ' + esc(l.subject)).join('・')}</small></span><span class="go">›</span></a>`);
+  // 記録待ちは「対応すること」に出さない（授業記録は努力義務。2026-10-27）
   if (x.grades.pendingTests.length) todo.push(`<a class="todo" href="#grades=${sid}"><span class="b"><strong>結果待ちのテスト</strong><small class="muted">${x.grades.pendingTests.map(t => esc(t.title)).join('・')}</small></span><span class="go">›</span></a>`);
   if (todo.length) h += `<h2>対応すること</h2><div class="rows">${todo.join('')}</div>`;
   h += '<h2>次の授業</h2>' + (x.upcoming.length ? '<div class="rows">' + x.upcoming.slice(0, 2).map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">ありません。</p>');
@@ -117,7 +117,7 @@ function schedule(ctx, x) {
 function records(ctx, x) {
   const { esc } = ctx;
   let h = '';
-  if (x.pendingRecords.length) h += `<h2>記録待ち <span class="count">${x.pendingRecords.length}</span></h2><div class="rows">` + x.pendingRecords.map(l => lessonRow(esc, l, '#record=' + encodeURIComponent(l.id))).join('') + '</div>';
+  if (x.pendingRecords.length) h += `<h2>記録を書ける授業</h2><div class="rows">` + x.pendingRecords.map(l => lessonRow(esc, l, '#record=' + encodeURIComponent(l.id))).join('') + '</div>';
   h += '<h2>宿題</h2>' + homeworkList(esc, x.homework);
   h += '<h2>記録</h2>' + (x.records.length ? '<div class="rows">' + x.records.map(r => `<a class="todo" href="#record=${encodeURIComponent(r.lessonId)}"><span class="b"><strong>${md(r.date)} ${esc(r.subject)}：${esc(r.range || '（範囲なし）')}</strong>
     <small class="muted">${r.status === 'draft' ? '下書き・' : ''}${esc(noteText(r.staffNotes) || r.comment.slice(0, 60))}</small></span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">まだ記録はありません。</p>');

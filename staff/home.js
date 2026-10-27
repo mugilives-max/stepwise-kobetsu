@@ -31,7 +31,7 @@ export function todayPage(ctx, me) {
       const started = Date.parse(l.date + 'T' + l.start + ':00+09:00') <= t.nowMs;
       let act = '';
       if (l.status === 'decided' && started) act = `<button class="ibtn primary" data-action="td-done" data-id="${esc(l.id)}" data-version="${l.version}" aria-label="実施済みにして記録"${ctx.dis()}>${roundIcon('pencil', '実施済みにして記録')}</button>`;
-      else if (l.status === 'done' && l.needsRecord) act = `<a class="ibtn warn" href="#record=${encodeURIComponent(l.id)}" aria-label="記録を書く">${roundIcon('pencil', '記録を書く')}</a>`;
+      else if (l.status === 'done' && l.needsRecord) act = `<a class="ibtn" href="#record=${encodeURIComponent(l.id)}" aria-label="記録を書く">${roundIcon('pencil', '記録を書く')}</a>`;
       else if (l.status === 'done') act = `<span class="ibtn ok" role="img" aria-label="記録済み">${roundIcon('check', '記録済み')}</span>`;
       else if (l.meetUrl) act = `<a class="ibtn" href="${esc(l.meetUrl)}" target="_blank" rel="noopener" aria-label="Meet を開く">${roundIcon('video', 'Meet')}</a>`;
       return `<div class="lrow"><span class="t">${l.start}<small>〜${endOf(l.start, l.minutes)}</small></span>

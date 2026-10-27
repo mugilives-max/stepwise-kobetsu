@@ -32,7 +32,8 @@ export function recordsPage(ctx) {
   if (!reported) { ctx.call('homework/reported').then(r => { reported = r.ok ? r.homework : []; ctx.render(); }); }
   let h = ctx.notice();
   if (pending.unreadHandover) h += `<p class="notice">読んでいない引き継ぎメモが ${pending.unreadHandover}件あります。</p>`;
-  h += `<div class="sec-title">記録待ち${pending.lessons.length ? ` <span class="count">${pending.lessons.length}</span>` : ''}</div>`;
+  // 授業記録は努力義務（2026-10-27 本人「授業記録はあくまで努力義務程度に抑えておこうかな。もう管理の方で手間がかかってしまって、逆にシステムに苦しめられています」）: 数で急かさない
+  h += `<div class="sec-title">記録を書ける授業</div>`;
   h += pending.lessons.length ? '<div class="rows">' + pending.lessons.map(l => rowLink('#record=' + encodeURIComponent(l.id), `${mdw(l.date)} ${l.start} ${esc(l.studentName)}`, esc(l.subject), l.draft ? '<span class="tag warn">下書き</span>' : '')).join('') + '</div>' : '<p class="muted small">ありません。</p>';
   h += `<div class="sec-title">宿題の確認待ち${reported && reported.length ? ` <span class="count">${reported.length}</span>` : ''}</div>`;
   if (!reported) h += '<p class="muted small">読み込んでいます…</p>';
