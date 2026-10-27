@@ -1,10 +1,11 @@
 name: Build adopted terms and PDF
 on:
   push:
-    branches: ["codex/terms-publication-*", "codex/terms-flow-review-20261014"]
+    branches: ["codex/terms-publication-*", "claude/terms-publication-*", "codex/terms-flow-review-20261014"]
     paths:
       - "scripts/publish-terms.py"
       - "docs/terms-restructure-2026-11/TERMS.md"
+      - "docs/terms-restructure-2026-11/DRAFT_20261027.md"
       - "docs/terms-restructure-2026-11/WAIVER_GUIDE.md"
       - "docs/terms-restructure-2026-11/TEACHING_CONDITIONS_*.md"
       - "docs/terms-restructure-2026-11/TUITION_AGREEMENT.md"
@@ -17,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
-    if: startsWith(github.ref, 'refs/heads/codex/terms-publication-') || github.ref == 'refs/heads/codex/terms-flow-review-20261014'
+    if: startsWith(github.ref, 'refs/heads/codex/terms-publication-') || startsWith(github.ref, 'refs/heads/claude/terms-publication-') || github.ref == 'refs/heads/codex/terms-flow-review-20261014'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -44,16 +45,16 @@ jobs:
         with:
           name: terms-publication-review
           path: |
-            terms/2026-11-20261026-r14/
-            docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261026_R14.json
-            docs/terms-restructure-2026-11/publication-preview-20261026-r14/
+            terms/2026-11-20261027-r15/
+            docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261027_R15.json
+            docs/terms-restructure-2026-11/publication-preview-20261027-r15/
           if-no-files-found: warn
           retention-days: 30
       - name: Commit generated files to the work branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- terms/2026-11-20261026-r14 terms/index.html docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261026_R14.json docs/terms-restructure-2026-11/publication-preview-20261026-r14
+          git add -- terms/2026-11-20261027-r15 terms/index.html docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261027_R15.json docs/terms-restructure-2026-11/publication-preview-20261027-r15
           if ! git diff --cached --quiet; then
             git commit -m "docs: generate adopted terms HTML and PDF on GitHub"
             git push origin "HEAD:$GITHUB_REF_NAME"
