@@ -4,7 +4,7 @@
 // - 保護者: 推移・振り返り・成績票・その期間の授業の実施状況。模試の志望校判定は持たない（成績票の PDF で足りる）。成績票の写真や PDF を送れる
 // - 生徒: 科目ごとの点数の推移・次の対策・次のテストまでの日数。成績票の写真や PDF を送れる
 // 成績票は送られた順に「取り込み待ち」に並び、スタッフが中身を確かめて点数を入れる。中身はファイルの置き場所（cf/v2/files.mjs）に置く。
-import { fail, newId, iso, audit } from './util.mjs';
+import { fail, newId, iso, audit, selectIn } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
@@ -55,9 +55,9 @@ const sum = (rows, k) => rows.every(r => r[k] !== null && r[k] !== undefined) &&
 async function examsOf(c, studentId, who, subjects = null) {
   const exams = (await c.db.prepare("select * from exams where studentId = ? and status = 'recorded' order by date, createdAt").bind(studentId).all()).results;
   if (!exams.length) return [];
-  const q = `(${exams.map(() => '?').join(', ')})`;
-  const scores = (await c.db.prepare(`select * from examScores where examId in ${q} order by sortOrder, subject`).bind(...exams.map(e => e.id)).all()).results;
-  const reviews = Object.fromEntries((await c.db.prepare(`select * from examReviews where examId in ${q}`).bind(...exams.map(e => e.id)).all()).results.map(r => [r.examId, r]));
+  const examIds = exams.map(e => e.id);
+  const scores = (await selectIn(c.db, 'select * from examScores where examId in {in}', examIds)).sort((a, b) => (Number(a.sortOrder) - Number(b.sortOrder)) || String(a.subject).localeCompare(String(b.subject)));
+  const reviews = Object.fromEntries((await selectIn(c.db, 'select * from examReviews where examId in {in}', examIds)).map(r => [r.examId, r]));
   return exams.map(e => {
     const all = scores.filter(s => s.examId === e.id), r = reviews[e.id];
     const total = { score: e.totalScore ?? sum(all, 'score'), max: e.totalMax ?? sum(all, 'max'), rank: e.totalRank, rankOf: e.totalRankOf, deviation: e.totalDeviation, fromSubjects: e.totalScore === null && all.length > 0 };

@@ -56,6 +56,16 @@ export function passwordProblem(pass, email) {
 export const normEmail = v => String(v || '').trim().toLowerCase();
 export const validEmail = v => /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/.test(String(v || '')) && String(v).length <= 254;
 export const iso = ms => new Date(ms).toISOString();
+// D1 は1回の問い合わせに渡せる値が100個まで（2026-10-27 授業が100件を超えて本番の予定が開かなくなった）。
+// id の一覧で読むときは分けて読む。sql の「in」のところは {in} と書く。before / after は {in} の前後に渡す値。並びは呼ぶ側で直す
+export async function selectIn(db, sql, ids, { before = [], after = [], size = 80 } = {}) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += size) {
+    const part = ids.slice(i, i + size);
+    out.push(...(await db.prepare(sql.replace('{in}', '(' + part.map(() => '?').join(', ') + ')')).bind(...before, ...part, ...after).all()).results);
+  }
+  return out;
+}
 
 // 監査の記録。お金・権限・ログインに関わる操作は必ず残す
 export async function audit(c, action, target = '', detail = {}) {

@@ -13,7 +13,7 @@
 // 入口は Worker の別の鍵（V2_SERVICE_WRITE_KEY。読み取りの V2_SERVICE_KEY とは別）で、mcp/ の道だけを通す（cf/v2/service.mjs）。
 // 対象は V2_SERVICE_WRITE_SCOPE が 'all' でなければ「テスト用の生徒」（testOnly か名字が【テスト】）だけ。
 // 請求・料金・契約・同意の代行・支払い・削除・汎用の管理 API の直通は無い。既定のお知らせはしない（送るのは notices/send だけ）。
-import { fail, audit, newId, iso, sha256Hex } from './util.mjs';
+import { fail, audit, newId, iso, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
 import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
@@ -62,12 +62,12 @@ const parse = s => { try { return JSON.parse(s) || {}; } catch { return {}; } };
 // ---- 読み戻し ----
 async function noticesOf(c, lessonIds) {
   if (!lessonIds.length) return [];
-  const rows = (await c.db.prepare(`select n.*, e.status effectStatus, e.error effectError, e.sentAt from lessonNotices n left join effects e on e.id = n.effectId where n.lessonId in (${lessonIds.map(() => '?').join(', ')}) order by n.createdAt`).bind(...lessonIds).all()).results;
+  const rows = (await selectIn(c.db, 'select n.*, e.status effectStatus, e.error effectError, e.sentAt from lessonNotices n left join effects e on e.id = n.effectId where n.lessonId in {in}', lessonIds)).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
   return rows.map(n => ({ lessonId: n.lessonId, requestId: n.requestId, action: n.action, to: n.toMasked, mail: n.effectId ? (n.effectStatus || 'unknown') : 'none', sentAt: n.sentAt || '', at: n.createdAt }));
 }
 async function readLessons(c, ids) {
   if (!ids.length) return [];
-  const rows = (await c.db.prepare(`select l.*, s.familyName, s.givenName, s.trial from lessons l join students s on s.id = l.studentId where l.id in (${ids.map(() => '?').join(', ')}) order by l.date, l.start`).bind(...ids).all()).results;
+  const rows = (await selectIn(c.db, 'select l.*, s.familyName, s.givenName, s.trial from lessons l join students s on s.id = l.studentId where l.id in {in}', ids)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
   const notes = await noticesOf(c, rows.map(r => r.id));
   return rows.map(l => lessonView(l, { studentName: fullName(l), trial: !!l.trial, end: endOf(l.start, l.minutes), unsent: l.status === 'held', agreement: l.agreement || '', notices: notes.filter(n => n.lessonId === l.id) }));
 }
@@ -98,7 +98,7 @@ async function noticePlan(c, b) {
   if (!ids.length || ids.length > MAX_ITEMS) fail('needIds', `お知らせする授業の ID を 1〜${MAX_ITEMS} 件、lessonIds で選んでください`);
   if (!studentIds.length) fail('needStudents', '対象の生徒の ID を studentIds で示してください（選んだ授業がほかの生徒のものなら止めます）');
   if (new Set(ids).size !== ids.length) fail('duplicate', '同じ授業の ID が 2 回入っています');
-  const rows = (await c.db.prepare(`select * from lessons where id in (${ids.map(() => '?').join(', ')})`).bind(...ids).all()).results;
+  const rows = await selectIn(c.db, 'select * from lessons where id in {in}', ids);
   const problems = [];
   for (const id of ids) {
     const l = rows.find(r => r.id === id);
