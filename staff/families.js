@@ -90,7 +90,7 @@ function familySheet(ctx, f) {
       <form class="stack" data-form="cond-propose" data-id="${esc(s.id)}">
       <div class="row"><label style="flex:1">基本の授業時間（分）<input type="number" name="minutes" min="15" max="300" step="5" required value="${v.minutes}"></label><label style="flex:1">1回の税込の通常の基準単価（円）<input type="number" name="fee" min="0" max="100000" step="10" required value="${v.fee}"></label></div>
       <div class="row"><label style="flex:1">実施形態<select name="deliveryMode">${Object.entries(COND_MODE).map(([k, l]) => `<option value="${k}"${k === v.deliveryMode ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label style="flex:1">適用開始月<input type="month" name="fromMonth" required value="${esc(v.fromMonth)}"></label></div>
-      <label>人数（空なら「教室は最大2名／オンラインは1対1」）<input name="groupSize" maxlength="80" value="${esc(v.groupSize)}" placeholder="教室は講師1名につき生徒最大2名"></label>
+      <label>人数（空なら「講師1名につき生徒最大2名」）<input name="groupSize" maxlength="80" value="${esc(v.groupSize)}" placeholder="講師1名につき生徒最大2名"></label>
       <fieldset class="reg-field"><legend>科目</legend>${subjectFields(esc, v.subjects)}</fieldset>
       <label>特記事項（任意）<textarea name="note" maxlength="1000" rows="2">${esc(v.note)}</textarea></label>
       <div class="row"><button class="primary"${ctx.dis()}>保護者にお知らせする</button><button type="button" data-action="fam-sheet" data-mode="student" data-id="${esc(s.id)}">戻る</button></div></form>`, 'fam-close', { wide: true });

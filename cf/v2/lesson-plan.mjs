@@ -1,10 +1,10 @@
-// 生徒の授業の計画（月ごと）。受講計画合意書ではなく、授業そのものに焦点を当てる
+// 生徒の授業の計画（月ごと）。受講計画書ではなく、授業そのものに焦点を当てる
 // （2026-10-27 本人「今まで作っていたページはあくまでも受講計画書に焦点を当てていたが、今度は授業の計画に焦点を当てる」
 //  「受講計画書にない授業が承認済みであるかどうかが不明なのが問題…受講計画書がなかったとしても、それらの合意があれば問題がない」）。
 // - 科目ごとに、その月の授業の数（実施・確定・合意待ち）
-// - 合意待ち（調整中・承認待ち・下書き）と、合意の記録がない授業（確定・実施済みなのに、受講計画合意書にも授業ごとの合意にも当たらない）
+// - 合意待ち（調整中・承認待ち・下書き）と、合意の記録がない授業（確定・実施済みなのに、受講計画書にも授業ごとの合意にも当たらない）
 // - 授業料の見込み
-// 合意している授業: 承認済みの受講計画合意書に入る、または授業ごとの合意の記録がある（decidedBy・agreement）
+// 合意している授業: 承認済みの受講計画書に入る、または授業ごとの合意の記録がある（decidedBy・agreement）
 import { fail, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { studentBilling, assignLines, lineMatches, lessonAmount, base90 } from './plan-calc.mjs';
@@ -14,7 +14,7 @@ const validMonth = m => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(m || ''));
 const monthEnd = m => { const [y, mo] = m.split('-').map(Number); return new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10); };
 export const agreedByLesson = l => !!(l.decidedBy || l.agreement);
 
-// 受講計画合意書に入らない授業の1回の授業料: 同じ科目・種類の承認済みの受講計画合意書 → 特別単価合意書 → 個別受講条件書 → 生徒の基本単価
+// 受講計画書に入らない授業の1回の授業料: 同じ科目・種類の承認済みの受講計画書 → 特別単価合意書 → 個別受講条件書 → 生徒の基本単価
 export async function feeOutsidePlan(db, student, lines, lesson) {
   const m = Number(lesson.minutes) - Number(lesson.lostMinutes || 0);
   const l = lines.find(x => x.status === 'approved' && lineMatches(x, lesson));
@@ -31,7 +31,7 @@ export async function monthPlan(c, student, month) {
   const sb = await studentBilling(c.db, student.id);
   const waitingRows = (await c.db.prepare("select * from lessons where studentId = ? and status in ('held', 'proposed') and kind <> '体験' and date between ? and ? order by date, start").bind(student.id, from, to).all()).results;
   const fixed = sb.lessons.filter(l => l.date >= from && l.date <= to);
-  // 合意待ちも決まったものとして受講計画合意書に入れてみる（入る分は計画の範囲）
+  // 合意待ちも決まったものとして受講計画書に入れてみる（入る分は計画の範囲）
   const hyp = assignLines(sb.lines, sb.lessons.concat(waitingRows.map(l => ({ ...l, status: 'decided' }))), sb.invoicedLine);
   const view = l => ({ id: l.id, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind || '通常', status: l.status, asked: !!l.askedAt, version: l.version, inPlan: !!sb.line[l.id] || !!hyp.line[l.id] });
   const unrecorded = fixed.filter(l => !sb.line[l.id] && !agreedByLesson(l));

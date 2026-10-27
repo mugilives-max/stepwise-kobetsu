@@ -16,7 +16,7 @@ const family = { id: 'fam_sample', name: '見本家', guardianName: '見本 花�
 const student = { id: 'stu_sample', familyName: '見本', givenName: '太郎', grade: '中3' };
 
 export const DOC_TYPES = {
-  agreement: { title: '受講計画合意書', when: '承認前の案・承認後の控えを開いたとき', who: '保護者と教室管理者', where: '受講計画合意書・契約と同意の履歴' },
+  agreement: { title: '受講計画書', when: '承認前の案・承認後の控えを開いたとき', who: '保護者と教室管理者', where: '受講計画書・契約と同意の履歴' },
   condition: { title: '個別受講条件書', when: '生徒ごとに「条件を決めてお知らせ」したとき（案）と、保護者が同意したとき（確定）', who: '保護者はお支払いから。塾は生徒の画面から', where: '家族の画面 → 生徒 → 個別受講条件書' },
   special: { title: '特別単価合意書', when: '特別単価を提案したとき（案）と、保護者が承認したとき（確定）', who: '保護者はお支払いから。塾は生徒の画面から', where: '家族の画面 → 生徒 → 特別単価' },
   invoice: { title: '請求書', when: '月の請求を確定したとき', who: '保護者はお支払いの請求から。塾は請求の画面から', where: '請求 → 家族の月。振込先と備考は 設定 → 請求の下の「請求書の設定」' },

@@ -18,7 +18,7 @@ test('conditions: the manager proposes, the family must agree before approving a
   assert.deepEqual((await h.ok('family/conditions', { auth: parent })).conditions, { items: [], needs: false }, '条件が無ければ求めない');
   const mails = h.mails().length;
   const c1 = (await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', studentContact: true, subjects: '数学・英語', note: '', fromMonth: '2026-11' })).condition;
-  assert.deepEqual([c1.no, c1.status, c1.groupSize, c1.studentContact], [1, 'proposed', '教室は講師1名につき生徒最大2名', true]);
+  assert.deepEqual([c1.no, c1.status, c1.groupSize, c1.studentContact], [1, 'proposed', '講師1名につき生徒最大2名', true]);
   assert.equal(h.mails().length, mails + 1, '保護者にお知らせが 1 通');
   assert.match(h.mails().at(-1).subject, /個別受講条件書/); assert.doesNotMatch(h.mails().at(-1).subject, /通常指導/); // 受講規約 r9 の名称
   const s = h.rows('select baseRate30, deliveryMode, permissions from students where id = ?', kid.id)[0];

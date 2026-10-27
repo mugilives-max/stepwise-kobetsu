@@ -1,6 +1,6 @@
 import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
 import { invoiceDueText } from '../../assets/v2/invoice-due.js';
-// 受講計画合意書・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
+// 受講計画書・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
 // - 教室管理者: 計画を作る・お知らせする・LINE などの承諾を記録する・先月と同じ内容で下書き、授業の種類と標準料金、
 //              キャンセル料の判断・減額や免除の申請への回答、月ごとの請求（確かめる・確定・取消・入金）
 // - 保護者: 計画の承認（回数を減らす・見送るも）・先生が記録した承諾の確認、請求の確認・振込の連絡、キャンセル料の減額・免除の申請
@@ -28,7 +28,7 @@ const sameVersion = (row, b) => { if (Number(b.version) !== Number(row.version))
 const DAY = 86400e3;
 
 export function planNoticeText(lines,names) {
-  return '次の授業内容・回数・時間・料金をご確認ください（受講計画合意書）。\n'+lines.map(l=>'・'+names[l.studentId]+'さん '+l.subject+' '+l.startDate+'〜'+l.endDate+' '+l.count+'回・1回'+l.minutes+'分 '+yen(l.fee)+'（税込）').join('\n')+
+  return '次の授業内容・回数・時間・料金をご確認ください（受講計画書）。\n'+lines.map(l=>'・'+names[l.studentId]+'さん '+l.subject+' '+l.startDate+'〜'+l.endDate+' '+l.count+'回・1回'+l.minutes+'分 '+yen(l.fee)+'（税込）').join('\n')+
     '\n予定総額：'+yen(lines.reduce((n,l)=>n+l.count*l.fee,0))+'（請求額ではありません）\n内容がよければ「承認する」を押してください。変更のご希望は教室へご連絡ください。\n未回答・既読だけで承認にはなりません。承認後は控えをPDF保存できます。';
 }
 // ---- 見せ方 ----
@@ -116,7 +116,7 @@ async function minCountFor(c, line) {
 // 行ごとの使い方: 割り当てた授業（決定・実施済み）と、まだ仮予定の授業
 function usageOf(sb, pendingLessons) {
   const out = {};
-  // done: 実施済み（受講計画合意書をどれだけ使ったか。2026-10-27 本人「どれくらい授業を消費しているのか…後どれくらい授業を実施すればいいのか」）
+  // done: 実施済み（受講計画書をどれだけ使ったか。2026-10-27 本人「どれくらい授業を消費しているのか…後どれくらい授業を実施すればいいのか」）
   for (const l of sb.lines) out[l.id] = { assigned: sb.used[l.id] || 0, done: sb.lessons.filter(ls => ls.status === 'done' && sb.line[ls.id] && sb.line[ls.id].id === l.id).length, tentative: pendingLessons.filter(ls => lineMatches(l, ls)).length };
   return out;
 }
@@ -137,8 +137,8 @@ export async function monthPreview(c, familyId, month, { ignoreInvoiceId = '' } 
       if (ls.status === 'decided') { if (ls.date <= today) out.issues.push(`${row.name}さん ${md(ls.date)} ${ls.subject} が実施済みになっていません`); continue; }
       const line = sb.line[ls.id], base = { lessonId: ls.id, date: ls.date, start: ls.start, minutes: ls.minutes, subject: ls.subject, lessonKind: ls.kind, carried: ls.date < from };
       if (line) row.items.push({ kind: 'lesson', ...base, planLineId: line.id, amount: lessonAmount(line, ls), label: '' });
-      // 受講計画合意書に入らなくても、授業ごとの合意の記録があれば請求する（2026-10-27 本人「受講計画書がなかったとしても、それらの合意があれば問題がない」）。
-      // 単価は同じ科目の受講計画合意書 → 特別単価合意書 → 個別受講条件書（cf/v2/lesson-plan.mjs feeOutsidePlan）。記録がない授業は確かめるまで待つ
+      // 受講計画書に入らなくても、授業ごとの合意の記録があれば請求する（2026-10-27 本人「受講計画書がなかったとしても、それらの合意があれば問題がない」）。
+      // 単価は同じ科目の受講計画書 → 特別単価合意書 → 個別受講条件書（cf/v2/lesson-plan.mjs feeOutsidePlan）。記録がない授業は確かめるまで待つ
       else if (agreedByLesson(ls)) row.items.push({ kind: 'lesson', ...base, planLineId: '', amount: await feeOutsidePlan(c.db, s, sb.lines, ls), label: '' });
       else row.pending.push({ ...base, estimate: estimateFor(sb.lines, s, ls) });
     }
@@ -228,11 +228,11 @@ export const billingRoutes = {
       const usage = usageOf(sb, tentative);
       const lines = sb.lines.filter(l => l.startDate <= to && from <= l.endDate);
       const lessonsInMonth = sb.lessons.filter(l => l.date >= from && l.date <= to);
-      // 種類の選択肢: 「通常」・この生徒の特別単価合意書・この月の授業で使っている種類（前からの「演習」なども、その授業の受講計画合意書は作れる）
+      // 種類の選択肢: 「通常」・この生徒の特別単価合意書・この月の授業で使っている種類（前からの「演習」なども、その授業の受講計画書は作れる）
       const specials = (await c.db.prepare("select title, minutes, fee from specials where studentId = ? and status in ('proposed', 'agreed') order by fromDate").bind(s.id).all()).results;
       const usedKinds = [...new Set(lessonsInMonth.concat(tentative).map(ls => ls.kind).filter(k => k && k !== '体験'))];
       // 超えている・ない（2026-10-27 本人「どこがオーバーでどこがオーバーしていないのか一目でわかりません」）:
-      // 調整中・承認待ちの授業も決まったものとして行に入れてみて、入らない授業を、同じ科目の承認済みの行の「超過」か「受講計画合意書にない授業」に分ける
+      // 調整中・承認待ちの授業も決まったものとして行に入れてみて、入らない授業を、同じ科目の承認済みの行の「超過」か「受講計画書にない授業」に分ける
       const hyp = assignLines(sb.lines, sb.lessons.concat(tentative.map(ls => ({ ...ls, status: 'decided' }))), sb.invoicedLine);
       const planned = {}; for (const [lid, line] of Object.entries(hyp.line)) if (line) planned[line.id] = (planned[line.id] || 0) + 1;
       // 承認待ち・下書きの行は、当たる授業の数（承認すればその行に入る）。回数を超える分は超過
@@ -241,10 +241,10 @@ export const billingRoutes = {
       const over = {}, unplannedList = [];
       for (const ls of lessonsInMonth.concat(tentative).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))) {
         if (hyp.line[ls.id]) continue;
-        if (lines.some(l => ['draft', 'proposed'].includes(l.status) && lineMatches(l, ls))) continue; // 承認待ち・下書きの受講計画合意書に入る
+        if (lines.some(l => ['draft', 'proposed'].includes(l.status) && lineMatches(l, ls))) continue; // 承認待ち・下書きの受講計画書に入る
         const home = lines.find(l => l.status === 'approved' && !l.parentId && lineMatches(l, ls));
         if (home) over[home.id] = (over[home.id] || 0) + 1;
-        // 請求を止めるのは、確定・実施済みなのに合意の記録がない授業だけ（合意があれば受講計画合意書がなくても請求する。合意待ちは保護者の承認で決まる）
+        // 請求を止めるのは、確定・実施済みなのに合意の記録がない授業だけ（合意があれば受講計画書がなくても請求する。合意待ちは保護者の承認で決まる）
         if (['decided', 'done'].includes(ls.status) && !agreedByLesson(ls)) unplannedList.push({ id: ls.id, date: ls.date, start: ls.start, subject: ls.subject, kind: ls.kind || '通常', status: ls.status, over: !!home });
       }
       rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseFee90: base90(s), baseRate30: s.baseRate30, specials, usedKinds,
@@ -304,7 +304,7 @@ export const billingRoutes = {
     await c.db.batch(drafts.map(l => c.db.prepare("update planLines set status = 'proposed', proposedAt = ?, updatedAt = ?, version = version + 1 where id = ? and status = 'draft'").bind(now, now, l.id)));
     const names = Object.fromEntries((await c.db.prepare(`select * from students where id in (${ids.map(() => '?').join(', ')})`).bind(...ids).all()).results.map(s => [s.id, fullName(s)]));
     const sentLines=drafts.map(l=>({...l,version:l.version+1}));
-    await familyNotice(c,drafts[0].studentId,[...new Set(sentLines.map(l=>l.startDate.slice(0,7)))].join('・')+' の授業内容・回数・料金をご確認ください（受講計画合意書）',planNoticeText(sentLines,names),
+    await familyNotice(c,drafts[0].studentId,[...new Set(sentLines.map(l=>l.startDate.slice(0,7)))].join('・')+' の授業内容・回数・料金をご確認ください（受講計画書）',planNoticeText(sentLines,names),
       familyTarget('money',{kind:'plan',refs:targetRefs(sentLines)}),{type:'plan',targets:sentLines.map(l=>({id:l.id,version:l.version}))});
     await audit(c, 'planSend', '', { lines: drafts.length });
     return { sent: drafts.length };
@@ -326,7 +326,7 @@ export const billingRoutes = {
       const sb = await studentBilling(c.db, sid);
       waiting += sb.lessons.filter(ls => !sb.line[ls.id] && !ls.invoiceId && lines.some(l => lineMatches(l, ls))).length;
     }
-    await familyNotice(c,lines[0].studentId,[...new Set(lines.map(l=>l.startDate.slice(0,7)))].join('・')+' 受講計画合意書の確認のお願い（再案内）',planNoticeText(lines,names)+(waiting ? '\nこの計画に当たる授業が'+waiting+'回あります。日時の確定と、科目・回数・料金への承認は別です。' : ''),
+    await familyNotice(c,lines[0].studentId,[...new Set(lines.map(l=>l.startDate.slice(0,7)))].join('・')+' 受講計画書の確認のお願い（再案内）',planNoticeText(lines,names)+(waiting ? '\nこの計画に当たる授業が'+waiting+'回あります。日時の確定と、科目・回数・料金への承認は別です。' : ''),
       familyTarget('money',{kind:'plan',refs:targetRefs(lines)}),{type:'plan',targets:lines.map(l=>({id:l.id,version:l.version}))});
     const now = iso(c.now);
     await c.db.batch(lines.map(l => c.db.prepare('update planLines set remindedAt = ? where id = ?').bind(now, l.id)));

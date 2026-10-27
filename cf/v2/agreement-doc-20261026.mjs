@@ -14,11 +14,15 @@ const period = (a, b) => a && b ? `${day(a)} 〜 ${a.slice(0, 4) === b.slice(0, 
 const partsText = l => { let ps = l.parts; if (typeof ps === 'string') { try { ps = JSON.parse(ps); } catch { return ''; } } return Array.isArray(ps) && ps.length ? ps.map(p => `${esc(p.label)} ${esc(p.count)}回`).join('／') : ''; };
 
 export const AGREEMENT_LAYOUT_R13 = '20261026-r13';
+// 共通規約 r15 を使う規約に決めたあとに作った行は、名前を「受講計画書」に（2026-10-27 本人「受講計画書にしよう」）。受講計画書は必須でない補助で、回数を超える授業は授業ごとの合意で行える
+export const AGREEMENT_LAYOUT_R15 = '20261027-r15', NAME_R15_TERMS = '2026-11-20261027-r15';
+export const usesNameR15 = (records, adoptedAt) => !!adoptedAt && records.length > 0 && records.every(r => String((r.line && r.line.createdAt) || '') >= adoptedAt);
 export const NEW_LAYOUT_FROM = '2026-10-26T14:00:00.000Z';
 // この様式で描くか: すべての行が、この日より後に作ったもの
 export const usesLayoutR13 = records => records.length > 0 && records.every(r => String((r.line && r.line.createdAt) || '') >= NEW_LAYOUT_FROM);
 
-export function agreementDocHtmlR13({ records, documentId, guardianName = '', sample = false }) {
+export function agreementDocHtmlR13({ records, documentId, guardianName = '', sample = false, r15 = false }) {
+  const docName = r15 ? '受講計画書' : '受講計画合意書';
   const first = records[0], l0 = first.line, status = l0.status, final = status === 'approved' || status === 'declined';
   const name = first.studentName || '';
   const consenter = final ? (l0.consenterName || '') : guardianName;
@@ -44,7 +48,7 @@ export function agreementDocHtmlR13({ records, documentId, guardianName = '', sa
   const rules = [
     ['回数', '合意した回数は、実施できる上限です。すべての回数の受講や、実施しなかった分の繰り越しを約束するものではありません。'],
     ['予定額', '上の回数を実施した場合の金額です。請求は、実施した授業で計算します。'],
-    ['日時', '授業の日時は、日程の確認で別に決めます。'],
+    ...(r15 ? [['回数を超える授業', '回数を超える授業や対象期間外の授業は、授業ごとに合意して行えます。この書面の内容は変わりません。'], ['日時', '授業の日時は、LINE・面談・電話等で相談して決めます。']] : [['日時', '授業の日時は、日程の確認で別に決めます。']]),
     ['その他', `授業料の上限・お支払い・キャンセルなどは、個別受講条件書と「${esc(kiyaku)}」のとおりです。`],
   ];
   const record = records.map(r => {
@@ -61,8 +65,8 @@ export function agreementDocHtmlR13({ records, documentId, guardianName = '', sa
     ? `<div class="consent ok"><div class="ct">保護者の承認</div><div><strong>${esc(l0.consenterName || '')} 様</strong>（保護者）　${esc(minute(l0.consentedAt || l0.consentDate))}　${esc(l0.approvedVia || '')}<br>生徒の受講について契約する権限を持つ保護者として、この内容を承認いただきました。</div></div>`
     : status === 'declined'
       ? `<div class="consent"><div class="ct">保護者の意思表示</div><div><strong>${esc(l0.consenterName || '')} 様</strong>（保護者）　${esc(minute(l0.consentedAt || l0.consentDate))}　見送り</div></div>`
-      : `<div class="consent"><div class="ct">保護者の承認</div><div>まだ承認いただいていません。保護者ページで内容をご確認のうえ、承認してください。承認のない授業は行いません。</div></div>`;
-  const barLabel = `受講計画合意書${status === 'approved' ? '（控え）' : status === 'declined' ? '（見送り）' : '（案）'}`;
+      : `<div class="consent"><div class="ct">保護者の承認</div><div>まだ承認いただいていません。保護者ページで内容をご確認のうえ、承認してください。${r15 ? '' : '承認のない授業は行いません。'}</div></div>`;
+  const barLabel = `${docName}${status === 'approved' ? '（控え）' : status === 'declined' ? '（見送り）' : '（案）'}`;
   return `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=860"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>${esc(barLabel)} ${esc(name)}</title>
@@ -97,7 +101,7 @@ export function agreementDocHtmlR13({ records, documentId, guardianName = '', sa
 <div class="bar"><span>${esc(barLabel)}。印刷（Ctrl+P）で PDF に保存できます。</span><button onclick="window.print()">印刷・PDF</button></div>
 <div class="sheet">
   ${sample ? '<div class="sample">見本・架空の記録です。実際の契約ではありません。</div>' : ''}
-  <div class="head"><h1>受講計画合意書${badge}</h1><div class="meta">${l0.proposedAt ? `提示日 ${esc(day(l0.proposedAt))}` : ''}${status === 'approved' ? `<br>承認日 ${esc(day(l0.consentedAt || l0.consentDate))}` : ''}</div></div>
+  <div class="head"><h1>${docName}${badge}</h1><div class="meta">${l0.proposedAt ? `提示日 ${esc(day(l0.proposedAt))}` : ''}${status === 'approved' ? `<br>承認日 ${esc(day(l0.consentedAt || l0.consentDate))}` : ''}</div></div>
   <div class="to">${to}</div>
   <p class="lead">${status === 'approved' ? '承認いただいた授業の内容と料金です。' : status === 'declined' ? '見送りとなった授業の内容と料金の記録です。' : '授業の内容と料金です。内容をご確認のうえ、承認をお願いします。'}</p>
   <h2>授業の内容</h2>

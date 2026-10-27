@@ -19,7 +19,7 @@ export function openAgreementDocument(request,onError) {
   const win=window.open('','_blank');
   if(!win){onError('書面のタブを開けませんでした。ポップアップを許可して、もう一度お試しください。');return;}
   win.opener=null;
-  win.document.title='受講計画合意書を読み込み中';
+  win.document.title='受講計画書を読み込み中';
   win.document.body.textContent='書面を読み込んでいます…';
   Promise.resolve().then(request).then(r=>{
     if(!r.ok)throw new Error(r.error?.message||'書面を開けませんでした');

@@ -221,7 +221,7 @@ test('staff can send a reminder for plans still waiting for approval, once a day
   const r = await h.ok('billing/plans/remind', { auth, familyId: kid.familyId });
   assert.deepEqual([r.reminded, r.waiting], [1, 2]);
   const mail = h.mails().at(-1);
-  assert.match(mail.subject, /受講計画合意書の確認のお願い/); assert.match(mail.body, /この計画に当たる授業が2回/);
+  assert.match(mail.subject, /受講計画書の確認のお願い/); assert.match(mail.body, /この計画に当たる授業が2回/);
   assert.equal(mail.status, 'dismissed', '切り替え前は送らない');
   assert.equal((await h.call('billing/plans/remind', { auth, familyId: kid.familyId })).error.code, 'tooSoon');
   h.clock += 86400e3;

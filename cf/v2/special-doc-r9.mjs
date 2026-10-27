@@ -20,7 +20,7 @@ export function specialDocR9({ sp, student, family, terms }) {
   const termsUrl = terms && terms.url ? terms.url : '';
   const key = [
     ['生徒', [['氏名', esc(name)], ['学年', esc(student.grade || '')]]],
-    ['指導', [['名称', `${esc(sp.title)}<small class="note">受講計画合意書では、授業の種類「${esc(sp.title)}」として示します</small>`], ['対象期間', `${esc(ymd(sp.fromDate))} 〜 ${esc(ymd(sp.toDate))}`], ['1回の授業', `${sp.minutes}分`], ['1回の授業料（上限）', `${yen(sp.fee)}<small>（税込）</small>`]]],
+    ['指導', [['名称', `${esc(sp.title)}<small class="note">授業の予定・受講計画書では、授業の種類「${esc(sp.title)}」として示します</small>`], ['対象期間', `${esc(ymd(sp.fromDate))} 〜 ${esc(ymd(sp.toDate))}`], ['1回の授業', `${sp.minutes}分`], ['1回の授業料（上限）', `${yen(sp.fee)}<small>（税込）</small>`]]],
   ];
   const detail = [
     ['指導の目的', br(sp.purpose)],
@@ -30,7 +30,7 @@ export function specialDocR9({ sp, student, family, terms }) {
   ];
   if (sp.note) detail.push(['特記事項', br(sp.note)]);
   const promises = [
-    // 授業料の行は外し、受講計画合意書での示し方は「名称」に添える（2026-10-26 個別受講条件書にそろえる）
+    // 授業料の行は外し、受講計画書での示し方は「名称」に添える（2026-10-26 個別受講条件書にそろえる）
     ['承認前', '承認をいただくまで、この単価は使いません。'],
     ['条件変更', '期間を延ばす・内容や単価を変えるときは、新しい版をお送りし、承認をいただいてから変えます。'],
     ['その他', 'お支払い・教材などは、個別受講条件書のとおりです。'],

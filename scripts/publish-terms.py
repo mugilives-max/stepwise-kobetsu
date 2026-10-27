@@ -308,7 +308,7 @@ REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="
 
 report["prior_source_commit"] = PRIOR_COMMIT
 report["reviewed_changed_paragraphs"] = len(changes)
-report["unchanged_paragraphs"] = len(old_clauses)-len(changes)
+report["unchanged_paragraphs"] = len(new_clauses)-len(changes)
 report["only_reviewed_source_changes"] = True
 report["source_equals_reviewed_draft"] = "DRAFT_20261027.md"
 report["deferred_conditions_unchanged"] = True

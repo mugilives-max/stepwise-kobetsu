@@ -1,7 +1,7 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principles';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-ease7';
-import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-pages2';
-import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ease3';
+import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-r15';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-r15';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
@@ -9,7 +9,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261027-dense2';
 import { EVENT_KIND, endOf } from '/assets/v2/schedule-view.js?v=20261027-principles';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-principles';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-r15';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -270,17 +270,17 @@ function moneySelection() {
   }
   return {header,plans,invoices,fees,conds,specials};
 }
-// 2026-10-27 本人「受講計画合意書の承認は「お支払い」でするべきことではない」→「その形で作り直して」:
+// 2026-10-27 本人「受講計画書の承認は「お支払い」でするべきことではない」→「その形で作り直して」:
 // 保護者が来る用事ごとに画面を分ける。承認（#plan）・同意（#agree）は「やること」とメールのリンクから、その 1 枚へ。
 // お支払い（#money）は請求とキャンセル料だけ。過去の契約・同意の控え（#contracts）はアカウントから
 const noneLeft = text => `<p class="muted" style="margin-top:16px">${text}</p><p><a href="#home">ホームへ</a></p>`;
-// 受講計画合意書の承認（月ごとに 1 枚。先に共通規約・個別受講条件書への同意が要る）
+// 受講計画書の承認（月ごとに 1 枚。先に共通規約・個別受講条件書への同意が要る）
 function planPage() {
   if (need('money')) return loading;
   const multi = new Set(money.plans.map(l => l.studentId)).size > 1;
   const selected = moneySelection(), { asks } = planGroups(selected.plans);
   let h = noticeHtml() + selected.header;
-  if (!asks.length) return h + noneLeft('承認をお願いしている受講計画合意書はありません。');
+  if (!asks.length) return h + noneLeft('承認をお願いしている受講計画書はありません。');
   const blocked = !!(money.terms && money.terms.needs) || (money.conditions?.items || []).some(x => x.needs);
   if (blocked) h += '<p class="notice">先に<a href="#agree">共通規約・個別受講条件書への同意</a>をお願いします。</p>';
   return h + asks.map(([m, ls]) => planApprovalCard(m, ls, { multi, counts: planCounts, consenterName: consentNames[m] || me.guardianName || '', dis: dis() || (blocked ? ' disabled' : '') })).join('');
@@ -308,7 +308,7 @@ function moneyPage() {
   if (selected.fees.length) h += secTitle('キャンセル料・取消料') + feeRows(selected.fees, { multi });
   return h;
 }
-// 契約・同意の控え（アカウントから）: 今の共通規約・個別受講条件書・特別単価合意書、決まった受講計画合意書、過去の控え
+// 契約・同意の控え（アカウントから）: 今の共通規約・個別受講条件書・特別単価合意書、決まった受講計画書、過去の控え
 function contractsPage() {
   if (need('money')) return loading;
   const multi = new Set(money.plans.map(l => l.studentId)).size > 1, { others } = planGroups(money.plans);
@@ -316,7 +316,7 @@ function contractsPage() {
   if (money.terms) h += termsLine(money.terms);
   if (money.conditions) h += conditionLine(money.conditions.items);
   if (money.specials) h += specialLine(money.specials.items);
-  if (others.length) h += secTitle('受講計画合意書') + planHistory(others, { multi });
+  if (others.length) h += secTitle('受講計画書') + planHistory(others, { multi });
   return h + '<p><button data-action="contracts-open">前の版も見る</button></p>' + contractArchive(contracts);
 }
 
@@ -421,7 +421,7 @@ app.addEventListener('submit', ev => {
         if (!r.ok) break; okCount++; delete planCounts[l.id];
       }
       money = null;
-      if (r.ok) return say(`${monthLabel(el.dataset.month)}の受講計画合意書を承認しました`, 'ok');
+      if (r.ok) return say(`${monthLabel(el.dataset.month)}の受講計画書を承認しました`, 'ok');
       if (okCount) return say(`${okCount}件は承認できましたが、途中で止まりました: ${r.error.message}`, 'error');
     } else if (kind === 'event') { r = await call('family/events/add', v, store.get()); if (r.ok) { sched = null; calData = {}; closeSheet(); return say('先生に知らせました', 'ok'); } }
     if (!r) return;

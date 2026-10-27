@@ -206,7 +206,7 @@ test('the schedule copy from the current ledger maps statuses, requests, shared 
   assert.equal(h.rows('select count(*) n from lessons')[0].n, 4, '写し直しても増えない');
 });
 
-test('the same teacher may teach two in-person lessons at once (after a check), never three, and never with an online lesson', async () => {
+test('the same teacher may teach two lessons at once (after a check), never three. Online lessons follow the same rule (共通規約 r15 第4条)', async () => {
   const { h, auth, fam, me, lesson } = await world();
   const kid2 = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '二郎', baseRate30: 1500 })).student;
   const kid3 = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '三郎', baseRate30: 1500 })).student;
@@ -218,12 +218,14 @@ test('the same teacher may teach two in-person lessons at once (after a check), 
   await h.ok('schedule/lessons/create', { ...face, studentId: kid2.id, start: '17:30', force: true });
   assert.match((await h.call('schedule/lessons/create', { ...face, studentId: kid3.id, start: '17:45', force: true })).error.message, /2人まで/, '3人は重ねられない');
   await h.ok('schedule/lessons/create', { ...face, studentId: kid3.id, start: '18:00', force: true }); // 17:00〜18:00 とは重ならず、17:30〜18:30 とだけ重なる＝同時は2人
-  // オンラインが入ると同時にはできない（新しく作るときも、あとで形式を変えるときも）
-  await h.ok('schedule/lessons/create', { ...face, date: '2026-10-16' });
-  assert.match((await h.call('schedule/lessons/create', { ...face, studentId: kid2.id, date: '2026-10-16', start: '17:30', deliveryMode: 'online', force: true })).error.message, /オンライン/);
-  await h.ok('schedule/lessons/create', { ...face, studentId: kid2.id, date: '2026-10-16', start: '17:30', force: true });
+  // オンラインも2人まで（2026-10-27 本人「オンラインも例外なく1:2まで行える」）。対面と同じく確かめてから、3人は重ねられない
+  await h.ok('schedule/lessons/create', { ...face, date: '2026-10-16', deliveryMode: 'online' });
+  const online = await h.call('schedule/lessons/create', { ...face, studentId: kid2.id, date: '2026-10-16', start: '17:30', deliveryMode: 'online' });
+  assert.deepEqual([online.error.code, /2人同時/.test(online.error.message)], ['needForce', true]);
+  await h.ok('schedule/lessons/create', { ...face, studentId: kid2.id, date: '2026-10-16', start: '17:30', deliveryMode: 'online', force: true });
+  assert.match((await h.call('schedule/lessons/create', { ...face, studentId: kid3.id, date: '2026-10-16', start: '17:45', force: true })).error.message, /2人まで/);
   const l = h.rows("select * from lessons where studentId = ? and date = '2026-10-16'", kid2.id)[0];
-  assert.match((await h.call('schedule/lessons/update', { auth, id: l.id, version: l.version, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, deliveryMode: 'online', staffId: me.id, force: true })).error.message, /オンライン/);
+  await h.ok('schedule/lessons/update', { auth, id: l.id, version: l.version, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, deliveryMode: 'in_person', staffId: me.id, force: true });
 });
 
 test('cancelling a decided lesson tells the family (held before the switch-over)', async () => {
