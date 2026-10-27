@@ -39,7 +39,7 @@ export function studentsPage(ctx) {
   if (shown.length) h += '<div class="group stu-list">' + shown.map(s => {
     const sub = [esc(s.grade || ''), s.status === 'paused' ? '休会' : s.status === 'left' ? '退会' : '', s.testOnly ? 'テスト' : ''].filter(Boolean).join('・');
     const tags = (s.trial ? (s.offered ? '<span class="tag warn">入塾の申込み待ち</span>' : '<span class="tag warn">体験</span>') : '')
-      + (!s.next && s.status === 'active' ? '<span class="tag gray">授業の予定なし</span>' : '');
+      + (!s.next && !['paused', 'left'].includes(s.status) ? '<span class="tag gray">授業の予定なし</span>' : '');
     const badges = s.requests ? `<span class="pill red" title="連絡">${svg('mail')}${s.requests}</span>` : '';
     return `<a class="srow${s.status === 'left' ? ' left' : ''}" href="#student=${encodeURIComponent(s.id)}"><span class="av" style="background:${avColor(s.name)}" aria-hidden="true">${esc(initial(s.name))}</span>
       <span class="b"><strong>${esc(s.name)}</strong><small class="muted">${sub}</small>${tags}</span><span class="badges">${badges}</span><span class="go">›</span></a>`;
