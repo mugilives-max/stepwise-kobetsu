@@ -1,6 +1,6 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261025-layout';
-import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261026-keikaku';
+import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261027-pages2';
 // 保護者・生徒の画面で共通に使う部品（作り直し v2）。
 // 考え方（docs/UX_STRUCTURE.md 1）: 一覧は白い枠に 1 件 1 行、操作は押すと下から出る画面で。文字より印で分かるように。
 // - 授業の一覧（日付ごと）と、授業を押したときの画面（変更・お休み・キャンセルの連絡）
@@ -168,7 +168,7 @@ export function planApprovalCard(month, lines, { multi, counts = {}, dis = '', c
   return `<form class="pcard plan-ask" data-form="plan-approve" data-refs="${esc(JSON.stringify(lines.map(l=>({id:l.id,version:l.version}))))}" data-month="${esc(month)}"><div class="pc-head"><strong>${monthLabel(month)}の受講計画合意書</strong></div>
     <table class="plan-tbl"><thead><tr><th scope="col">科目</th><th scope="col">回数</th><th scope="col">金額</th></tr></thead><tbody>${rows}</tbody>
     <tfoot><tr><th scope="row" colspan="2">合計</th><td class="amt">${yen(total)}</td></tr></tfoot></table>
-    ${agreementDocumentButtons(lines,{label:'書面を見る'})}
+    <div class="row" style="margin:0 0 12px">${agreementDocumentButtons(lines,{label:'書面を見る',bare:true})}</div>
     ${consenterField(month, consenterName)}<button class="primary wide"${dis}>この内容で承認する</button></form>`;
 }
 // 先生が記録した承諾（LINE など）を確かめてもらう月

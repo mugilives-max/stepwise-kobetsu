@@ -1,4 +1,4 @@
-import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261027-ack';
+import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261027-pages2';
 // スタッフの画面: 受講計画合意書（#plans）と請求（#billing、キャンセル料を含む）。5段目。教室管理者だけ。種類は「通常」と特別単価合意書の名称（設定の「授業の種類と標準料金」は 2026-10-26 になくした）
 // 受講計画合意書は月ごとに生徒の行を並べる。請求は月ごとに家族の行を並べ、開くと内訳。
 import { sheet, rowButton } from '/staff/ui.js?v=20261025-layout';

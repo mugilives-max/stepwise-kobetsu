@@ -1,6 +1,6 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-pages';
-import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-ack';
+import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-pages2';
 import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ack';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
@@ -9,7 +9,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261025-layout';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-pages';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-pages2';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -173,7 +173,7 @@ function schedulePage() {
   const d = calData[cal.month], multi = multiKids() && !kid, nm = names();
   const lessons = forKid(d.lessons).filter(l => l.status !== 'held'), events = forKid(d.events);
   const asking = askingLessons(lessons), adjusting = lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= d.today);
-  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px"><a href="#confirm">日程の確認待ち ${asking.length}件 ›</a></p>`;
+  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px"><a href="#confirm">日程を確認してください（${asking.length}件）›</a></p>`;
   if (adjusting.length) h += `<p style="margin:0 0 6px"><span class="tag warn">調整中 ${adjusting.length}件</span></p>`;
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
@@ -309,7 +309,7 @@ function contractsPage() {
   if (money.conditions) h += conditionLine(money.conditions.items);
   if (money.specials) h += specialLine(money.specials.items);
   if (others.length) h += secTitle('受講計画合意書') + planHistory(others, { multi });
-  return h + '<p><button data-action="contracts-open">過去の契約・同意の控え</button></p>' + contractArchive(contracts);
+  return h + '<p><button data-action="contracts-open">前の版も見る</button></p>' + contractArchive(contracts);
 }
 
 function accountPage() {
