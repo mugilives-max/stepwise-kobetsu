@@ -18,7 +18,7 @@ const PLAN = { draft: ['下書き', 'gray'], proposed: ['承認待ち', 'warn'],
 // ---------- 一覧 ----------
 // 上の帯に「生徒」と人数。右の丸い「＋」で家族の登録・一覧へ。家族ごとに白い枠、行の頭に名字の1文字の丸、記録待ち・連絡は小さな印と数
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
-const PERSON = '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>', PLUS = '<path d="M12 5v14M5 12h14"/>', SEARCH = '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>';
+const PLUS = '<path d="M12 5v14M5 12h14"/>', SEARCH = '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>';
 const AV = ['#2f6fde', '#2e9b5f', '#7b4fd6', '#d0533c', '#138a8a', '#c98a00', '#5b6672'];
 const avColor = t => AV[[...String(t)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 9973, 7) % AV.length];
 const initial = name => (String(name).replace(/^[【\[（(「『\s]+/, '') || '?').slice(0, 1); // 【テスト】などの括弧は飛ばす
@@ -37,17 +37,18 @@ export function studentsPage(ctx) {
     <div class="row"><button class="primary"${ctx.dis()}>登録する</button></div></form></details>`;
   const q = query.trim();
   const match = s => !q || s.name.includes(q) || s.kana.includes(q);
-  let any = false;
-  for (const f of list.families) {
-    const ss = f.students.filter(match); if (!ss.length) continue; any = true;
-    h += `<div class="fam-head"><span>${esc(f.name || '')}</span>${list.manager && f.id ? `<a class="mini-btn" href="#family=${encodeURIComponent(f.id)}" aria-label="${esc(f.name || '家族')}の連絡先・招待"><svg viewBox="0 0 24 24" aria-hidden="true">${PERSON}</svg></a>` : ''}</div>`;
-    h += '<div class="group">' + ss.map(s => {
-      const sub = [s.trial ? (s.offered ? '<span class="tag warn">入塾の申込み待ち</span>' : '<span class="tag warn">体験</span>') : '', esc(s.grade || ''), s.status === 'paused' ? '休会' : s.status === 'left' ? '退会' : '', s.testOnly ? 'テスト' : '', s.next ? '次 ' + md(s.next.slice(0, 10)) + ' ' + esc(s.next.slice(11)) : ''].filter(Boolean).join('・');
-      const badges = (s.requests ? `<span class="pill red" title="連絡">${svg('mail')}${s.requests}</span>` : '') ; // 記録待ちの印は出さない（授業記録は努力義務。2026-10-27）
-      return `<a class="srow${s.status === 'left' ? ' left' : ''}" href="#student=${encodeURIComponent(s.id)}"><span class="av" style="background:${avColor(s.name)}" aria-hidden="true">${esc(initial(s.name))}</span>
-        <span class="b"><strong>${esc(s.name)}</strong><small class="muted">${sub}</small></span><span class="badges">${badges}</span><span class="go">›</span></a>`;
-    }).join('') + '</div>';
-  }
+  // 1つの枠に全員（2026-10-27 本人「もっとまとめられないかな。家族ごとに隙間が多すぎる」「○○さんの家族っていうのは情報量が0」）。
+  // 兄弟は並んだまま。家族の画面へは生徒の画面から。次の授業の日時は出さず、予定のない生徒だけ印（同日 本人「次回の授業日を表示する意味はない…未定の生徒も表示すると価値がある」）
+  const shown = list.families.flatMap(f => f.students.filter(match));
+  if (shown.length) h += '<div class="group stu-list">' + shown.map(s => {
+    const sub = [esc(s.grade || ''), s.status === 'paused' ? '休会' : s.status === 'left' ? '退会' : '', s.testOnly ? 'テスト' : ''].filter(Boolean).join('・');
+    const tags = (s.trial ? (s.offered ? '<span class="tag warn">入塾の申込み待ち</span>' : '<span class="tag warn">体験</span>') : '')
+      + (!s.next && s.status === 'active' ? '<span class="tag gray">授業の予定なし</span>' : '');
+    const badges = s.requests ? `<span class="pill red" title="連絡">${svg('mail')}${s.requests}</span>` : '';
+    return `<a class="srow${s.status === 'left' ? ' left' : ''}" href="#student=${encodeURIComponent(s.id)}"><span class="av" style="background:${avColor(s.name)}" aria-hidden="true">${esc(initial(s.name))}</span>
+      <span class="b"><strong>${esc(s.name)}</strong><small class="muted">${sub}</small>${tags}</span><span class="badges">${badges}</span><span class="go">›</span></a>`;
+  }).join('') + '</div>';
+  const any = shown.length > 0;
   if (!any) h += '<p class="muted small" style="margin-top:14px">見つかりませんでした。</p>';
   return h;
 }
