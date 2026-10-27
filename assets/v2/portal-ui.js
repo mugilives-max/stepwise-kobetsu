@@ -54,7 +54,7 @@ const statusText = l => {
   // 調整中（相談中・締め切りなし）と確認待ち（「この日程で大丈夫」か締め切りで確定）
   // 2026-10-27 本人「確認待ち・ご返事が必要…誰が確認待ちなのか…誰の返事か…何の返事か分からない」→ 誰が何をするかを言う。保護者には「日程を確認してください」、生徒には「保護者の確認待ち」
   const student = typeof location !== 'undefined' && location.pathname.startsWith('/student');
-  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">${student ? '保護者の確認待ち' : '日程を確認してください'}${automaticDeadline(l) ? `（${md(l.confirmBy)}まで）` : ''}</span>` : '<span class="tag warn">調整中</span>');
+  if (l.status === 'proposed') t.push(l.asked ? `<span class="tag ask">${student ? '保護者の承認待ち' : '承認してください'}${automaticDeadline(l) ? `（${md(l.confirmBy)}まで）` : ''}</span>` : '<span class="tag warn">調整中</span>');
   else if (l.status !== 'decided') t.push(`<span class="tag ${cls}">${label}</span>`);
   return t;
 };

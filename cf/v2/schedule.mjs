@@ -329,7 +329,7 @@ async function familyScheduleOf(c, studentIds, from, to) {
   const extra = {};
   for (const sid of studentIds) { const asking = lessons.filter(l => l.studentId === sid && stageOf(l) === 'asking'); if (asking.length) Object.assign(extra, await extrasFor(c.db, sid, asking)); }
   return {
-    lessons: lessons.map(l => { const v = lessonView(l, { choices: choicesFor(l, c.now), requests: requests.filter(r => r.lessonId === l.id).map(requestView), ...(l.id in quote ? { feeBase: quote[l.id] } : {}), ...(extra[l.id] && extra[l.id].fee ? { extraFee: extra[l.id].fee } : {}) }); delete v.staffId; return v; }),
+    lessons: lessons.map(l => { const v = lessonView(l, { choices: choicesFor(l, c.now), requests: requests.filter(r => r.lessonId === l.id).map(requestView), ...(l.id in quote ? { feeBase: quote[l.id] } : {}), ...(extra[l.id] && extra[l.id].fee ? { extraFee: extra[l.id].fee } : {}), ...(extra[l.id] && extra[l.id].pending ? { planPending: true } : {}) }); delete v.staffId; return v; }),
     events: events.map(eventView),
   };
 }
