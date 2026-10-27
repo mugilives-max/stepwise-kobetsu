@@ -107,7 +107,7 @@ test('日時を直す: 調整中・確認待ちはメールなし（確認待ち
   assert.match(familyMails().at(-1).subject, /授業の日時を変更しました/);
 });
 
-test('夜の自動確定: 前に締め切りを付けた確認待ちだけ、締め切りの翌日に 1 通。調整中と締め切りのない授業は確定しない', async () => {
+test('夜に自動で確定しない（2026-10-27 本人「システム側で自動締切で授業を登録するなどは行わない」）: 前に締め切りを付けて送った授業も、締め切りを過ぎても承認待ちのまま', async () => {
   const { h, auth, kid, L, familyMails, row, ids, night } = await world();
   for (const d of ['2026-10-04', '2026-10-20', '2026-10-21']) await h.ok('schedule/lessons/create', { ...L, date: d, send: 'hold' });
   await h.ok('schedule/lessons/create', { ...L, date: '2026-10-22', send: 'show' });
@@ -116,15 +116,9 @@ test('夜の自動確定: 前に締め切りを付けた確認待ちだけ、締
   h.db2._sqlite.prepare("update lessons set noticeState = 'external', noticeAt = askedAt where askedAt <> ''").run(); // synthetic LINE notice with the same deadline
   h.db2._sqlite.prepare("update lessons set confirmBy = '2026-10-05' where id in (?, ?)").run(x, y); // 2026-10-27 より前に締め切りを付けて送った授業
   const n0 = familyMails().length;
-  assert.equal((await night('2026-10-05')).confirmed, 0, '締め切りの日のうちは決めない');
-  const r = await night('2026-10-06');
-  assert.deepEqual([r.confirmed, r.students], [2, 1], '同じ締め切りなので一晩でまとめて');
-  assert.deepEqual([near, x, y, adj].map(id => row(id).status), ['proposed', 'decided', 'decided', 'proposed']);
-  const sent = familyMails().slice(n0);
-  assert.equal(sent.length, 1, '確定のお知らせは 1 通');
-  assert.match(sent[0].body, /10\/20\(火\)[^\n]*\n・10\/21\(水\)/, '何が確定したかを書く');
-  for (const d of ['2026-10-07', '2026-10-15', '2026-10-21']) assert.equal((await night(d)).confirmed, 0, '調整中は確定しない');
-  assert.equal(row(adj).status, 'proposed');
+  for (const d of ['2026-10-05', '2026-10-06', '2026-10-15']) assert.equal((await night(d)).confirmed, 0);
+  assert.deepEqual([near, x, y, adj].map(id => row(id).status), ['proposed', 'proposed', 'proposed', 'proposed']);
+  assert.equal(familyMails().slice(n0).length, 0, '確定のお知らせも出ない');
 });
 
 test('保護者の「承認する」: 見ていた確認待ち（id と版）をそのまま確定。違えば何もしない。ほかの家族の授業や調整中は押せない', async () => {

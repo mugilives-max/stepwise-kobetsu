@@ -122,13 +122,16 @@ test('parents: お休み before 23:00 the day before is free and immediate; afte
   assert.equal(back.lesson.status, 'decided', '開始前なら取り下げて元に戻せる');
 });
 
-test('the nightly run decides 仮予定 asked with a deadline (before 2026-10-27) once, but not ones with an open date-change request', async () => {
+test('autoConfirm (no longer run at night since 2026-10-27) decides 仮予定 asked with a deadline once, but not ones with an open date-change request', async () => {
   const { h, auth, parent, lesson } = await world();
   await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-09' }); await h.ok('schedule/lessons/create', { ...lesson, date: '2026-10-08' });
   const second = lessonsOf(h).find(l => l.date === '2026-10-09');
   await h.ok('family/lessons/request', { auth: parent, lessonId: second.id, kind: 'move', note: '別の日に' });
   h.db2._sqlite.prepare("update lessons set noticeState = 'external', noticeAt = askedAt, confirmBy = '2026-10-05' where askedAt <> ''").run(); // synthetic delivered notice with an old deadline
-  const { runV2Scheduled } = await import('../cf/v2/index.mjs');
+  const { autoConfirm } = await import('../cf/v2/schedule.mjs'), { recordEffects } = await import('../cf/v2/effects.mjs');
+  const runV2Scheduled = async (env, now) => { const c = { db: env.DB2, env, now, effects: [], actor: { kind: 'system', id: 'test' } }; const r = await autoConfirm(c); await recordEffects(env.DB2, c.effects, now); return r; };
+  const { runV2Scheduled: nightly } = await import('../cf/v2/index.mjs');
+  assert.equal((await nightly(h.env, Date.parse('2026-10-06T00:10:00+09:00'))).confirmed, 0, '夜の定期実行では確定しない');
   assert.equal((await runV2Scheduled(h.env, Date.parse('2026-10-05T00:10:00+09:00'))).confirmed, 0, '締め切りの日のうちは決めない');
   const r = await runV2Scheduled(h.env, Date.parse('2026-10-06T00:10:00+09:00'));
   assert.deepEqual([r.confirmed, r.students], [1, 1]);

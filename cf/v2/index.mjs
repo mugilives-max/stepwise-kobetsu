@@ -12,7 +12,7 @@ import { staffRoutes } from './staff.mjs';
 import { familyRoutes } from './family.mjs';
 import { peopleRoutes } from './people.mjs';
 import { migrateRoutes } from './migrate-identity.mjs';
-import { scheduleRoutes, autoConfirm, settlePastLessons } from './schedule.mjs';
+import { scheduleRoutes, settlePastLessons } from './schedule.mjs';
 import { migrateScheduleRoutes } from './migrate-schedule.mjs';
 import { recordRoutes } from './records.mjs';
 import { migrateRecordsRoutes } from './migrate-records.mjs';
@@ -47,13 +47,13 @@ import { contractRoutes } from './contracts.mjs';
 const ROUTES = { ...staffRegistrationRoutes, ...staffBankRoutes, ...staffRulesRoutes, ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...lessonPlanRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...enrollmentRoutes, ...mcpWriteRoutes };
 const MAX_BODY = 200000;
 
-// 毎日0時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、締め切りを過ぎた仮予定を決定する。切り替えたあとは、3日以降に前月分の請求を確定する
+// 毎日0時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、終わった授業を実施済みにする。切り替えたあとは、3日以降に前月分の請求を確定する。
+// 締め切りを過ぎた仮予定を自動で確定することはしない（2026-10-27 本人「システム側で自動締切で授業を登録するなどは行わない」）
 export async function runV2Scheduled(env, now = Date.now()) {
   if (!env.DB2) return null;
   const c = { env, db: env.DB2, now, effects: [], actor: null, userAgent: 'scheduled' };
   let backup; try { backup = await backupToR2(env, c.db, now); } catch (e) { backup = { error: String((e && e.message) || e).slice(0, 200) }; } // 控えが取れなくても、ほかの処理は止めない（画面に「古い」と出る）
-  const result = await autoConfirm(c);
-  result.backup = backup;
+  const result = { confirmed: 0, backup };
   try { result.settled = await settlePastLessons(c); } catch (e) { result.settled = { error: String((e && e.message) || e).slice(0, 200) }; }
   result.invoices = await autoCloseInvoices(c);
   result.tests = await remindTestResults(c);

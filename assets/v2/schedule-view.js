@@ -1,4 +1,4 @@
-import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
+import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principles';
 // 作り直し（v2）の予定の部品。スタッフ・保護者・生徒の画面で共通に使う（言葉と色をそろえる）。
 import { esc } from '/assets/v2/api.js';
 import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=20261025-layout';

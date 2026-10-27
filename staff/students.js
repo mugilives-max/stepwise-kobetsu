@@ -1,7 +1,7 @@
 // スタッフの「生徒」（docs/UX_STRUCTURE.md 3）。#students（家族ごとの一覧）と #student=<id>/<タブ>（1人の生徒の画面）。
 // タブ: 概要・予定・記録と宿題・成績・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
-import { hwSubject } from '/assets/v2/learning-view.js?v=20261027-ease';
-import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261027-ease';
+import { hwSubject } from '/assets/v2/learning-view.js?v=20261027-principles';
+import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261027-principles';
 import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
@@ -147,15 +147,15 @@ function lessonPlan(ctx, x) {
   if (!spData) return h + '<p class="muted small">読み込んでいます…</p>';
   if (spData.error) return h + `<p class="notice error">${esc(spData.error)}</p>`;
   const d = spData, kindText = k => k && k !== '通常' ? `（${esc(k)}）` : '';
-  h += d.subjects.length ? `<table class="sp-tbl"><thead><tr><th>科目</th><th>予定</th><th>実施</th><th>確定</th><th>合意待ち</th><th class="sp-fee">1回</th></tr></thead><tbody>${d.subjects.map(g => `<tr><th>${esc(g.subject)}${kindText(g.kind)}</th><td>${g.total}回</td><td>${g.done || '-'}</td><td>${g.decided || '-'}</td><td>${g.waiting ? `<b class="warn-text">${g.waiting}</b>` : '-'}</td><td class="sp-fee">${g.minutes}分 ${yen(g.fee)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">この月の授業はまだありません。</p>';
+  h += d.subjects.length ? `<table class="sp-tbl"><thead><tr><th>科目</th><th>予定</th><th>実施済</th><th>実施予定</th><th>合意待ち</th><th class="sp-fee">1回</th></tr></thead><tbody>${d.subjects.map(g => `<tr><th>${esc(g.subject)}${kindText(g.kind)}</th><td>${g.total}回</td><td>${g.done || '-'}</td><td>${g.decided || '-'}</td><td>${g.waiting ? `<b class="warn-text">${g.waiting}</b>` : '-'}</td><td class="sp-fee">${g.minutes}分 ${yen(g.fee)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">この月の授業はまだありません。</p>';
   const row = l => `${esc(md(l.date))} ${esc(l.start)} ${esc(l.subject)}${kindText(l.kind)}`;
   if (d.waiting.length) {
     const ask = d.waiting.filter(l => !l.asked).map(l => l.id);
     h += `<div class="sp-block"><div class="sp-bh"><b>合意待ちの授業 ${d.waiting.length}件</b>${ask.length ? `<button type="button" class="small-btn primary" data-action="sp-ask" data-ids="${esc(ask.join(','))}"${ctx.dis()}>保護者に承認をお願いする（${ask.length}件）</button>` : '<span class="small muted">保護者の承認待ち</span>'}</div><ul>${d.waiting.map(l => `<li>${row(l)}<span class="muted small"> ${l.asked ? '承認待ち' : l.status === 'held' ? '下書き' : '調整中'}</span></li>`).join('')}</ul></div>`;
   }
-  if (d.unrecorded.length) h += `<div class="sp-block warn"><div class="sp-bh"><b>合意の記録がない授業 ${d.unrecorded.length}件</b><span class="small">記録するまで請求に入りません</span></div><ul>${d.unrecorded.map(l => `<li>${row(l)}<span class="muted small"> ${l.status === 'done' ? '実施済み' : '確定'}</span><button type="button" class="text-btn" data-action="sp-agree" data-id="${esc(l.id)}" data-version="${l.version}"${ctx.dis()}>合意を記録</button></li>`).join('')}</ul></div>`;
-  // 授業料の総額: 確定（実施済み・確定）・カレンダーの見込み（合意待ちも）・計画（受講計画書）
-  h += `<div class="sp-sum"><div><span>確定</span><b>${yen(d.fixedTotal)}</b></div><div><span>カレンダーの見込み</span><b>${yen(d.estimate)}</b></div><div><span>計画${d.planPending ? '（承認待ちを含む）' : ''}</span><b>${d.plans.length ? yen(d.planTotal) : '-'}</b></div></div>`;
+  if (d.unrecorded.length) h += `<div class="sp-block warn"><div class="sp-bh"><b>合意の記録がない授業 ${d.unrecorded.length}件</b><span class="small">記録するまで請求に入りません</span></div><ul>${d.unrecorded.map(l => `<li>${row(l)}<span class="muted small"> ${l.status === 'done' ? '実施済' : '実施予定'}</span><button type="button" class="text-btn" data-action="sp-agree" data-id="${esc(l.id)}" data-version="${l.version}"${ctx.dis()}>合意を記録</button></li>`).join('')}</ul></div>`;
+  // 授業料の総額: 実施済・実施予定（日時の決まった授業。2026-10-27 本人「確定」→「実施予定」「実施」→「実施済」）・カレンダーの見込み（合意待ちも）・計画（受講計画書）
+  h += `<div class="sp-sum"><div><span>実施済・実施予定</span><b>${yen(d.fixedTotal)}</b></div><div><span>カレンダーの見込み</span><b>${yen(d.estimate)}</b></div><div><span>計画${d.planPending ? '（承認待ちを含む）' : ''}</span><b>${d.plans.length ? yen(d.planTotal) : '-'}</b></div></div>`;
   if (d.plans.length) h += `<p class="small muted sp-plans">受講計画書：${d.plans.map(p => `${esc(md(p.startDate))}〜${esc(md(p.endDate))} ${esc(p.subject)}${kindText(p.kind)} ${p.count}回（使用 ${p.used}回）${p.status === 'approved' ? '' : '・承認待ち'}`).join('／')} <a href="#plans">開く</a></p>`;
   return h;
 }
