@@ -36,7 +36,8 @@ export async function monthPlan(c, student, month) {
   const view = l => ({ id: l.id, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind || '通常', status: l.status, asked: !!l.askedAt, version: l.version, inPlan: !!sb.line[l.id] || !!hyp.line[l.id] });
   const unrecorded = fixed.filter(l => !sb.line[l.id] && !agreedByLesson(l));
   const subjects = new Map();
-  let estimate = 0;
+  // 授業料の総額（2026-10-27 本人「既に確定しているもの、カレンダー上で登録されている見込み分、もともと計画してる分」）
+  let estimate = 0, fixedTotal = 0;
   for (const l of fixed.concat(waitingRows)) {
     const key = l.subject + '|' + (l.kind || '通常');
     const g = subjects.get(key) || { subject: l.subject, kind: l.kind || '通常', total: 0, done: 0, decided: 0, waiting: 0, minutes: l.minutes, fee: 0 };
@@ -44,12 +45,13 @@ export async function monthPlan(c, student, month) {
     const line = sb.line[l.id] || hyp.line[l.id];
     const fee = line ? lessonAmount(line, { ...l, lostMinutes: l.status === 'done' ? l.lostMinutes : 0 }) : await feeOutsidePlan(c.db, student, sb.lines, l);
     if (!g.fee) { g.fee = fee; g.minutes = l.minutes; }
-    estimate += fee;
+    estimate += fee; if (['done', 'decided'].includes(l.status)) fixedTotal += fee;
     subjects.set(key, g);
   }
   const plans = sb.lines.filter(l => l.startDate <= to && from <= l.endDate && l.status !== 'declined')
-    .map(l => ({ id: l.id, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, status: l.status, count: l.status === 'approved' ? l.approvedCount : l.count, used: Object.values(hyp.line).filter(x => x && x.id === l.id).length, version: l.version }));
-  return { month, subjects: [...subjects.values()], waiting: waitingRows.map(view), unrecorded: unrecorded.map(view), estimate, plans };
+    .map(l => ({ id: l.id, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, status: l.status, count: l.status === 'approved' ? l.approvedCount : l.count, fee: l.fee, used: Object.values(hyp.line).filter(x => x && x.id === l.id).length, version: l.version }));
+  const planTotal = plans.reduce((n, p) => n + Number(p.count) * Number(p.fee), 0);
+  return { month, subjects: [...subjects.values()], waiting: waitingRows.map(view), unrecorded: unrecorded.map(view), estimate, fixedTotal, planTotal, planPending: plans.some(p => p.status !== 'approved'), plans };
 }
 
 export const lessonPlanRoutes = {

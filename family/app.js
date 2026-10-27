@@ -9,7 +9,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261027-dense2';
 import { EVENT_KIND, endOf } from '/assets/v2/schedule-view.js?v=20261027-ease';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-ease10';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-noauto';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -185,7 +185,7 @@ function schedulePage() {
     const pend = [...new Set(askAll.filter(l => l.planPending).map(l => l.date.slice(0, 7)))].sort();
     if (pend.length) h += `<p class="small" style="margin:4px 0">${pend.map(monthLabel).join('・')}の受講計画（科目・回数・料金）の承認もお願いします。<a href="#plan">受講計画を見る ›</a></p>`;
     const extra = askAll.filter(l => l.extraFee);
-    if (extra.length) h += `<p class="small" style="margin:4px 0">受講計画の回数を超える授業が${extra.length}回あります（${extra.map(l => esc(md(l.date)) + ' ' + esc(l.subject) + ' ' + yen(l.extraFee)).join('・')}）。承認すると、受講計画に追加になります。</p>`;
+    if (extra.length) h += `<p class="small" style="margin:4px 0">受講計画の外の授業が${extra.length}回あります（${extra.map(l => esc(md(l.date)) + ' ' + esc(l.subject) + ' 1回 ' + yen(l.extraFee)).join('・')}）。承認すると、この授業料で受講します。</p>`;
   }
   if (adjusting.length) h += `<p style="margin:0 0 6px"><span class="tag warn">調整中 ${adjusting.length}件</span></p>`;
   const cell = date => {
