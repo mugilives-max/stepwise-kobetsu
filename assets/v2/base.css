@@ -987,3 +987,6 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .home-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 0; }
 .home-links .todo-row { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 @media (max-width: 380px) { .home-links { grid-template-columns: 1fr; } }
+/* 月の表: 終了時刻も（2026-10-27 本人「時間がこのフォントサイズなら終了時刻も表示できるはず」）。狭い画面では開始の下に */
+.month2 .nm.t2 .te { white-space: nowrap; }
+@media (max-width: 719px) { .month2 .nm.t2 .te { display: block; } }
