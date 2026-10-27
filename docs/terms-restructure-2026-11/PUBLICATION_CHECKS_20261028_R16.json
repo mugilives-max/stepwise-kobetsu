@@ -2,10 +2,10 @@
   "edition": "2026-11-20261028-r16",
   "effective_date": "保護者がこの版に同意した日（新たに入塾する場合はお申込みの日）",
   "source_path": "docs/terms-restructure-2026-11/TERMS.md",
-  "source_git_blob": "1029e22f965b321b8b9b871d3e0e685ae88c0077",
-  "source_commit": "5abc2b4d0eb0d3639272a92505ca0510a4d803f6",
-  "html_sha256": "e416a4d782a8c19e70d982d92d634959bdf9688ebe978295a4f0bebcb8278857",
-  "pdf_sha256": "56cfc26d469b0d5024b0de7a80ddbbb23e0aed1e61cd6f0d0319d314cc955382",
+  "source_git_blob": "7f7e73debd8b32344b8e89a68e2c7d52cebad32f",
+  "source_commit": "6b77f4cd0c80eff5642aeebcc7cb2b2e728ebc56",
+  "html_sha256": "314f1687406880aac633f6f5a0da55879cce5cb1fce694a3e0631257d39e78a3",
+  "pdf_sha256": "06ede029a175f3448796fb8c428450ae53b300d9b4f00f3bc453f6b6162d97e7",
   "old_blobs_preserved": {},
   "chapters": 8,
   "articles": 29,
@@ -48,7 +48,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "cf5eb73f457a25b5810ad3949cfd708ffbc644a52a492cff92c61bf6fbba18d0"
+      "pdf_sha256": "663069cd49ca101731105e91ce895052ec7ce194e700f4afb5c055aa846aa61b"
     },
     {
       "name": "特別単価合意書",
@@ -56,7 +56,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "a7f936122b36a1578183b0531afef9986ac7f13ebe6127fbc14a46a97285480c"
+      "pdf_sha256": "e28f5a2d6eca90c9a9e84814f42242fd7d8c91504624bbe5995440f10ff64f34"
     },
     {
       "name": "受講計画書",
@@ -64,7 +64,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "0fdcab9de0ab1fc57fe2ce72c6ae916106d7513bc4af51e19c2f695455a2038d"
+      "pdf_sha256": "5969d70ac9a2bf41fd1e8df0a45bf579b58cfc49bd4a256b5e6f6e2aa2270d90"
     },
     {
       "name": "キャンセル料金の免除申請のご案内",
@@ -72,7 +72,7 @@
       "pages": 2,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "f07421d48fe2794402cca6f78c9ab4a694cf0c91b109d151c5548df0f1c7a44e"
+      "pdf_sha256": "e328837cf638f1234795d944db3205dd97904161678b8188bd2f635f75f423fb"
     }
   ],
   "waiver_links_verified": true,
