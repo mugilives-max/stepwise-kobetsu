@@ -216,24 +216,3 @@ test('2通り: ① 確定で入れる（メールなし）・② 承認のお願
   assert.equal(h.rows("select * from planLines where parentId = ?", pl.id).length, 3);
 });
 
-// まとめて返事（2026-10-27 本人「一括の承認はできるけども、それ以外は各個撃破で…大変な手間」）
-test('まとめて返事: 選んだ授業は承認、外した授業は日時の変更のお願い（ひとことは全部に同じ）。塾へのお知らせはそれぞれ 1 通', async () => {
-  const { h, auth, kid, parent, L, row, ids } = await world();
-  for (const d of ['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23']) await h.ok('schedule/lessons/create', { ...L, date: d, send: 'hold' });
-  const [a, b, c, d] = ids();
-  await h.ok('schedule/lessons/ask', { auth, studentId: kid.id, lessonIds: [a, b, c, d] });
-  const staff0 = h.mails().filter(m => m.audience === 'staff').length;
-  // 見ていない授業を外そうとしたら何も変えない
-  assert.equal((await h.call('family/lessons/respond', { auth: parent, lessons: [{ id: a, version: row(a).version }], move: ['ls_nothing'] })).error.code, 'notFound');
-  assert.equal(row(a).status, 'proposed');
-  const r = await h.ok('family/lessons/respond', { auth: parent, lessons: [a, b].map(id => ({ id, version: row(id).version })), move: [c, d], note: '【テスト】22・23日は部活' });
-  assert.deepEqual([r.decided, r.moved], [2, 2]);
-  assert.deepEqual([a, b, c, d].map(id => row(id).status), ['decided', 'decided', 'proposed', 'proposed']);
-  const reqs = h.rows("select lessonId, kind, note, status from lessonRequests order by lessonId");
-  assert.deepEqual(reqs.map(x => [x.kind, x.note, x.status]), [['move', '【テスト】22・23日は部活', 'open'], ['move', '【テスト】22・23日は部活', 'open']]);
-  const sm = h.mails().filter(m => m.audience === 'staff').slice(staff0);
-  assert.deepEqual(sm.map(m => /承認しました/.test(m.body) ? 'agree' : /日時の変更のお願い/.test(m.subject) ? 'move' : 'other'), ['agree', 'move']);
-  assert.match(sm[1].body, /10\/22\(木\)[^\n]*\n・10\/23\(金\)/);
-  // もう一度送っても二重にしない
-  assert.equal((await h.ok('family/lessons/respond', { auth: parent, move: [c] })).moved, 0);
-});

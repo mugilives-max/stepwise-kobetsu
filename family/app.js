@@ -195,9 +195,10 @@ const hasOpen = l => (l.requests || []).some(r => r.status === 'open');
 // 授業日時の承認（メール・LINE のリンク #confirm）: 承認をお願いしている授業を月の表に出し、「承認する」でまとめて確定（規約 r15 第14条1項）。
 // 2026-10-27 本人「字面が並んでいるだけでは、どの日にち曜日なのかが判断しずらいです。ここには、カレンダーを表示するべき」。
 // 表には、決まっている授業とテスト・行事も薄く出す（都合を判断できるように）。授業を押すと、変更・お休みの連絡ができる画面
-// 承認する授業（押して選んだもの。チェックが付く）と、選ばなかった授業へのひとこと。2026-10-27 本人「一括の承認はできるけども、それ以外は各個撃破で…大変な手間」
-// →「選択した日付にチェックがついていくっていう方が良い」。選ばなかった授業は日時の変更のお願いになる
-const askOn = new Set(); let askNote = '';
+// 承認する授業（押して選んだもの。チェックが付く）。2026-10-27 本人「一括の承認はできるけども、それ以外は各個撃破で…大変な手間」
+// →「選択した日付にチェックがついていくっていう方が良い」→「一旦ここはOKっていう登録の仕方は全然あり得るので、一部だけ承認できる」。
+// 選ばなかった授業は承認待ちのまま（日時の変更は、予定からその授業を押して）
+const askOn = new Set();
 function askCalendar(ym, asking, many) {
   const other = forKid(sched.lessons).filter(l => ['decided', 'done'].includes(l.status)), evs = forKid(sched.events || []);
   const start = gridStart(ym), WDS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -234,8 +235,7 @@ function confirmPage() {
   const months=[...new Set(ok.filter(l=>l.planPending).map(l=>l.date.slice(0,7)))];
   if(months.length)h+='<p class="notice small">'+months.map(monthLabel).join('・')+'の受講計画（科目・回数・料金）の承認もお願いします。<a href="#plan">受講計画を見る ›</a></p>';
   if(extra.length)h+='<p class="small">受講計画の回数を超える授業が'+extra.length+'回あります（'+extra.map(l=>esc(md(l.date))+' '+esc(l.subject)+' '+yen(l.extraFee)).join('・')+'）。承認すると、受講計画に追加になります。</p>';
-  if(ok.length&&off.length)h+='<label>選ばなかった授業について（任意）<textarea id="ask-note" rows="2" maxlength="500" placeholder="例: 11/12は部活があります。水曜なら大丈夫です">'+esc(askNote)+'</textarea></label>';
-  const label=!ok.length?'承認する':off.length?ok.length+'件を承認して、'+off.length+'件は日時の変更をお願いする':'承認する（'+ok.length+'件）';
+  const label=ok.length?'承認する（'+ok.length+'件）':'承認する';
   if(open.length)h+='<button class="primary wide" data-action="ask-send"'+(ok.length?dis():' disabled')+'>'+label+'</button>';
   if(open.length<all.length)h+='<p class="small muted">変更・お休みの連絡を出している授業は、先生の返事のあとで承認できます。</p>';
   return h;
@@ -448,7 +448,7 @@ app.addEventListener('submit', ev => {
     failed(r);
   });
 });
-app.addEventListener('input', ev => { if (enrollInput(ev)) return; if (ev.target.id === 'ask-note') { askNote = ev.target.value; return; } if (ev.target.dataset?.consenter) consentNames[ev.target.dataset.consenter] = ev.target.value; });
+app.addEventListener('input', ev => { if (enrollInput(ev)) return; if (ev.target.dataset?.consenter) consentNames[ev.target.dataset.consenter] = ev.target.value; });
 app.addEventListener('change', ev => { if (enrollChange(ev)) return; if (ev.target.dataset && ev.target.dataset.contact) { const id = ev.target.dataset.contact, allow = ev.target.checked; run(async () => { const r = await call('family/students/contact', { studentId: id, allow }, store.get()); if (!r.ok) return failed(r); const k = kids().find(x => x.id === id); if (k) k.studentContact = allow; say(allow ? '生徒さん本人からも受け付けます' : '保護者からの連絡だけにしました', 'ok'); }); return; } if (ev.target.id === 'terms-agree') { termsChecked = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.condAgree) { condChecked[ev.target.dataset.condAgree] = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.specialAgree) { specialChecked[ev.target.dataset.specialAgree] = ev.target.checked; return; } const id = ev.target.dataset && ev.target.dataset.planCount; if (id) { planCounts[id] = Number(ev.target.value); render(); } });
 app.addEventListener('click', ev => {
   const b = ev.target.closest('[data-action]'); if (!b) return;
@@ -474,9 +474,10 @@ app.addEventListener('click', ev => {
     if (a === 'ask-send') {
       const all = askingLessons(forKid(sched.lessons)).filter(l => !hasOpen(l)), ok = all.filter(l => askOn.has(l.id)), off = all.filter(l => !askOn.has(l.id));
       if (!ok.length) return;
-      if (!confirm([ok.length ? `${ok.length}件をこの日時で承認します（予約になります。前日23時まではお休みにできます）。` : '', off.length ? `${off.length}件は日時の変更をお願いします。` : ''].join('\n'))) return;
-      r = await call('family/lessons/respond', { lessons: ok.map(l => ({ id: l.id, version: l.version })), move: off.map(l => l.id), note: askNote }, store.get());
-      if (r.ok) { askOn.clear(); askNote = ''; sched = null; calData = {}; return say([r.decided ? `${r.decided}件を承認しました` : '', r.moved ? `${r.moved}件の日時の変更をお願いしました` : ''].filter(Boolean).join('。') + '。ありがとうございます', 'ok'); }
+      if (!confirm(`${ok.length}件をこの日時で承認します（予約になります。前日23時まではお休みにできます）。` + (off.length ? `
+選ばなかった${off.length}件は、承認待ちのまま残ります。` : ''))) return;
+      r = await call('family/lessons/agree', { lessons: ok.map(l => ({ id: l.id, version: l.version })) }, store.get());
+      if (r.ok) { askOn.clear(); sched = null; calData = {}; return say(`${r.decided}件を承認しました。ありがとうございます`, 'ok'); }
     } else if (a === 'agree' || a === 'agree-all') {
       // 画面で見ている確認待ち（id と版）をそのまま送る。見ていたものと違えば、サーバーは何も確定しない
       const list = a === 'agree' ? [{id:b.dataset.id,version:Number(b.dataset.version)}] : JSON.parse(b.dataset.refs || '[]');
