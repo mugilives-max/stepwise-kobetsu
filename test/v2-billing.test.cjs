@@ -333,3 +333,11 @@ test('the plan list shows how many lessons each line is over, and lists the less
   assert.equal(st.unplanned, 1);
   assert.deepEqual(st.unplannedList.map(x => [x.date, x.over]), [['2026-09-22', true]]);
 });
+
+test('a line waiting for approval counts the lessons that would go into it', async () => {
+  const { h, auth, kid, plan, lesson } = await world();
+  const a = await plan(kid.id, { count: 2 });
+  await lesson(kid.id, '2026-09-08'); await lesson(kid.id, '2026-09-15'); await lesson(kid.id, '2026-09-22');
+  const row = (await h.ok('billing/plans/list', { auth, month: '2026-09' })).students.find(s => s.id === kid.id).lines.find(l => l.id === a.id);
+  assert.deepEqual([row.status, row.planned, row.over], ['draft', 2, 1]);
+});

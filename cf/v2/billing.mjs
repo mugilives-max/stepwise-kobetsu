@@ -231,6 +231,9 @@ export const billingRoutes = {
       // 調整中・承認待ちの授業も決まったものとして行に入れてみて、入らない授業を、同じ科目の承認済みの行の「超過」か「受講計画合意書にない授業」に分ける
       const hyp = assignLines(sb.lines, sb.lessons.concat(tentative.map(ls => ({ ...ls, status: 'decided' }))), sb.invoicedLine);
       const planned = {}; for (const [lid, line] of Object.entries(hyp.line)) if (line) planned[line.id] = (planned[line.id] || 0) + 1;
+      // 承認待ち・下書きの行は、当たる授業の数（承認すればその行に入る）。回数を超える分は超過
+      const pendOver = {};
+      for (const l of lines.filter(x => ['draft', 'proposed'].includes(x.status))) { const n = lessonsInMonth.concat(tentative).filter(ls => !hyp.line[ls.id] && lineMatches(l, ls)).length; planned[l.id] = Math.min(n, Number(l.count)); if (n > Number(l.count)) pendOver[l.id] = n - Number(l.count); }
       const over = {}, unplannedList = [];
       for (const ls of lessonsInMonth.concat(tentative).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))) {
         if (hyp.line[ls.id]) continue;
@@ -240,7 +243,7 @@ export const billingRoutes = {
         unplannedList.push({ id: ls.id, date: ls.date, start: ls.start, subject: ls.subject, kind: ls.kind || '通常', status: ls.status, over: !!home });
       }
       rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseFee90: base90(s), baseRate30: s.baseRate30, specials, usedKinds,
-        lines: await Promise.all(lines.map(async l => lineView(l, { ...usage[l.id], planned: planned[l.id] || 0, over: over[l.id] || 0, locked: await lineLocked(c, l.id) }))),
+        lines: await Promise.all(lines.map(async l => lineView(l, { ...usage[l.id], planned: planned[l.id] || 0, over: (over[l.id] || 0) + (pendOver[l.id] || 0), locked: await lineLocked(c, l.id) }))),
         unplanned: unplannedList.length, unplannedList });
     }
     return { month, students: rows, kinds: kinds.map(k => ({ name: k.name, standardMinutes: k.standardMinutes, standardFee: k.standardFee, active: !!k.active, sortOrder: k.sortOrder, version: k.version })) };
