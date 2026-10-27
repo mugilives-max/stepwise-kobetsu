@@ -9,6 +9,7 @@ import { agreedSpecialFor } from './specials.mjs';
 
 // lessons（これから決める授業。id・studentId・date・start・minutes・subject・kind）のうち、承認済みの計画に入らないもの。
 // すでに決まっている授業を先に数え、lessons どうしも日付順に数える。{ [lessonId]: { pending } | { parent, fee } | { fee, conditionId, specialId } | { noFee } }
+// inPeriod: その日を含む受講計画（下書き・承認待ち・承認済み）がある（受講計画を超えるかの確認は、計画のある期間だけ。計画がなければ超えるものがない）
 export async function extrasFor(db, studentId, lessons) {
   const out = {}, list = lessons.filter(l => l.kind !== '体験');
   if (!list.length) return out;
@@ -17,15 +18,15 @@ export async function extrasFor(db, studentId, lessons) {
   let student = null;
   for (const l of list) {
     if (line[l.id]) continue;
-    const m = Number(l.minutes);
-    if (sb.lines.some(x => ['draft', 'proposed'].includes(x.status) && lineMatches(x, l))) { out[l.id] = { pending: true }; continue; }
+    const m = Number(l.minutes), inPeriod = sb.lines.some(x => ['draft', 'proposed', 'approved'].includes(x.status) && x.startDate <= l.date && l.date <= x.endDate);
+    if (sb.lines.some(x => ['draft', 'proposed'].includes(x.status) && lineMatches(x, l))) { out[l.id] = { pending: true, inPeriod }; continue; }
     const parent = sb.lines.find(x => x.status === 'approved' && !x.parentId && lineMatches(x, l));
-    if (parent) { out[l.id] = { parent, fee: Number(parent.minutes) === m ? Number(parent.fee) : Math.floor(Number(parent.fee) * m / Number(parent.minutes)) }; continue; }
+    if (parent) { out[l.id] = { parent, inPeriod, fee: Number(parent.minutes) === m ? Number(parent.fee) : Math.floor(Number(parent.fee) * m / Number(parent.minutes)) }; continue; }
     student = student || await db.prepare('select * from students where id = ?').bind(studentId).first();
     const condition = await db.prepare("select * from conditions where studentId = ? and status = 'agreed' and fromMonth <= ? order by fromMonth desc, no desc limit 1").bind(studentId, l.date.slice(0, 7)).first();
     const sp = await agreedSpecialFor(db, studentId, l.kind, l.date);
     const fee = sp ? Math.floor(sp.fee * m / sp.minutes) : condition ? Math.floor(condition.fee * m / condition.minutes) : Math.floor(base90(student) * m / 90);
-    out[l.id] = fee > 0 ? { fee, conditionId: condition ? condition.id : '', specialId: sp ? sp.id : '', instructionType: sp ? 'special' : 'regular' } : { noFee: true };
+    out[l.id] = fee > 0 ? { fee, inPeriod, conditionId: condition ? condition.id : '', specialId: sp ? sp.id : '', instructionType: sp ? 'special' : 'regular' } : { noFee: true };
   }
   return out;
 }

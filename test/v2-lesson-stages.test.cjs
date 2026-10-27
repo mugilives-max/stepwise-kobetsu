@@ -172,9 +172,12 @@ test('2通り: ① 確定で入れる（メールなし）・② 承認のお願
   const pl = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-10-01', endDate: '2026-10-31', count: 1, minutes: 60, fee: 2800 })).line;
   await h.ok('billing/plans/consent', { auth, id: pl.id, version: pl.version, consentedAt: '2026-10-02T03:00:00Z', via: 'LINE', consenterName: '【テスト】架空 保護者' });
   const n0 = familyMails().length, lines0 = h.rows('select count(*) n from planLines')[0].n;
-  // ① 確定で入れる: 計画の中も外も、そのまま確定（確かめの一言なし）
+  // ① 確定で入れる: 計画の中はそのまま確定。計画を超える授業は確かめてから（2026-10-27 本人「システム側で、受講計画を超える授業ですが承認しますか？って確認を入れればいい」）
   const r1 = await h.ok('schedule/lessons/create', { ...L, date: '2026-10-20', send: 'decide' });
-  const r2 = await h.ok('schedule/lessons/create', { ...L, date: '2026-10-21', send: 'decide' });
+  const over = await h.call('schedule/lessons/create', { ...L, date: '2026-10-21', send: 'decide' });
+  assert.deepEqual([over.error.code, over.error.message], ['needForce', '10/21(水) 17:00 数学は受講計画を超える授業です（1回 2,800円）。それでも登録しますか？']);
+  assert.equal(ids().length, 1, '確かめる前は入れない');
+  const r2 = await h.ok('schedule/lessons/create', { ...L, date: '2026-10-21', send: 'decide', force: true });
   assert.deepEqual([r1.decided, r2.decided], [true, true]);
   const [a, b] = ids();
   assert.deepEqual([row(b).status, row(b).agreement, !!row(b).calendarEventId], ['decided', 'LINE・対面などで合意（塾が登録）', true]);
@@ -192,3 +195,26 @@ test('2通り: ① 確定で入れる（メールなし）・② 承認のお願
   assert.deepEqual([plan.unrecorded.length, plan.estimate], [0, 8400], '3回とも合意あり。計画の外の2回も同じ科目の計画の単価');
 });
 
+
+test('「確定する」も、受講計画を超える授業は確かめる。計画のない月・承認待ちの計画に入る授業は確かめない', async () => {
+  const { h, auth, kid, parent, L, row, ids } = await world();
+  const pl = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-10-01', endDate: '2026-10-31', count: 1, minutes: 60, fee: 2800 })).line;
+  await h.ok('billing/plans/consent', { auth, id: pl.id, version: pl.version, consentedAt: '2026-10-02T03:00:00Z', via: 'LINE', consenterName: '【テスト】架空 保護者' });
+  await h.ok('schedule/lessons/create', { ...L, date: '2026-10-20', send: 'decide' });
+  await h.ok('schedule/lessons/create', { ...L, date: '2026-10-21', send: 'ask' });
+  const b = ids()[1];
+  // 保護者の画面: 計画を超える授業に印（承認の確認に授業料を出す）
+  const fl = (await h.ok('family/schedule', { auth: parent, to: '2026-10-31' })).lessons.find(l => l.id === b);
+  assert.deepEqual([fl.extraFee, fl.overPlan], [2800, true]);
+  const r = await h.call('schedule/lessons/decide', { auth, id: b, version: row(b).version });
+  assert.deepEqual([r.error.code, r.error.message], ['needForce', '10/21(水) 17:00 数学は受講計画を超える授業です（1回 2,800円）。それでも確定しますか？']);
+  assert.equal(row(b).status, 'proposed');
+  await h.ok('schedule/lessons/decide', { auth, id: b, version: row(b).version, force: true });
+  assert.equal(row(b).status, 'decided');
+  // 計画のない月（11月）は確かめない
+  await h.ok('schedule/lessons/create', { ...L, date: '2026-11-04', send: 'decide' });
+  // 承認待ちの計画に入る授業も確かめない
+  await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '英語', kind: '通常', startDate: '2026-10-01', endDate: '2026-10-31', count: 2, minutes: 60, fee: 2800 });
+  await h.ok('schedule/lessons/create', { ...L, subject: '英語', date: '2026-10-23', send: 'decide' });
+  assert.equal(ids().length, 4);
+});

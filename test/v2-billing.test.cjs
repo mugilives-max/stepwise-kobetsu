@@ -16,7 +16,7 @@ async function world() {
     const keep = h.clock; h.clock = at('2026-09-01T09:00:00');
     await h.ok('schedule/lessons/create', { auth, studentId, date, start, minutes, subject, deliveryMode: 'in_person', force: true });
     const l = h.rows('select * from lessons where studentId = ? and date = ? and start = ?', studentId, date, start)[0];
-    await h.ok('schedule/lessons/decide', { auth, id: l.id, version: l.version });
+    await h.ok('schedule/lessons/decide', { auth, id: l.id, version: l.version, force: true }); // 受講計画を超える授業も、確かめたうえで確定する
     h.clock = keep;
     return h.rows('select * from lessons where id = ?', l.id)[0];
   };

@@ -202,6 +202,10 @@ function schedulePage() {
   return h;
 }
 // 確認待ち（今日以降・始まっていない・連絡を出していない）
+// 承認の確認に、受講計画を超える授業と授業料を出す（2026-10-27 本人「受講計画を超える授業ですが承認しますか？って確認を入れればいい」）
+const overText = list => { const x = list.filter(l => l && l.extraFee && l.overPlan); return x.length ? `
+
+受講計画を超える授業があります（${x.map(l => md(l.date) + ' ' + l.subject + ' 1回 ' + yen(l.extraFee)).join('・')}）。この授業料で承認しますか？` : ''; };
 function askingLessons(lessons) { return lessons.filter(l => l.status === 'proposed' && l.asked && Date.parse(l.date+'T'+l.start+':00+09:00') > Date.now()); }
 const hasOpen = l => (l.requests || []).some(r => r.status === 'open');
 // 授業日時の承認は予定の画面で（2026-10-27 本人「この画面と予定の画面は統一されるべき…他の予定との兼ね合いも見たいでしょうし。つまり、「授業日程の承認」→「予定」ページへと移る」）。
@@ -456,14 +460,14 @@ app.addEventListener('click', ev => {
       const all = askingLessons(forKid(sched.lessons)).filter(l => !hasOpen(l)), ok = all.filter(l => askOn.has(l.id)), off = all.filter(l => !askOn.has(l.id));
       if (!ok.length) return;
       if (!confirm(`${ok.length}件をこの日時で承認します（予約になります。前日23時まではお休みにできます）。` + (off.length ? `
-選ばなかった${off.length}件は、承認待ちのまま残ります。` : ''))) return;
+選ばなかった${off.length}件は、承認待ちのまま残ります。` : '') + overText(ok))) return;
       r = await call('family/lessons/agree', { lessons: ok.map(l => ({ id: l.id, version: l.version })) }, store.get());
       if (r.ok) { askOn.clear(); closeSheet(); sched = null; calData = {}; return say(`${r.decided}件を承認しました。ありがとうございます`, 'ok'); }
     } else if (a === 'agree' || a === 'agree-all') {
       // 画面で見ている確認待ち（id と版）をそのまま送る。見ていたものと違えば、サーバーは何も確定しない
       const list = a === 'agree' ? [{id:b.dataset.id,version:Number(b.dataset.version)}] : JSON.parse(b.dataset.refs || '[]');
       if (!list.length) return;
-      if (!confirm(`${list.length === 1 ? 'この授業' : list.length + '件の授業'}をこの日時で承認しますか？（予約になります。前日23時まではお休みにできます）`)) return;
+      if (!confirm(`${list.length === 1 ? 'この授業' : list.length + '件の授業'}をこの日時で承認しますか？（予約になります。前日23時まではお休みにできます）` + overText(list.map(x => ((sched && sched.lessons) || []).find(l => l.id === x.id))))) return;
       r = await call('family/lessons/agree', { lessons: list.map(l => ({ id: l.id, version: l.version })) }, store.get());
       if (r.ok) { closeSheet(); sched = null; calData = {}; return say(`${r.decided}件を承認しました。ありがとうございます`, 'ok'); }
     } else if (a === 'send-change') {
