@@ -20,9 +20,10 @@ test('today shows what needs doing and today\'s and tomorrow\'s lessons; teacher
   const m = await h.ok('home/today', { auth });
   assert.deepEqual(m.lessons.map(l => [l.date, l.start, l.needsRecord]), [['2026-10-02', '09:00', true], ['2026-10-02', '10:30', true], ['2026-10-03', '17:00', false]]);
   const todo = Object.fromEntries(m.todo.map(x => [x.key, x.count]));
-  assert.deepEqual([todo.requests, todo.records], [1, 2]);
+  // 授業記録は努力義務（2026-10-27）: 書いていない記録は「対応すること」に数えない（書きかけだけ）
+  assert.deepEqual([todo.requests, todo.records], [1, undefined]);
   const tt = await h.ok('home/today', { auth: tAuth });
   assert.deepEqual(tt.lessons.map(l => l.start), ['09:00'], '講師は担当の授業だけ');
   assert.equal(tt.todo.find(x => x.key === 'requests'), undefined, '連絡は教室管理者だけ');
-  assert.equal(tt.todo.find(x => x.key === 'records').count, 1);
+  assert.equal(tt.todo.find(x => x.key === 'records'), undefined, '書いていない記録で急かさない');
 });

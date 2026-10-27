@@ -7,10 +7,10 @@ import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=202610
 import { call, session, esc } from '/assets/v2/api.js';
 import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261026-kyotsu';
 import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261027-mt';
-import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261026-p4';
+import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261027-rec';
 import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261027-prog';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261026-kyotsu';
-import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261025-layout';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261027-rec';
+import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261027-rec';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261027-ack';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261026-p4';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
