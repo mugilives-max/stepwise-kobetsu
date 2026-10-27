@@ -278,3 +278,17 @@ test('the staff and family schedules open with more than 100 lessons in the rang
   const fam = await h.ok('family/schedule', { auth: parent, from: '2026-11-01', to: '2026-11-30' });
   assert.equal(fam.lessons.length >= 112, true);
 });
+
+// 200件まで選べる授業の確認のお願いも、D1 の上限（100個）を超えない
+test('asking about more than 100 held lessons at once works within the D1 parameter limit', async () => {
+  const { h, auth, lesson } = await world();
+  const ids = [];
+  for (let d = 1; d <= 28; d++) for (const start of ['09:00', '11:00', '13:00', '15:00']) {
+    const id = 'ls_held_' + d + start.replace(':', '');
+    h.db2._sqlite.prepare("insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, createdAt, updatedAt) values (?, ?, ?, ?, ?, 60, '数学', '通常', 'online', 'held', ?, ?)")
+      .run(id, lesson.studentId, lesson.staffId, '2026-12-' + String(d).padStart(2, '0'), start, '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z');
+    ids.push(id);
+  }
+  const r = await h.ok('schedule/lessons/show', { auth, studentId: lesson.studentId, lessonIds: ids });
+  assert.equal(r.shown, 112);
+});

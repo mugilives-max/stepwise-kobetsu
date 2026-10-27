@@ -3,7 +3,7 @@
 // - 「保存して公開」で公開した版を残し、宿題も見えるようにする。決定の授業はそのとき実施済みにする。
 // - 宿題: 生徒・保護者が「できた」→ スタッフが確認（またはやり直し）。
 // - 引き継ぎメモ: 次にその生徒を担当する講師・代講への伝言。読んだ人を残す。
-import { fail, newId, iso, audit } from './util.mjs';
+import { fail, newId, iso, audit, selectIn } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { todayJst, nowHmJst, addDays, studentByLink } from './schedule.mjs';
@@ -48,7 +48,7 @@ function recordStaffView(r) {
 // 宿題に「授業の日」を添える（次の授業までの宿題の期限を決めるため）
 async function homeworkWithAfter(c, rows) {
   const recIds = [...new Set(rows.map(h => h.recordId).filter(Boolean))];
-  const after = recIds.length ? Object.fromEntries((await c.db.prepare(`select r.id, l.date from lessonRecords r join lessons l on l.id = r.lessonId where r.id in (${recIds.map(() => '?').join(', ')})`).bind(...recIds).all()).results.map(x => [x.id, x.date])) : {};
+  const after = recIds.length ? Object.fromEntries((await selectIn(c.db, 'select r.id, l.date from lessonRecords r join lessons l on l.id = r.lessonId where r.id in {in}', recIds)).map(x => [x.id, x.date])) : {};
   return rows.map(h => ({ ...h, _after: after[h.recordId] || '' }));
 }
 async function futureLessons(c, studentId) {

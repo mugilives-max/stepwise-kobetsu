@@ -33,7 +33,8 @@ export function monthCalendar({ today, onChange }) {
       const d = addDays(start, i);
       if (i === 35 && ymOf(d) !== cal.month) break;
       const { lines = [], count = 0 } = cell(d) || {};
-      const shown = lines.slice(0, 4), more = lines.length - shown.length, wd = new Date(d + 'T00:00:00Z').getUTCDay();
+      // マスに出す行の数（2026-10-27 本人「授業が多すぎて表示がうまくできない」）: パソコンは5つ、スマホは2つまで出し、それより多いときは「+n」（途中で切らない）
+      const cap = phone() ? 3 : 6, shown = lines.length > cap ? lines.slice(0, cap - 1) : lines, more = lines.length - shown.length, wd = new Date(d + 'T00:00:00Z').getUTCDay();
       h += `<button type="button" class="cell${ymOf(d) !== cal.month ? ' out' : ''}${d === cal.sel ? ' sel' + (cal.shownSel && cal.shownSel !== cal.sel ? ' enter' : '') : ''}${d === cal.today ? ' today' : ''}" data-action="cal-day" data-date="${d}" aria-label="${mdw(d)} 予定${count}件">`
         + `<span class="num${wd === 0 ? ' sun' : wd === 6 ? ' sat' : ''}">${Number(d.slice(8))}</span>${shown.join('')}${more > 0 ? `<span class="more">+${more}</span>` : ''}</button>`;
     }

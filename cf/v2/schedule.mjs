@@ -13,7 +13,7 @@ import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
 //   ② 塾が日程を送り、保護者が保護者ページで「承認する」（send: 'ask'。締め切り・自動確定なし）
 //   受講計画合意書の回数を超える授業は、その授業への合意で受講計画合意書に1回足す（cf/v2/plan-extra.mjs）
 // カレンダー・Meet と保護者へのメールは、切り替え（settings.live）まで実際には行わない（effects に held で残る）。
-import { fail, newId, iso, audit, sha256Hex } from './util.mjs';
+import { fail, newId, iso, audit, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
@@ -378,7 +378,7 @@ async function pickedLessons(c, b, stages) {
   const ids = Array.isArray(b.lessonIds) ? [...new Set(b.lessonIds.map(String))] : [];
   if (!ids.length) fail('needIds', '授業を選んでください');
   if (ids.length > 200) fail('tooMany', '一度に選べるのは200件までです');
-  const rows = (await c.db.prepare(`select * from lessons where id in (${ids.map(() => '?').join(', ')})`).bind(...ids).all()).results;
+  const rows = await selectIn(c.db, 'select * from lessons where id in {in}', ids);
   const problems = ids.map(id => {
     const l = rows.find(r => r.id === id);
     return !l ? { lessonId: id, problem: 'notFound' } : l.studentId !== s.id ? { lessonId: id, problem: 'otherStudent' } : !stages.includes(stageOf(l)) ? { lessonId: id, problem: 'badStage', stage: stageOf(l) } : l.date < today ? { lessonId: id, problem: 'past' } : null;

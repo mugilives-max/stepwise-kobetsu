@@ -169,8 +169,11 @@ export async function cleanupFiles(c) {
   const day = new Date(c.now - 86400e3).toISOString();
   const stale = (await c.db.prepare("select id from files where status = 'pending' and createdAt < ?").bind(day).all()).results;
   if (stale.length) {
-    const ids = stale.map(r => r.id), q = `(${ids.map(() => '?').join(', ')})`;
-    await c.db.batch([c.db.prepare(`delete from fileTokens where fileId in ${q}`).bind(...ids), c.db.prepare(`delete from examFiles where fileId in ${q}`).bind(...ids), c.db.prepare(`delete from files where id in ${q}`).bind(...ids)]);
+    // D1 は1回の問い合わせに渡せる値が100個まで。分けて消す
+    for (let i = 0; i < stale.length; i += 80) {
+      const ids = stale.slice(i, i + 80).map(r => r.id), q = `(${ids.map(() => '?').join(', ')})`;
+      await c.db.batch([c.db.prepare(`delete from fileTokens where fileId in ${q}`).bind(...ids), c.db.prepare(`delete from examFiles where fileId in ${q}`).bind(...ids), c.db.prepare(`delete from files where id in ${q}`).bind(...ids)]);
+    }
   }
   await c.db.prepare('delete from fileTokens where expiresAt < ?').bind(day).run();
   return { removed: stale.length };
