@@ -43,7 +43,7 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
    await tab.pdf({path:path.join(out,name+'.pdf'),format:'A4',preferCSSPageSize:true,printBackground:true,displayHeaderFooter:true,headerTemplate:'<span></span>',footerTemplate:'<div style="width:100%;text-align:center;font-size:8px;color:#666"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'});
    report.pdfs.push(name);
   };
-  await page.goto(origin+'/family/#plan'); // 受講計画合意書の承認は専用の画面（2026-10-27）
+  await page.goto(origin+'/family/#plan'); // 受講計画書の承認は専用の画面（2026-10-27）
   await page.locator('[data-plan-count="'+p.id+'"]').selectOption('3');
   await page.locator('input[data-consenter="2026-11"]').fill('【テスト】入力中の保護者');
   const before=h.rows('select * from planLines');
@@ -68,7 +68,7 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
   assert.match(await approved.locator('body').innerText(),/31,500円/);
   await savePdf(approved,'approved');await approved.close();
   await page.getByRole('button',{name:'前の版も見る',exact:true}).click();
-  await page.locator('summary').filter({hasText:'受講計画合意書の履歴'}).click();
+  await page.locator('summary').filter({hasText:'受講計画書の履歴'}).click();
   const historyPopup=page.waitForEvent('popup');await page.getByRole('button',{name:'この版を印刷・PDF保存'}).first().click();
   const history=await historyPopup;await history.getByRole('heading',{name:'受講合意書の控え',exact:true}).waitFor();await history.close();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -76,7 +76,7 @@ const {agreementFixture}=require('../test/helpers/agreement-fixture.cjs');
   report.checks.push('family approved and archive documents, mobile width');
   await page.goto(origin+'/staff/#plans');
   await page.locator('button[data-action="pl-student"]').first().click(); // 生徒を押すと、その月の受講合意書
-  await page.getByRole('button',{name:/の受講計画合意書を見る/}).first().click();
+  await page.getByRole('button',{name:/の受講計画書を見る/}).first().click();
   const staffPopup=page.waitForEvent('popup');await page.getByRole('button',{name:'印刷・PDF保存',exact:true}).click();
   const staffDoc=await staffPopup;await staffDoc.getByRole('heading',{name:'受講合意書の控え',exact:true}).waitFor();await staffDoc.close();
   await page.locator('button[data-action="pl-close"]').first().click();

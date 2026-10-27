@@ -69,9 +69,9 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   await page.screenshot({path:path.join(out,'02-agreement-mobile.png'),fullPage:true,animations:'disabled'});
   await page.setViewportSize({width:390,height:844});
   await form.getByRole('button',{name:'この内容で承認する',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'の受講計画合意書を承認しました'}).waitFor();
+  await page.getByRole('status').filter({hasText:'の受講計画書を承認しました'}).waitFor();
   assert.equal(row(p.id).status,'approved');assert.equal(row(p2.id).status,'proposed');
-  await page.reload();await page.getByText('承認をお願いしている受講計画合意書はありません。',{exact:false}).waitFor();
+  await page.reload();await page.getByText('承認をお願いしている受講計画書はありません。',{exact:false}).waitFor();
   assert.equal(await page.locator('[data-form="plan-approve"]').count(),0);
   await page.goto(origin+'/family/#contracts');await page.locator('details.ph').first().waitFor({state:'attached'}); // 承認した控えは、アカウントの「契約・同意の控え」（2026-10-27）
   assert.ok(await page.locator('[data-action="agreement-doc"]').count()>0,'approved PDF action retained');
@@ -205,7 +205,7 @@ const {chromium}=require('playwright'),{agreementFixture}=require('../test/helpe
   const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   fs.writeFileSync(path.join(out,'emails.html'),'<!doctype html><html lang="ja"><meta charset="utf-8"><title>保護者通知の見本（未公開・架空データ）</title><style>body{font:16px system-ui;max-width:800px;margin:32px auto;padding:20px}article{border:1px solid #ddd;padding:20px;margin:20px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}</style><h1>保護者通知の見本</h1><p>未公開の確認用です。架空データで生成し、実メールは送信していません。</p>'+emails.map(m=>'<article><h2>'+escape(m.subject)+'</h2><pre>'+escape(m.body)+'</pre></article>').join('')+'</html>');
   fs.writeFileSync(path.join(out,'emails.json'),JSON.stringify(emails,null,2));
-  const expectedSubjects=[/保護者ページの登録/,/パスワードの再設定/,/個別受講条件書のお知らせ/,/特別単価のご提案/,/授業内容・回数・料金をご確認ください（受講計画合意書）/,/受講計画合意書の確認のお願い（再案内）/,/授業の日程の承認のお願い/,/授業の日時が確定しました/,/授業の日時を変更しました/,/授業をキャンセルしました/,/キャンセル料のお知らせ/,/キャンセル料の申請への回答/,/月分の授業料のお知らせ/,/請求取消し/];
+  const expectedSubjects=[/保護者ページの登録/,/パスワードの再設定/,/個別受講条件書のお知らせ/,/特別単価のご提案/,/授業内容・回数・料金をご確認ください（受講計画書）/,/受講計画書の確認のお願い（再案内）/,/授業の日程の承認のお願い/,/授業の日時が確定しました/,/授業の日時を変更しました/,/授業をキャンセルしました/,/キャンセル料のお知らせ/,/キャンセル料の申請への回答/,/月分の授業料のお知らせ/,/請求取消し/];
   for(const re of expectedSubjects)assert.ok(emails.some(m=>re.test(m.subject)),'missing actual template: '+re);
   report.templateSubjects=expectedSubjects.map(re=>emails.find(m=>re.test(m.subject)).subject);
   report.checks.push('all 13 existing notification templates and invoice-void template generated without sending');
