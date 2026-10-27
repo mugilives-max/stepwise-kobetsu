@@ -2,10 +2,10 @@
   "edition": "2026-11-20261028-r16",
   "effective_date": "保護者がこの版に同意した日（新たに入塾する場合はお申込みの日）",
   "source_path": "docs/terms-restructure-2026-11/TERMS.md",
-  "source_git_blob": "7fe7656ee158fc2f749a16ee4732093b7a25609f",
-  "source_commit": "8b92c41050c6c20ac8e7b2fc90419ee2bf872bfd",
-  "html_sha256": "68fec4b5c1c1f29073fd84bad9f3688c2324535ce6a33e307418408eb972710d",
-  "pdf_sha256": "f7c8476698384fb78e4575b231c4101b2c797c6db55751c14b2e96e32aa08cf6",
+  "source_git_blob": "863ddaa1d9f2fc3cb4e180f45d80824450fc3956",
+  "source_commit": "8a2f5e1a942b0580182cc54246b1044b0034e144",
+  "html_sha256": "03786a683977b18a399979653e38e3b0e0a2fa541cf2fce3bd6c90878cc3395f",
+  "pdf_sha256": "4a581d05c08edd48c55a96409e53374dc1d3cd317f1e045447189696d80885a5",
   "old_blobs_preserved": {},
   "chapters": 8,
   "articles": 29,
@@ -33,8 +33,8 @@
     320
   ],
   "prior_source_commit": "a2fa69abaf5be8420078167f578af61e53e47321",
-  "reviewed_changed_paragraphs": 60,
-  "unchanged_paragraphs": 44,
+  "reviewed_changed_paragraphs": 61,
+  "unchanged_paragraphs": 43,
   "only_reviewed_source_changes": true,
   "source_equals_reviewed_draft": "DRAFT_20261027.md",
   "deferred_conditions_unchanged": true,
@@ -48,7 +48,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "5f95d0cb4b7fcec115b0da346813ad9bb74ecc7fee019f7ec56628245134f991"
+      "pdf_sha256": "416836d081960292e0fb0a37be59c511a97eddaefdc291ccef2bc8c0ef2e7e2f"
     },
     {
       "name": "特別単価合意書",
@@ -56,7 +56,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "5c09a9f690d1069d5d2ee46a51319f077060d3495a7281af5f61f4c2524ec936"
+      "pdf_sha256": "4acb00a93af0f3eaf7f6032867e987b3a97aa92d265581182ae292ee892dc9d6"
     },
     {
       "name": "受講計画書",
@@ -64,7 +64,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "52b8a9d4faea4f050623910e2b6d08b2dd61d423d829b565d016b6ffd88e11eb"
+      "pdf_sha256": "6579ccdac21bf7b8919eaab9765b30ff21736b48a705962b20523b8e49cf4106"
     },
     {
       "name": "キャンセル料金の免除申請のご案内",
@@ -72,7 +72,7 @@
       "pages": 2,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "0ba136c720547afcf474046c32f5ffe06a614630118cd1e03d4889ec12c95da6"
+      "pdf_sha256": "02e9c959c50fecf06e00312a6b79fb1ffea0c1c901c8b98211ddb9ff7f475487"
     }
   ],
   "waiver_links_verified": true,
