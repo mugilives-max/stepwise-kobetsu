@@ -810,6 +810,32 @@ export const scheduleRoutes = {
   },
   'family/lessons/request': async (c, b) => { const me = await requireFamily(c, b); const ids = (await c.db.prepare('select id from students where familyId = ?').bind(me.id).all()).results.map(r => r.id); return lessonRequest(c, ids, { kind: 'family', id: me.id }, b); },
   'family/lessons/agree': async (c, b) => agreeLessons(c, await requireFamily(c, b), b),
+  // まとめて返事（2026-10-27 本人「一括の承認はできるけども、それ以外は各個撃破で登録していくしかない…大変な手間なのでどうにかならないだろうか」）:
+  // lessons（id と版）は承認、move（id）は都合が悪いので日時の変更をお願いする（ひとことは全部に同じ）。塾へのお知らせは承認と変更でそれぞれ 1 通
+  'family/lessons/respond': async (c, b) => {
+    const me = await requireFamily(c, b);
+    const mine = (await c.db.prepare('select id from students where familyId = ?').bind(me.id).all()).results.map(r => r.id);
+    const moveIds = [...new Set((Array.isArray(b.move) ? b.move : []).slice(0, 100).map(String))], note = String(b.note || '').trim();
+    if (note.length > 500) fail('tooLong', '500文字以内で書いてください');
+    const moves = [];
+    for (const id of moveIds) {
+      const l = await c.db.prepare('select * from lessons where id = ?').bind(id).first();
+      if (!l || !mine.includes(l.studentId)) fail('notFound', '授業が見つかりません', 404);
+      if (stageOf(l) !== 'asking' || c.now >= startMs(l.date, l.start)) fail('conflict', '日程が変わった授業があります。画面を読み直してください（まだ何も送っていません）', 409);
+      moves.push(l);
+    }
+    if (!moves.length && !(Array.isArray(b.lessons) && b.lessons.length)) fail('needIds', '授業がありません');
+    const agreed = Array.isArray(b.lessons) && b.lessons.length ? await agreeLessons(c, me, b) : { decided: 0 };
+    const now = iso(c.now), text = note || '都合が悪いため、別の日時を相談したい';
+    const fresh = [];
+    for (const l of moves) if (!(await c.db.prepare("select 1 from lessonRequests where lessonId = ? and status = 'open'").bind(l.id).first())) fresh.push(l);
+    if (fresh.length) await c.db.batch(fresh.map(l => c.db.prepare('insert into lessonRequests (id, lessonId, studentId, kind, note, fromKind, fromId, receivedAt, status, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(newId('rq'), l.id, l.studentId, 'move', text, 'family', me.id, now, 'open', now, now)));
+    const bySid = {}; fresh.forEach(l => { (bySid[l.studentId] = bySid[l.studentId] || []).push(l); });
+    for (const [sid, list] of Object.entries(bySid)) { const s = await studentRow(c, sid); await staffNotice(c, `【日時の変更のお願い】${fullName(s)}さん`, `${fullName(s)}さんの保護者から、次の授業の日時の変更のお願いが届きました（承認待ちの授業）。\n${list.map(lessonLine).join('\n')}\n内容: ${text}`); }
+    if (fresh.length) await audit(c, 'lessonRequest:move', '', { lessons: fresh.map(l => l.id), bulk: true });
+    return { decided: agreed.decided, moved: fresh.length };
+  },
   'family/lessons/withdraw': async (c, b) => { const me = await requireFamily(c, b); const ids = (await c.db.prepare('select id from students where familyId = ?').bind(me.id).all()).results.map(r => r.id); return withdrawRequest(c, ids, b); },
   'family/events/add': async (c, b) => { const me = await requireFamily(c, b); const s = await studentRow(c, b.studentId); if (s.familyId !== me.id) fail('notFound', '生徒が見つかりません', 404); return addEvent(c, s.id, { kind: 'family', id: me.id }, b); },
   'family/events/delete': async (c, b) => { const me = await requireFamily(c, b); const ids = (await c.db.prepare('select id from students where familyId = ?').bind(me.id).all()).results.map(r => r.id); return deleteEvent(c, ids, null, b); },

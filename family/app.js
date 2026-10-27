@@ -195,6 +195,8 @@ const hasOpen = l => (l.requests || []).some(r => r.status === 'open');
 // 授業日時の承認（メール・LINE のリンク #confirm）: 承認をお願いしている授業を月の表に出し、「承認する」でまとめて確定（規約 r15 第14条1項）。
 // 2026-10-27 本人「字面が並んでいるだけでは、どの日にち曜日なのかが判断しずらいです。ここには、カレンダーを表示するべき」。
 // 表には、決まっている授業とテスト・行事も薄く出す（都合を判断できるように）。授業を押すと、変更・お休みの連絡ができる画面
+// 都合の悪い授業（押して外したもの）と、ひとこと。2026-10-27 本人「一括の承認はできるけども、それ以外は各個撃破で登録していくしかない…大変な手間なのでどうにかならないだろうか」
+const askOff = new Set(); let askNote = '';
 function askCalendar(ym, asking, many) {
   const other = forKid(sched.lessons).filter(l => ['decided', 'done'].includes(l.status)), evs = forKid(sched.events || []);
   const start = gridStart(ym), WDS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -206,7 +208,9 @@ function askCalendar(ym, asking, many) {
     if (inMonth) {
       c += evs.filter(e => e.date <= d && d <= (e.dateTo || e.date)).map(e => '<span class="ev ' + esc(e.kind) + '">' + esc(e.title || EVENT_KIND[e.kind] || '') + '</span>').join('');
       c += other.filter(l => l.date === d).map(l => '<span class="dl">' + esc(l.start) + ' ' + esc(l.subject) + '</span>').join('');
-      c += asking.filter(l => l.date === d).map(l => '<button type="button" class="ak" data-action="lesson" data-id="' + esc(l.id) + '">' + esc(l.start) + '<b>' + (many ? esc(given(names()[l.studentId] || '')) + ' ' : '') + esc(l.subject) + '</b></button>').join('');
+      c += asking.filter(l => l.date === d).map(l => hasOpen(l)
+        ? '<button type="button" class="ak req" data-action="lesson" data-id="' + esc(l.id) + '">' + esc(l.start) + '<b>' + (many ? esc(given(names()[l.studentId] || '')) + ' ' : '') + esc(l.subject) + '</b></button>'
+        : '<button type="button" class="ak' + (askOff.has(l.id) ? ' off' : '') + '" data-action="ask-pick" data-id="' + esc(l.id) + '" aria-pressed="' + !askOff.has(l.id) + '">' + esc(l.start) + '<b>' + (many ? esc(given(names()[l.studentId] || '')) + ' ' : '') + esc(l.subject) + '</b></button>').join('');
     }
     h += '<div class="c' + (inMonth ? '' : ' out') + (d === sched.today ? ' today' : '') + '">' + c + '</div>';
   }
@@ -218,17 +222,20 @@ function confirmPage() {
   const all=askingLessons(forKid(sched.lessons));
   if(!all.length)return h+'<p>承認をお願いしている授業はありません。</p><p><a href="#schedule">予定を見る</a></p>';
   const many=new Set(all.map(l=>l.studentId)).size>1;
+  h+='<p class="small" style="margin:4px 0 0">都合の悪い授業は、押して外してください。</p>';
   for(const ym of [...new Set(all.map(l=>l.date.slice(0,7)))].sort()) h+=askCalendar(ym,all.filter(l=>l.date.slice(0,7)===ym),many);
   // 前に締め切りを付けてお願いした授業（2026-10-27 より前）だけ、締め切りを書く（取り消せない結果なので）
   const by=all.map(automaticDeadline).filter(Boolean).sort()[0];
   if(by)h+='<p class="small">'+esc(md(by))+'までにご連絡がなければ、この日程で確定します。</p>';
-  const ok=all.filter(l=>!hasOpen(l)), refs=ok.map(l=>({id:l.id,version:l.version}));
+  const open=all.filter(l=>!hasOpen(l)), ok=open.filter(l=>!askOff.has(l.id)), off=open.filter(l=>askOff.has(l.id));
   const extra=ok.filter(l=>l.extraFee);
   const months=[...new Set(ok.filter(l=>l.planPending).map(l=>l.date.slice(0,7)))];
   if(months.length)h+='<p class="notice small">'+months.map(monthLabel).join('・')+'の受講計画（科目・回数・料金）の承認もお願いします。<a href="#plan">受講計画を見る ›</a></p>';
   if(extra.length)h+='<p class="small">受講計画の回数を超える授業が'+extra.length+'回あります（'+extra.map(l=>esc(md(l.date))+' '+esc(l.subject)+' '+yen(l.extraFee)).join('・')+'）。承認すると、受講計画に追加になります。</p>';
-  if(ok.length)h+='<button class="primary wide" data-action="agree-all" data-refs="'+esc(JSON.stringify(refs))+'"'+dis()+'>承認する（'+ok.length+'件）</button>';
-  if(ok.length<all.length)h+='<p class="small muted">変更・お休みの連絡を出している授業は、先生の返事のあとで承認できます。</p>';
+  if(off.length)h+='<label>都合の悪い授業について（任意）<textarea id="ask-note" rows="2" maxlength="500" placeholder="例: 11/12は部活があります。水曜なら大丈夫です">'+esc(askNote)+'</textarea></label>';
+  const label=ok.length&&off.length?ok.length+'件を承認して、'+off.length+'件は日時の変更をお願いする':ok.length?'承認する（'+ok.length+'件）':'日時の変更をお願いする（'+off.length+'件）';
+  if(open.length)h+='<button class="primary wide" data-action="ask-send"'+dis()+'>'+label+'</button>';
+  if(open.length<all.length)h+='<p class="small muted">変更・お休みの連絡を出している授業は、先生の返事のあとで承認できます。</p>';
   return h;
 }
 // 学習: 子どもを選んで「記録と宿題」「成績」
@@ -439,7 +446,7 @@ app.addEventListener('submit', ev => {
     failed(r);
   });
 });
-app.addEventListener('input', ev => { if (enrollInput(ev)) return; if (ev.target.dataset?.consenter) consentNames[ev.target.dataset.consenter] = ev.target.value; });
+app.addEventListener('input', ev => { if (enrollInput(ev)) return; if (ev.target.id === 'ask-note') { askNote = ev.target.value; return; } if (ev.target.dataset?.consenter) consentNames[ev.target.dataset.consenter] = ev.target.value; });
 app.addEventListener('change', ev => { if (enrollChange(ev)) return; if (ev.target.dataset && ev.target.dataset.contact) { const id = ev.target.dataset.contact, allow = ev.target.checked; run(async () => { const r = await call('family/students/contact', { studentId: id, allow }, store.get()); if (!r.ok) return failed(r); const k = kids().find(x => x.id === id); if (k) k.studentContact = allow; say(allow ? '生徒さん本人からも受け付けます' : '保護者からの連絡だけにしました', 'ok'); }); return; } if (ev.target.id === 'terms-agree') { termsChecked = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.condAgree) { condChecked[ev.target.dataset.condAgree] = ev.target.checked; return; } if (ev.target.dataset && ev.target.dataset.specialAgree) { specialChecked[ev.target.dataset.specialAgree] = ev.target.checked; return; } const id = ev.target.dataset && ev.target.dataset.planCount; if (id) { planCounts[id] = Number(ev.target.value); render(); } });
 app.addEventListener('click', ev => {
   const b = ev.target.closest('[data-action]'); if (!b) return;
@@ -449,6 +456,7 @@ app.addEventListener('click', ev => {
   if (enrollClick(ectx(), a, b)) { ev.preventDefault(); return; }
   if (a === 'kid') { kid = b.dataset.id; try { sessionStorage.setItem(KID_KEY, kid); } catch {} ev.preventDefault(); return render(); }
   if (a === 'lesson') { sheetState = { kind: 'lesson', id: b.dataset.id, pick: '', note: '' }; return render(); }
+  if (a === 'ask-pick') { const id = b.dataset.id; if (askOff.has(id)) askOff.delete(id); else askOff.add(id); return render(); }
   if (a === 'pick') { captureSheetInputs(); sheetState.pick = b.dataset.c; return render(); }
   if (a === 'close-sheet') { closeSheet(); return render(); }
   if (a === 'add-event') { sheetState = { kind: 'event' }; return render(); }
@@ -460,7 +468,13 @@ app.addEventListener('click', ev => {
   captureSheetInputs();
   run(async () => {
     let r;
-    if (a === 'agree' || a === 'agree-all') {
+    if (a === 'ask-send') {
+      const all = askingLessons(forKid(sched.lessons)).filter(l => !hasOpen(l)), ok = all.filter(l => !askOff.has(l.id)), off = all.filter(l => askOff.has(l.id));
+      if (!all.length) return;
+      if (!confirm([ok.length ? `${ok.length}件をこの日時で承認します（予約になります。前日23時まではお休みにできます）。` : '', off.length ? `${off.length}件は日時の変更をお願いします。` : ''].join('\n'))) return;
+      r = await call('family/lessons/respond', { lessons: ok.map(l => ({ id: l.id, version: l.version })), move: off.map(l => l.id), note: askNote }, store.get());
+      if (r.ok) { askOff.clear(); askNote = ''; sched = null; calData = {}; return say([r.decided ? `${r.decided}件を承認しました` : '', r.moved ? `${r.moved}件の日時の変更をお願いしました` : ''].filter(Boolean).join('。') + '。ありがとうございます', 'ok'); }
+    } else if (a === 'agree' || a === 'agree-all') {
       // 画面で見ている確認待ち（id と版）をそのまま送る。見ていたものと違えば、サーバーは何も確定しない
       const list = a === 'agree' ? [{id:b.dataset.id,version:Number(b.dataset.version)}] : JSON.parse(b.dataset.refs || '[]');
       if (!list.length) return;
