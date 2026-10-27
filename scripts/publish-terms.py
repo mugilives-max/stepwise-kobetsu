@@ -16,7 +16,7 @@ OUT = ROOT / "terms" / EDITION
 REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261028-r16"
 REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R16.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "7f7e73debd8b32344b8e89a68e2c7d52cebad32f"
+EXPECTED_SOURCE_BLOB = "9f473effc2cd9e9b828ace5782e144eafa1c7405"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -61,7 +61,7 @@ for heading in body.find_all(["h1", "h2", "h3"]):
 ids = [tag["id"] for tag in body.select("[id]")]
 assert len(ids) == len(set(ids)), "Duplicate anchors"
 assert len([v for v in ids if re.fullmatch(r"article-\d+", v)]) == 29
-assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 106
+assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 105
 assert len([v for v in ids if re.fullmatch(r"chapter-\d+", v)]) == 8
 assert len(body.find_all("table")) == 5
 for link in body.select('a[href^="#"]'):
@@ -156,7 +156,7 @@ CLAUSE_PATTERN = r'(<a id="(article-\d+-item-\d+)"></a>\n\n\d+\. )([\s\S]*?)(?=\
 def clauses(value):
     return {m[2]:m[3].strip() for m in re.finditer(CLAUSE_PATTERN,value)}
 old_clauses,new_clauses = clauses(prior_source),clauses(source)
-assert len(old_clauses)==142 and len(new_clauses)==106
+assert len(old_clauses)==142 and len(new_clauses)==105
 kept = set(renumbered(v) for v in old_clauses.values()) & set(new_clauses.values())
 changes = {k for k,v in new_clauses.items() if v not in kept}
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
@@ -167,7 +167,7 @@ assert "受講計画書（必要な場合のみ）" in new_tables[0]
 for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","受講計画合意書","確認待ち","調整中","この日程で大丈夫","当面1対1","基準単価","適用単価","日程調整カレンダー"]:
     assert phrase not in source,phrase
 assert "教室指導・オンライン指導とも、講師1名につき生徒最大2名" in source
-assert len(ids)==147
+assert len(ids)==146
 for link in body.select('a[href^="#article-"]'):
     label=re.fullmatch(r"第(\d+)条(?:第(\d+)項)?",link.get_text())
     if label:
@@ -348,7 +348,7 @@ report = {
     "html_sha256":hashlib.sha256((OUT / "index.html").read_bytes()).hexdigest(),
     "pdf_sha256":hashlib.sha256((OUT / PDF_NAME).read_bytes()).hexdigest(),
     "old_blobs_preserved":OLD,
-    "chapters":8,"articles":29,"numbered_paragraphs":106,"tables":5,
+    "chapters":8,"articles":29,"numbered_paragraphs":105,"tables":5,
     "markdown_to_html_full_text_equal":True,
     "internal_links_valid":True,"mobile_overflow":False,
     "pdf_pages":len(pdf),"pdf_text_blocks_verified":len(checks),
