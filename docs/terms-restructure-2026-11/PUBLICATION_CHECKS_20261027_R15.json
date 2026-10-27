@@ -2,10 +2,10 @@
   "edition": "2026-11-20261027-r15",
   "effective_date": "2026-11-01",
   "source_path": "docs/terms-restructure-2026-11/TERMS.md",
-  "source_git_blob": "1bcf9a49591ceb6eb72890e0afa3d807d5d65ee8",
-  "source_commit": "224ecb406d6ac678f24a7c0adc9ddd47427ce5bf",
-  "html_sha256": "ee1643c718afb11f6b7f90b0a8ce2b39fc273ad2bfd3dba6818d65b7f607c4f2",
-  "pdf_sha256": "5d802c04ce0472b41f062f68bc0e7900c085ab2c03047867b82c714f48741359",
+  "source_git_blob": "dda15c7172473ab589dfe06e3ea124e9b55e5853",
+  "source_commit": "6ea34c2c56794307c9f495baa0a2e3d91344eac4",
+  "html_sha256": "6292d1bd803ec0b30474fd4be36fefc92651c098e7bcc341aea18c5144fb0847",
+  "pdf_sha256": "07fcff8f79f3316a7cd3e373c3407f41f2b229972c2aa8f0ac47d2b86c438b6f",
   "old_blobs_preserved": {},
   "chapters": 8,
   "articles": 33,
@@ -24,7 +24,7 @@
     "WenQuanYiZenHei"
   ],
   "pdf_fonts_embedded": true,
-  "embedded_font_programs": 260,
+  "embedded_font_programs": 258,
   "japanese_font_match": "Noto Sans CJK JP",
   "visual_review_images": 27,
   "anchors": 192,
@@ -33,8 +33,8 @@
     320
   ],
   "prior_source_commit": "1b8fe3316370df93262aecde62087523df92c5e1",
-  "reviewed_changed_paragraphs": 15,
-  "unchanged_paragraphs": 136,
+  "reviewed_changed_paragraphs": 29,
+  "unchanged_paragraphs": 122,
   "only_reviewed_source_changes": true,
   "deferred_conditions_unchanged": true,
   "fee_tables_and_examples_unchanged": true,
@@ -47,7 +47,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "2f59dcaeb11ca85681fee585cda448c44bf57e9c65c8a379e4e45a1688047c93"
+      "pdf_sha256": "485144f777d3bd98182951a7b3068bce6a352403538c0534fd345c1a219d1988"
     },
     {
       "name": "特別単価合意書",
@@ -55,7 +55,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "a8b47fc9c834c6fda5ce0d1637ee1e151df6f96c3953d1384924106300222d0e"
+      "pdf_sha256": "d37c8d5c35a97316eb7d1cecd0d44a890538bc99e8732c1fe05047381a4cf6b5"
     },
     {
       "name": "受講計画合意書",
@@ -63,7 +63,7 @@
       "pages": 1,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "48d9b33689b1dd095c92641583d25b602beb905a50a53ce5eef7bee409b30d67"
+      "pdf_sha256": "6c6207a7d0798f328e87d290e53c616c0e5f995709d641d28819ed1e323152ae"
     },
     {
       "name": "キャンセル料金の免除申請のご案内",
@@ -71,7 +71,7 @@
       "pages": 2,
       "text_verified": true,
       "fonts_embedded": true,
-      "pdf_sha256": "5f3a94e73277cab7b39257ea5a9cd5a73fd326e4816c2f1a488db9857a140166"
+      "pdf_sha256": "f15d25508feed6ca49a684446c195a8b98c38a4d7322f3e4eb6f11e5753b7823"
     }
   ],
   "waiver_links_verified": true,
