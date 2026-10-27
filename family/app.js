@@ -7,9 +7,9 @@ import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enroll
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
-import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261025-layout';
+import { monthCalendar, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261025-layout';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261027-ease';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-ease2';
+import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261027-ease5';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -130,7 +130,7 @@ function homePage() {
   const needConds = money.conditions ? money.conditions.items.filter(x => x.needs && !covers.students.has(x.studentId)) : [];
   if (needConds.length) todo.push(['#agree', 'file', '#c98a00', '個別受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・'), needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
-  if (needSpecials.length) todo.push(['#agree', 'file', '#c98a00', '特別単価合意書の承認', [...new Set(needSpecials.map(x => `${given(x.studentName)}さん`))].join('・'), needSpecials.length]);
+  if (needSpecials.length) todo.push(['#agree', 'file', '#c98a00', '特別単価の承認', [...new Set(needSpecials.map(x => `${given(x.studentName)}さん`))].join('・'), needSpecials.length]);
   // 保護者が見るページ: 何の・誰のことかを言う（2026-10-27 本人「受講計画の承認」「授業日時の承認」「入金待ちのお支払い」「お子様の宿題」）。
   // 2行の薄い字にしない・金額は出さない。添える言葉は1行で「入金待ちのお支払い（9月）」のように（同日 本人）
   if (asks.length) todo.push(['#plan', 'plan', '#5b6672', '受講計画の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
@@ -192,30 +192,43 @@ function schedulePage() {
 // 確認待ち（今日以降・始まっていない・連絡を出していない）
 function askingLessons(lessons) { return lessons.filter(l => l.status === 'proposed' && l.asked && Date.parse(l.date+'T'+l.start+':00+09:00') > Date.now()); }
 const hasOpen = l => (l.requests || []).some(r => r.status === 'open');
-// 日程の確認（メール・LINE のリンク #confirm）: 確認待ちの授業を並べて「この日程で大丈夫」（規約 r9 第14条1項）。都合の悪い授業は押して連絡
-// 子ども × 締め切りのまとまりごとに見出し。締め切りがあるまとまりだけ「連絡がなければ確定」を書く（取り消せない結果なので）
+// 授業日時の承認（メール・LINE のリンク #confirm）: 承認をお願いしている授業を月の表に出し、「承認する」でまとめて確定（規約 r15 第14条1項）。
+// 2026-10-27 本人「字面が並んでいるだけでは、どの日にち曜日なのかが判断しずらいです。ここには、カレンダーを表示するべき」。
+// 表には、決まっている授業とテスト・行事も薄く出す（都合を判断できるように）。授業を押すと、変更・お休みの連絡ができる画面
+function askCalendar(ym, asking, many) {
+  const other = forKid(sched.lessons).filter(l => ['decided', 'done'].includes(l.status)), evs = forKid(sched.events || []);
+  const start = gridStart(ym), WDS = ['日', '月', '火', '水', '木', '金', '土'];
+  let h = '<h2 class="ask-month">' + Number(ym.slice(0, 4)) + '年' + Number(ym.slice(5)) + '月</h2><div class="ask-cal">' + WDS.map((w, i) => '<div class="wd' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '">' + w + '</div>').join('');
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i), wd = i % 7, inMonth = d.slice(0, 7) === ym;
+    if (i === 35 && !inMonth) break;
+    let c = '<span class="n' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '') + '">' + Number(d.slice(8)) + '</span>';
+    if (inMonth) {
+      c += evs.filter(e => e.date <= d && d <= (e.dateTo || e.date)).map(e => '<span class="ev ' + esc(e.kind) + '">' + esc(e.title || EVENT_KIND[e.kind] || '') + '</span>').join('');
+      c += other.filter(l => l.date === d).map(l => '<span class="dl">' + esc(l.start) + ' ' + esc(l.subject) + '</span>').join('');
+      c += asking.filter(l => l.date === d).map(l => '<button type="button" class="ak" data-action="lesson" data-id="' + esc(l.id) + '">' + esc(l.start) + '<b>' + (many ? esc(given(names()[l.studentId] || '')) + ' ' : '') + esc(l.subject) + '</b></button>').join('');
+    }
+    h += '<div class="c' + (inMonth ? '' : ' out') + (d === sched.today ? ' today' : '') + '">' + c + '</div>';
+  }
+  return h + '</div>';
+}
 function confirmPage() {
   if(need('sched'))return loading;
   let h=kidPicker(true)+noticeHtml();
-  const all=askingLessons(forKid(sched.lessons)), groups=new Map();
+  const all=askingLessons(forKid(sched.lessons));
   if(!all.length)return h+'<p>承認をお願いしている授業はありません。</p><p><a href="#schedule">予定を見る</a></p>';
-  for(const l of all) {
-    const eligible=!!automaticDeadline(l);
-    const key=l.studentId+'|'+(eligible?l.confirmBy:'');
-    if(!groups.has(key))groups.set(key,{student:l.studentId,by:eligible?l.confirmBy:'',rows:[]});
-    groups.get(key).rows.push(l);
-  }
-  for(const g of groups.values()) {
-    const ok=g.rows.filter(l=>!hasOpen(l)), refs=ok.map(l=>({id:l.id,version:l.version}));
-    h+='<h2>'+esc(names()[g.student]||'')+(g.by?' · '+esc(md(g.by))+'まで':'')+'</h2>';
-    if(g.by)h+='<p class="small">'+esc(md(g.by))+'までにご連絡がなければ、この日程で確定します。</p>';
-    h+=lessonRows(g.rows,{names:names(),today:sched.today});
-    const extra=ok.filter(l=>l.extraFee);
-    const months=[...new Set(ok.filter(l=>l.planPending).map(l=>l.date.slice(0,7)))];
-    if(months.length)h+='<p class="notice small">'+months.map(monthLabel).join('・')+'の受講計画合意書（科目・回数・料金）の承認もお願いします。<a href="#plan">受講計画合意書を見る ›</a></p>';
-    if(extra.length)h+='<p class="small">受講計画合意書の回数を超える授業が'+extra.length+'回あります（'+extra.map(l=>esc(md(l.date))+' '+esc(l.subject)+' '+yen(l.extraFee)).join('・')+'）。承認すると、受講計画合意書に追加になります。</p>';
-    if(ok.length)h+='<button class="primary wide" data-action="agree-all" data-refs="'+esc(JSON.stringify(refs))+'"'+dis()+'>承認する（'+ok.length+'件）</button>';
-  }
+  const many=new Set(all.map(l=>l.studentId)).size>1;
+  for(const ym of [...new Set(all.map(l=>l.date.slice(0,7)))].sort()) h+=askCalendar(ym,all.filter(l=>l.date.slice(0,7)===ym),many);
+  // 前に締め切りを付けてお願いした授業（2026-10-27 より前）だけ、締め切りを書く（取り消せない結果なので）
+  const by=all.map(automaticDeadline).filter(Boolean).sort()[0];
+  if(by)h+='<p class="small">'+esc(md(by))+'までにご連絡がなければ、この日程で確定します。</p>';
+  const ok=all.filter(l=>!hasOpen(l)), refs=ok.map(l=>({id:l.id,version:l.version}));
+  const extra=ok.filter(l=>l.extraFee);
+  const months=[...new Set(ok.filter(l=>l.planPending).map(l=>l.date.slice(0,7)))];
+  if(months.length)h+='<p class="notice small">'+months.map(monthLabel).join('・')+'の受講計画（科目・回数・料金）の承認もお願いします。<a href="#plan">受講計画を見る ›</a></p>';
+  if(extra.length)h+='<p class="small">受講計画の回数を超える授業が'+extra.length+'回あります（'+extra.map(l=>esc(md(l.date))+' '+esc(l.subject)+' '+yen(l.extraFee)).join('・')+'）。承認すると、受講計画に追加になります。</p>';
+  if(ok.length)h+='<button class="primary wide" data-action="agree-all" data-refs="'+esc(JSON.stringify(refs))+'"'+dis()+'>承認する（'+ok.length+'件）</button>';
+  if(ok.length<all.length)h+='<p class="small muted">変更・お休みの連絡を出している授業は、先生の返事のあとで承認できます。</p>';
   return h;
 }
 // 学習: 子どもを選んで「記録と宿題」「成績」

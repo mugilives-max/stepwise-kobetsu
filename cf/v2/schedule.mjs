@@ -151,8 +151,8 @@ export const lessonLine = l => `・${mdText(l.date)} ${l.start}〜${endText(l.st
 // 確認のお願いの本文（メールと LINE で同じ）。lessons は締め切り（confirmBy）を付けたあとの行
 export function askText(name, lessons) {
   const extra = lessons.filter(l => l.extraFee);
-  let t = `${name}さんの授業の日程の承認をお願いします。\n` + lessons.map(l => lessonLine(l) + (l.extraFee ? `（受講計画合意書に追加・${Number(l.extraFee).toLocaleString('ja-JP')}円）` : '')).join('\n') + '\n';
-  if (extra.length) t += '「追加」の授業は受講計画合意書の回数を超える分です。承認すると、受講計画合意書に追加になります。\n';
+  let t = `${name}さんの授業の日程の承認をお願いします。\n` + lessons.map(l => lessonLine(l) + (l.extraFee ? `（受講計画に追加・${Number(l.extraFee).toLocaleString('ja-JP')}円）` : '')).join('\n') + '\n';
+  if (extra.length) t += '「追加」の授業は受講計画の回数を超える分です。承認すると、受講計画に追加になります。\n';
   return t + '保護者ページで「承認する」を押すと、この日時で確定します。ご都合の悪い授業は、その授業を押してお知らせください。';
 }
 // スタッフ（教室管理者）あてのお知らせ

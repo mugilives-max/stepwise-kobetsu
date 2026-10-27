@@ -97,7 +97,7 @@ export function lessonSheet(l, state, { names = {}, canRequest = true, canAgree 
     body += `<div class="ls-req"><div><b>${REQUEST[req.kind]}</b>${req.note ? `<div class="small muted">${esc(req.note)}</div>` : ''}</div>${canRequest ? `<button data-action="withdraw" data-id="${esc(req.id)}"${busy ? ' disabled' : ''}>連絡を取り下げる</button>` : ''}</div>`;
     return sheet(esc, title, body, 'close-sheet');
   }
-  if (canAgree && canRequest && l.status === 'proposed' && l.asked) body += `${l.extraFee ? `<p class="small">受講計画合意書の回数を超える授業です。承認すると、受講計画合意書に追加になります（${Number(l.extraFee).toLocaleString('ja-JP')}円）。</p>` : ''}<div style="margin:0 0 10px"><button class="primary wide" data-action="agree" data-id="${esc(l.id)}" data-version="${l.version}"${busy ? ' disabled' : ''}>承認する</button></div>`;
+  if (canAgree && canRequest && l.status === 'proposed' && l.asked) body += `${l.extraFee ? `<p class="small">受講計画の回数を超える授業です。承認すると、受講計画に追加になります（${Number(l.extraFee).toLocaleString('ja-JP')}円）。</p>` : ''}<div style="margin:0 0 10px"><button class="primary wide" data-action="agree" data-id="${esc(l.id)}" data-version="${l.version}"${busy ? ' disabled' : ''}>承認する</button></div>`;
   const choices = canRequest ? (l.choices || []) : [];
   if (!choices.length) {
     const why = !canRequest ? '連絡は保護者の方からお願いします。' : ['rested', 'cancelled', 'done'].includes(l.status) ? '' : '授業が始まっているため、先生に直接お知らせください。';

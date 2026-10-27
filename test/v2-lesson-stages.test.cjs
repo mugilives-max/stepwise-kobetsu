@@ -48,7 +48,7 @@ test('作る: 下書き（見えない）・調整中（見えるがメールな
   const r2 = await h.ok('schedule/lessons/create', { ...L, date: '2026-10-22', send: 'ask', repeat: 2 });
   assert.deepEqual([r2.asked, r2.confirmBy], [true, '']);
   assert.equal(familyMails().length, 1, '承認のお願いはまとめて 1 通');
-  assert.match(familyMails()[0].body, /10\/22\(木\) 17:00〜18:00 数学（受講計画合意書に追加・3,000円）\n・10\/29\(木\)[\s\S]*「承認する」を押すと、この日時で確定します/);
+  assert.match(familyMails()[0].body, /10\/22\(木\) 17:00〜18:00 数学（受講計画に追加・3,000円）\n・10\/29\(木\)[\s\S]*「承認する」を押すと、この日時で確定します/);
   assert.doesNotMatch(familyMails()[0].body, /ご連絡がなければ/, '返事がなくても確定しない');
   assert.match(r2.lineText, /^【ステップワイズ】架空 一郎さんの授業の日程の承認をお願いします。[\s\S]*https:\/\/www\.stepwise-education\.jp\/family\/#confirm$/);
   fl = (await h.ok('family/schedule', { auth: parent, to: '2026-10-31' })).lessons;
@@ -197,7 +197,7 @@ test('2通り: ① 確定で入れる（メールなし）・② 承認のお願
   await h.ok('schedule/lessons/create', { ...L, date: '2026-10-22', send: 'ask' });
   const c = ids()[2];
   assert.deepEqual([row(c).status, row(c).confirmBy, !!row(c).askedAt], ['proposed', '', true]);
-  assert.match(familyMails().at(-1).body, /10\/22\(木\) 17:00〜18:00 数学（受講計画合意書に追加・2,800円）/);
+  assert.match(familyMails().at(-1).body, /10\/22\(木\) 17:00〜18:00 数学（受講計画に追加・2,800円）/);
   const fl = (await h.ok('family/schedule', { auth: parent, to: '2026-10-31' })).lessons.find(l => l.id === c);
   assert.equal(fl.extraFee, 2800);
   await h.ok('family/lessons/agree', { auth: parent, lessons: [{ id: c, version: row(c).version }] });
