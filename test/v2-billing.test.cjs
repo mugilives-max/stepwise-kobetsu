@@ -319,3 +319,17 @@ test('the plan list counts done lessons per line', async () => {
   const row = (await h.ok('billing/plans/list', { auth, month: '2026-09' })).students.find(s => s.id === kid.id).lines.find(l => l.id === a.id);
   assert.deepEqual([row.assigned, row.done], [3, 2], '9/8・9/15 は実施済み、9/29 は決定');
 });
+
+// どこが超えているか（2026-10-27 本人「どこがオーバーでどこがオーバーしていないのか一目でわかりません」）
+test('the plan list shows how many lessons each line is over, and lists the lessons outside any plan', async () => {
+  const { h, auth, kid, plan, line, lesson } = await world();
+  const a = await plan(kid.id, { count: 2 });
+  await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' });
+  await lesson(kid.id, '2026-09-08'); await lesson(kid.id, '2026-09-15'); await lesson(kid.id, '2026-09-22');
+  h.clock = at('2026-09-20T09:00:00');
+  const st = (await h.ok('billing/plans/list', { auth, month: '2026-09' })).students.find(s => s.id === kid.id);
+  const row = st.lines.find(l => l.id === a.id);
+  assert.deepEqual([row.planned, row.over], [2, 1], '2回の計画に3回: 超過1回');
+  assert.equal(st.unplanned, 1);
+  assert.deepEqual(st.unplannedList.map(x => [x.date, x.over]), [['2026-09-22', true]]);
+});

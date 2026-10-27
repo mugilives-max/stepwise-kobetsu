@@ -1004,3 +1004,7 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
   .month2 .nm.t2 .tm { display: inline; flex: none; font-size: 10px; }
   .month2 .nm.t2 b { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 }
+/* 受講計画合意書の行: 超過・ちょうど・あと（2026-10-27） */
+.pl-n { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.pl-unplanned ul { margin: 4px 0 0; padding-left: 1.2em; }
+.pl-unplanned li { margin: 1px 0; }

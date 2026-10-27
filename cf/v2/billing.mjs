@@ -227,10 +227,21 @@ export const billingRoutes = {
       // 種類の選択肢: 「通常」・この生徒の特別単価合意書・この月の授業で使っている種類（前からの「演習」なども、その授業の受講計画合意書は作れる）
       const specials = (await c.db.prepare("select title, minutes, fee from specials where studentId = ? and status in ('proposed', 'agreed') order by fromDate").bind(s.id).all()).results;
       const usedKinds = [...new Set(lessonsInMonth.concat(tentative).map(ls => ls.kind).filter(k => k && k !== '体験'))];
+      // 超えている・ない（2026-10-27 本人「どこがオーバーでどこがオーバーしていないのか一目でわかりません」）:
+      // 調整中・承認待ちの授業も決まったものとして行に入れてみて、入らない授業を、同じ科目の承認済みの行の「超過」か「受講計画合意書にない授業」に分ける
+      const hyp = assignLines(sb.lines, sb.lessons.concat(tentative.map(ls => ({ ...ls, status: 'decided' }))), sb.invoicedLine);
+      const planned = {}; for (const [lid, line] of Object.entries(hyp.line)) if (line) planned[line.id] = (planned[line.id] || 0) + 1;
+      const over = {}, unplannedList = [];
+      for (const ls of lessonsInMonth.concat(tentative).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))) {
+        if (hyp.line[ls.id]) continue;
+        if (lines.some(l => ['draft', 'proposed'].includes(l.status) && lineMatches(l, ls))) continue; // 承認待ち・下書きの受講計画合意書に入る
+        const home = lines.find(l => l.status === 'approved' && !l.parentId && lineMatches(l, ls));
+        if (home) over[home.id] = (over[home.id] || 0) + 1;
+        unplannedList.push({ id: ls.id, date: ls.date, start: ls.start, subject: ls.subject, kind: ls.kind || '通常', status: ls.status, over: !!home });
+      }
       rows.push({ id: s.id, name: fullName(s), familyId: s.familyId, familyLabel: s.familyLabel, status: s.status, baseFee90: base90(s), baseRate30: s.baseRate30, specials, usedKinds,
-        lines: await Promise.all(lines.map(async l => lineView(l, { ...usage[l.id], locked: await lineLocked(c, l.id) }))),
-        // 計画のない授業: 承認済みの行に入らず、下書き・承認待ちの行にも当たらないもの
-        unplanned: lessonsInMonth.concat(tentative).filter(ls => !sb.line[ls.id] && !lines.some(l => ['draft', 'proposed'].includes(l.status) && lineMatches(l, ls))).length });
+        lines: await Promise.all(lines.map(async l => lineView(l, { ...usage[l.id], planned: planned[l.id] || 0, over: over[l.id] || 0, locked: await lineLocked(c, l.id) }))),
+        unplanned: unplannedList.length, unplannedList });
     }
     return { month, students: rows, kinds: kinds.map(k => ({ name: k.name, standardMinutes: k.standardMinutes, standardFee: k.standardFee, active: !!k.active, sortOrder: k.sortOrder, version: k.version })) };
   },

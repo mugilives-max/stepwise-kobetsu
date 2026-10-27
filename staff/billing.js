@@ -109,7 +109,9 @@ export function plansPage(ctx) {
 // 生徒を押したとき: その月の受講計画合意書（期間と状態ごとの表）・足す・過去の版
 function studentSheet(ctx, s) {
   const { esc } = ctx;
-  let body = s.unplanned ? `<p class="notice error small" style="margin-top:0">受講計画合意書にない授業が ${s.unplanned}件あります（このままでは請求できません）。</p>` : '';
+  // 超えている・ない授業は、どの授業かを出す（2026-10-27 本人「どこがオーバーでどこがオーバーしていないのか一目でわかりません」）
+  const ST = { done: '実施済み', decided: '確定', proposed: '承認待ち', held: '下書き' };
+  let body = s.unplanned ? `<div class="notice error small pl-unplanned" style="margin-top:0"><b>受講計画合意書に入らない授業 ${s.unplanned}件（このままでは請求できません）</b><ul>${(s.unplannedList || []).map(x => `<li>${esc(md(x.date))} ${esc(x.start)} ${esc(x.subject)}${x.kind !== '通常' ? `（${esc(x.kind)}）` : ''}<span class="muted"> ${ST[x.status] || x.status}${x.over ? '・回数を超えている' : '・受講計画合意書がない'}</span></li>`).join('')}</ul></div>` : '';
   body += s.lines.length ? planSets(s.lines).map(set => planSetBlock(ctx, s, set)).join('') : '<p class="muted" style="margin-top:0">この月の受講計画合意書はまだありません。</p>';
   body += `<div class="row" style="margin-top:12px">${base90Of(s) ? `<button class="small-btn" data-action="pl-add" data-id="${esc(s.id)}"${ctx.dis()}>＋ 足す</button>` : ''}<span class="grow"></span><button type="button" class="text-btn" data-action="pl-history" data-student="${esc(s.id)}" aria-label="${esc(s.name)}の過去の版">過去の版</button></div>`;
   return sheet(esc, `${s.name}・${monthLabel(planMonth)}の受講計画合意書`, body, 'pl-stu-close', { wide: true });
@@ -127,9 +129,12 @@ function lineRow(ctx, s, l) {
   // 下書きにはチェック。外した行は「お知らせ」に入れない（あとで送る）
   const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="${esc(l.subject)}をお知らせに入れる">` : '';
   const note = [l.assigned || l.tentative ? `実施 ${l.done || 0}回${(l.assigned || 0) - (l.done || 0) ? `・決定 ${(l.assigned || 0) - (l.done || 0)}回` : ''}${l.tentative ? `・調整中 ${l.tentative}回` : ''}${l.status === 'approved' ? `・あと ${Math.max(0, (l.approvedCount || 0) - (l.done || 0))}回` : ''}` : '', parts.length ? parts.map(p => `${esc(p.label)} ${p.count}回`).join('・') : ''].filter(Boolean).join('　');
+  // 行の状態: 超過（赤）・ちょうど・あと n回（調整中・承認待ちも数える）
+  const cap = l.status === 'approved' ? Number(l.approvedCount) : Number(l.count), left = cap - Number(l.planned || 0);
+  const state = l.status === 'declined' ? '' : l.over ? `<span class="tag danger">超過 ${l.over}回</span>` : left <= 0 ? '<span class="tag gray">ちょうど</span>' : `<span class="tag ok">あと ${left}回</span>`;
   return `<div class="pl-r">${pick}<button type="button" class="pl-line" data-action="pl-line" data-id="${esc(l.id)}">
     <span class="pl-ln-subj"><strong>${esc(l.subject)}</strong>${l.kind && l.kind !== '通常' ? `<span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? '<span class="tag">追加</span>' : ''}${l.familyAck === 'inquiry' ? '<span class="tag danger">問い合わせ</span>' : ''}</span>
-    <span class="pl-n">${lineCount(l)}</span><span class="pl-fee">${l.minutes}分 ${yen(l.fee)}</span><span class="pl-amt">${yen(amount)}</span><span class="go" aria-hidden="true">›</span>
+    <span class="pl-n">${lineCount(l)}${state}</span><span class="pl-fee">${l.minutes}分 ${yen(l.fee)}</span><span class="pl-amt">${yen(amount)}</span><span class="go" aria-hidden="true">›</span>
     ${note ? `<span class="pl-note">${note}</span>` : ''}</button></div>`;
 }
 // 受講計画合意書の行を押したとき・直す・承諾を記録・足す（下から出る画面）
