@@ -46,8 +46,19 @@ function summaryText(lines) {
   for (const l of lines) { const k = l.subject + (l.kind && l.kind !== '通常' ? `（${l.kind}）` : ''); by.set(k, (by.get(k) || 0) + countOf(l)); }
   return [...by].map(([k, n]) => `${k} ${n}回`).join('・');
 }
-function studentRow(ctx, s, lines, extra = '') {
+// 使った回数（実施済み・決定・調整中）と、あと何回。棒は 実施済み → 決定 → 調整中 → まだ日程のない分
+function usage(lines) {
+  const planned = countSum(lines), done = lines.reduce((n, l) => n + (l.done || 0), 0), fixed = lines.reduce((n, l) => n + Math.max(0, (l.assigned || 0) - (l.done || 0)), 0), tent = lines.reduce((n, l) => n + (l.tentative || 0), 0);
+  return { planned, done, fixed, tent, left: Math.max(0, planned - done), open: Math.max(0, planned - done - fixed - tent) };
+}
+function progressHtml(u) {
+  const pct = n => u.planned ? Math.min(100, n / u.planned * 100).toFixed(1) + '%' : '0%';
+  return `<span class="pl-prog" aria-label="計画 ${u.planned}回のうち 実施 ${u.done}回・決定 ${u.fixed}回・調整中 ${u.tent}回"><span class="bar"><i class="d" style="width:${pct(u.done)}"></i><i class="f" style="width:${pct(u.fixed)}"></i><i class="t" style="width:${pct(u.tent)}"></i></span>
+    <span class="lbl"><b>あと ${u.left}回</b><small>実施 ${u.done} / ${u.planned}${u.fixed ? `・決定 ${u.fixed}` : ''}${u.tent ? `・調整中 ${u.tent}` : ''}${u.open ? `・日程なし ${u.open}` : ''}</small></span></span>`;
+}
+function studentRow(ctx, s, lines, extra = '', { progress = false } = {}) {
   const { esc } = ctx, t = planTotals(lines);
+  if (progress && lines.length) return `<button type="button" class="pl-stu-row has-prog" data-action="pl-student" data-id="${esc(s.id)}"><span class="pl-who"><strong>${esc(s.name)}</strong>${extra}<span class="pl-what">${esc(summaryText(lines))}</span></span>${progressHtml(usage(lines))}<span class="pl-amt">${esc(amountText(t))}</span><span class="go" aria-hidden="true">›</span></button>`;
   return `<button type="button" class="pl-stu-row" data-action="pl-student" data-id="${esc(s.id)}"><strong>${esc(s.name)}</strong>${extra}<span class="pl-what">${esc(summaryText(lines))}</span>${lines.length ? `<span class="pl-cnt">計 ${countSum(lines)}回</span><span class="pl-amt">${esc(amountText(t))}</span>` : ''}<span class="go" aria-hidden="true">›</span></button>`;
 }
 const section = (title, action, body) => `<section class="pl-sec"><div class="pl-sec-head"><h2>${title}</h2>${action || ''}</div>${body}</section>`;
@@ -60,7 +71,8 @@ export function plansPage(ctx) {
   // 月の見通し: 計画している授業の回数（状態ごと）と、承認がそろった人数
   const lines = st.flatMap(s => s.lines), by = status => countSum(lines.filter(l => l.status === status));
   const parts = [['承認済み', by('approved')], ['承認待ち', by('proposed')], ['下書き', by('draft')]].filter(([, n]) => n).map(([t, n]) => `${t} ${n}回`).join('・');
-  h += `<div class="pl-progress"><div><span>授業</span><b>${countSum(lines)}</b>回${parts ? `<small>${parts}</small>` : ''}</div><div><span>承認済み</span><b>${target.filter(planDone).length}</b>人 / ${target.length}人</div></div>`;
+  const used = usage(lines.filter(l => l.status === 'approved'));
+  h += `<div class="pl-progress"><div><span>授業</span><b>${countSum(lines)}</b>回${parts ? `<small>${parts}</small>` : ''}</div>${used.planned ? `<div><span>承認済みのうち あと</span><b>${used.left}</b>回<small>実施 ${used.done} / ${used.planned}</small></div>` : ''}<div><span>承認済み</span><b>${target.filter(planDone).length}</b>人 / ${target.length}人</div></div>`;
   // 1. 受講計画合意書のない授業（このままでは請求できない）
   const unplanned = st.filter(s => s.unplanned);
   if (unplanned.length) h += section('受講計画合意書のない授業', '', `<div class="pl-rows">${unplanned.map(s => studentRow(ctx, s, [], `<span class="tag danger">${s.unplanned}件</span>`)).join('')}</div>`);
@@ -89,7 +101,7 @@ export function plansPage(ctx) {
   // 5. 承認済み（何もしなくてよい）・休会
   const done = st.filter(s => s.lines.some(l => l.status === 'approved' || l.status === 'declined'));
   const paused = st.filter(s => !s.lines.length && s.status === 'paused');
-  if (done.length || paused.length) h += section(`承認済み（${done.length}人）`, '', `<div class="pl-rows">${done.map(s => studentRow(ctx, s, s.lines.filter(l => l.status === 'approved' || l.status === 'declined'))).join('')}${paused.map(s => `<div class="pl-stu-row pl-none"><strong>${esc(s.name)}</strong><span class="tag gray">休会</span></div>`).join('')}</div>`);
+  if (done.length || paused.length) h += section(`承認済み（${done.length}人）`, '', `<div class="pl-rows">${done.map(s => studentRow(ctx, s, s.lines.filter(l => l.status === 'approved' || l.status === 'declined'), '', { progress: true })).join('')}${paused.map(s => `<div class="pl-stu-row pl-none"><strong>${esc(s.name)}</strong><span class="tag gray">休会</span></div>`).join('')}</div>`);
   if (!st.length) h += '<p class="muted">在籍の生徒がいません。</p>';
   h += planSheet(ctx);
   return h;
@@ -114,7 +126,7 @@ function lineRow(ctx, s, l) {
   const { esc } = ctx, parts = partsOf(l), amount = l.status === 'declined' ? 0 : (l.status === 'approved' ? l.approvedCount : l.count) * Number(l.fee || 0);
   // 下書きにはチェック。外した行は「お知らせ」に入れない（あとで送る）
   const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="${esc(l.subject)}をお知らせに入れる">` : '';
-  const note = [l.assigned || l.tentative ? `決定・実施 ${l.assigned}回${l.tentative ? `・調整中 ${l.tentative}回` : ''}` : '', parts.length ? parts.map(p => `${esc(p.label)} ${p.count}回`).join('・') : ''].filter(Boolean).join('　');
+  const note = [l.assigned || l.tentative ? `実施 ${l.done || 0}回${(l.assigned || 0) - (l.done || 0) ? `・決定 ${(l.assigned || 0) - (l.done || 0)}回` : ''}${l.tentative ? `・調整中 ${l.tentative}回` : ''}${l.status === 'approved' ? `・あと ${Math.max(0, (l.approvedCount || 0) - (l.done || 0))}回` : ''}` : '', parts.length ? parts.map(p => `${esc(p.label)} ${p.count}回`).join('・') : ''].filter(Boolean).join('　');
   return `<div class="pl-r">${pick}<button type="button" class="pl-line" data-action="pl-line" data-id="${esc(l.id)}">
     <span class="pl-ln-subj"><strong>${esc(l.subject)}</strong>${l.kind && l.kind !== '通常' ? `<span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? '<span class="tag">追加</span>' : ''}${l.familyAck === 'inquiry' ? '<span class="tag danger">問い合わせ</span>' : ''}</span>
     <span class="pl-n">${lineCount(l)}</span><span class="pl-fee">${l.minutes}分 ${yen(l.fee)}</span><span class="pl-amt">${yen(amount)}</span><span class="go" aria-hidden="true">›</span>

@@ -478,7 +478,7 @@ export const scheduleRoutes = {
     const nameOf = Object.fromEntries(students.map(s => [s.id, fullName(s)]));
     const events = (await c.db.prepare('select * from sharedEvents where dateTo >= ? and date <= ? order by date').bind(from, to).all()).results.filter(e => !allowed || allowed.includes(e.studentId));
     const offs = (await c.db.prepare('select * from staffUnavailability where date between ? and ? order by date, start').bind(from, to).all()).results.filter(o => manager || !o.staffId || o.staffId === me.id);
-    const meetings = manager ? (await c.db.prepare("select * from meetings where date between ? and ? and status <> 'cancelled' order by date, start").bind(from, to).all()).results : [];
+    const meetings = manager ? (await c.db.prepare("select m.*, f.name familyName, f.guardianName from meetings m left join families f on f.id = m.familyId where m.date between ? and ? and m.status <> 'cancelled' order by m.date, m.start").bind(from, to).all()).results : [];
     // 種類: 「通常」と、特別単価合意書の名称（2026-10-26 本人「このページってもはや不要」→ 種類は「通常」と特別単価合意書の名称だけ。授業料の上限は個別受講条件書・特別単価合意書で決まる）
     const kinds = ['通常', ...new Set((await c.db.prepare("select title from specials where status in ('proposed', 'agreed') order by title").all()).results.map(r => r.title).filter(t => t && t !== '通常'))];
     // 下書きと調整中（今日以降）は、表示している月に限らず全部（「対応すること」で選んで、見せる・確認をお願いする）
@@ -492,7 +492,8 @@ export const scheduleRoutes = {
       openRequests: openRequests.map(r => ({ ...requestView(r), studentName: nameOf[r.studentId] || '', date: r.date, start: r.start, subject: r.subject, lessonStatus: r.lessonStatus })),
       events: events.map(e => ({ ...eventView(e), studentName: nameOf[e.studentId] || '' })),
       unavailability: offs.map(o => ({ id: o.id, staffId: o.staffId, date: o.date, start: o.start, end: o.end, note: o.note })),
-      meetings: meetings.map(m => ({ id: m.id, familyId: m.familyId, withName: m.withName || '', studentId: m.studentId, staffId: m.staffId, date: m.date, start: m.start, minutes: m.minutes, deliveryMode: m.deliveryMode, title: m.title, meetUrl: m.meetUrl, status: m.status, version: m.version })),
+      // 誰との面談か（2026-10-27 本人「カレンダーで、誰の面談か書かれていない」）: 書いた相手 → 生徒 → 保護者の氏名 → 家族の表示名
+      meetings: meetings.map(m => ({ id: m.id, familyId: m.familyId, withName: m.withName || '', withLabel: m.withName || (m.studentId && nameOf[m.studentId]) || m.guardianName || m.familyName || '', studentId: m.studentId, staffId: m.staffId, date: m.date, start: m.start, minutes: m.minutes, deliveryMode: m.deliveryMode, title: m.title, meetUrl: m.meetUrl, status: m.status, version: m.version })),
       students: students.filter(s => s.status !== 'left').map(s => ({ id: s.id, name: fullName(s), familyId: s.familyId, deliveryMode: s.deliveryMode, trial: !!s.trial })),
       staff: staff.map(s => ({ id: s.id, name: s.name, teacher: rolesOf(s).includes('teacher') })),
       kinds: kinds.length ? kinds : ['通常'], live: await isLive(c), cancelRuleFrom: await cancelRuleFrom(c.db),
