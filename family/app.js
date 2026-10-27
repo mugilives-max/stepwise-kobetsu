@@ -1,7 +1,7 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261025-layout';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-pages';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-pages2';
-import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ease2';
+import { enrollPage, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261027-ease3';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
@@ -84,7 +84,7 @@ const ICON = {
   money: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
 };
 const TABS = [['home', 'ホーム'], ['schedule', '予定'], ['learning', '学習'], ['money', 'お支払い']];
-const TITLE = { home: 'ホーム', schedule: '予定', confirm: '日程の承認', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み', plan: '受講計画合意書の承認', agree: '同意のお願い', contracts: '契約・同意の控え' };
+const TITLE = { home: 'ホーム', schedule: '予定', confirm: '授業日時の承認', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み', plan: '受講計画の承認', agree: '同意のお願い', contracts: '契約・同意の控え' };
 // 前の URL（#events・#grades）も開けるように
 const pageOf = p => p === 'events' ? 'schedule' : p === 'grades' ? 'learning' : p;
 
@@ -131,14 +131,15 @@ function homePage() {
   if (needConds.length) todo.push(['#agree', 'file', '#c98a00', '個別受講条件書への同意', needConds.map(x => given(x.studentName) + 'さん').join('・'), needConds.length]);
   const needSpecials = money.specials ? money.specials.items.filter(x => x.status === 'proposed') : [];
   if (needSpecials.length) todo.push(['#agree', 'file', '#c98a00', '特別単価合意書の承認', needSpecials.map(x => `${given(x.studentName)}さん「${x.title}」`).join('・'), needSpecials.length]);
-  if (asks.length) todo.push(['#plan', 'plan', '#5b6672', '受講計画合意書の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
+  // 保護者が見るページ: 何の・誰のことかを言う（2026-10-27 本人「受講計画の承認」「授業日時の承認」「入金待ちのお支払い」「お子様の宿題」）
+  if (asks.length) todo.push(['#plan', 'plan', '#5b6672', '受講計画の承認', asks.map(([m]) => monthLabel(m)).join('・'), asks.length]);
   const asking = askingLessons(sched.lessons);
   const askBy = asking.map(automaticDeadline).filter(Boolean).sort()[0];
-  if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '日程の承認', askBy ? md(askBy) + 'まで' : '', asking.length]);
+  if (asking.length) todo.push(['#confirm', 'calendar', '#e0a100', '授業日時の承認', askBy ? md(askBy) + 'まで' : '', asking.length]);
   const due = money.invoices.filter(v => v.status === 'confirmed');
-  if (due.length) todo.push(['#money', 'yen', '#c0392b', 'お支払い', due.map(v => `${monthLabel(v.month)}分 ${yen(v.total)}`).join('・'), due.length]);
+  if (due.length) todo.push(['#money', 'yen', '#c0392b', '入金待ちのお支払い', due.map(v => `${monthLabel(v.month)}分 ${yen(v.total)}`).join('・'), due.length]);
   const hw = learning.homework.filter(w => w.status === 'open');
-  if (hw.length) todo.push(['#learning', 'homework', '#7b4fd6', '宿題', '', hw.length]);
+  if (hw.length) todo.push(['#learning', 'homework', '#7b4fd6', 'お子様の宿題', '', hw.length]);
   h += secTitle('やること');
   h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}</span>${note ? `<small>${esc(note)}</small>` : ''}</span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">やることはありません。</p>';
   // そのあとの授業（最大 4 件）
@@ -173,7 +174,7 @@ function schedulePage() {
   const d = calData[cal.month], multi = multiKids() && !kid, nm = names();
   const lessons = forKid(d.lessons).filter(l => l.status !== 'held'), events = forKid(d.events);
   const asking = askingLessons(lessons), adjusting = lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= d.today);
-  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px"><a href="#confirm">日程を承認してください（${asking.length}件）›</a></p>`;
+  if (asking.length) h += `<p class="notice small" style="margin:0 0 6px"><a href="#confirm">授業日時を承認してください（${asking.length}件）›</a></p>`;
   if (adjusting.length) h += `<p style="margin:0 0 6px"><span class="tag warn">調整中 ${adjusting.length}件</span></p>`;
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
