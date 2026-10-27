@@ -222,6 +222,7 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
     else if (sheet.decide) body += decideForm(ctx, l);
     else if (sheet.cancel) body += cancelForm(ctx, l);
     else if (sheet.tardy) body += tardyForm(ctx, l);
+    else if (sheet.swap) body += swapForm(ctx, l);
     else {
       const main = [], sub = [], danger = [];
       const future = l.date >= data.today;
@@ -233,6 +234,8 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
       if (['decided', 'done'].includes(l.status) && past && mine) main.push(`<a class="btn" href="#record=${encodeURIComponent(l.id)}">記録を書く</a>`);
       if (manager && ['held', 'proposed', 'decided'].includes(l.status)) sub.push(`<button data-action="sch-edit" data-id="${esc(l.id)}"${ctx.dis()}>日時・内容を直す</button>`);
       if (manager && l.status === 'proposed') sub.push(`<button data-action="sch-unsend" data-id="${esc(l.id)}"${ctx.dis()}>下書きに戻す</button>`);
+      // その場で、この授業の代わりに授業をした（規約下書き 第11条3項）
+      if (manager && l.status === 'decided' && Date.now() < Date.parse(l.date + 'T' + l.start + ':00+09:00')) sub.push(`<button data-action="sch-swap" data-id="${esc(l.id)}"${ctx.dis()}>代わりに実施した</button>`);
       if (manager && (['proposed', 'decided'].includes(l.status) || (l.status === 'done' && !l.locked))) sub.push(`<button data-action="sch-rest" data-id="${esc(l.id)}"${ctx.dis()}>お休みにする</button>`);
       if (['decided', 'done'].includes(l.status) && mine && rateRule(l) && Date.now() >= Date.parse(l.date + 'T' + l.start + ':00+09:00')) sub.push(`<button data-action="sch-tardy" data-id="${esc(l.id)}"${ctx.dis()}>${l.lostMinutes ? '遅刻を直す' : '遅刻を記録'}</button>`);
       if (manager && (l.status === 'decided' || (l.status === 'done' && !l.locked))) danger.push(`<button class="danger" data-action="sch-cancel" data-id="${esc(l.id)}"${ctx.dis()}>キャンセルにする</button>`);
@@ -322,6 +325,17 @@ function cancelForm(ctx, l) {
     <div class="row"><button class="danger"${ctx.dis()}>キャンセルにする</button><button type="button" data-action="sch-edit-cancel">やめる</button></div></form>`;
 }
 // 遅刻（新しい決まり）: 予定の時刻に終わる。遅れた分は授業料に入れず、遅れるという連絡を受けた時刻の率で取消料
+// 代わりに実施した: 行った授業（今日まで・予定の授業の長さまで）を入れる。予定の授業はお休みになり、保護者にメール 1 通
+function swapForm(ctx, l) {
+  const { esc } = ctx, t = new Date(Date.now() + 9 * 3600e3), hm = String(t.getUTCHours()).padStart(2, '0') + ':' + String(Math.floor(t.getUTCMinutes() / 5) * 5).padStart(2, '0');
+  const mins = [30, 45, 60, 90, 120, 150, 180, 210, 240].filter(m => m <= Number(l.minutes));
+  if (!mins.includes(Number(l.minutes))) mins.push(Number(l.minutes));
+  return `<form class="stack" data-form="sch-swap" data-id="${esc(l.id)}" data-version="${l.version}" style="margin:8px 0 0">
+    <div class="row"><label style="flex:1">行った日<input type="date" name="date" value="${data.today}" max="${data.today}" required></label><label style="flex:1">開始<input type="time" name="start" value="${hm}" step="300" required></label><label style="flex:1">長さ<select name="minutes">${mins.map(m => `<option value="${m}"${m === Number(l.minutes) ? ' selected' : ''}>${m}分</option>`).join('')}</select></label></div>
+    <div class="row"><label style="flex:1">科目<input name="subject" maxlength="30" required value="${esc(l.subject)}"></label><label style="flex:1">形式<select name="deliveryMode"><option value="in_person"${l.deliveryMode === 'online' ? '' : ' selected'}>対面</option><option value="online"${l.deliveryMode === 'online' ? ' selected' : ''}>オンライン</option></select></label><label style="flex:1">担当<select name="staffId">${staffOptions(ctx, l.staffId)}</select></label></div>
+    <p class="small muted" style="margin:0">この授業（${mdw(l.date)} ${l.start}）はお休みになります。保護者にメールでお知らせします。</p>
+    <div class="row"><button class="primary"${ctx.dis()}>実施済みで入れる</button><button type="button" data-action="sch-edit-cancel">やめる</button></div></form>`;
+}
 function tardyForm(ctx, l) {
   return `<form class="stack" data-form="sch-tardy" data-id="${ctx.esc(l.id)}" data-version="${l.version}" style="margin:8px 0 0">
     <p class="small" style="margin:0">終わりは予定どおり ${endOf(l.start, l.minutes)}。遅れた分は授業料でなく取消料になります（0分で取り消し）。</p>
@@ -390,6 +404,13 @@ export async function scheduleSubmit(ctx, kind, el) {
     if (r.ok) { sel = v.date; sheet = null; }
     return true;
   }
+  if (kind === 'sch-swap') {
+    const body = { id: el.dataset.id, version: Number(el.dataset.version), date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, deliveryMode: v.deliveryMode, staffId: v.staffId };
+    const ok = r => r.ok ? (sel = v.date, '代わりに実施した授業を入れました。保護者にお知らせしました') : '';
+    let r = await ctx.call('schedule/lessons/swap', body);
+    if (await after(ctx, r, ok(r)) === 'force') { r = await ctx.call('schedule/lessons/swap', { ...body, force: true }); await after(ctx, r, ok(r)); }
+    return true;
+  }
   if (kind === 'sch-decide') {
     const body = { id: el.dataset.id, version: Number(el.dataset.version), agreement: v.agreement || '' };
     // 受講計画を超える授業は、確かめてから確定する（needForce）
@@ -430,6 +451,7 @@ export async function scheduleClick(ctx, a, b) {
   if (a === 'sch-close') { sheet = null; return true; }
   if (a === 'sch-edit') { sheet = { kind: 'lesson', id, edit: true }; return true; }
   if (a === 'sch-tardy') { sheet = { kind: 'lesson', id, tardy: true }; return true; }
+  if (a === 'sch-swap') { sheet = { kind: 'lesson', id, swap: true }; return true; }
   if (a === 'sch-cancel' && l && rateRule(l)) { sheet = { kind: 'lesson', id, cancel: true }; return true; } // 新しい決まり: 連絡を受けた時刻を入れる画面
   if (a === 'sch-edit-cancel') { sheet = sheet && sheet.id ? { kind: 'lesson', id: sheet.id } : null; return true; }
   if (a === 'sch-decide' && l) {
