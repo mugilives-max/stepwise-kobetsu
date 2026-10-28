@@ -209,14 +209,7 @@ export async function familiesClick(ctx, a, b) {
     r = await ctx.call('admin/families/invite', { id: detail.id });
     if (r.ok) { shown = { text: r.mailHeld ? '招待のリンクを作りました。切り替え前のため、メールは送っていません（7日有効・1回だけ）。' : '招待のメールを送りました。届かないときは、このリンクを LINE などで渡してください（7日有効・1回だけ）。', url: r.inviteUrl }; ctx.say(''); return true; }
   } else if (a === 'fam-status') {
-    if (b.dataset.status === 'stopped' && !confirm('保護者ページとメールを止めますか？
-
-・保護者はログインできなくなり、開いている保護者ページもログアウトします
-・招待や登録のやり直しのリンクは使えなくなります
-・保護者へのお知らせのメールは届かなくなります
-・毎月3日の請求の自動確定をしません
-
-家族・生徒・授業・請求の記録は消えず、あとで再開できます。生徒の在籍と専用リンクはそのままです。')) return true;
+    if (b.dataset.status === 'stopped' && !confirm('保護者ページとメールを止めますか？\n\n・保護者はログインできなくなり、開いている保護者ページもログアウトします\n・招待や登録のやり直しのリンクは使えなくなります\n・保護者へのお知らせのメールは届かなくなります\n・毎月3日の請求の自動確定をしません\n\n家族・生徒・授業・請求の記録は消えず、あとで再開できます。生徒の在籍と専用リンクはそのままです。')) return true;
     r = await ctx.call('admin/families/update', { id: detail.id, version: detail.version, status: b.dataset.status });
     if (r.ok) { detail = null; list = null; ctx.say(b.dataset.status === 'stopped' ? '保護者ページとメールを止めました' : '保護者ページとメールを再開しました', 'ok'); return true; }
   } else if (a === 'stu-newlink') {
