@@ -73,13 +73,13 @@ export function familyDetailPage(ctx, id) {
   const terms = !ct.version ? '' : f.termsVersion === ct.version ? `${esc(ct.version)}：同意済み（${esc(String(f.termsAcceptedAt).slice(0, 10))}）` : `${esc(ct.version)}：<span class="tag warn">未同意</span>${f.termsVersion ? `（${esc(f.termsVersion)} には同意）` : ''}`;
   const invite = f.email && f.status !== 'stopped' ? `<button class="small-btn" data-action="fam-invite"${ctx.dis()}>${f.hasPassword ? '登録のやり直しを案内する' : '招待を送る'}</button>` : '';
   h += `<div class="sec-title">保護者</div><table class="grid-table"><tbody>${row('氏名', esc(f.guardianName || ''))}${row('メール', esc(f.email || ''))}${row('電話', esc(f.phone || ''))}`
-    + row('保護者ページ', cell(f.status === 'stopped' ? '停止中' : f.hasPassword ? '登録済み' : 'まだ登録していません', `<button class="small-btn" data-action="pv-open" data-kind="family" data-id="${esc(f.id)}">見る</button>${invite}`))
+    + row('保護者ページ', cell(f.status === 'stopped' ? '止めています（メールも届きません）' : f.hasPassword ? '登録済み' : 'まだ登録していません', `<button class="small-btn" data-action="pv-open" data-kind="family" data-id="${esc(f.id)}">見る</button>${invite}`))
     + row('共通規約', terms && cell(terms, `<button class="small-btn" data-action="fam-sheet" data-mode="terms"${ctx.dis()}>同意を記録</button>`))
     + `${row('メモ', esc(f.note || ''))}</tbody></table><p style="margin-top:10px"><button data-action="fam-sheet" data-mode="family" data-id="${esc(f.id)}"${ctx.dis()}>保護者の情報を直す</button></p>`;
   h += `<div class="sec-title">生徒 <span class="count gray">${f.students.length}</span></div><div class="group">` + f.students.map(s => rowButton(esc, 'fam-sheet', { mode: 'student', id: s.id }, `${esc(s.name)} ${tag(STUDENT_STATUS[s.status])}${s.testOnly ? '<span class="tag gray">テスト</span>' : ''}`,
     `${[s.grade, s.school, MODE[s.deliveryMode || '']].filter(Boolean).map(esc).join('・')}${s.grade || s.school || MODE[s.deliveryMode || ''] ? '・' : ''}${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}（90分）・${condStatus(s.condition)}`)).join('') + '</div>';
   h += `<p style="margin-top:10px"><button data-action="fam-sheet" data-mode="add"${ctx.dis()}>＋ 兄弟を足す</button></p>`;
-  h += `<p style="margin-top:28px">${f.status === 'stopped' ? `<button data-action="fam-status" data-status="${f.hasPassword ? 'active' : 'invited'}"${ctx.dis()}>この家族を再開する</button>` : `<button class="danger" data-action="fam-status" data-status="stopped"${ctx.dis()}>この家族を停止する</button>`}</p>`;
+  h += `<p style="margin-top:28px">${f.status === 'stopped' ? `<button data-action="fam-status" data-status="${f.hasPassword ? 'active' : 'invited'}"${ctx.dis()}>保護者ページとメールを再開する</button>` : `<button class="danger" data-action="fam-status" data-status="stopped"${ctx.dis()}>保護者ページとメールを止める</button>`}</p>`;
   return h + familySheet(ctx, f);
 }
 function familySheet(ctx, f) {
@@ -209,9 +209,16 @@ export async function familiesClick(ctx, a, b) {
     r = await ctx.call('admin/families/invite', { id: detail.id });
     if (r.ok) { shown = { text: r.mailHeld ? '招待のリンクを作りました。切り替え前のため、メールは送っていません（7日有効・1回だけ）。' : '招待のメールを送りました。届かないときは、このリンクを LINE などで渡してください（7日有効・1回だけ）。', url: r.inviteUrl }; ctx.say(''); return true; }
   } else if (a === 'fam-status') {
-    if (b.dataset.status === 'stopped' && !confirm('この家族を停止しますか？ 保護者ページにログインできなくなります。')) return true;
+    if (b.dataset.status === 'stopped' && !confirm('保護者ページとメールを止めますか？
+
+・保護者はログインできなくなり、開いている保護者ページもログアウトします
+・招待や登録のやり直しのリンクは使えなくなります
+・保護者へのお知らせのメールは届かなくなります
+・毎月3日の請求の自動確定をしません
+
+家族・生徒・授業・請求の記録は消えず、あとで再開できます。生徒の在籍と専用リンクはそのままです。')) return true;
     r = await ctx.call('admin/families/update', { id: detail.id, version: detail.version, status: b.dataset.status });
-    if (r.ok) { detail = null; list = null; ctx.say('状態を変えました', 'ok'); return true; }
+    if (r.ok) { detail = null; list = null; ctx.say(b.dataset.status === 'stopped' ? '保護者ページとメールを止めました' : '保護者ページとメールを再開しました', 'ok'); return true; }
   } else if (a === 'stu-newlink') {
     if (!confirm('専用リンクを作り直しますか？ 今のリンクはすぐに使えなくなります。生徒に新しいリンクを渡してください。')) return true;
     r = await ctx.call('admin/students/newLink', { id: b.dataset.id, version: Number(b.dataset.version) });
