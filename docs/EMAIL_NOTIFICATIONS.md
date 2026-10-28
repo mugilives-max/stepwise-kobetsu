@@ -342,6 +342,7 @@ https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a8c60f18fdb
 | 授業の日時が確定しました | 期限経過による自動確定時、生徒ごとに1通。対象の日時・科目、前日23時までの変更・休みの案内 | 予定（対象月・授業の指定なし） | [schedule](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/schedule.mjs#L185-L201) |
 | 授業の日時を変更しました | 確定した授業の編集。変更前後の日時・長さ。生徒名・科目は本文にない。条件により料金も記載 | ホーム | [schedule](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/schedule.mjs#L529) |
 | 授業をキャンセルしました | 管理者が取消しを記録。生徒・日時・科目とキャンセル料金の説明 | ホーム | [schedule](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/schedule.mjs#L565) |
+| 退塾の手続きをしました | 管理者が退塾の手続き（2026-10-28）。最終受講日、これから受ける授業、やめた授業（確認待ち・確定。キャンセル料つきは金額）。下書き・調整中は書かない。生徒ごとに1通 | 予定（最終受講日の月） | [withdrawal](../cf/v2/withdrawal.mjs) |
 | キャンセル料のお知らせ | 管理者が料金を設定。日時・科目・金額と任意の説明 | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L387) |
 | キャンセル料の申請への回答 | 管理者が免除・減額等を回答。金額・回答文。対象生徒・授業日時は自動では入らない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L392-L407) |
 | M月分の授業料のお知らせ | 手動・自動の請求確定。対象年月・合計金額。支払期限や振込手順は本文にない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L155-L191) |

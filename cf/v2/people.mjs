@@ -133,9 +133,14 @@ export const peopleRoutes = {
     await requireStaff(c, b, 'manager');
     const s = await getStudent(c, b.id); sameVersion(s, b);
     const n = studentFields(b, s);
+    if (n.status === 'left' && s.status !== 'left') { // 先の授業が残ったまま退会にしない（退塾の手続きで受ける・やめるを決める。2026-10-28）
+      const ahead = (await c.db.prepare("select date, start from lessons where studentId = ? and status in ('held', 'proposed', 'decided')").bind(s.id).all()).results.filter(l => Date.parse(l.date + 'T' + l.start + ':00+09:00') > c.now);
+      if (ahead.length) fail('lessonsLeft', '先の授業が残っています。生徒の画面の「基本情報」にある「退塾の手続き」から進めてください');
+    }
     await c.db.prepare(`update students set familyName = ?, givenName = ?, familyKana = ?, givenKana = ?, grade = ?, school = ?, subjects = ?, note = ?, baseRate30 = ?, baseFee90 = ?, deliveryMode = ?, status = ?, enrolledOn = ?,
       updatedAt = ?, version = version + 1 where id = ? and version = ?`)
       .bind(n.familyName, n.givenName, n.familyKana, n.givenKana, n.grade, n.school, n.subjects, n.note, n.baseRate30, Number(n.baseFee90 || 0) || Number(n.baseRate30 || 0) * 3, n.deliveryMode, n.status, n.enrolledOn, iso(c.now), s.id, s.version).run();
+    if (s.status === 'left' && n.status !== 'left') await c.db.prepare("update students set leaveOn = '', leaveNoticeAt = '' where id = ?").bind(s.id).run(); // 在籍に戻したら退塾の予定は消す
     await audit(c, 'studentUpdate', s.id, { status: n.status, baseFee90: n.baseFee90, baseRate30: n.baseRate30 });
     return { student: studentAdminView(await getStudent(c, s.id)) };
   },
