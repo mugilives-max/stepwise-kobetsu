@@ -118,7 +118,7 @@ export const termsRoutes = {
     await c.db.batch(stmts);
     const held = !(await isLive(c));
     for (const { f, mailed } of done) if (mailed) c.effects.push({ kind: 'mail', to: f.email, name: 'ステップワイズ個別指導', subject: '【ステップワイズ】共通規約への同意のお願い',
-      body: `${f.guardianName ? f.guardianName + ' 様' : '保護者さま'}\n\nステップワイズ個別指導です。「${terms.title}」${terms.from ? `（${Number(terms.from.slice(5, 7))}月${Number(terms.from.slice(8))}日から）` : ''}への同意をお願いいたします。\n${note ? note + '\n' : ''}\n保護者ページで全文をお読みいただき、「同意する」を押してください。同意いただくまで、次の受講計画書は承認できません。\n\n確認する：\n${FAMILY_URL}#money\n\nご不明な点は、いつものLINEまたは mugilives@gmail.com へご連絡ください。`,
+      body: `${f.guardianName ? f.guardianName + ' 様' : '保護者さま'}\n\nステップワイズ個別指導です。「${terms.title}」${terms.from ? `（${Number(terms.from.slice(5, 7))}月${Number(terms.from.slice(8))}日から）` : ''}への同意をお願いいたします。\n${note ? note + '\n' : ''}\n保護者ページで全文をお読みいただき、「同意する」を押してください。同意いただくまで、次の受講計画書は承認できません。\n\n確認する：\n${FAMILY_URL}#agree\n\nご不明な点は、いつものLINEまたは mugilives@gmail.com へご連絡ください。`,
       replyTo: 'mugilives@gmail.com', notice: null, testOnly: !!f.testOnly, audience: 'family', held });
     await audit(c, 'termsRequested', terms.version, { families: done.map(x => x.f.id), mailed: done.filter(x => x.mailed).length });
     return { requested: done.length, mailed: done.filter(x => x.mailed).length, skipped: ids.length - done.length };

@@ -6,9 +6,11 @@ import { deliverEffects, recordEffects } from './effects.mjs';
 
 const LABEL = { mail: 'メール', calendarCreate: 'カレンダーに予定を作る', calendarUpdate: 'カレンダーの予定を直す', calendarDelete: 'カレンダーの予定を消す', calendarMeet: 'Meet のリンク' };
 const parse = s => { try { return JSON.parse(s) || {}; } catch { return {}; } };
+// 送ったメールの本文の控え（2026-10-28 本人「送信したメールの控えを見たい」）。ログイン・招待のリンクの鍵は伏せる
+const mailCopy = (r, p) => r.kind === 'mail' && typeof p.body === 'string' ? p.body.replace(/(https?:\/\/\S*?[?#&][\w-]+=)[^&#\s]+/g, '$1…').replace(/([?&][\w-]+=)[^&#\s]+/g, '$1…') : '';
 const view = r => { const p = parse(r.payload); const body = p.body && typeof p.body === 'object' ? p.body : {};
   return { id: r.id, createdAt: r.createdAt, kind: r.kind, label: LABEL[r.kind] || r.kind, status: r.status, deliveryState: r.error === '送っている途中' ? 'unknown' : r.deliveryState, canRetry: p.notice?.type !== 'schedule' && r.error !== '送っている途中' && !['unknown','sending'].includes(r.deliveryState), scheduleNotice: p.notice?.type === 'schedule', attempts: r.attempts, error: r.error, sentAt: r.sentAt,
-    to: p.to || '', subject: p.subject || body.summary || '', audience: p.audience || '', held: !!p.held, testOnly: !!p.testOnly }; };
+    to: p.to || '', subject: p.subject || body.summary || '', body: mailCopy(r, p), audience: p.audience || '', held: !!p.held, testOnly: !!p.testOnly }; };
 const STALE_MS = 10 * 60e3;
 
 export const effectsAdminRoutes = {
