@@ -38,7 +38,7 @@ export function moneyView(data, { multi, dis }) {
   }).join('') + '</div>' : '<p class="muted">まだ請求はありません。</p>';
   // キャンセル料
   if (data.fees.length) {
-    h += '<h2>キャンセル料・取消料</h2><div class="list">';
+    h += '<h2>キャンセル料</h2><div class="list">';
     h += data.fees.map(f => `<div><div>${multi ? esc(f.studentName) + 'さん ' : ''}${md(f.date)} ${esc(f.start)} ${esc(f.subject)} <strong>${yen(f.amount)}</strong>${f.invoiceId ? ' <span class="tag gray">請求済み</span>' : ''}
       ${(f.parts || []).length ? `<div class="small muted">${f.parts.map(p => esc(partText(p, f.date))).join('<br>')}</div>` : ''}${f.note ? `<div class="small muted">${esc(f.note)}</div>` : ''}${f.reliefStatus === 'pending' ? '<div class="small">減額・免除を申請中</div>' : f.reliefStatus ? `<div class="small">申請への回答: ${esc(f.reliefResponse)}</div>` : ''}
       ${!f.reliefStatus && !f.invoiceId && f.amount > 0 ? `<details><summary class="small">減額・免除を申請する</summary><form class="stack" data-form="fee-relief" data-id="${esc(f.id)}" data-version="${f.version}"><textarea name="reason" maxlength="1000" rows="2" placeholder="事情を書いてください（例: 急に熱が出たため）" required></textarea><button${dis}>申請する</button></form></details>` : ''}</div><div></div></div>`).join('');

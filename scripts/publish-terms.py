@@ -10,13 +10,13 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261028-r16"
+EDITION = "2026-11-20261028-r17"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261028-r16"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R16.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261028-r17"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R17.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "863ddaa1d9f2fc3cb4e180f45d80824450fc3956"
+EXPECTED_SOURCE_BLOB = "c6f7c1288613ce302cdbd4586f481346f553db18"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -61,14 +61,16 @@ for heading in body.find_all(["h1", "h2", "h3"]):
 ids = [tag["id"] for tag in body.select("[id]")]
 assert len(ids) == len(set(ids)), "Duplicate anchors"
 assert len([v for v in ids if re.fullmatch(r"article-\d+", v)]) == 29
-assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 104
+assert len([v for v in ids if re.fullmatch(r"article-\d+-item-\d+", v)]) == 103
 assert len([v for v in ids if re.fullmatch(r"chapter-\d+", v)]) == 8
 assert len(body.find_all("table")) == 5
 for link in body.select('a[href^="#"]'):
     assert link["href"][1:] in ids, "Broken internal link: " + link["href"]
 
 # Independent source-to-HTML comparison, excluding only Markdown formatting.
+FIGURE_PATTERN = r'<figure class="rate-chart"[\s\S]*?</figure>'
 def source_text(value):
+    value = re.sub(FIGURE_PATTERN, "", value)
     value = re.sub(r'<a id="[^"]+"></a>', "", value)
     value = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", value)
     value = re.sub(r"(?m)^\s*\|(?:\s*:?-+:?\s*\|)+\s*$", "", value)
@@ -77,7 +79,11 @@ def source_text(value):
     return compact(value.replace("**", "").replace("|", ""))
 
 expected_plain = source_text(source)
-html_plain = compact(body.get_text("", strip=False))
+figures = body.find_all("figure")
+assert len(figures) == 1 and len(re.findall(FIGURE_PATTERN, source)) == 1 and figures[0].find("svg") and figures[0].figcaption, "Rate chart missing"
+assert str(figures[0]).count("<text") == str(BeautifulSoup(re.search(FIGURE_PATTERN, source)[0], "html.parser")).count("<text")
+figure_caption = compact(figures[0].figcaption.get_text())
+html_plain = compact("".join(t for t in body.find_all(string=True) if not t.find_parent("figure")))
 assert expected_plain == html_plain, "Markdown-to-HTML text changed"
 
 css = """
@@ -126,6 +132,7 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  p { margin:5pt 0; orphans:3; widows:3; }
  ol,ul { margin:5pt 0; }
  .clause { margin:5pt 0; break-inside:avoid; }
+ figure { break-inside:avoid; }
  table { font-size:8.7pt; line-height:1.6; margin:9pt 0; }
  th,td { padding:5pt 6pt; }
  a { color:inherit; text-decoration:none; }
@@ -135,121 +142,84 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:auto; }
 }
 """
-# r16 (2026-10-28): 公開した r15 を本人が読んでの見直し（点検表 REVIEW_20261027.md「r15 公開のあとの見直し」以降）。
-# 「通常の基準単価」「特別の基準単価」「適用単価」をやめて授業料・特別単価に。r15 の第6・7条を第5条にまとめた（全29条）。
-# 情報が薄い文・重なり・裏返しの書き方を外した（本人「まずAはすべて実行してください」「Bも全部まとめて」「それで進めてください」「両方消して」）。
+# r17 (2026-10-28): 公開した r16 を本人が読んでの見直し（点検表 REVIEW_20261027.md「r16 公開のあとの見直し」）。
+# 前日23時までにやめる＝「お休み」、それ以降＝「キャンセル」。授業料は断りがなければ個別受講条件書の授業料。支払期限は翌月末日（土日祝日でもずらさない）。第14条4項に負担率の図
 # 正本は点検した下書き（DRAFT_20261027.md）。見出しと適用日の文だけを公開用にしたものと、一字一句同じであることを確かめる
-PRIOR_COMMIT = "a2fa69abaf5be8420078167f578af61e53e47321"  # r15（PR #221）
+PRIOR_COMMIT = "91bc00c9715c771d90f677cb93c7407ba789d785"  # r16（PR #232）
 DRAFT = (SOURCE.parent / "DRAFT_20261027.md").read_text(encoding="utf-8")
 draft_head = "# 共通規約（下書き 2026-10-27）\n\n"
 assert DRAFT.startswith(draft_head)
 expected_source = "# 共通規約\n\n" + DRAFT[DRAFT.index("ステップワイズ個別指導\n"):]
-expected_source = expected_source.replace("**保護者がこの版に同意した日から適用（新たに入塾する場合は、お申込みの日から）**","**保護者がこの版に同意した日から適用します（新たに入塾する場合は、お申込みの日から）。**").replace("20261027-r15","20261028-r16")
+expected_source = expected_source.replace("**保護者がこの版に同意した日から適用（新たに入塾する場合は、お申込みの日から）**","**保護者がこの版に同意した日から適用します（新たに入塾する場合は、お申込みの日から）。**").replace("20261027-r15","20261028-r17")
 assert expected_source == source, "TERMS.md differs from the reviewed draft"
-# r15 からの番号の対応: 第8〜31条 → 第6〜29条（r15 の第6・7条は第5条にまとめた）
+# r16 と条の番号は同じ（第14条5項を外し、6項を5項に）
 def renumbered(value):
-    value = value.replace("20261027-r15","20261028-r16")
-    value = re.sub(r"第(\d+)条", lambda m: "第%d条" % (int(m[1])-2 if int(m[1]) >= 8 else int(m[1])), value)
-    return re.sub(r"article-(\d+)", lambda m: "article-%d" % (int(m[1])-2 if int(m[1]) >= 8 else int(m[1])), value)
+    return value.replace("20261028-r16","20261028-r17")
 prior_source = subprocess.check_output(["git","show",PRIOR_COMMIT+":docs/terms-restructure-2026-11/TERMS.md"],text=True)
 CLAUSE_PATTERN = r'(<a id="(article-\d+-item-\d+)"></a>\n\n\d+\. )([\s\S]*?)(?=\n\n<a id=|$)'
 def clauses(value):
     return {m[2]:m[3].strip() for m in re.finditer(CLAUSE_PATTERN,value)}
 old_clauses,new_clauses = clauses(prior_source),clauses(source)
-assert len(old_clauses)==142 and len(new_clauses)==104
+assert len(old_clauses)==104 and len(new_clauses)==103
 kept = set(renumbered(v) for v in old_clauses.values()) & set(new_clauses.values())
 changes = {k for k,v in new_clauses.items() if v not in kept}
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
-# 料金・負担率・接続不良の表は r15 と同じ。別表1の金額だけ、キャンセル料金を1円未満の切り捨てにそろえた分を変えた（本人 2026-10-28「1円未満にそろえて」）
-TABLE_CHANGES=[("| 1,120円 | 1,120円 |","| 1,125円 | 1,125円 |"),("| 3,370円 | 3,370円 |","| 3,375円 | 3,375円 |"),("| 3,930円 | 3,930円 |","| 3,937円 | 3,937円 |"),
-  ("| 4,500円 | 1,120円 | 5,620円 |","| 4,500円 | 1,125円 | 5,625円 |"),("| 3,000円 | 1,310円 | 4,310円 |","| 3,000円 | 1,312円 | 4,312円 |")]
+# 料金・負担率・接続不良の表は r16 と同じ。別表1の見出しだけ、お休み・キャンセルの言い分けに合わせた
+TABLE_CHANGES=[("| 全部を取り消す連絡の時刻 |","| 授業をやめる連絡の時刻 |")]
 def table_changed(t):
     for old,new in TABLE_CHANGES:
         t=t.replace(old,new)
     return t
 assert len(old_tables)==len(new_tables)==5 and [table_changed(renumbered(t)) for t in old_tables[1:]]==new_tables[1:], "Fee tables changed"
-assert "10円未満" not in source
+assert "10円未満" not in source and "15日" not in source and source.count("取消し")==1 and "「お休み」" in source and "「キャンセル」" in source
+assert "支払期限は、授業を実施した月の翌月末日です。期限の日までに振込の手続きをしてください。" in source and "翌営業日" not in source
 assert "受講計画書（必要な場合のみ）" in new_tables[0]
 for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","受講計画合意書","確認待ち","調整中","この日程で大丈夫","当面1対1","基準単価","適用単価","日程調整カレンダー"]:
     assert phrase not in source,phrase
 assert "教室指導・オンライン指導とも、講師1名につき生徒最大2名" in source
-assert len(ids)==145
+assert len(ids)==144
 for link in body.select('a[href^="#article-"]'):
     label=re.fullmatch(r"第(\d+)条(?:第(\d+)項)?",link.get_text())
     if label:
         target="article-"+label[1]+("-item-"+label[2] if label[2] else "")
         assert link["href"]=="#"+target,"Reference label differs from anchor"
-waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261028-r16/waiver/"
+waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261028-r17/waiver/"
 assert [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]] == [waiver_url]
-# 関連書類（空欄様式・免除申請の案内）は、r15 に番号の対応と次の置き換えだけをした
+# 関連書類（空欄様式・免除申請の案内）は、r16 に版の URL と次の置き換えだけをした
 RELATED_CHANGES={
  "TEACHING_CONDITIONS_REGULAR.md": [
   [
-   "指導方法などの共通条件と通常の基準単価を記録し、",
-   "指導方法などの共通条件と、1回の授業時間・授業料を記録し、"
-  ],
-  [
-   "| 通常の基準単価（税込） | 1回　　　　　　円 |",
-   "| 1回の授業料（税込） | 1回　　　　　　円 |"
-  ],
-  [
-   "授業には通常の基準単価を原則として用い、適用単価の上限とします。時間が異なる場合は同じ時間に換算して比較します。準備負担により例外的な単価を用いるときは「特別単価合意書」で別途合意し、指導方法等の共通条件はこの個別受講条件書を適用します。",
-   "授業は、原則としてこの書類の授業時間・授業料で行います。準備に非常に時間がかかる指導は「特別単価合意書」で別途合意し、指導方法等の共通条件はこの個別受講条件書を適用します。受講計画書では、この授業料を上限として、より低い授業料を定めることがあります。"
+   "料金・教材・連絡・取消しなどの扱いは",
+   "料金・教材・連絡・お休み・キャンセルなどの扱いは"
   ]
  ],
- "TEACHING_CONDITIONS_SPECIAL.md": [
-  [
-   "通常の基準単価で想定する範囲を大きく超える準備が必要な場合に、塾が理由と対象を事前に説明し、特別の基準単価に双方で合意する書類です。",
-   "準備に非常に時間がかかる指導について、塾が理由と対象を事前に説明し、その授業時間と授業料（特別単価）に双方で合意する書類です。"
-  ],
-  [
-   "| 特別の基準単価を用いる理由 |",
-   "| 特別単価を用いる理由 |"
-  ],
-  [
-   "| 特別の基準単価（税込） | 1回　　　　　　円 |",
-   "| 1回の授業料（特別単価・税込） | 1回　　　　　　円 |"
-  ],
-  [
-   "保護者が承認した内容・範囲・期間に限り、この基準単価を上限として適用単価を定めます。承認がない場合は特別の基準単価を適用しません。指導方法等の共通条件は、上記の個別受講条件書によります。",
-   "保護者が承認した内容・範囲・期間に限り、特別単価を用います。指導方法等の共通条件は、上記の個別受講条件書によります。"
-  ],
-  [
-   "内容・基準単価・期間を変更する場合は",
-   "内容・特別単価・期間を変更する場合は"
-  ],
-  [
-   "（第5条～第7条・第7条・第9条・第10条・第22条）",
-   "（第5条・第7条・第9条・第10条・第22条）"
-  ]
- ],
- "TUITION_AGREEMENT.md": [
-  [
-   "| 科目・具体的な授業内容 | 基準単価の区分・対象指導名 | 回数 | 1回の時間 | 適用単価（税込） | 予定額 |",
-   "| 科目・具体的な授業内容 | 特別単価の対象指導名（該当時） | 回数 | 1回の時間 | 1回の授業料（税込） | 予定額 |"
-  ],
-  [
-   "基準単価の区分は「通常」または「特別」とし、特別の場合は特別単価合意書の対象指導名も記入します。各行の適用単価は、対象期間に承認済みの基準単価を上限とします。",
-   "特別単価を用いる行は、特別単価合意書の対象指導名を記入します。各行の授業料は、個別受講条件書の授業料（特別単価の対象は特別単価）を上限とします。"
-  ],
-  [
-   "合意した回数は対象期間内に実施可能な上限です。合意によって授業の事前購入、全回数の受講義務、全回数の受講保証、未実施分の繰越権が生じるものではありません。",
-   "合意した回数は対象期間内に実施可能な上限です。"
-  ],
-  [
-   "（第7条・第7条～第13条）",
-   "（第5条・第7条～第13条）"
-  ]
- ],
+ "TEACHING_CONDITIONS_SPECIAL.md": [],
+ "TUITION_AGREEMENT.md": [],
  "WAIVER_GUIDE.md": [
   [
-   "第14・20・22・23・29条",
-   "第12・18・20・21・27条"
+   "無料取消し期限を過ぎた取消し・欠席・遅刻には、",
+   "キャンセル（前日23時を過ぎてから授業をやめること）や欠席・遅刻には、"
   ],
   [
-   "- 受講できない、または遅れることが分かった時点で、できるだけ早く塾へ連絡したこと。",
-   "- 受講できない、または遅れることが分かり、連絡できる状態になった時点で、できるだけ早く塾へ連絡したこと。"
+   "## 1. お休み・遅刻の連絡を先にお願いします",
+   "## 1. キャンセル・遅刻の連絡を先にお願いします"
+  ],
+  [
+   "取消しは、保護者ページの指定窓口、",
+   "お休み・キャンセルの連絡は、保護者ページの指定窓口、"
+  ],
+  [
+   "授業日前日の23時までの取消しは無料であり、免除申請は不要です。取消しと免除申請は別の手続きです。",
+   "授業日前日の23時までのお休みは無料であり、免除申請は不要です。キャンセルの連絡と免除申請は別の手続きです。"
+  ],
+  [
+   "お休みの連絡と一緒に申請しても構いません。",
+   "キャンセル・遅刻の連絡と一緒に申請しても構いません。"
+  ],
+  [
+   "減額が確定した月の翌月15日までに塾の手数料負担で返金します。",
+   "減額が確定した月の翌月末日までに塾の手数料負担で返金します。"
   ]
  ]
 }
@@ -259,7 +229,7 @@ for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.m
         assert before.count(old)==1,(filename,old)
         before=before.replace(old,new)
     after=(SOURCE.parent/filename).read_text(encoding="utf-8")
-    assert before==after and not any(phrase in after for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","受講計画合意書","基準単価","適用単価"]),filename
+    assert before==after and not any(phrase in after for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","受講計画合意書","基準単価","適用単価","15日"]),filename
 
 html = '<!doctype html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>共通規約｜ステップワイズ個別指導</title><style>' + css + '</style></head><body>\n<nav class="tools" aria-label="規約の関連ページ"><a href="' + PDF_NAME + '">PDFで開く</a><a href="waiver/">免除申請のご案内</a><a href="../">共通規約と書類の一覧</a><a href="/">ステップワイズ個別指導</a></nav>\n<main id="contract">' + str(body) + '</main>\n</body></html>\n'
 (OUT / "index.html").write_text(html, encoding="utf-8")
@@ -272,11 +242,11 @@ index_html = """<!doctype html>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>共通規約</h1>
 <p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「個別受講条件書」で定めます。まとまった回数の授業は「受講計画書」で前もって合意できます。</p>
 <h2>共通規約（ご家庭が同意した日から適用）</h2>
-<ul><li><a href="2026-11-20261028-r16/">Web版を読む</a></li><li><a href="2026-11-20261028-r16/stepwise-terms-2026-11-20261028-r16.pdf">PDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261028-r17/">Web版を読む</a></li><li><a href="2026-11-20261028-r17/stepwise-terms-2026-11-20261028-r17.pdf">PDFで開く</a></li></ul>
 <h2>書類の様式</h2>
-<ul><li><a href="2026-11-20261028-r16/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261028-r16/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261028-r16/documents/special/">特別単価合意書</a>（<a href="2026-11-20261028-r16/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261028-r16/documents/agreement/">受講計画書</a>（<a href="2026-11-20261028-r16/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
+<ul><li><a href="2026-11-20261028-r17/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261028-r17/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261028-r17/documents/special/">特別単価合意書</a>（<a href="2026-11-20261028-r17/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261028-r17/documents/agreement/">受講計画書</a>（<a href="2026-11-20261028-r17/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
 <h2>キャンセル料金の免除申請</h2>
-<ul><li><a href="2026-11-20261028-r16/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261028-r16/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261028-r17/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261028-r17/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
 <p class="note">ご不明な点は、いつものLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
 </body></html>
 """
@@ -340,6 +310,7 @@ for tag in body.find_all(["p", "h1", "h2", "h3", "td", "th", "li"]):
     text = compact(tag.get_text("", strip=False))
     if text:
         checks.append(text)
+checks.append(figure_caption)
 missing = [v for v in checks if v not in pdf_plain]
 if missing:
     (REVIEW / "missing-text.json").write_text(json.dumps(missing,ensure_ascii=False,indent=2),encoding="utf-8")
@@ -359,7 +330,7 @@ report = {
     "html_sha256":hashlib.sha256((OUT / "index.html").read_bytes()).hexdigest(),
     "pdf_sha256":hashlib.sha256((OUT / PDF_NAME).read_bytes()).hexdigest(),
     "old_blobs_preserved":OLD,
-    "chapters":8,"articles":29,"numbered_paragraphs":104,"tables":5,
+    "chapters":8,"articles":29,"numbered_paragraphs":103,"tables":5,"figures":1,
     "markdown_to_html_full_text_equal":True,
     "internal_links_valid":True,"mobile_overflow":False,
     "pdf_pages":len(pdf),"pdf_text_blocks_verified":len(checks),
