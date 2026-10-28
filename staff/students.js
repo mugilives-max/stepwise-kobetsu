@@ -56,6 +56,7 @@ export function studentsPage(ctx) {
   return h;
 }
 export function studentsInput(ctx, name, el) {
+  if (name === 'wd-last') { for (const i of el.form.querySelectorAll('input[name="keep"]:not(:disabled)')) i.checked = !!el.value && i.dataset.date <= el.value; return true; }
   if (name !== 'stu-query') return false;
   query = el.value; const pos = el.selectionStart; ctx.render();
   const again = document.querySelector('[data-input="stu-query"]'); if (again) { again.focus(); again.setSelectionRange(pos, pos); }
@@ -260,14 +261,14 @@ function leaveBox(ctx, x) {
   return h;
 }
 function leaveSheet(ctx) {
-  const { esc } = ctx, w = wd, last = w.lessons.filter(l => ['asking', 'decided'].includes(l.stage)).map(l => l.date).pop() || w.lastDone || w.today;
+  const { esc } = ctx, w = wd, last = w.today; // 最終受講日を選ぶと、その日までの授業に印が付く（studentsInput の wd-last）
   const rows = w.lessons.map(l => {
     const fixed = ['draft', 'adjusting'].includes(l.stage);
-    return `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)"><input type="checkbox" name="keep" value="${esc(l.id)}" data-date="${l.date}" data-stage="${l.stage}" data-free="${esc(l.freeBefore)}"${fixed ? ' disabled' : ' checked'}>
+    return `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line);font-weight:400"><input style="width:auto;margin-top:5px" type="checkbox" name="keep" value="${esc(l.id)}" data-date="${l.date}" data-stage="${l.stage}" data-free="${esc(l.freeBefore)}"${fixed ? ' disabled' : l.date <= last ? ' checked' : ''}>
       <span style="flex:1">${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)} ${esc(l.subject)}${l.kind && l.kind !== '通常' ? '（' + esc(l.kind) + '）' : ''}<small class="muted" style="display:block">${STAGE[l.stage] || ''}${fixed ? '・取り下げます' : ''}</small></span></label>`;
   }).join('');
   return sheet(esc, w.student.name + 'さんの退塾', `<form class="stack" data-form="wd-save" data-id="${esc(w.student.id)}" data-version="${w.student.version}">
-    <div class="row"><label style="flex:1">最終受講日<input type="date" name="lastDay" value="${esc(last)}" required></label><label style="flex:1">保護者から連絡を受けた日時<input type="datetime-local" name="receivedAt" value="${nowLocal()}" max="${nowLocal()}" required></label></div>
+    <div class="row"><label style="flex:1">最終受講日<input type="date" name="lastDay" value="${esc(last)}" data-input="wd-last" required></label><label style="flex:1">保護者から連絡を受けた日時<input type="datetime-local" name="receivedAt" value="${nowLocal()}" max="${nowLocal()}" required></label></div>
     <div><strong>これからの授業</strong>${w.lessons.length ? '<p class="small muted" style="margin:4px 0 0">受ける授業に印を付けます。印のない授業はやめます。</p>' + rows : '<p class="muted small">ありません。</p>'}</div>
     <button class="primary"${ctx.dis()}>手続きをして保護者に知らせる</button></form>`, 'wd-close');
 }
