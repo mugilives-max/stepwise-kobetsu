@@ -26,15 +26,16 @@ export const DOC_TYPES = {
 };
 
 export async function sampleDocHtml(db, type, now) {
-  if(type==='agreement') return agreementDocHtmlR13({sample:true,documentId:'AG-SAMPLE',records:[
-    {studentName:'【テスト】見本 太郎',capturedAt:'2026-10-27T03:00:00.000Z',terms:{title:'共通規約',url:'https://www.stepwise-education.jp/terms/2026-11-20261026-r13/'},line:{
+  const terms = await currentTerms(db);
+  // 見本は今の名前「受講計画書」と、使う規約で出す（2026-10-28 本人「ここの見本が受講計画書じゃなくて合意書になってます」）
+  if(type==='agreement') return agreementDocHtmlR13({sample:true,r15:true,documentId:'AG-SAMPLE',records:[
+    {studentName:'【テスト】見本 太郎',capturedAt:'2026-10-27T03:00:00.000Z',terms:{title:terms.title||'共通規約',url:terms.url||'https://www.stepwise-education.jp/terms/'},line:{
       id:'plan_sample_math',version:3,status:'approved',createdAt:'2026-10-27T03:00:00.000Z',subject:'数学',kind:'通常',startDate:'2026-11-01',endDate:'2026-11-30',count:4,approvedCount:4,minutes:90,fee:4500,
       comment:'二次関数の復習と定期テスト対策。学校のワークで理解を確認し、間違えた問題を解き直します。',parts:[{label:'二次関数の復習',count:2},{label:'定期テスト対策',count:2}],
-      instructionType:'regular',conditionId:'condition_sample_v1',termsVersion:'2026-11-20261026-r13',
+      instructionType:'regular',conditionId:'condition_sample_v1',termsVersion:terms.version,
       proposedByName:'【テスト】見本 講師',proposedAt:'2026-10-15T03:00:00.000Z',consenterName:'【テスト】見本 花子',consentedAt:'2026-10-16T03:00:00.000Z',approvedVia:'保護者ページ',recordedAt:'2026-10-16T03:00:00.000Z',recordedByName:'【テスト】見本 花子',familyAck:'confirmed'
     }}
   ]});
-  const terms = await currentTerms(db);
   const at = iso(now);
   if (type === 'condition') {
     const cond = { id: 'cond_sample', templateVersion: '20261019-r6', status: 'agreed', proposedAt: at, agreedAt: at, agreedVia: '保護者ページ', agreedBy: 'family:sample', consenterName: '見本 花子', recordedAt: at, recordedByName: '見本 花子', no: 1, minutes: 90, fee: 4500, deliveryMode: 'in_person', groupSize: '講師1名につき生徒最大2名', studentContact: 1, subjects: '英語・数学', note: '', fromMonth: '2026-11', termsVersion: terms.version, status: 'agreed', proposedAt: at, agreedAt: at, agreedVia: '保護者ページ', agreedBy: 'family:fam_sample', agreedNote: '' };

@@ -87,7 +87,7 @@ test('read-only parent preview and synthetic sample can open documents without w
  const pv=await h.ok('family/plans/document',{auth:token,refs:req});
  assert.equal(pv.html,normal.html);
  const sample=await h.ok('admin/docs/sample',{auth,type:'agreement'});
- assert.match(sample.html,/見本・架空の記録/);assert.match(sample.html,/印刷・PDF/);
+ assert.match(sample.html,/見本・架空の記録/);assert.match(sample.html,/印刷・PDF/);assert.match(sample.html,/<title>受講計画書/);assert.doesNotMatch(sample.html,/受講計画合意書/);
  assert.doesNotMatch(sample.html,/【テスト】架空 一郎/);
 });
 
