@@ -1,0 +1,47 @@
+name: Terms r18 release
+on:
+  push:
+    branches: ['claude/terms-r18-release-20261028']
+    paths: ['scripts/terms-r18-release-request.json', 'scripts/release-terms-r18.mjs', '.github/workflows/terms-r18-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: stepwise-production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'mugilives-max/stepwise-kobetsu'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: release-control
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: c1f5a2d57a4a3d2fc71888be3aee28a10aeb3748
+          path: release-source
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: fb8e8c54b33e165253e9a1536fa1936956b2a5ad
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: release-source
+      - run: npm ci
+        working-directory: baseline
+      - name: Check pinned release
+        run: |
+          node --check release-control/scripts/release-terms-r18.mjs
+      - name: Preserve records and perform explicitly requested operation
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: node release-control/scripts/release-terms-r18.mjs
