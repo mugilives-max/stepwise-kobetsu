@@ -1,4 +1,4 @@
-// Authorized GitHub-only release of PR #221 (terms r15 published on the site; system names 受講計画書, online lessons up to two at once, conditions wording). No migration. Choosing r15 as the terms in use and asking families to agree stay with the owner (settings).
+// Authorized GitHub-only release of PR #232 (terms r16 published on the site; 授業料・特別単価 wording, cancellation fees rounded down to 1 yen). No migration. Choosing r16 as the terms in use and asking families to agree stay with the owner (settings).
 // Same steps as release-r9-names.mjs: inspect → publish → verify → pages, each triggered by a push of the request file on the release branch.
 // Template for the next release: record checks use assertRecordsPreserved, so logins, logouts and mail delivery by people using the live site do not stop a release; business records must stay identical.
 import {readFile,writeFile,readdir,mkdtemp,rm} from 'node:fs/promises';
@@ -7,10 +7,10 @@ import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {ensure as check,runWrangler,compareModule,activeDeployment,assertPrivateBucket,assertRecordsPreserved} from './release-contract-system.mjs';
-const repo='mugilives-max/stepwise-kobetsu',base='8710e59d280e407acb288fb3860bf6370cdb7a51'; // base: source of the Worker published on 2026-10-27 (PR #215, release 2026-10-27-lesson-swap)
-const sourceSha='a2fa69abaf5be8420078167f578af61e53e47321',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
-const mainBeforePublish='3e52a3a8a1a1f5f180ad0c4462ffe9f9db8ee3fd',pullNumber=221,releaseLabel='2026-10-27-terms-r15',branch='claude/terms-r15-release-20261027',backupRoot='release-backups/terms-r15-20261027/';
-const source=resolve('release-source'),baseline=resolve('baseline'),request=JSON.parse(await readFile('release-control/scripts/terms-r15-release-request.json','utf8'));
+const repo='mugilives-max/stepwise-kobetsu',base='a2fa69abaf5be8420078167f578af61e53e47321'; // base: source of the Worker published on 2026-10-27 (PR #221, release 2026-10-27-terms-r15)
+const sourceSha='91bc00c9715c771d90f677cb93c7407ba789d785',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
+const mainBeforePublish='962906bc34d6d548fea3ef61682891aba7106fba',pullNumber=232,releaseLabel='2026-10-28-terms-r16',branch='claude/terms-r16-release-20261028',backupRoot='release-backups/terms-r16-20261028/';
+const source=resolve('release-source'),baseline=resolve('baseline'),request=JSON.parse(await readFile('release-control/scripts/terms-r16-release-request.json','utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex'),q=s=>'"'+s.replaceAll('"','""')+'"';
 const same=(a,b,msg)=>check(JSON.stringify(a)===JSON.stringify(b),msg);
 let dir,stage='authorization';
@@ -21,7 +21,7 @@ try{
  check(git(source)===sourceSha&&git(baseline)===base,'Unexpected source checkout.');
  const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID;
  check(token?.length>20&&/^[a-f0-9]{32}$/.test(account||''),'Deployment credentials unavailable.');
- dir=await mkdtemp(join(tmpdir(),'stepwise-terms-r15-'));
+ dir=await mkdtemp(join(tmpdir(),'stepwise-terms-r16-'));
  const prefix=['verify','pages'].includes(request.operation)?request.backupPrefix:backupRoot+process.env.GITHUB_RUN_ID+'-'+process.env.GITHUB_RUN_ATTEMPT;
  check(new RegExp('^'+backupRoot.replaceAll('/','\\/')+'\\d+-\\d+$').test(prefix||''),'Invalid private checkpoint.');
  async function cf(path,body,raw=false){
@@ -146,7 +146,7 @@ try{
   const assets=[];
   if(request.operation==='pages'){
    stage='verify published assets';
-   for(const path of ['staff/index.html','staff/app.js','family/index.html','family/app.js','terms/index.html','terms/versions.json','terms/2026-11-20261027-r15/index.html']){
+   for(const path of ['staff/index.html','staff/app.js','family/index.html','family/app.js','terms/index.html','terms/versions.json','terms/2026-11-20261028-r16/index.html','assets/v2/cancel-rate.js']){
     const expected=(await readFile(join(source,path),'utf8')).replace(/\r\n/g,'\n').trim();
     const rr=await fetch('https://www.stepwise-education.jp/'+path+'?verify='+sourceSha,{cache:'no-store',signal:AbortSignal.timeout(30000)});
     check(rr.ok&&hash((await rr.text()).replace(/\r\n/g,'\n').trim())===hash(expected),'Public file mismatch: '+path);assets.push(path);
@@ -155,7 +155,7 @@ try{
   same(after,await deployed(),'Concurrent deployment during verification.');
   const summary={source:sourceSha,operation:request.operation,backupPrefix:prefix,beforeVersion:before.versionId,workerVersion:after.versionId,privateBackupVerified:true,modulesMatch:true,migration:null,schemaUnchanged:true,tablesChecked:Object.keys(state.columns).length,existingBusinessRecordsUnchanged:true,liveActivityTables,existingContractConsentPayrollRegistrationRecordsUnchanged:true,runtimeSettingsPreserved:true,anonymousRequestsReturnNoData:true,missingEmploymentDocumentReturns404:true,publicAssetsMatch:assets,termsActivated:false,messagesSent:false};
   await save('manifest-'+request.operation+'.json',Buffer.from(JSON.stringify({...manifest,after,summary})));
-  console.log(JSON.stringify(summary));await writeFile(process.env.GITHUB_STEP_SUMMARY,'## Terms r15 release verified\n\n'+JSON.stringify(summary,null,2)+'\n');
+  console.log(JSON.stringify(summary));await writeFile(process.env.GITHUB_STEP_SUMMARY,'## Terms r16 release verified\n\n'+JSON.stringify(summary,null,2)+'\n');
  }
 }catch(e){
  const msg=e instanceof Error&&!/https?:|Bearer|token=|password/i.test(e.message)?e.message:'Private details withheld.';
