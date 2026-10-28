@@ -268,7 +268,7 @@ export const billingRoutes = {
     const sp = await agreedSpecialFor(c.db, s.id, n.kind, n.startDate);
     if (sp && n.endDate > sp.toDate) fail('needSpecial', '計画の対象期間全体が、承認済みの特別単価の対象期間に含まれる必要があります');
     if ((sp && n.fee > Math.floor(sp.fee * n.minutes / sp.minutes)) || ((condition || base > 0) && n.fee > ceiling && !sp))
-      fail('needSpecial', '通常の基準単価を超える適用単価は、対象期間全体の特別単価合意書について事前に承認を得て、その基準単価以内で設定してください');
+      fail('needSpecial', '個別受講条件書の授業料を超える授業料は、対象期間全体の特別単価合意書について事前に承認を得て、その特別単価以内で設定してください');
     n.conditionId = condition ? condition.id : ''; n.specialId = sp ? sp.id : ''; n.instructionType = sp ? 'special' : 'regular';
     const now = iso(c.now);
     if (old) {

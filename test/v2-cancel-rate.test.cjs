@@ -40,8 +40,8 @@ test('the rate: free until 23:00 the day before, 25% until 3 hours before, then 
   assert.equal(ratePct(cancelRate('2026-11-10', '18:00', null)), 100, '連絡なしは100%');
   assert.ok(cancelRate('2026-11-10', '18:00', at('2026-11-10T15:01:00')) > cancelRate('2026-11-10', '18:00', at('2026-11-10T15:00:00')), '3時間前を過ぎると1分ごとに上がる');
   // 例（規約案 別表1）: 90分・4,500円
-  assert.deepEqual([180, 360, 540, 630, 720].map(x => cancelAmount(4500, 90, 90, x)), [1120, 2250, 3370, 3930, 4500], '10円未満は切り捨て');
-  assert.equal(cancelAmount(4500, 90, 30, 540), 1120, '30分だけ取り消すと3分の1');
+  assert.deepEqual([180, 360, 540, 630, 720].map(x => cancelAmount(4500, 90, 90, x)), [1125, 2250, 3375, 3937, 4500], '1円未満は切り捨て（r16）');
+  assert.equal(cancelAmount(4500, 90, 30, 540), 1125, '30分だけ取り消すと3分の1');
   assert.equal(cancelAmount(4500, 90, 30, 0), 0);
 });
 
@@ -50,10 +50,10 @@ test('cancelling: a family cancel is priced at the time it arrives; staff record
   const a = await lesson('2026-11-10'), b = await lesson('2026-11-11'), c = await lesson('2026-11-12');
   h.clock = at('2026-11-10T17:00:00');
   const r = await h.ok('family/lessons/request', { auth: parent, lessonId: a.id, kind: 'cancel', note: '部活が長引きます' });
-  assert.equal(r.fee.amount, 3370, '開始1時間前は75%');
+  assert.equal(r.fee.amount, 3375, '開始1時間前は75%');
   let f = fee(a.id);
-  assert.deepEqual([f.rule, f.decision, f.decidedBy, f.amount, f.baseFee, f.parts.length, f.parts[0].reason, f.parts[0].minutes], ['rate', 'charge', 'system:auto', 3370, 4500, 1, 'cancel', 90], '判断待ちにしない');
-  assert.match(h.mails().at(-1).body, /キャンセル料 3,370円/, '教室にも金額を知らせる');
+  assert.deepEqual([f.rule, f.decision, f.decidedBy, f.amount, f.baseFee, f.parts.length, f.parts[0].reason, f.parts[0].minutes], ['rate', 'charge', 'system:auto', 3375, 4500, 1, 'cancel', 90], '判断待ちにしない');
+  assert.match(h.mails().at(-1).body, /キャンセル料 3,375円/, '教室にも金額を知らせる');
   const rq = h.rows("select id from lessonRequests where lessonId = ? and kind = 'cancel'", a.id)[0];
   await h.ok('family/lessons/withdraw', { auth: parent, requestId: rq.id });
   assert.equal(fee(a.id), null, '取り下げたら取消料も消える');
@@ -62,8 +62,8 @@ test('cancelling: a family cancel is priced at the time it arrives; staff record
   assert.equal((await h.call('schedule/lessons/cancel', { auth, id: b.id, version: get(b.id).version, receivedAt: '2026-11-11T18:20' })).error.code, 'futureTime');
   assert.equal((await h.call('schedule/lessons/cancel', { auth, id: b.id, version: get(b.id).version, receivedAt: '2026-11-10T22:50' })).error.code, 'useRest', '前日23時までならお休み');
   const cb = await h.ok('schedule/lessons/cancel', { auth, id: b.id, version: get(b.id).version, receivedAt: '2026-11-11T17:30' });
-  assert.equal(cb.fee.amount, 3930);
-  assert.match(h.mails().at(-1).body, /キャンセル料は 3,930円です（17:30 にご連絡、率 87.5%）/);
+  assert.equal(cb.fee.amount, 3937);
+  assert.match(h.mails().at(-1).body, /キャンセル料は 3,937円です（17:30 にご連絡、率 87.5%）/);
   h.clock = at('2026-11-12T19:00:00');
   const cc = await h.ok('schedule/lessons/cancel', { auth, id: c.id, version: get(c.id).version, noNotice: true });
   assert.equal(cc.fee.amount, 4500, '連絡のない欠席は100%');
@@ -79,12 +79,12 @@ test('a start delayed at the family request costs the delayed minutes at the rat
   h.clock = at('2026-11-10T17:20:00');
   const l = get(a.id);
   const u = await h.ok('schedule/lessons/update', { auth, id: l.id, version: l.version, date: l.date, start: '18:30', minutes: 90, subject: l.subject, kind: l.kind, deliveryMode: l.deliveryMode, staffId: l.staffId, lateStart: true });
-  assert.equal(u.fee.amount, 1120, '連絡の 17:00（75%）で、30分ぶん');
+  assert.equal(u.fee.amount, 1125, '連絡の 17:00（75%）で、30分ぶん');
   assert.deepEqual([fee(a.id).parts[0].reason, fee(a.id).parts[0].start, fee(a.id).parts[0].receivedAt], ['delay', '18:00', new Date(at('2026-11-10T17:00:00')).toISOString()]);
-  assert.match(h.mails().at(-1).body, /開始を遅らせた分の取消料は 1,120円です/);
+  assert.match(h.mails().at(-1).body, /開始を遅らせた分の取消料は 1,125円です/);
   const l2 = get(a.id);
   await h.ok('schedule/lessons/update', { auth, id: l2.id, version: l2.version, date: l2.date, start: '18:45', minutes: 90, subject: l2.subject, kind: l2.kind, deliveryMode: l2.deliveryMode, staffId: l2.staffId, lateStart: true });
-  assert.deepEqual([fee(a.id).amount, fee(a.id).parts.length, fee(a.id).parts[0].minutes], [1680, 1, 45], '最初の 18:00 から45分');
+  assert.deepEqual([fee(a.id).amount, fee(a.id).parts.length, fee(a.id).parts[0].minutes], [1687, 1, 45], '最初の 18:00 から45分');
   // 塾の都合で動かす（lateStart なし）なら取消料はかからない
   const b = await lesson('2026-11-11');
   h.clock = at('2026-11-11T12:00:00');
@@ -101,7 +101,7 @@ test('lateness: the lesson ends on time, the lost minutes leave the lesson fee a
   h.clock = at('2026-11-10T18:40:00');
   assert.equal((await h.call('schedule/lessons/tardy', { auth, id: a.id, version: get(a.id).version, lateMinutes: 90 })).error.code, 'badMinutes', '来なかったらキャンセル');
   const t = await h.ok('schedule/lessons/tardy', { auth, id: a.id, version: get(a.id).version, lateMinutes: 30, receivedAt: '2026-11-10T17:30' });
-  assert.deepEqual([t.fee.amount, t.lesson.lostMinutes], [1310, 30], '17:30 の連絡（87.5%）');
+  assert.deepEqual([t.fee.amount, t.lesson.lostMinutes], [1312, 30], '17:30 の連絡（87.5%）');
   await h.ok('schedule/lessons/tardy', { auth, id: a.id, version: get(a.id).version, lateMinutes: 0 });
   assert.deepEqual([fee(a.id), get(a.id).lostMinutes], [null, 0], '0分で取り消し');
   await h.ok('schedule/lessons/tardy', { auth, id: a.id, version: get(a.id).version, lateMinutes: 30, receivedAt: '2026-11-10T17:30' });
@@ -112,8 +112,8 @@ test('lateness: the lesson ends on time, the lost minutes leave the lesson fee a
   h.clock = at('2026-12-02T12:00:00');
   const p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-11' })).preview;
   const items = p.students[0].items.map(i => [i.kind, i.amount, i.label]);
-  assert.deepEqual(items, [['lesson', 3000, ''], ['cancelFee', 1310, '取消料（遅刻 30分）'], ['lesson', 3000, ''], ['cancelFee', 1500, '取消料（遅刻 30分）']], '連絡なしに30分遅れると合計は予定どおりの 4,500円');
-  assert.deepEqual([p.total, p.canConfirm], [3000 + 1310 + 3000 + 1500, true]);
+  assert.deepEqual(items, [['lesson', 3000, ''], ['cancelFee', 1312, '取消料（遅刻 30分）'], ['lesson', 3000, ''], ['cancelFee', 1500, '取消料（遅刻 30分）']], '連絡なしに30分遅れると合計は予定どおりの 4,500円');
+  assert.deepEqual([p.total, p.canConfirm], [3000 + 1312 + 3000 + 1500, true]);
 });
 
 test('lessons before the start date of the new rule keep the old fees, and teachers record lateness only for their own lessons', async () => {

@@ -53,7 +53,7 @@ function studentInputs(esc, s) {
     <div class="row"><label style="flex:1">せい<input name="familyKana" maxlength="40" value="${esc(s.familyKana || '')}"></label><label style="flex:1">めい<input name="givenKana" maxlength="40" value="${esc(s.givenKana || '')}"></label></div>
     <div class="row"><label style="flex:1">学年<select name="grade">${gradeOptions(esc, s.grade)}</select></label><label style="flex:2">学校<input name="school" maxlength="60" value="${esc(s.school || '')}"></label></div>
     <label>受講科目（メモ）<input name="subjects" maxlength="100" value="${esc(s.subjects || '')}"></label>
-    <div class="row"><label style="flex:1">通常の基準単価（90分・円）<input type="number" name="baseFee90" min="0" max="300000" step="10" value="${esc((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}"></label>
+    <div class="row"><label style="flex:1">授業料（90分・円）<input type="number" name="baseFee90" min="0" max="300000" step="10" value="${esc((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}"></label>
       <label style="flex:1">授業の形式（初期値）<select name="deliveryMode">${opt(MODE, s.deliveryMode || '')}</select></label></div>
     <div class="row"><label style="flex:1">在籍<select name="status">${opt(STUDENT_STATUS, s.status || 'enrolled')}</select></label><label style="flex:1">入塾日<input type="date" name="enrolledOn" value="${esc(s.enrolledOn || '')}"></label></div>
     <label>メモ（教室だけが見る）<input name="note" maxlength="1000" value="${esc(s.note || '')}"></label>`;
@@ -72,7 +72,7 @@ export function familyDetailPage(ctx, id) {
   h += `<div class="row" style="margin-top:10px"><button data-action="pv-open" data-kind="family" data-id="${esc(f.id)}">保護者ページを見る（プレビュー）</button>${f.email && f.status !== 'stopped' ? `<button data-action="fam-invite"${ctx.dis()}>${f.hasPassword ? '登録のやり直しを案内する' : '保護者ページの招待を送る'}</button>` : ''}
     ${f.status === 'stopped' ? `<button data-action="fam-status" data-status="${f.hasPassword ? 'active' : 'invited'}"${ctx.dis()}>再開する</button>` : `<button class="danger" data-action="fam-status" data-status="stopped"${ctx.dis()}>停止する</button>`}</div>`;
   h += `<div class="sec-title">生徒 <span class="count gray">${f.students.length}</span></div><div class="group">` + f.students.map(s => rowButton(esc, 'fam-sheet', { mode: 'student', id: s.id }, `${esc(s.name)} ${tag(STUDENT_STATUS[s.status])}${s.testOnly ? '<span class="tag gray">テスト</span>' : ''}`,
-    `${esc(s.grade || '学年なし')}・${esc(s.school || '学校なし')}・${MODE[s.deliveryMode || '']}・通常の基準単価 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}（90分）・${condStatus(s.condition)}`)).join('') + '</div>';
+    `${esc(s.grade || '学年なし')}・${esc(s.school || '学校なし')}・${MODE[s.deliveryMode || '']}・授業料（90分） ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}（90分）・${condStatus(s.condition)}`)).join('') + '</div>';
   h += `<p style="margin-top:10px"><button data-action="fam-sheet" data-mode="add"${ctx.dis()}>＋ 生徒を足す</button></p>`;
   return h + familySheet(ctx, f);
 }
@@ -88,7 +88,7 @@ function familySheet(ctx, f) {
     const v = { minutes: base ? base.minutes : 90, fee: base ? base.fee : (Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3), deliveryMode: base ? base.deliveryMode : (s.deliveryMode || 'in_person'), groupSize: base ? base.groupSize : '', studentContact: base ? base.studentContact : true, subjects: base ? base.subjects : (s.subjects || ''), note: base ? base.note : '', fromMonth: nextMonth() };
     return sheet(esc, s.name + ' の個別受講条件書' + (base ? `（第${base.no + 1}版）` : ''), `<p class="small muted" style="margin-top:0">お知らせすると保護者にメールが届き、同意まで、この家族は新しい計画を承認できません。</p>
       <form class="stack" data-form="cond-propose" data-id="${esc(s.id)}">
-      <div class="row"><label style="flex:1">基本の授業時間（分）<input type="number" name="minutes" min="15" max="300" step="5" required value="${v.minutes}"></label><label style="flex:1">1回の税込の通常の基準単価（円）<input type="number" name="fee" min="0" max="100000" step="10" required value="${v.fee}"></label></div>
+      <div class="row"><label style="flex:1">基本の授業時間（分）<input type="number" name="minutes" min="15" max="300" step="5" required value="${v.minutes}"></label><label style="flex:1">1回の授業料（税込・円）<input type="number" name="fee" min="0" max="100000" step="10" required value="${v.fee}"></label></div>
       <div class="row"><label style="flex:1">実施形態<select name="deliveryMode">${Object.entries(COND_MODE).map(([k, l]) => `<option value="${k}"${k === v.deliveryMode ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label style="flex:1">適用開始月<input type="month" name="fromMonth" required value="${esc(v.fromMonth)}"></label></div>
       <label>人数（空なら「講師1名につき生徒最大2名」）<input name="groupSize" maxlength="80" value="${esc(v.groupSize)}" placeholder="講師1名につき生徒最大2名"></label>
       <fieldset class="reg-field"><legend>科目</legend>${subjectFields(esc, v.subjects)}</fieldset>
@@ -105,7 +105,7 @@ function familySheet(ctx, f) {
       <label>指導の内容と範囲<textarea name="content" maxlength="1000" rows="3" required placeholder="例: 過去問の長文とライティングの添削。毎回、前回の答案を講師が採点して返す">${esc(v.content)}</textarea></label>
       <label>通常の授業との違い（なぜ特別単価にするか）<textarea name="reason" maxlength="1000" rows="3" required placeholder="例: 毎回の答案の添削と準備に1回2時間かかり、ほかの生徒には使えない">${esc(v.reason)}</textarea></label>
       <label>必要な準備（任意）<input name="prep" maxlength="1000" value="${esc(v.prep)}"></label>
-      <div class="row"><label style="flex:1">1回の時間（分）<input type="number" name="minutes" min="15" max="300" step="5" required value="${v.minutes}"></label><label style="flex:1">特別の基準単価（税込・円）<input type="number" name="fee" min="0" max="100000" step="10" required value="${v.fee}"></label></div>
+      <div class="row"><label style="flex:1">1回の時間（分）<input type="number" name="minutes" min="15" max="300" step="5" required value="${v.minutes}"></label><label style="flex:1">特別単価（税込・円）<input type="number" name="fee" min="0" max="100000" step="10" required value="${v.fee}"></label></div>
       <div class="row"><label style="flex:1">期間（から）<input type="date" name="fromDate" required value="${esc(v.fromDate)}"></label><label style="flex:1">期間（まで）<input type="date" name="toDate" required value="${esc(v.toDate)}"></label></div>
       <label>特記事項（任意）<input name="note" maxlength="1000" value="${esc(v.note)}"></label>
       <div class="row"><button class="primary"${ctx.dis()}>保護者に提案する</button><button type="button" data-action="fam-sheet" data-mode="student" data-id="${esc(s.id)}">戻る</button></div></form>`, 'fam-close', { wide: true });
@@ -118,7 +118,7 @@ function familySheet(ctx, f) {
     <label>承認・同意した保護者の氏名<input name="consenterName" maxlength="100" required></label><label>メモ（任意）<input name="note" maxlength="300" placeholder="例: 母から LINE で「同意します」"></label><button class="primary"${ctx.dis()}>記録する</button></form>`, 'fam-close');
   if (m === 'edit') return sheet(esc, s.name + ' を直す', `<form class="stack" data-form="stu-update" data-id="${esc(s.id)}" data-version="${s.version}">${studentInputs(esc, s)}<div class="row"><button class="primary"${ctx.dis()}>保存</button><button type="button" data-action="fam-sheet" data-mode="student" data-id="${esc(s.id)}">やめる</button></div></form>`, 'fam-close');
   if (m === 'move') return sheet(esc, s.name + ' を別の家族へ移す', `<form class="stack" data-form="stu-move" data-id="${esc(s.id)}" data-version="${s.version}"><label>移す先の家族<select name="familyId">${(list || []).filter(x => x.id !== f.id).map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></label><div class="row"><button class="primary"${ctx.dis()}>移す</button><button type="button" data-action="fam-sheet" data-mode="student" data-id="${esc(s.id)}">やめる</button></div></form>`, 'fam-close');
-  return sheet(esc, s.name, `<p class="small muted" style="margin-top:0">${esc(s.grade || '学年なし')}・${esc(s.school || '学校なし')}・${MODE[s.deliveryMode || '']}・通常の基準単価 ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}（90分）${s.note ? '<br>メモ: ' + esc(s.note) : ''}</p>
+  return sheet(esc, s.name, `<p class="small muted" style="margin-top:0">${esc(s.grade || '学年なし')}・${esc(s.school || '学校なし')}・${MODE[s.deliveryMode || '']}・授業料（90分） ${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}（90分）${s.note ? '<br>メモ: ' + esc(s.note) : ''}</p>
     <div class="sec-title" style="margin:4px 0 6px">個別受講条件書 ${condStatus(cd)}</div>
     ${cd.latest ? `<p class="small" style="margin:0 0 8px">第${cd.latest.no}版：1回${cd.latest.minutes}分 ${yen(cd.latest.fee)}・${esc(cd.latest.deliveryLabel)}・${cd.latest.studentContact ? '本人の連絡あり' : '本人の連絡なし'}・${esc(cd.latest.fromMonth)}から${cd.needs ? '' : `（${esc(cd.latest.agreedVia)}・${esc(String(cd.latest.agreedAt).slice(0, 10))}）`}${cd.needs && cd.agreed ? `<br><span class="muted">今は第${cd.agreed.no}版（1回${cd.agreed.minutes}分 ${yen(cd.agreed.fee)}）で合意中</span>` : ''}</p>` : ''}
     <div class="row" style="margin-bottom:12px">${cd.latest && cd.latest.docFileId ? `<button data-action="gr-open" data-id="${esc(cd.latest.docFileId)}">条件書を開く${cd.needs ? '（案）' : ''}</button>` : ''}${cd.needs && cd.agreed && cd.agreed.docFileId ? `<button data-action="gr-open" data-id="${esc(cd.agreed.docFileId)}">合意中の条件書（第${cd.agreed.no}版）</button>` : ''}<button data-action="fam-sheet" data-mode="cond" data-id="${esc(s.id)}"${ctx.dis()}>${cd.latest ? '新しい版を決めてお知らせ' : '条件を決めてお知らせ'}</button>${cd.needs ? `<button data-action="fam-sheet" data-mode="cond-record" data-id="${esc(s.id)}"${ctx.dis()}>承諾を記録</button>` : ''}</div>
@@ -194,7 +194,7 @@ export async function familiesClick(ctx, a, b) {
   if (a === 'fam-close') { famSheet = null; return true; }
   if (a === 'fam-special') { famSheet = { mode: b.dataset.mode, id: b.dataset.id || '', specialId: b.dataset.special || '', replaceId: b.dataset.mode === 'special' ? (b.dataset.special || '') : '' }; ctx.say(''); return true; }
   if (a === 'special-end') {
-    if (!confirm('この特別単価を終えますか？ 以後、この名称の種類で通常の基準単価を超える計画は作れなくなります。')) return true;
+    if (!confirm('この特別単価を終えますか？ 以後、この名称の種類で個別受講条件書の授業料を超える計画は作れなくなります。')) return true;
     r = await ctx.call('admin/specials/end', { id: b.dataset.id });
     if (r.ok) { famSheet = null; detail = null; ctx.say('特別単価を終えました', 'ok'); return true; }
     if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); return true;

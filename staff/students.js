@@ -1,7 +1,7 @@
 // スタッフの「生徒」（docs/UX_STRUCTURE.md 3）。#students（家族ごとの一覧）と #student=<id>/<タブ>（1人の生徒の画面）。
 // タブ: 概要・予定・記録と宿題・成績・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
-import { hwSubject } from '/assets/v2/learning-view.js?v=20261027-principles';
-import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261027-principles';
+import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
+import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
@@ -170,7 +170,7 @@ function basic(ctx, x) {
   const row = (k, v) => v ? `<div class="ev"><span class="t" style="font-weight:400">${k}</span><span class="b" style="color:var(--ink)">${esc(v)}</span><span></span></div>` : '';
   const trialBox = s.trial ? `<div class="notice" style="margin-top:12px"><strong>体験生</strong>（授業は無料）・<a href="#student=${encodeURIComponent(s.id)}/summary">入塾の手続き</a>
     <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">共通規約・個別受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
-  return trialBox + `<h2>生徒</h2><div class="rows">${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('通常の基準単価', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('個別受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}</div>
+  return trialBox + `<h2>生徒</h2><div class="rows">${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('授業料（90分）', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('個別受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}</div>
     <h2>家族</h2><div class="rows">${row('家族', b.familyName)}${row('保護者', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</div>
     <h2>その人の目で見る</h2>
     <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る</button></div>
@@ -199,7 +199,7 @@ function offerForm(ctx, x, again) {
       <input type="email" name="email" value="${esc(d && !e.familyActive ? d.email : e.email || '')}" ${e.familyActive ? 'readonly' : ''} autocomplete="off" placeholder="parent@example.com">
       ${e.familyActive ? '<p class="reg-help">登録済み（変えるときは家族の画面で）</p>' : ''}</fieldset>
     <fieldset class="reg-field cond-box"><legend>受講条件</legend>
-      <div class="row"><label style="flex:1">適用開始月<input type="month" name="fromMonth" value="${esc(from)}" required></label><label style="flex:1">1回の時間（分）<input type="number" name="minutes" value="${esc(minutes)}" min="15" max="300" step="5" required></label><label style="flex:1">1回の基準単価（円・税込）<input type="number" name="fee" value="${esc(fee)}" min="0" max="100000" step="10" required></label></div>
+      <div class="row"><label style="flex:1">適用開始月<input type="month" name="fromMonth" value="${esc(from)}" required></label><label style="flex:1">1回の時間（分）<input type="number" name="minutes" value="${esc(minutes)}" min="15" max="300" step="5" required></label><label style="flex:1">1回の授業料（円・税込）<input type="number" name="fee" value="${esc(fee)}" min="0" max="100000" step="10" required></label></div>
       <div class="cond-sub">実施形態</div>
       <div class="choices" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${Object.entries(MODE).map(([k, l]) => `<label class="choice"><input type="radio" name="deliveryMode" value="${k}"${mode === k ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
       <div class="cond-sub">科目</div>${subjectFields(esc, d ? d.subjects || '' : (cond && cond.subjects) || b.subjects || '')}</fieldset>
@@ -210,7 +210,7 @@ function offerForm(ctx, x, again) {
 function enrollCard(ctx, x) {
   const { esc } = ctx, e = x.enrollment, o = e.offer, s = x.student, cond = (x.basic.condition && x.basic.condition.latest) || null;
   const row = (k, v) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`;
-  const condTable = c => `<div class="cond-box cond-view"><h3 class="info-head">受講条件</h3><dl class="info-table">${row('適用期間', jaMonth(c.fromMonth) + 'から、条件変更日まで')}${row('1回', c.minutes + '分')}${row('基準単価', yen(c.fee) + '（税込）')}${row('実施形態', MODE[c.deliveryMode] || '')}${c.subjects ? row('科目', c.subjects) : ''}</dl></div>`;
+  const condTable = c => `<div class="cond-box cond-view"><h3 class="info-head">受講条件</h3><dl class="info-table">${row('適用期間', jaMonth(c.fromMonth) + 'から、条件変更日まで')}${row('1回', c.minutes + '分')}${row('1回の授業料', yen(c.fee) + '（税込）')}${row('実施形態', MODE[c.deliveryMode] || '')}${c.subjects ? row('科目', c.subjects) : ''}</dl></div>`;
   if (o && o.status === 'applied') {
     if (Date.parse(o.appliedAt) < Date.parse(x.today) - 30 * 86400e3) return '';
     const a = o.application || {};
@@ -241,7 +241,7 @@ export async function studentsSubmit(ctx, kind, el) {
   if (kind === 'enroll-offer') {
     const v = { ...Object.fromEntries(new FormData(el).entries()), subjects: readSubjects(el) };
     offerDraft = { studentId: el.dataset.id, v };
-    if (!v.email || !v.fromMonth || !v.minutes || v.fee === '' || !v.deliveryMode) { ctx.say('メールアドレス・適用開始月・1回の時間・基準単価・実施形態を入れてください', 'error'); return true; }
+    if (!v.email || !v.fromMonth || !v.minutes || v.fee === '' || !v.deliveryMode) { ctx.say('メールアドレス・適用開始月・1回の時間・授業料・実施形態を入れてください', 'error'); return true; }
     if (!confirm(`${v.email} に入塾の案内を送りますか？`)) return true;
     const r = await ctx.call('admin/enrollment/offer', { studentId: el.dataset.id, email: v.email, fromMonth: v.fromMonth, minutes: Number(v.minutes), fee: Number(v.fee), deliveryMode: v.deliveryMode, subjects: v.subjects || '' }); // お休みの連絡を生徒本人からも受け付けるかは、保護者が申込みで決める
     if (r.ok) offerDraft = null;

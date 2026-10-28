@@ -4,7 +4,7 @@ import { requireFamily } from './family.mjs';
 import { termsForVersion } from './terms.mjs';
 import { lineView } from './billing.mjs';
 import { agreementDocHtml, agreementLayout } from './agreement-doc-20261016.mjs';
-import { agreementDocHtmlR13, usesLayoutR13, AGREEMENT_LAYOUT_R13, AGREEMENT_LAYOUT_R15, NAME_R15_TERMS, usesNameR15 } from './agreement-doc-20261026.mjs';
+import { agreementDocHtmlR13, usesLayoutR13, AGREEMENT_LAYOUT_R13, AGREEMENT_LAYOUT_R15, NAME_R15_TERMS, NAME_R16_TERMS, usesNameR15 } from './agreement-doc-20261026.mjs';
 
 // Exact archived versions only. Never fall back to the current row or current family.
 async function document(c,b,familyId=null) {
@@ -27,7 +27,7 @@ async function document(c,b,familyId=null) {
   // 2026-10-26 より後に作った行は、個別受講条件書と同じ書式（agreement-doc-20261026.mjs）。宛名は、承認の前は今の保護者の氏名、承認・見送りのあとは意思表示した保護者
   if(usesLayoutR13(records)){
     // 共通規約 r15 を使う規約に決めた（termsVersions に登録した）あとに作った行は「受講計画書」。前からの行は名前を変えない
-    const adopted=await c.db.prepare('select registeredAt from termsVersions where version=?').bind(NAME_R15_TERMS).first();
+    const adopted=await c.db.prepare('select min(registeredAt) registeredAt from termsVersions where version in (?,?)').bind(NAME_R15_TERMS,NAME_R16_TERMS).first();
     const r15=usesNameR15(records,adopted&&adopted.registeredAt);
     const layout=r15?AGREEMENT_LAYOUT_R15:AGREEMENT_LAYOUT_R13, documentId='AG-'+sha256Hex(layout+'|'+key).slice(0,20);
     const fam=await c.db.prepare('select guardianName from families where id=?').bind(a.familyId).first();

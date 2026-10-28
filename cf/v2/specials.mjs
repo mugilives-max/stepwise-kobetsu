@@ -2,7 +2,7 @@ import { familyTarget } from '../../assets/v2/family-target.js';
 // 特別単価合意書の承認（規約 第6条。migrations-v2/0019_specials.sql）
 // - 教室管理者が「特別単価を提案」する（admin/specials/propose）：名称、内容と範囲、通常の授業との違い、準備、1回の時間と税込料金、対象期間。
 //   提案すると、その名称で「授業の種類」（lessonKinds）ができ、保護者にメールが届く。書面（特別単価合意書・案）も残す
-// - 保護者は保護者ページで内容を見て承認する（family/specials/agree）。承認された名称の種類でだけ、通常の基準単価を超える料金の計画を作れる
+// - 保護者は保護者ページで内容を見て承認する（family/specials/agree）。承認された名称の種類でだけ、個別受講条件書の授業料を超える料金の計画を作れる
 //   （billing/plans/save の needSpecial）。計画の承認そのものは止めない（特別単価は任意）
 // - 書面・LINE でもらった承諾は教室管理者が記録する（admin/specials/record）。終わったら「終える」（admin/specials/end）
 import { fail, newId, iso, audit } from './util.mjs';

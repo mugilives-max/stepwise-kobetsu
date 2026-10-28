@@ -1,6 +1,6 @@
 // 保護者の画面: 受講計画書・お支払い（5段目）。受講計画書の承認、キャンセル料、月ごとの請求と振込の連絡。
 import { esc } from '/assets/v2/api.js';
-import { partText } from '/assets/v2/cancel-rate.js?v=20261025-layout';
+import { partText } from '/assets/v2/cancel-rate.js?v=20261028-r16b';
 
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));

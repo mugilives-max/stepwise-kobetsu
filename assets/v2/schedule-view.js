@@ -1,7 +1,7 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principles';
 // 作り直し（v2）の予定の部品。スタッフ・保護者・生徒の画面で共通に使う（言葉と色をそろえる）。
 import { esc } from '/assets/v2/api.js';
-import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=20261025-layout';
+import { cancelRate, cancelAmount, ratePct } from '/assets/v2/cancel-rate.js?v=20261028-r16b';
 
 // 段階（2026-10-14 本人決定）: 下書き（塾だけ）→ 調整中（お互いに見える・締め切りなし）→ 確認待ち（締め切りあり。proposed で asked）→ 確定
 export const STATUS = {

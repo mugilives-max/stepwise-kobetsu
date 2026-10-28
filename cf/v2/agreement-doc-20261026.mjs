@@ -15,7 +15,8 @@ const partsText = l => { let ps = l.parts; if (typeof ps === 'string') { try { p
 
 export const AGREEMENT_LAYOUT_R13 = '20261026-r13';
 // 共通規約 r15 を使う規約に決めたあとに作った行は、名前を「受講計画書」に（2026-10-27 本人「受講計画書にしよう」）。受講計画書は必須でない補助で、回数を超える授業は授業ごとの合意で行える
-export const AGREEMENT_LAYOUT_R15 = '20261027-r15', NAME_R15_TERMS = '2026-11-20261027-r15';
+// r16 から先に使い始めた場合も同じ（受講計画書の名前は r15・r16 で同じ）
+export const AGREEMENT_LAYOUT_R15 = '20261027-r15', NAME_R15_TERMS = '2026-11-20261027-r15', NAME_R16_TERMS = '2026-11-20261028-r16';
 export const usesNameR15 = (records, adoptedAt) => !!adoptedAt && records.length > 0 && records.every(r => String((r.line && r.line.createdAt) || '') >= adoptedAt);
 export const NEW_LAYOUT_FROM = '2026-10-26T14:00:00.000Z';
 // この様式で描くか: すべての行が、この日より後に作ったもの
