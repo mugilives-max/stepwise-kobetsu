@@ -110,6 +110,16 @@ test('migration preserves every existing column and row, including issued docume
  assert.deepEqual(snapshot(),before);assert.ok(before.termsConsents.length);assert.ok(before.planRevisions.length);assert.ok(before.conditions.length);assert.ok(before.specials.length);assert.ok(before.files.length);
 });
 
+test('families who agreed to terms r17 or later pay by the end of the confirming month, even after the 15th',async()=>{
+ const {h,auth,fam,kid,plan,approve}=await agreementFixture();
+ h.clock=Date.parse('2026-09-01T12:00:00+09:00');
+ await approve(await plan({startDate:'2026-09-01',endDate:'2026-09-30'}),{consentedAt:'2026-09-01T11:00:00+09:00'});
+ h.clock=Date.parse('2026-10-16T12:00:00+09:00');
+ await h.ok('schedule/lessons/create',{auth,studentId:kid.id,date:'2026-09-10',start:'17:00',minutes:90,subject:'数学',deliveryMode:'in_person',done:true});
+ h.db2._sqlite.prepare('update families set termsVersion=? where id=?').run('2026-11-20261028-r17',fam.id);
+ const iv=(await h.ok('billing/confirm',{auth,familyId:fam.id,month:'2026-09',dueReviewed:true})).invoice;
+ assert.equal(iv.dueDate,'2026-10-31');assert.match(h.mails().at(-1).body,/2026-10-31（期限の日までに振込の手続きをしてください）/);
+});
 test('delayed invoice requires an agreed date; void notice and original records remain visible only to its family',async()=>{
  const {h,auth,fam,kid,parent,plan,approve}=await agreementFixture();
  h.clock=Date.parse('2026-09-01T12:00:00+09:00');

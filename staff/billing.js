@@ -269,7 +269,7 @@ function detailPart(ctx) {
   h += `<div><strong>合計 ${yen(p.total)}</strong></div>`;
   if (p.issues.length) h += `<ul class="small">${p.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
   const ended = billMonth < thisMonth();
-  if (p.canConfirm && ended) h += `<p><button class="primary" data-action="bl-confirm" data-total="${p.total}"${ctx.dis()}>この内容で確定する（${yen(p.total)}）</button></p>`;
+  if (p.canConfirm && ended) h += `<p><button class="primary" data-action="bl-confirm" data-total="${p.total}" data-due="${p.normalDue || ''}"${ctx.dis()}>この内容で確定する（${yen(p.total)}）</button></p>`;
   else if (!ended) h += '<p class="small muted">月が終わってから確定できます。</p>';
   return h + '</div>';
 }
@@ -376,7 +376,7 @@ export async function billingClick(ctx, a, b) {
     r = await ctx.call('billing/plans/delete', { id: b.dataset.id, version: Number(b.dataset.version) }); msg = '消しました'; if (r.ok) { plans = null; lineOpen = ''; }
   } else if (a === 'bl-confirm') {
     if (!confirm('この内容で請求を確定しますか？ 保護者ページに出て、メールでお知らせします。')) return true;
-    const dueDate=prompt('通常の支払期限は請求確定月の15日（土日祝は翌営業日）です。\n期限までの期間が短い場合や15日以降は、保護者と合意した期日を YYYY-MM-DD で入力してください。通常の期限なら空欄。');
+    const dueDate=prompt(`通常の支払期限は ${b.dataset.due} です。\n期限までの期間が短い場合や期限の日以降は、保護者と合意した期日を YYYY-MM-DD で入力してください。通常の期限なら空欄。`);
     if(dueDate===null)return true;
     const dueNote=dueDate ? prompt('支払期限について保護者と合意した日時・方法を入力してください') : '';
     if(dueDate&&!dueNote)return true;

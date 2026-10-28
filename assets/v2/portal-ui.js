@@ -1,5 +1,5 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principles';
-import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261025-layout';
+import { invoiceDueText } from '/assets/v2/invoice-due.js?v=20261028-r17';
 import { agreementDocumentButtons } from '/assets/v2/agreement-document.js?v=20261027-r15';
 // 保護者・生徒の画面で共通に使う部品（作り直し v2）。
 // 考え方（docs/UX_STRUCTURE.md 1）: 一覧は白い枠に 1 件 1 行、操作は押すと下から出る画面で。文字より印で分かるように。

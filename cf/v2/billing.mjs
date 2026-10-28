@@ -1,5 +1,5 @@
 import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
-import { invoiceDueText } from '../../assets/v2/invoice-due.js';
+import { invoiceDueText, normalDueDate } from '../../assets/v2/invoice-due.js';
 // 受講計画書・キャンセル料・請求（5段目）。migrations-v2/0006_billing.sql。規約の正本は docs/terms-restructure-2026-11/TERMS.md
 // - 教室管理者: 計画を作る・お知らせする・LINE などの承諾を記録する・先月と同じ内容で下書き、授業の種類と標準料金、
 //              キャンセル料の判断・減額や免除の申請への回答、月ごとの請求（確かめる・確定・取消・入金）
@@ -157,6 +157,8 @@ export async function monthPreview(c, familyId, month, { ignoreInvoiceId = '' } 
   const items = out.students.reduce((n, s) => n + s.items.length, 0);
   out.canConfirm = !out.issues.length && items > 0;
   out.auto = out.canConfirm && !out.pendingCount;
+  const fam = await c.db.prepare('select termsVersion from families where id = ?').bind(familyId).first();
+  out.normalDue = normalDueDate(today, fam && fam.termsVersion);
   return out;
 }
 
@@ -168,10 +170,10 @@ export async function confirmInvoice(c, familyId, month, by, expectedTotal, due 
   const p = await monthPreview(c, familyId, month);
   if (!p.canConfirm) fail('notReady', p.issues.length ? '確かめることがあります: ' + p.issues.join(' / ') : '請求するものがありません', 409);
   if (expectedTotal !== undefined && expectedTotal !== null && Number(expectedTotal) !== p.total) fail('changed', '金額が変わりました。画面を更新して確かめてください', 409);
-  const today=todayJst(c.now), normal=today.slice(0,8)+'15';
+  const today=todayJst(c.now), normal=p.normalDue;
   const dueDate=String(due.date||normal), dueNote=String(due.note||'').trim();
   if(due.date && (!validDate(dueDate)||new Date(dueDate+'T00:00:00Z').toISOString().slice(0,10)!==dueDate||dueDate<=today||!dueNote)) fail('needDueAgreement','保護者と合意した支払期限と、合意の日時・方法を記録してください');
-  if(today>=normal && !due.date) fail('needDueAgreement','15日以降の確定です。保護者と合意した支払期限を入力してください');
+  if(today>=normal && !due.date) fail('needDueAgreement','通常の支払期限（'+normal+'）以降の確定です。保護者と合意した支払期限を入力してください');
   if(by!=='system:auto' && !due.reviewed) fail('needDueReview','期限までに支払える期間があるか確認し、難しい場合は保護者と具体的な期日を合意してください');
   const id = newId('iv'), now = iso(c.now), db = c.db, bank=(await billingSettings(db)).bank;
   const stmts = [db.prepare("insert into invoices (id, familyId, month, status, total, confirmedAt, confirmedBy, createdAt, updatedAt, dueDate, dueNote, bankSnapshot) values (?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, familyId, month, p.total, now, by, now, now, dueDate, dueNote, bank)];

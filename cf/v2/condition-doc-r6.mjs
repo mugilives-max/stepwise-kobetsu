@@ -2,6 +2,7 @@
 // 条件・料金・約束の中身は r5 と同じ。読む人の目線で、だれ宛て・だれが出したか → 授業の条件（大きく）→ そのほかの約束（短い文）→ 同意、の順に並べ直した。
 // 条文の番号は本文から外し、「共通規約（版）に基づきます」とまとめて示す。内部の番号（条件 ID）や担当者は出さない。
 import { keyTable, ruleTable, TABLE_CSS } from './doc-tables.mjs';
+import { monthEndDue } from '../../assets/v2/invoice-due.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const jst = t => { if (!t) return ''; const d = new Date(Date.parse(t) + 9 * 3600e3); return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日`; };
 const jstMin = t => { if (!t) return ''; const d = new Date(Date.parse(t) + 9 * 3600e3); return `${jst(t)} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
@@ -28,7 +29,8 @@ export function conditionDocR6({ cond, student, family, terms }) {
     // 並び: 教材費 → 特別単価 → 支払方法 → 条件変更（2026-10-26 本人）
     ['教材費', '塾が用意する教材は授業料に含みます。ご希望で別の教材を用意するときは、先にご相談のうえ、実費をいただきます。'],
     ['特別単価', '準備に特別な負担がかかる指導は、内容と単価を「特別単価合意書」で別にご説明し、承認をいただいたときだけ、その単価で行います。'],
-    ['支払方法', '毎月3日に前の月の分の請求をお知らせします。その月の15日までに、銀行振込でお支払いください（振込手数料はご負担ください）。'],
+    // 共通規約 r17 からは、その月の末日まで（第19条3項）
+    ['支払方法', `毎月3日に前の月の分の請求をお知らせします。その月の${monthEndDue(terms && terms.version) ? '末日' : '15日'}までに、銀行振込でお支払いください（振込手数料はご負担ください）。`],
     ['条件変更', '新しい版をお送りし、同意をいただいてから変えます。'],
   ];
   if (cond.note) promises.push(['特記事項', esc(cond.note).replace(/\n/g, '<br>')]);
