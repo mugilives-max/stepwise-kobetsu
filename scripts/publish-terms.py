@@ -10,13 +10,13 @@ from playwright.sync_api import sync_playwright
 import fitz
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITION = "2026-11-20261028-r17"
+EDITION = "2026-11-20261028-r18"
 SOURCE = ROOT / "docs/terms-restructure-2026-11/TERMS.md"
 OUT = ROOT / "terms" / EDITION
-REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261028-r17"
-REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R17.json"
+REVIEW = ROOT / "docs/terms-restructure-2026-11/publication-preview-20261028-r18"
+REPORT = ROOT / "docs/terms-restructure-2026-11/PUBLICATION_CHECKS_20261028_R18.json"
 PDF_NAME = "stepwise-terms-" + EDITION + ".pdf"
-EXPECTED_SOURCE_BLOB = "c6f7c1288613ce302cdbd4586f481346f553db18"
+EXPECTED_SOURCE_BLOB = "dbf7aefe52f2f7601f644d8a4286b65992dacfeb"
 OLD = {}  # 2026-10-18 同意のない旧版はサイトから外した（控えは本人のドライブ）。ご家庭が同意した版を残すときは、ここで変わっていないことを確かめる
 
 def git_blob(data):
@@ -142,31 +142,33 @@ hr { border:0; border-top:1px solid var(--line); margin-top:28px; }
  #appendix-online { break-before:auto; }
 }
 """
-# r17 (2026-10-28): 公開した r16 を本人が読んでの見直し（点検表 REVIEW_20261027.md「r16 公開のあとの見直し」）。
-# 前日23時までにやめる＝「お休み」、それ以降＝「キャンセル」。授業料は断りがなければ個別受講条件書の授業料。支払期限は翌月末日（土日祝日でもずらさない）。第14条4項に負担率の図
+# r18 (2026-10-28): 公開した r17 を本人が読んでの見直し（点検表 REVIEW_20261027.md「r17 公開のあとの見直し」）。
+# 別表1の連絡の時刻に開始の何時間前かを添え、別表2の説明を言い直した（本人「これが意味わかりません」「授業開始何時間前に連絡をしたのかという情報があるとわかりやすい」）。条・項は r17 と同じ
 # 正本は点検した下書き（DRAFT_20261027.md）。見出しと適用日の文だけを公開用にしたものと、一字一句同じであることを確かめる
-PRIOR_COMMIT = "91bc00c9715c771d90f677cb93c7407ba789d785"  # r16（PR #232）
+PRIOR_COMMIT = "8dc0e0e01d78195d551fb907872ff45fc721a435"  # r17（PR #235）
 DRAFT = (SOURCE.parent / "DRAFT_20261027.md").read_text(encoding="utf-8")
 draft_head = "# 共通規約（下書き 2026-10-27）\n\n"
 assert DRAFT.startswith(draft_head)
 expected_source = "# 共通規約\n\n" + DRAFT[DRAFT.index("ステップワイズ個別指導\n"):]
-expected_source = expected_source.replace("**保護者がこの版に同意した日から適用（新たに入塾する場合は、お申込みの日から）**","**保護者がこの版に同意した日から適用します（新たに入塾する場合は、お申込みの日から）。**").replace("20261027-r15","20261028-r17")
+expected_source = expected_source.replace("**保護者がこの版に同意した日から適用（新たに入塾する場合は、お申込みの日から）**","**保護者がこの版に同意した日から適用します（新たに入塾する場合は、お申込みの日から）。**").replace("20261027-r15","20261028-r18")
 assert expected_source == source, "TERMS.md differs from the reviewed draft"
-# r16 と条の番号は同じ（第14条5項を外し、6項を5項に）
+# r17 と条・項の番号は同じ
 def renumbered(value):
-    return value.replace("20261028-r16","20261028-r17")
+    return value.replace("20261028-r17","20261028-r18")
 prior_source = subprocess.check_output(["git","show",PRIOR_COMMIT+":docs/terms-restructure-2026-11/TERMS.md"],text=True)
 CLAUSE_PATTERN = r'(<a id="(article-\d+-item-\d+)"></a>\n\n\d+\. )([\s\S]*?)(?=\n\n<a id=|$)'
 def clauses(value):
     return {m[2]:m[3].strip() for m in re.finditer(CLAUSE_PATTERN,value)}
 old_clauses,new_clauses = clauses(prior_source),clauses(source)
-assert len(old_clauses)==104 and len(new_clauses)==103
+assert len(old_clauses)==103 and len(new_clauses)==103
 kept = set(renumbered(v) for v in old_clauses.values()) & set(new_clauses.values())
 changes = {k for k,v in new_clauses.items() if v not in kept}
 old_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",prior_source)
 new_tables=re.findall(r"(?m)^\|.*(?:\n\|.*)*",source)
-# 料金・負担率・接続不良の表は r16 と同じ。別表1の見出しだけ、お休み・キャンセルの言い分けに合わせた
-TABLE_CHANGES=[("| 全部を取り消す連絡の時刻 |","| 授業をやめる連絡の時刻 |")]
+# 料金・負担率・接続不良の表は r17 と同じ。別表1の連絡の時刻に、開始の何時間前かを添えただけ（金額は同じ）
+TABLE_CHANGES=[("| 前日23時まで | 0％ | 0円 |","| 前日23時まで（開始19時間前まで） | 0％ | 0円 |"),("| 前日23時を過ぎ当日15時まで | 25％ |","| 前日23時を過ぎ当日15時まで（開始3時間前まで） | 25％ |"),
+  ("| 当日16時 | 50％ |","| 当日16時（開始2時間前） | 50％ |"),("| 当日17時 | 75％ |","| 当日17時（開始1時間前） | 75％ |"),("| 当日17時30分 | 87.5％ |","| 当日17時30分（開始30分前） | 87.5％ |"),
+  ("| 当日18時以降または連絡なし | 100％ |","| 当日18時（開始時刻）以降または連絡なし | 100％ |")]
 def table_changed(t):
     for old,new in TABLE_CHANGES:
         t=t.replace(old,new)
@@ -174,7 +176,8 @@ def table_changed(t):
 assert len(old_tables)==len(new_tables)==5 and [table_changed(renumbered(t)) for t in old_tables[1:]]==new_tables[1:], "Fee tables changed"
 assert "10円未満" not in source and "15日" not in source and source.count("取消し")==1 and "「お休み」" in source and "「キャンセル」" in source
 assert "支払期限は、授業を実施した月の翌月末日です。期限の日までに振込の手続きをしてください。" in source and "翌営業日" not in source
-assert "受講計画書（必要な場合のみ）" in new_tables[0]
+assert "受講計画書（必要な場合のみ）" in new_tables[0] and changes == set()
+assert "開始後にやめた場合の負担率は通常100％ですが、生徒側の接続不良による中止は、第17条により30％で計算します。" in source and "適用する例ではありません" not in source
 for phrase in ["特殊指導","通常指導","受講条件書（","受講規約","受講計画合意書","確認待ち","調整中","この日程で大丈夫","当面1対1","基準単価","適用単価","日程調整カレンダー"]:
     assert phrase not in source,phrase
 assert "教室指導・オンライン指導とも、講師1名につき生徒最大2名" in source
@@ -184,45 +187,10 @@ for link in body.select('a[href^="#article-"]'):
     if label:
         target="article-"+label[1]+("-item-"+label[2] if label[2] else "")
         assert link["href"]=="#"+target,"Reference label differs from anchor"
-waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261028-r17/waiver/"
+waiver_url="https://www.stepwise-education.jp/terms/2026-11-20261028-r18/waiver/"
 assert [a["href"] for a in body.select("a[href]") if "/waiver/" in a["href"]] == [waiver_url]
-# 関連書類（空欄様式・免除申請の案内）は、r16 に版の URL と次の置き換えだけをした
-RELATED_CHANGES={
- "TEACHING_CONDITIONS_REGULAR.md": [
-  [
-   "料金・教材・連絡・取消しなどの扱いは",
-   "料金・教材・連絡・お休み・キャンセルなどの扱いは"
-  ]
- ],
- "TEACHING_CONDITIONS_SPECIAL.md": [],
- "TUITION_AGREEMENT.md": [],
- "WAIVER_GUIDE.md": [
-  [
-   "無料取消し期限を過ぎた取消し・欠席・遅刻には、",
-   "キャンセル（前日23時を過ぎてから授業をやめること）や欠席・遅刻には、"
-  ],
-  [
-   "## 1. お休み・遅刻の連絡を先にお願いします",
-   "## 1. キャンセル・遅刻の連絡を先にお願いします"
-  ],
-  [
-   "取消しは、保護者ページの指定窓口、",
-   "お休み・キャンセルの連絡は、保護者ページの指定窓口、"
-  ],
-  [
-   "授業日前日の23時までの取消しは無料であり、免除申請は不要です。取消しと免除申請は別の手続きです。",
-   "授業日前日の23時までのお休みは無料であり、免除申請は不要です。キャンセルの連絡と免除申請は別の手続きです。"
-  ],
-  [
-   "お休みの連絡と一緒に申請しても構いません。",
-   "キャンセル・遅刻の連絡と一緒に申請しても構いません。"
-  ],
-  [
-   "減額が確定した月の翌月15日までに塾の手数料負担で返金します。",
-   "減額が確定した月の翌月末日までに塾の手数料負担で返金します。"
-  ]
- ]
-}
+# 関連書類（空欄様式・免除申請の案内）は、r17 から版の URL だけを変えた
+RELATED_CHANGES={"TEACHING_CONDITIONS_REGULAR.md":[],"TEACHING_CONDITIONS_SPECIAL.md":[],"TUITION_AGREEMENT.md":[],"WAIVER_GUIDE.md":[]}
 for filename in ["TEACHING_CONDITIONS_REGULAR.md","TEACHING_CONDITIONS_SPECIAL.md","TUITION_AGREEMENT.md","WAIVER_GUIDE.md"]:
     before=renumbered(subprocess.check_output(["git","show",PRIOR_COMMIT+":"+(SOURCE.parent.relative_to(ROOT)/filename).as_posix()],text=True))
     for old,new in RELATED_CHANGES[filename]:
@@ -242,11 +210,11 @@ index_html = """<!doctype html>
 <p><a href="/">ステップワイズ個別指導</a></p><h1>共通規約</h1>
 <p>すべてのご家庭に共通の、当塾のきまりです。お子さまごとの条件は「個別受講条件書」で定めます。まとまった回数の授業は「受講計画書」で前もって合意できます。</p>
 <h2>共通規約（ご家庭が同意した日から適用）</h2>
-<ul><li><a href="2026-11-20261028-r17/">Web版を読む</a></li><li><a href="2026-11-20261028-r17/stepwise-terms-2026-11-20261028-r17.pdf">PDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261028-r18/">Web版を読む</a></li><li><a href="2026-11-20261028-r18/stepwise-terms-2026-11-20261028-r18.pdf">PDFで開く</a></li></ul>
 <h2>書類の様式</h2>
-<ul><li><a href="2026-11-20261028-r17/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261028-r17/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261028-r17/documents/special/">特別単価合意書</a>（<a href="2026-11-20261028-r17/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261028-r17/documents/agreement/">受講計画書</a>（<a href="2026-11-20261028-r17/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
+<ul><li><a href="2026-11-20261028-r18/documents/regular/">個別受講条件書</a>（<a href="2026-11-20261028-r18/documents/regular/regular.pdf">PDF</a>）</li><li><a href="2026-11-20261028-r18/documents/special/">特別単価合意書</a>（<a href="2026-11-20261028-r18/documents/special/special.pdf">PDF</a>）</li><li><a href="2026-11-20261028-r18/documents/agreement/">受講計画書</a>（<a href="2026-11-20261028-r18/documents/agreement/agreement.pdf">PDF</a>）</li></ul>
 <h2>キャンセル料金の免除申請</h2>
-<ul><li><a href="2026-11-20261028-r17/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261028-r17/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
+<ul><li><a href="2026-11-20261028-r18/waiver/">免除申請のご案内を読む</a></li><li><a href="2026-11-20261028-r18/waiver/waiver.pdf">案内をPDFで開く</a></li></ul>
 <p class="note">ご不明な点は、いつものLINE、または <a href="mailto:mugilives@gmail.com">mugilives@gmail.com</a> へお問い合わせください。</p>
 </body></html>
 """
