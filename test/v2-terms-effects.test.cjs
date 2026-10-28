@@ -101,6 +101,8 @@ test('effects: failed mail shows up for the manager, can be re-sent, and the nig
   assert.equal(asked.length, 1); assert.equal(asked[0].items[0].kind, 'mail');
   list = await h.ok('admin/effects/list', { auth });
   assert.deepEqual([list.failed.length, list.recent.length, list.recent[0].status], [0, 1, 'sent']);
+  // 送った本文の控えが見られる。ログイン・招待のリンクの鍵は伏せる
+  assert.ok(list.recent[0].body.length > 20); assert.match(list.recent[0].body, /https?:\/\/\S+[?#]\w+=…/); assert.doesNotMatch(list.recent[0].body, /[?&#]\w+=(?!…)[A-Za-z0-9_-]{8,}/);
   assert.equal((await h.call('admin/effects/retry', { auth, ids: [id] })).error.code, 'nothing', '送ったものはもう送り直せない');
   // 失敗したままのものは、定期実行が 3 回まで送り直す
   await withFetch({ fail: true }, async () => { await h.ok('family/reset/request', { email: 'parent@example.invalid' }); });

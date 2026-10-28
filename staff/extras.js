@@ -6,7 +6,7 @@ import { sheet, ICON } from '/staff/ui.js?v=20261025-layout';
 let termsStep = '', termsFams = null, termsSite = null, termsPick = []; // 共通規約: '' | 'decide'（使う規約を決める確認）| 'request'（同意をお願いする確認）。termsPick: お願いする家族
 let terms = null, effects = null, effOpen = 0, backups = null;
 export function resetExtras() { termsStep = ''; termsPick = []; termsFams = null; termsSite = null; terms = null; effects = null; effOpen = 0; backups = null; }
-export function leaveExtras() { effOpen = 0; termsStep = ''; }
+export function leaveExtras() { effOpen = 0; termsStep = ''; effects = null; } // 開き直すたびに送信の記録を読み直す
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ''}</svg>`;
 const jst = t => t ? new Date(Date.parse(t) + 9 * 3600e3).toISOString().slice(5, 16).replace('T', ' ').replace('-', '/') : '';
 
@@ -159,6 +159,7 @@ export function effectsPage(ctx) {
   const x = effOpen && [...effects.failed, ...effects.recent].find(e => e.id === effOpen);
   if (x) h += sheet(esc, x.subject || x.label, `<p class="small muted" style="margin-top:0">${esc(x.label)}${x.to ? '・' + esc(x.to) : ''}<br>作成 ${jst(x.createdAt)}${x.sentAt ? '・送信 ' + jst(x.sentAt) : ''}・試行 ${x.attempts}回</p>
     ${x.error ? `<p class="notice error small">${esc(x.error)}</p>` : ''}
+    ${x.body ? `<div class="sec-title">送った本文</div><div class="mail-copy" style="white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px;line-height:1.7">${esc(x.body)}</div>` : ''}
     ${x.scheduleNotice && x.status !== 'sent' ? '<p class="notice">日程の自動確定を保留しています。<a href="#schedule">予定</a>から対象授業の「再案内・回答期間を確認」を開いてください。</p>' : !x.canRetry && x.status !== 'sent' ? '<p class="notice">送信先の受信状況を確認し、根拠を記録してください。自動再送は停止しています。</p><button data-action="eff-resolve-sent">送れたと確認</button><button data-action="eff-resolve-notSent">未送信と確認</button>' : x.status === 'sent' ? '' : `<div class="row"><button class="primary" data-action="eff-retry" data-id="${x.id}"${ctx.dis()}>送り直す</button><button data-action="eff-dismiss" data-id="${x.id}"${ctx.dis()}>取り下げる（送らない）</button></div>`}`, 'eff-close');
   return h;
 }
