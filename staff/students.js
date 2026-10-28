@@ -169,9 +169,11 @@ function basic(ctx, x) {
   const { esc } = ctx, b = x.basic, s = x.student;
   // 項目名と中身を罫線の表で（2026-10-28 本人「ここ罫線に直して」。入塾のお申込みと同じ grid-table）
   const row = (k, v) => v ? `<tr><th scope="row"><span>${k}</span></th><td>${esc(v)}</td></tr>` : ''; // 項目名は span で 1 行のまま（スマホで 1 文字ずつ折れないように）
+  // 生徒の専用リンク（生徒の情報のいちばん下。2026-10-28 本人）。作り直すと前のリンクはすぐ使えなくなる
+  const linkRow = `<tr><th scope="row"><span>専用リンク</span></th><td><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span style="flex:1 1 220px;min-width:0;overflow-wrap:anywhere">${b.studentLink ? esc(b.studentLink) : 'まだありません'}</span>${b.studentLink ? `<button class="small-btn" data-action="copy" data-text="${esc(b.studentLink)}">コピー</button>` : ''}<button class="small-btn" data-action="hub-newlink" data-id="${esc(s.id)}" data-version="${b.studentVersion}" data-has="${b.studentLink ? 1 : ''}"${ctx.dis()}>${b.studentLink ? '作り直す' : '作る'}</button></div></td></tr>`;
   const trialBox = s.trial ? `<div class="notice" style="margin-top:12px"><strong>体験生</strong>（授業は無料）・<a href="#student=${encodeURIComponent(s.id)}/summary">入塾の手続き</a>
     <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">共通規約・個別受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
-  return trialBox + `<h2>生徒</h2><table class="grid-table"><tbody>${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('授業料（90分）', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('個別受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}</tbody></table>
+  return trialBox + `<h2>生徒</h2><table class="grid-table"><tbody>${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('授業料（90分）', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('個別受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}${linkRow}</tbody></table>
     <h2>家族</h2><table class="grid-table"><tbody>${row('家族', b.familyName)}${row('保護者', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</tbody></table>
     <h2>その人の目で見る</h2>
     <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る</button></div>
@@ -256,6 +258,12 @@ export async function studentsSubmit(ctx, kind, el) {
   return true;
 }
 export async function studentsClick(ctx, a, b) {
+  if (a === 'hub-newlink') {
+    if (b.dataset.has && !confirm('専用リンクを作り直しますか？ 今のリンクはすぐに使えなくなります。生徒に新しいリンクを渡してください。')) return true;
+    const r = await ctx.call('admin/students/newLink', { id: b.dataset.id, version: Number(b.dataset.version) });
+    if (r.ok) { hub = null; hubFor = ''; ctx.say(b.dataset.has ? '専用リンクを作り直しました。新しいリンクを生徒に渡してください' : '専用リンクを作りました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   if (a === 'sp-month') { spMonth = ymAdd(spMonth, Number(b.dataset.n)); return true; }
   if (a === 'sp-ask') {
     const ids = String(b.dataset.ids || '').split(',').filter(Boolean); if (!ids.length || !hub) return true;

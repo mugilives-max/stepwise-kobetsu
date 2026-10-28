@@ -20,6 +20,7 @@ test('the student screen gathers lessons, records, homework, grades, plans and b
   assert.deepEqual(list.families[0].students.map(s => [s.name, s.next.slice(0, 10)]), [['架空 一郎', '2026-10-09'], ['架空 花子', '']]);
   const hub = await h.ok('students/hub', { auth, studentId: kid.id });
   assert.deepEqual([hub.upcoming.length, hub.records[0].range, hub.homework[0].title, hub.plans[0].count, hub.basic.phone], [1, '一次関数', 'ワーク p.10', 4, '090-0000-0000']);
+  assert.match(hub.basic.studentLink, /\/student\/\?k=.{16,}/, '代表には生徒の専用リンクを出す'); assert.equal(hub.basic.studentVersion, h.rows('select version from students where id = ?', kid.id)[0].version);
   const th = await h.ok('students/hub', { auth: tAuth, studentId: kid.id });
   assert.equal(th.records[0].staffNotes.nextFocus, '傾き', '講師用のメモは講師に見せる');
   assert.deepEqual([th.plans, th.basic, th.invoices], [undefined, undefined, undefined], '講師には計画・請求・連絡先を出さない');
