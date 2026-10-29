@@ -2,6 +2,10 @@
 import { newId } from './util.mjs';
 import { currentNotice, scheduleDelivery } from './notice-policy.mjs';
 const skipReason = e => e.testOnly ? 'テスト用のため送らない' : e.held ? 'まだ切り替え前のため送らない' : '';
+// カレンダーの送信で Apps Script が「ロックのタイムアウト」を返したとき（2026-10-27・10-29 の 2 件）。設定を読むところで止まり、予定は作っていない。
+// 結果不明のまま放っておかず、未送信として自動で送り直す（2026-10-29 本人「この送れなかったやつをそのまま放置されるシステムどうにかならないかな」）
+export const LOCK_BUSY = 'Google の処理が混み合って送れませんでした（未送信。自動で送り直します）';
+export const isLockTimeout = (item,err) => String(item?.kind||'').startsWith('calendar') && /ロックのタイムアウト|lock timeout|timed out waiting for lock/i.test(String(err||''));
 export async function recordEffects(db,items,now) {
   if (!items.length) return [];
   const at=new Date(now).toISOString();
@@ -55,6 +59,7 @@ export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now())
         else if (batch.length===1 && fs.length===1 && fs[0].kind===q.item.kind) {state=q.item.kind==='mail'?'unknown':'failed';err=fs[0].error||'送信に失敗しました';}
       }
       if (q.item.kind==='calendarCreate' && state==='sent' && !backs.some(w=>w.marker===q.item.marker)) {state='failed';err='カレンダーの予定 ID が返りませんでした';}
+      if (state==='unknown' && isLockTimeout(q.item,err)) {state='failed';err=LOCK_BUSY;await db.prepare("update effects set deliveryKey = '' where id = ?").bind(q.id).run();}
       const at=new Date(now).toISOString();
       await db.prepare("update effects set status = ?, deliveryState = ?, error = ?, sentAt = ? where id = ? and deliveryState = 'sending'")
         .bind(state==='sent'?'sent':'failed',state,err.slice(0,300),state==='sent'?at:'',q.id).run();

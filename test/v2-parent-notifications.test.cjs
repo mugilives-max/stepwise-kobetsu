@@ -233,3 +233,30 @@ test('active legacy GAS adapter preserves the existing lock, individual receipts
  context.studentDocumentDrive_=x=>({preserved:x.op});assert.equal(request({document:{op:'read'}}).preserved,'read');
  assert.equal(context.doPost({postData:{contents:JSON.stringify({action:'effects',key:'wrong',items:[item('bad')]})}}).badAuth,true);assert.equal(sent,4);
 });
+// 送れなかったカレンダーを放っておかない（2026-10-29 本人）: ロックの混み合いは未送信として新しい送信 ID で送り直す。授業の時間が過ぎた予定は送らない
+test('calendar lock timeouts become retryable with a fresh delivery ID, and calendar items for finished lessons are withdrawn',async()=>{
+ const h=await createV2(),{recordEffects,deliverEffects}=await import('../cf/v2/effects.mjs'),{tidyCalendarEffects}=await import('../cf/v2/effects-admin.mjs');
+ const cal=(endIso)=>({kind:'calendarCreate',marker:'v2mtest'+endIso.slice(0,10).replace(/-/g,''),body:{summary:'【塾】架空',start:{dateTime:endIso},end:{dateTime:endIso}}});
+ const future=new Date(h.clock+3*86400e3).toISOString(),past=new Date(h.clock-86400e3).toISOString();
+ const lock='Exception: ロックのタイムアウト: 別のプロセスがロックを保持している時間が長すぎました。';
+ const q=await recordEffects(h.db2,[cal(future)],h.clock);
+ const key1=h.rows('select deliveryKey from effects')[0].deliveryKey;
+ let r=await deliverEffects(env,h.db2,q,async(_u,init)=>{const items=JSON.parse(init.body).items;return response({ok:true,results:[{id:items[0].deliveryId,status:'unknown',error:lock}]});});
+ assert.deepEqual([r.unknown,r.failed],[0,1],'ロックの混み合いは未送信');
+ assert.deepEqual(h.rows('select status,deliveryState,deliveryKey from effects').map(x=>[x.status,x.deliveryState,x.deliveryKey]),[['failed','failed','']]);
+ let sentKey='';
+ r=await deliverEffects(env,h.db2,q,async(_u,init)=>{const items=JSON.parse(init.body).items;sentKey=items[0].deliveryId;return response({ok:true,results:[{id:sentKey,status:'sent'}],writebacks:[{marker:items[0].marker,eventId:'e1@google.com'}]});});
+ assert.equal(r.sent,1);assert.notEqual(sentKey,key1,'送り直しは新しい送信 ID（Apps Script の前の控えに当たらない）');
+ // 前からある結果不明（今回の直しより前に記録されたもの）と、過ぎた授業の予定
+ const old=await recordEffects(h.db2,[cal(future),cal(past)],h.clock);
+ for(const x of old)h.db2._sqlite.prepare("update effects set status='failed',deliveryState='unknown',error=? where id=?").run(lock,x.id);
+ const t=await tidyCalendarEffects(h.db2,h.clock);
+ assert.deepEqual([t.reset,t.dismissed],[1,1]);
+ assert.deepEqual(h.rows('select status,deliveryState,deliveryKey from effects where id=?',old[0].id).map(x=>[x.status,x.deliveryState,x.deliveryKey]),[['failed','failed','']],'まだ先の授業は、新しい送信 ID で送り直す');
+ assert.equal(h.rows('select status from effects where id=?',old[1].id)[0].status,'dismissed','授業の時間が過ぎた予定は送らない');
+ // メールの結果不明は、これまでどおり自動では送り直さない
+ const m=await recordEffects(h.db2,[{kind:'mail',to:'test@example.invalid',subject:'s',body:'b'}],h.clock);
+ h.db2._sqlite.prepare("update effects set status='failed',deliveryState='unknown',error=? where id=?").run(lock,m[0].id);
+ await tidyCalendarEffects(h.db2,h.clock);
+ assert.equal(h.rows('select deliveryState from effects where id=?',m[0].id)[0].deliveryState,'unknown');
+});
