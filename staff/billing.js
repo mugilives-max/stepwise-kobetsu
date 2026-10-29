@@ -87,13 +87,13 @@ export function plansPage(ctx) {
     return [...fams.entries()];
   };
   const drafts = byFamily('draft');
-  if (drafts.length) h += section(`下書き・お知らせ前（${drafts.length}家族）`, '', drafts.map(([fid, f]) => {
+  if (drafts.length) h += section(`下書き・お知らせ前（${drafts.length}契約者）`, '', drafts.map(([fid, f]) => {
     const all = f.rows.flatMap(([, ls]) => ls), picked = all.filter(l => !unpicked.has(l.id));
     return `<div class="pl-famblock"><div class="pl-fam-head"><strong>${esc(f.label)}</strong><button class="small-btn primary" data-action="pl-send" data-family="${esc(fid)}" data-ids="${esc(picked.map(l => l.id).join(','))}"${picked.length ? ctx.dis() : ' disabled'}>${picked.length === all.length ? 'お知らせする' : `選んだ ${picked.length}件をお知らせする`}</button></div>
       <div class="pl-rows">${f.rows.map(([s, ls]) => studentRow(ctx, s, ls)).join('')}</div></div>`;
   }).join(''));
   const asks = byFamily('proposed');
-  if (asks.length) h += section(`承認待ち（${asks.length}家族）`, '', asks.map(([fid, f]) => {
+  if (asks.length) h += section(`承認待ち（${asks.length}契約者）`, '', asks.map(([fid, f]) => {
     const all = f.rows.flatMap(([, ls]) => ls), sent = all.map(l => l.proposedAt).filter(Boolean).sort()[0] || '', last = all.map(l => l.remindedAt).filter(Boolean).sort().at(-1) || '';
     return `<div class="pl-famblock"><div class="pl-fam-head"><strong>${esc(f.label)}</strong>${sent ? `<span class="small muted">${md(new Date(Date.parse(sent) + 9 * 3600e3).toISOString().slice(0, 10))} お知らせ</span>` : ''}<span class="grow"></span>${remindButton(ctx, fid, all.length, last)}</div>
       <div class="pl-rows">${f.rows.map(([s, ls]) => studentRow(ctx, s, ls, all.some(l => l.familyAck === 'inquiry') ? '<span class="tag danger">問い合わせ</span>' : '')).join('')}</div></div>`;
@@ -224,7 +224,7 @@ export function billingPage(ctx) {
     const st = invStatus(f), n = f.preview ? f.preview.issues.length : 0;
     return `<button type="button" class="irow" data-action="bl-open" data-id="${esc(f.familyId)}"><span class="b"><b>${esc(f.name)}</b><small><span class="tag ${st[1]}">${st[0]}</span>${n && f.preview.pendingCount ? ` 承認のない授業 ${f.preview.pendingCount}件` : ''}</small></span><span class="amt">${yen(f.invoice ? f.invoice.total : f.preview.total)}</span><span class="go">›</span></button>`;
   }).join('') + '</div>';
-  h += `<p class="small muted">${Number(shift(billMonth, 1).slice(5))}/3 0:10 に自動で確定（確かめることがある家族は除く）</p>`;
+  h += `<p class="small muted">${Number(shift(billMonth, 1).slice(5))}/3 0:10 に自動で確定（確かめることがある契約者は除く）</p>`;
   const f = openFamily && bill.families.find(x => x.familyId === openFamily);
   if (f) {
     const st = invStatus(f);
@@ -372,10 +372,10 @@ export async function billingClick(ctx, a, b) {
   } else if (a === 'pl-send') {
     const ids = String(b.dataset.ids || '').split(',').filter(Boolean);
     if (!ids.length) { ctx.say('お知らせする受講計画書にチェックを付けてください', 'error'); return true; }
-    if (!confirm(`この家族に、チェックした ${ids.length}件の受講計画書をお知らせしますか？ 保護者ページに出て、承認をお願いするメールが 1 通届きます。`)) return true;
+    if (!confirm(`この契約者に、チェックした ${ids.length}件の受講計画書をお知らせしますか？ 保護者ページに出て、承認をお願いするメールが 1 通届きます。`)) return true;
     r = await ctx.call('billing/plans/send', { familyId: b.dataset.family, ids }); msg = r.ok ? `${r.sent}件をお知らせしました` : ''; if (r.ok) { plans = null; ids.forEach(x => unpicked.delete(x)); }
   } else if (a === 'pl-remind') {
-    if (!confirm('この家族に、承認待ちの受講計画書の「承認のお願い」をメールで送りますか？')) return true;
+    if (!confirm('この契約者に、承認待ちの受講計画書の「承認のお願い」をメールで送りますか？')) return true;
     r = await ctx.call('billing/plans/remind', { familyId: b.dataset.family }); msg = r.ok ? `承認のお願いを送りました（${r.reminded}件）` : ''; if (r.ok) { plans = null; bill = null; }
   } else if (a === 'pl-delete') {
     if (!confirm('この受講計画書を消しますか？')) return true;
