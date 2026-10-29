@@ -2,7 +2,7 @@
 // 毎日の定期実行では、未送信と確認できたものだけ 3 回まで試す（retryFailedEffects）。
 import { fail, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
-import { deliverEffects, recordEffects } from './effects.mjs';
+import { deliverEffects, recordEffects, isLockTimeout, LOCK_BUSY } from './effects.mjs';
 
 const LABEL = { mail: 'メール', calendarCreate: 'カレンダーに予定を作る', calendarUpdate: 'カレンダーの予定を直す', calendarDelete: 'カレンダーの予定を消す', calendarMeet: 'Meet のリンク' };
 const parse = s => { try { return JSON.parse(s) || {}; } catch { return {}; } };
@@ -30,6 +30,7 @@ export const effectsAdminRoutes = {
   // 直近 30 日。送れなかったもの（failed と、10 分以上たっても pending のもの）、送ったもの（最近 50 件）、送らなかったもの（切り替え前・テスト用）の数
   'admin/effects/list': async (c, b) => {
     await requireStaff(c, b, 'manager');
+    await tidyCalendarEffects(c.db, c.now); // 開いたときにも片付ける（過ぎた授業の予定・ロックの混み合い）
     const since = new Date(c.now - 30 * 86400e3).toISOString(), stale = new Date(c.now - STALE_MS).toISOString();
     const rows = (await c.db.prepare('select id, createdAt, kind, payload, status, attempts, error, sentAt, deliveryState from effects where createdAt >= ? order by id desc limit 400').bind(since).all()).results;
     return {
@@ -73,8 +74,28 @@ export const effectsAdminRoutes = {
   },
 };
 
+// 送れなかったカレンダーを片付ける（2026-10-29 本人「この送れなかったやつをそのまま放置されるシステムどうにかならないかな」）
+// - 授業の時間が過ぎた予定は、カレンダーに入れても役に立たないので送らない（取り下げ）
+// - ロックの混み合いで結果不明になったものは、予定を作る前に止まっているので未送信に直し、新しい送信 ID で自動の送り直しに乗せる
+export async function tidyCalendarEffects(db, now) {
+  const rows = (await db.prepare("select id, kind, payload, status, deliveryState, error, attemptAt from effects where kind like 'calendar%' and (status in ('pending', 'failed') or deliveryState in ('unknown', 'sending')) and status <> 'sent' and status <> 'dismissed'").all()).results;
+  let dismissed = 0, reset = 0;
+  for (const r of rows) {
+    const p = parse(r.payload), end = Date.parse(p.body?.end?.dateTime || '');
+    if (r.deliveryState === 'sending' && Date.parse(r.attemptAt || '') > now - STALE_MS) continue;
+    if (end && end < now) {
+      await db.prepare("update effects set status = 'dismissed', error = '授業の時間が過ぎたため、カレンダーには送らない' where id = ? and status <> 'sent'").bind(r.id).run();
+      dismissed++;
+    } else if (r.deliveryState === 'unknown' && isLockTimeout(p, r.error)) {
+      await db.prepare("update effects set status = 'failed', deliveryState = 'failed', deliveryKey = '', error = ? where id = ? and deliveryState = 'unknown'").bind(LOCK_BUSY, r.id).run();
+      reset++;
+    }
+  }
+  return { dismissed, reset };
+}
 // 定期実行: 48 時間以内の明確な未送信だけ、3 回まで試す
 export async function retryFailedEffects(env, db, now) {
+  await tidyCalendarEffects(db, now);
   const since = new Date(now - 48 * 3600e3).toISOString(), stale = new Date(now - STALE_MS).toISOString();
   // 未送信の失敗と、10分以上着手されなかったもの。送信中・結果不明は含めない。
   const rows = (await db.prepare("select * from effects where attempts < 3 and deliveryState not in ('unknown','sending') and error <> '送っている途中' and createdAt >= ? and (status = 'failed' or (status = 'pending' and createdAt < ?)) order by id limit 50").bind(since, stale).all()).results;
