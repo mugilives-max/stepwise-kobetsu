@@ -5,6 +5,7 @@ import { studentConditions } from './conditions.mjs';
 import { studentEnrollment, enrollmentStates } from './enrollment.mjs';
 import { currentTerms } from './terms.mjs';
 import { fail } from './util.mjs';
+import { studentLink } from './people.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { todayJst, nowHmJst, addDays } from './schedule.mjs';
 import { gradesRoutes } from './grades.mjs';
@@ -72,7 +73,9 @@ export const studentHubRoutes = {
       out.plans = sb.lines.filter(l => l.endDate >= month + '-01' && l.startDate <= nextMonthEnd).map(l => ({ id: l.id, subject: l.subject, kind: l.kind, startDate: l.startDate, endDate: l.endDate, count: l.count, cap: lineCap(l), minutes: l.minutes, fee: l.fee, status: l.status, used: sb.used[l.id] || 0, parentId: l.parentId }));
       out.invoices = (await c.db.prepare("select * from invoices where familyId = ? and status <> 'void' order by month desc limit 6").bind(s.familyId).all()).results.map(v => ({ id: v.id, month: v.month, total: v.total, status: v.status }));
       if (s.trial || await studentEnrollment(c.db, s.id)) out.enrollment = { offer: await studentEnrollment(c.db, s.id), termsReady: !!(await currentTerms(c.db)).version, email: s.familyEmail, familyActive: s.familyStatus === 'active' };
-      out.basic = { familyId: s.familyId, familyName: s.familyLabel, guardianName: s.guardianName, email: s.familyEmail, phone: s.familyPhone, familyStatus: s.familyStatus, school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, note: s.note, enrolledOn: s.enrolledOn, subjects: s.subjects, condition: await studentConditions(c.db, s.id) };
+      out.basic = { familyId: s.familyId, familyName: s.familyLabel, guardianName: s.guardianName, email: s.familyEmail, phone: s.familyPhone, familyStatus: s.familyStatus, school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, note: s.note, enrolledOn: s.enrolledOn, subjects: s.subjects, condition: await studentConditions(c.db, s.id),
+        // 生徒の専用リンク（2026-10-28 本人「ここに生徒の専用リンクが存在するべき」）。off. は使えない鍵（MCP で登録した体験生）
+        studentLink: s.linkCode && !String(s.linkCode).startsWith('off.') ? studentLink(s.linkCode) : '', studentVersion: s.version };
     }
     return out;
   },
