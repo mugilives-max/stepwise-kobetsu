@@ -260,6 +260,15 @@ export const enrollmentRoutes = {
       ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at, via, actorKind: 'family', actorId: me.id, note: '', evidence })),
     ]);
     await storeDoc(c, cond.id); // 同意済みの個別受講条件書
+    // 保護者にも受付のメール（2026-10-29 本人「入塾の手続きが完了した後に、保護者に通知が行ってない」）。控えは保護者ページの「契約・同意の控え」
+    const sname = app.student.familyName + ' ' + app.student.givenName;
+    if (renewal) await familyNotice(c, s.id, '同意を受け付けました', `${sname}さんの共通規約と個別受講条件書（第${cond.no}版）への同意を受け付けました。
+${monthText(r.fromMonth)}からの授業は、新しい個別受講条件書の内容で行います。
+同意した書面の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも確かめられます。`, 'contracts');
+    else await familyNotice(c, s.id, '入塾のお申込みを受け付けました', `${sname}さんの入塾のお申込みを受け付けました。ありがとうございます。
+入塾日：${Number(enrolledOn.slice(5, 7))}月${Number(enrolledOn.slice(8))}日
+${monthText(r.fromMonth)}からの授業の日程は、LINE などでご相談します。
+同意した共通規約と個別受講条件書の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも確かめられます。`, 'contracts');
     const name = app.student.familyName + ' ' + app.student.givenName;
     if (renewal) await staffNotice(c, `【契約の更新】${name}さん`, `${name}さんの保護者（${app.guardian.name}）が、共通規約と個別受講条件書（第${cond.no}版・${monthText(r.fromMonth)}から）に同意しました。`);
     else await staffNotice(c, `【入塾の申込み】${name}さん`, `${name}さん（${app.student.grade}）の入塾の申込みがありました。\n保護者：${app.guardian.name}\n開始：${monthText(r.fromMonth)}から（入塾日 ${enrolledOn}）\n共通規約・個別受講条件書（第${cond.no}版）に同意済みです。${monthText(r.fromMonth)}からの授業の日程を保護者と相談してください（まとまった回数の授業なら、受講計画書も作れます）。`);

@@ -59,7 +59,14 @@ test('enrollment: offer → password → one application with consents → enrol
   assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, student: { ...APP.student, school: '' } })).error.code, 'needField', '学校は必須');
   h.db2._sqlite.prepare("update students set linkCode = 'off.mcp' where id = ?").run(sid); // MCP で登録した体験生の使えない鍵
   const staffMails = h.mails().filter(m => m.audience === 'staff').length;
+  const mailsBefore = h.mails().length;
   const done = await h.ok('family/enrollment/apply', { ...base, agree: true });
+  const toParent = h.mails().slice(mailsBefore).filter(m => m.audience === 'family');
+  assert.equal(toParent.length, 1, '保護者にも受付のメール（2026-10-29 本人）');
+  assert.match(toParent[0].subject, /入塾のお申込みを受け付けました/);
+  assert.match(toParent[0].body, /入塾日：/);
+  assert.match(toParent[0].body, /#contracts/);
+  assert.doesNotMatch(toParent[0].body, /4,500円/, '料金はメールに書かない');
   assert.deepEqual([done.enrollment.status, done.enrolledOn], ['applied', '2026-11-01'], '開始月の1日が入塾日');
 
   // ④ そのまま入塾: 体験の印が外れ、規約・個別受講条件書の同意が、入れた氏名で残る

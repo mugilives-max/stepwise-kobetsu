@@ -40,7 +40,12 @@ test('renewal: one mail for the siblings, the parent confirms details and agrees
   assert.equal(page.offers[0].student.grade, '中3', '前の書き方の学年もそろえて出す');
   const o1 = page.offers[0], o2 = page.offers[1];
   const apply = (o, s) => h.ok('family/enrollment/apply', { auth: parent, offerId: o.id, conditionId: o.conditionId, termsVersion: TERMS.version, agree: true, ...APP, student: stu(s) });
+  const m0 = h.mails().length;
   await apply(o1, a);
+  const toParent = h.mails().slice(m0).filter(m => m.audience === 'family');
+  assert.equal(toParent.length, 1, '保護者にも受付のメール');
+  assert.match(toParent[0].subject, /同意を受け付けました/);
+  assert.match(toParent[0].body, /2026年11月からの授業は、新しい個別受講条件書の内容で行います/);
   const sa = h.rows('select * from students where id = ?', a.id)[0];
   assert.deepEqual([sa.trial, sa.enrolledOn, sa.grade], [0, '2025-04-01', '中3'], '入塾日は変えない。学年は入れた値');
   const f1 = h.rows('select * from families where id = ?', fam.id)[0];

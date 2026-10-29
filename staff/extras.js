@@ -154,9 +154,10 @@ export function effectsPage(ctx) {
   const nFail = k => effects.failed.filter(x => (k === 'mail') === isMail(x)).length;
   h += '<div class="tabs2" role="tablist">' + [['mail', 'メール'], ['calendar', 'カレンダー']].map(([k, label]) => `<a role="tab" href="#effects" data-action="eff-tab" data-tab="${k}" class="${k === effTab ? 'on' : ''}"${k === effTab ? ' aria-selected="true"' : ''}>${label}${nFail(k) ? ` <span class="count">${nFail(k)}</span>` : ''}</a>`).join('') + '</div>';
   const row = x => `<button type="button" class="irow" data-action="eff-open" data-id="${x.id}"><span class="b"><b>${esc(x.subject || x.label)}</b><small>${esc(x.label)}${x.to ? '・' + esc(x.to) : ''}・${jst(x.createdAt)}${['unknown','sending'].includes(x.deliveryState) ? '・<span class="tag warn">送信結果の確認が必要</span>' : x.status === 'failed' ? `・<span class="tag danger">送れなかった</span>` : x.status === 'pending' ? '・<span class="tag warn">止まっている</span>' : ''}</small></span><span class="go">›</span></button>`;
-  h += `<div class="sec-title">送れなかったもの${failed.length ? ` <span class="count">${failed.length}</span>` : ''}${failed.length ? `<button class="small-btn primary" style="margin-left:auto" data-action="eff-retry-all"${ctx.dis()}>全部送り直す</button>` : ''}</div>`;
+  // 見出しは「送信エラー」「送信履歴」（2026-10-29 本人）
+  h += `<div class="sec-title">送信エラー${failed.length ? ` <span class="count">${failed.length}</span>` : ''}${failed.length ? `<button class="small-btn primary" style="margin-left:auto" data-action="eff-retry-all"${ctx.dis()}>全部送り直す</button>` : ''}</div>`;
   h += failed.length ? '<div class="group">' + failed.map(row).join('') + '</div>' : '<p class="muted small">ありません。</p>';
-  h += '<div class="sec-title">最近送ったもの</div>' + (recent.length ? '<div class="group">' + recent.map(row).join('') + '</div>' : '<p class="muted small">直近 30 日に送ったものはありません。</p>');
+  h += '<div class="sec-title">送信履歴</div>' + (recent.length ? '<div class="group">' + recent.map(row).join('') + '</div>' : '<p class="muted small">直近 30 日に送ったものはありません。</p>');
   if (effects.dismissed) h += `<p class="small muted">送らなかったもの ${effects.dismissed}件（切り替え前・テスト用・取り下げ）</p>`;
   h += `<p><button class="small-btn" data-action="eff-test"${ctx.dis()}>テスト送信（代表あてに 1 通）</button></p>`;
   h += backupHtml(ctx);
