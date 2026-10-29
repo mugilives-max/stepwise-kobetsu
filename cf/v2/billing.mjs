@@ -6,7 +6,9 @@ import { invoiceDueText, normalDueDate } from '../../assets/v2/invoice-due.js';
 // - 保護者: 計画の承認（回数を減らす・見送るも）・先生が記録した承諾の確認、請求の確認・振込の連絡、キャンセル料の減額・免除の申請
 // - 毎日0時10分: 3日以降、前月分の請求を家族ごとに確定する（確かめることがある家族は止める）。切り替え（settings.live）まで動かさない
 // 料金は承認した計画の行で決まる。計画の承認がない授業は請求しない（承認されたら、その月か次の月の請求に入る）。
-import { consentEvidence, evidenceView, consentLine, COPY_PLACE } from './consent-evidence.mjs';
+import { consentEvidence, evidenceView, consentLine, copyMail } from './consent-evidence.mjs';
+import { planDocument } from './agreement-documents.mjs';
+import { putGenerated } from './files.mjs';
 import { fail, newId, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
@@ -221,7 +223,11 @@ async function sendPlanCopy(c, id) {
   const l = await c.db.prepare('select * from planLines where id = ?').bind(id).first();
   if (!l || l.status !== 'approved') return;
   const s = await getStudent(c, l.studentId);
-  await familyNotice(c, s.id, '受講計画書の控え', `${fullName(s)}さんの受講計画書（${l.subject}${l.kind && l.kind !== '通常' ? '・' + l.kind : ''}・${mdn(l.startDate)}〜${mdn(l.endDate)}）を承認いただきました。\n承認：${consentLine(l.consentedAt || l.approvedAt, l.approvedVia, l.consenterName)}\n内容：${l.approvedCount}回・1回${l.minutes}分 ${Number(l.fee).toLocaleString('ja-JP')}円（税込）\n${COPY_PLACE.replace('同意した', '承認した')}`, 'contracts');
+  // 承認した版の受講計画書を書面にして置き、控えのメールに付ける（置けなかったときは付けずに送る）
+  let fileId = '';
+  try { const d = await planDocument(c, { refs: [{ id: l.id, version: l.version }] }); fileId = await putGenerated(c, { category: 'contract', familyId: s.familyId, studentId: s.id, refType: 'plan', refId: l.id + ':' + l.version, name: `受講計画書_${l.startDate.slice(0, 7)}_${fullName(s)}_${l.subject}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(d.html), note: '承認の控え' }); } catch { fileId = ''; }
+  const m = await copyMail(c.db, fileId);
+  await familyNotice(c, s.id, '受講計画書の控え', `${fullName(s)}さんの受講計画書（${l.subject}${l.kind && l.kind !== '通常' ? '・' + l.kind : ''}・${mdn(l.startDate)}〜${mdn(l.endDate)}）を承認いただきました。\n承認：${consentLine(l.consentedAt || l.approvedAt, l.approvedVia, l.consenterName)}\n内容：${l.approvedCount}回・1回${l.minutes}分 ${Number(l.fee).toLocaleString('ja-JP')}円（税込）\n${m.place.replace('同意した', '承認した')}`, 'contracts', null, m.extra);
 }
 export const billingRoutes = {
   // ---- 計画（教室管理者） ----

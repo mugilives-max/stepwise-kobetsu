@@ -94,6 +94,16 @@ export async function putGenerated(c, { category, familyId = '', studentId = '',
     .bind(id, category, familyId, studentId, staffId, refType, refId, name, mime, bytes.length, await digest(bytes), note, retain, now, now).run();
   return id;
 }
+// メールに付ける書面（2026-10-29 本人「控えを送ってほしい」→ 書面そのものを付ける）。送るときに置き場所から読む。大きすぎるものは付けない
+export async function mailAttachment(env, db, fileId) {
+  if (!env.FILES || !fileId) return null;
+  const f = await db.prepare("select * from files where id = ? and status = 'ready'").bind(String(fileId)).first();
+  if (!f || f.size > 2 * 1024 * 1024) return null;
+  const o = await env.FILES.get(key(f.id)); if (!o) return null;
+  const bytes = new Uint8Array(await new Response(o.body).arrayBuffer());
+  let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { name: f.name, mimeType: String(f.mime || 'application/octet-stream').split(';')[0], base64: btoa(bin) };
+}
 const digest = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(x => x.toString(16).padStart(2, '0')).join('');
 
 // ---- 送られた中身・開く（JSON ではない2つの口。index.mjs から呼ぶ） ----

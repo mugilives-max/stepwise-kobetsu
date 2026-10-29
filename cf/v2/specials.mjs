@@ -12,7 +12,7 @@ import { familyNotice } from './schedule.mjs';
 import { currentTerms, termsForVersion } from './terms.mjs';
 import { putGenerated } from './files.mjs';
 import { specialDocHtml } from './special-doc.mjs';
-import { consentEvidence, evidenceView, consentLine, COPY_PLACE } from './consent-evidence.mjs';
+import { consentEvidence, evidenceView, consentLine, copyMail } from './consent-evidence.mjs';
 
 const validDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
 const fullName = s => `${s.familyName} ${s.givenName}`.trim();
@@ -22,8 +22,8 @@ export const STATUS_LABEL = { proposed: '承認待ち', agreed: '承認済み', 
 async function sendSpecialCopy(c, id) {
   const r = await c.db.prepare('select p.*, s.familyName, s.givenName from specials p join students s on s.id = p.studentId where p.id = ?').bind(id).first();
   if (!r || r.status !== 'agreed') return;
-  const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
-  await familyNotice(c, r.studentId, '特別単価合意書の控え', `${fullName(r)}さんの特別単価合意書「${r.title}」${r.no > 1 ? `（第${r.no}版）` : ''}を承認いただきました。\n承認：${consentLine(r.agreedAt, r.agreedVia, r.consenterName)}\n主な条件：${md(r.fromDate)}〜${md(r.toDate)}・1回${r.minutes}分 ${Number(r.fee).toLocaleString('ja-JP')}円（税込）\n${COPY_PLACE.replace('同意した', '承認した')}`, 'contracts');
+  const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8)), m = await copyMail(c.db, await docIdOf(c.db, r.id));
+  await familyNotice(c, r.studentId, '特別単価合意書の控え', `${fullName(r)}さんの特別単価合意書「${r.title}」${r.no > 1 ? `（第${r.no}版）` : ''}を承認いただきました。\n承認：${consentLine(r.agreedAt, r.agreedVia, r.consenterName)}\n主な条件：${md(r.fromDate)}〜${md(r.toDate)}・1回${r.minutes}分 ${Number(r.fee).toLocaleString('ja-JP')}円（税込）\n${m.place.replace('同意した', '承認した')}`, 'contracts', null, m.extra);
 }
 export const specialView = r => r ? ({ ...evidenceView(r), id: r.id, studentId: r.studentId, no: r.no, title: r.title, purpose: r.purpose || '', content: r.content, reason: r.reason, prep: r.prep, minutes: r.minutes, fee: r.fee, fromDate: r.fromDate, toDate: r.toDate, note: r.note,
   termsVersion: r.termsVersion, status: r.status, statusLabel: STATUS_LABEL[r.status] || r.status, proposedAt: r.proposedAt, agreedAt: r.agreedAt, agreedVia: r.agreedVia, agreedNote: r.agreedNote, endedAt: r.endedAt }) : null;

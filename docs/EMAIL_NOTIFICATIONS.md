@@ -349,6 +349,8 @@ https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a8c60f18fdb
 | 個別受講条件書の控え | 条件書に同意したとき（保護者ページ・教室が記録した同意とも。2026-10-29）。版・同意の日・方法・同意者・主な条件（料金を含む）・控えの場所。入塾の申込み・契約の更新では送らない（受付のメールがあるため） | 契約・同意の控え | [conditions](../cf/v2/conditions.mjs) |
 | 特別単価合意書の控え | 特別単価を承認したとき（保護者ページ・教室の記録とも。2026-10-29）。名称・承認の日・方法・承認者・期間・料金・控えの場所 | 契約・同意の控え | [specials](../cf/v2/specials.mjs) |
 | 受講計画書の控え | 計画を承認したとき（保護者ページ・教室の記録とも。見送りは送らない。2026-10-29）。科目・期間・承認の日・方法・承認者・回数・料金・控えの場所。計画ごとに1通 | 契約・同意の控え | [billing](../cf/v2/billing.mjs) |
+
+控えの3通には、同意・承認した版の書面（HTML）を付ける（2026-10-29）。メールの記録には書面の id だけを残し、送るときに置き場所から読んで Apps Script に渡す（3件・各2MBまで）。Apps Script の入れ替えは `gas-effects/README.md`。入れ替えを確かめたら settings の `mailAttachments = on` で本文を「添付しています」にする。受講計画書は承認のときに書面を作って置く（files の refType = plan、refId = 計画の id:版）。
 | キャンセル料のお知らせ | 管理者が料金を設定。日時・科目・金額と任意の説明 | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L387) |
 | キャンセル料の申請への回答 | 管理者が免除・減額等を回答。金額・回答文。対象生徒・授業日時は自動では入らない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L392-L407) |
 | M月分の授業料のお知らせ | 手動・自動の請求確定。対象年月・合計金額。支払期限や振込手順は本文にない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L155-L191) |

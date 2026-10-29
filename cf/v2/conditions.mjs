@@ -12,7 +12,7 @@ import { familyNotice } from './schedule.mjs';
 import { currentTerms, termsForVersion } from './terms.mjs';
 import { putGenerated } from './files.mjs';
 import { conditionDocHtml } from './condition-doc.mjs';
-import { consentEvidence, evidenceView, consentLine, COPY_PLACE } from './consent-evidence.mjs';
+import { consentEvidence, evidenceView, consentLine, copyMail } from './consent-evidence.mjs';
 
 const MODES = { in_person: '教室', online: 'オンライン', both: '教室とオンライン' };
 export const MODE_LABEL = MODES;
@@ -75,8 +75,8 @@ function studentRow(c, id) { return c.db.prepare('select * from students where i
 async function sendConditionCopy(c, id) {
   const r = await c.db.prepare('select c.*, s.familyName, s.givenName from conditions c join students s on s.id = c.studentId where c.id = ?').bind(id).first();
   if (!r || r.status !== 'agreed') return;
-  const month = Number(r.fromMonth.slice(0, 4)) + '年' + Number(r.fromMonth.slice(5, 7)) + '月';
-  await familyNotice(c, r.studentId, '個別受講条件書の控え', `${fullName(r)}さんの個別受講条件書（第${r.no}版）に同意いただきました。\n同意：${consentLine(r.agreedAt, r.agreedVia, r.consenterName)}\n主な条件：${month}から・1回${r.minutes}分 ${Number(r.fee).toLocaleString('ja-JP')}円（税込）・${MODES[r.deliveryMode] || ''}\n${COPY_PLACE}`, 'contracts');
+  const month = Number(r.fromMonth.slice(0, 4)) + '年' + Number(r.fromMonth.slice(5, 7)) + '月', m = await copyMail(c.db, await docIdOf(c.db, r.id));
+  await familyNotice(c, r.studentId, '個別受講条件書の控え', `${fullName(r)}さんの個別受講条件書（第${r.no}版）に同意いただきました。\n同意：${consentLine(r.agreedAt, r.agreedVia, r.consenterName)}\n主な条件：${month}から・1回${r.minutes}分 ${Number(r.fee).toLocaleString('ja-JP')}円（税込）・${MODES[r.deliveryMode] || ''}\n${m.place}`, 'contracts', null, m.extra);
 }
 async function markAgreed(c, row, { at, via, by, note, evidence }) {
   const now = iso(c.now);

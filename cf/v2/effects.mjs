@@ -1,6 +1,7 @@
 // Durable per-item delivery. Unknown results never enter automatic retry.
 import { newId } from './util.mjs';
 import { currentNotice, scheduleDelivery } from './notice-policy.mjs';
+import { mailAttachment } from './files.mjs';
 const skipReason = e => e.testOnly ? 'テスト用のため送らない' : e.held ? 'まだ切り替え前のため送らない' : '';
 // カレンダーの送信で Apps Script が「ロックのタイムアウト」を返したとき（2026-10-27・10-29 の 2 件）。設定を読むところで止まり、予定は作っていない。
 // 結果不明のまま放っておかず、未送信として自動で送り直す（2026-10-29 本人「この送れなかったやつをそのまま放置されるシステムどうにかならないかな」）
@@ -39,9 +40,10 @@ export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now())
   // Relay limit is 50. Every item keeps the same durable key across safe retries.
   for (let start=0;start<mine.length;start+=50) {
     const batch=mine.slice(start,start+50); let payload=null,transport='';
+    const attached=await Promise.all(batch.map(async q=>q.item.kind==='mail'&&Array.isArray(q.item.attachFiles)?(await Promise.all(q.item.attachFiles.slice(0,3).map(id=>mailAttachment(env,db,id).catch(()=>null)))).filter(Boolean):null));
     try {
       const res=await fetcher(env.GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},redirect:'follow',
-        body:JSON.stringify({action:'effects',key:env.SYNC_KEY,items:batch.map(q=>{const {testOnly,audience,held,notice,...item}=q.item;return {...item,deliveryId:q.key};})})});
+        body:JSON.stringify({action:'effects',key:env.SYNC_KEY,items:batch.map((q,i)=>{const {testOnly,audience,held,notice,attachFiles,...item}=q.item;return {...item,...(attached[i]&&attached[i].length?{attachments:[...(item.attachments||[]),...attached[i]]}:{}),deliveryId:q.key};})})});
       payload=await res.json().catch(()=>null);
       if (!res.ok || !payload || payload.error) transport=payload?.error||'HTTP '+res.status;
     } catch(err) { transport=String(err?.message||err); }

@@ -7,6 +7,7 @@ import { agreementDocHtml, agreementLayout } from './agreement-doc-20261016.mjs'
 import { agreementDocHtmlR13, usesLayoutR13, AGREEMENT_LAYOUT_R13, AGREEMENT_LAYOUT_R15, NAME_R15_TERMS, NAME_R16_TERMS, usesNameR15 } from './agreement-doc-20261026.mjs';
 
 // Exact archived versions only. Never fall back to the current row or current family.
+export async function planDocument(c,b,familyId=null) { return document(c,b,familyId); } // 承認の控えのメールに付ける書面（billing.mjs）
 async function document(c,b,familyId=null) {
   if(!Array.isArray(b.refs)||!b.refs.length||b.refs.length>60) fail('badRefs','書面にする行を1〜60件選んでください');
   const seen=new Set(), records=[];
