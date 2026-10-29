@@ -83,7 +83,7 @@ export function lessonView(l, extra = {}) {
     noticeState: l.noticeState || '', noticeAt: l.noticeAt || '', status: l.status, locked: !!(l.invoiceId || l.payrollId), stage: stageOf(l), asked: !!l.askedAt, confirmBy: l.confirmBy, meetUrl: l.meetUrl, lateStart: !!l.lateStart, lostMinutes: Number(l.lostMinutes || 0), version: l.version, ...extra };
 }
 // 連絡を受けた時刻（新しい決まりの取消料）。b.noNotice = 連絡なし（''）。b.receivedAt は ISO か 'YYYY-MM-DDTHH:MM'（日本時間）。空なら fallback（ふつうは今）
-function noticeAt(c, b, fallback) {
+export function noticeAt(c, b, fallback) {
   if (b.noNotice === true) return '';
   const raw = String(b.receivedAt || '');
   if (!raw) return fallback === undefined ? iso(c.now) : fallback;
@@ -169,14 +169,14 @@ export async function staffNotice(c, subject, text) {
 async function getLesson(c, id) { const l = await c.db.prepare('select * from lessons where id = ?').bind(String(id || '')).first(); if (!l) fail('notFound', '授業が見つかりません', 404); return l; }
 const sameVersion = (row, b) => { if (Number(b.version) !== Number(row.version)) fail('conflict', 'ほかの操作で変わりました。画面を更新してください', 409); };
 async function studentRow(c, id) { const s = await c.db.prepare('select * from students where id = ?').bind(String(id || '')).first(); if (!s) fail('notFound', '生徒が見つかりません', 404); return s; }
-async function setLesson(c, l, patch) {
+export async function setLesson(c, l, patch) {
   const cols = Object.keys(patch);
   const saved = await c.db.prepare(`update lessons set ${cols.map(k => k + ' = ?').join(', ')}, updatedAt = ?, version = version + 1 where id = ? and version = ?`)
     .bind(...cols.map(k => patch[k]), iso(c.now), l.id, l.version).run();
   if(!saved.meta?.changes) fail('conflict','ほかの操作で日程が変わりました。画面を更新してください',409);
   return { ...l, ...patch, version: l.version + 1 };
 }
-async function closeRequests(c, lessonId, kinds, by) {
+export async function closeRequests(c, lessonId, kinds, by) {
   await c.db.prepare(`update lessonRequests set status = 'done', resolvedAt = ?, resolvedBy = ?, updatedAt = ?, version = version + 1 where lessonId = ? and status = 'open' and kind in (${kinds.map(() => '?').join(', ')})`)
     .bind(iso(c.now), by, iso(c.now), lessonId, ...kinds).run();
 }

@@ -8,7 +8,8 @@ import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 
 let list = null, query = '', hub = null, hubFor = '';
-export function resetStudents() { list = null; hub = null; hubFor = ''; }
+let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）
+export function resetStudents() { list = null; hub = null; hubFor = ''; wd = null; }
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
 const TABS = [['summary', '概要'], ['schedule', '予定'], ['records', '記録と宿題'], ['grades', '成績'], ['money', '計画と請求', true], ['basic', '基本情報', true]];
@@ -39,7 +40,7 @@ export function studentsPage(ctx) {
   if (shown.length) h += '<div class="group stu-list">' + shown.map(s => {
     const sub = [esc(s.grade || ''), s.status === 'paused' ? '休会' : s.status === 'left' ? '退会' : '', s.testOnly ? 'テスト' : ''].filter(Boolean).join('・');
     const tags = (s.trial ? (s.offered ? '<span class="tag warn">入塾の申込み待ち</span>' : '<span class="tag warn">体験</span>') : '')
-      + (!s.next && !['paused', 'left'].includes(s.status) ? '<span class="tag gray">授業の予定なし</span>' : '');
+      + (s.leaveOn ? `<span class="tag warn">退塾予定 ${md(s.leaveOn)}</span>` : !s.next && !['paused', 'left'].includes(s.status) ? '<span class="tag gray">授業の予定なし</span>' : '');
     const badges = s.requests ? `<span class="pill red" title="連絡">${svg('mail')}${s.requests}</span>` : '';
     return `<a class="srow${s.status === 'left' ? ' left' : ''}" href="#student=${encodeURIComponent(s.id)}"><span class="av" style="background:${avColor(s.name)}" aria-hidden="true">${esc(initial(s.name))}</span>
       <span class="b"><strong>${esc(s.name)}</strong><small class="muted">${sub}</small>${tags}</span><span class="badges">${badges}</span><span class="go">›</span></a>`;
@@ -55,6 +56,7 @@ export function studentsPage(ctx) {
   return h;
 }
 export function studentsInput(ctx, name, el) {
+  if (name === 'wd-last') { for (const i of el.form.querySelectorAll('input[name="keep"]:not(:disabled)')) i.checked = !!el.value && i.dataset.date <= el.value; return true; }
   if (name !== 'stu-query') return false;
   query = el.value; const pos = el.selectionStart; ctx.render();
   const again = document.querySelector('[data-input="stu-query"]'); if (again) { again.focus(); again.setSelectionRange(pos, pos); }
@@ -85,6 +87,7 @@ function summary(ctx, x) {
   const { esc } = ctx, sid = encodeURIComponent(x.student.id);
   let h = x.enrollment ? enrollCard(ctx, x) : '';
   if (x.student.trial) return h;
+  if (x.student.leaveOn) h += `<div class="notice" style="margin-top:12px">退塾予定・最終受講日 ${md(x.student.leaveOn)}　<a href="#student=${sid}/basic">退塾の手続き</a></div>`;
   const todo = [];
   if (x.requests.length) todo.push(`<a class="todo" href="#schedule"><span class="b"><strong>連絡 ${x.requests.length}件</strong><small class="muted">${x.requests.map(r => md(r.date) + ' ' + esc(r.subject)).join('・')}</small></span><span class="go">›</span></a>`);
   // 記録待ちは「対応すること」に出さない（授業記録は努力義務。2026-10-27）
@@ -177,7 +180,7 @@ function basic(ctx, x) {
     <h2>家族</h2><table class="grid-table"><tbody>${row('家族', b.familyName)}${row('保護者', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</tbody></table>
     <h2>その人の目で見る</h2>
     <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る</button></div>
-    <p style="margin-top:12px"><a class="small-btn" href="#family=${encodeURIComponent(b.familyId)}">直す・招待・専用リンク（家族の画面）</a></p>`;
+    <p style="margin-top:12px"><a class="small-btn" href="#family=${encodeURIComponent(b.familyId)}">直す・招待・専用リンク（家族の画面）</a></p>` + leaveBox(ctx, x);
 }
 
 // ---------- 入塾の手続き（2026-10-18 本人決定。cf/v2/enrollment.mjs） ----------
@@ -239,8 +242,75 @@ async function enrollDone(ctx, r, okText) {
   ctx.say(okText + (r.mailed === false ? '（メールはまだ送られていません。下の「招待のリンクをコピー」で保護者に渡してください）' : ''), r.mailed === false ? 'error' : 'ok');
 }
 
+// ---------- 退塾の手続き（2026-10-28 本人。共通規約 第22条） ----------
+// 最終受講日と、保護者から連絡を受けた日時を入れ、これからの授業を「受ける」「やめる」に分ける。やめた確定の授業は、前日23時までの連絡ならお休み、
+// 過ぎていればふだんどおりキャンセル料。保護者にはメールで知らせる。在籍の「退会」は最終受講日のあとに代表が押す
+const nowLocal = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16);
+const STAGE = { draft: '下書き', adjusting: '調整中', asking: '確認待ち', decided: '確定' };
+function leaveBox(ctx, x) {
+  const { esc } = ctx, s = x.student;
+  if (s.trial || s.status === 'left') return '';
+  let h = '<h2>退塾</h2>';
+  if (!s.leaveOn) h += `<p><button data-action="wd-open" data-id="${esc(s.id)}"${ctx.dis()}>退塾の手続き</button></p>`;
+  else {
+    const ready = x.today > s.leaveOn;
+    h += `<p>最終受講日 <strong>${md(s.leaveOn)}</strong>${ready ? '' : '<span class="muted small">　この日のあとに退会にできます</span>'}</p>
+      <div class="row"><button class="primary" data-action="wd-finish"${ready ? ctx.dis() : ' disabled'}>退会にする</button><button data-action="wd-undo"${ctx.dis()}>退塾の予定を取り消す</button></div>`;
+  }
+  if (wd && wd.student && wd.student.id === s.id) h += leaveSheet(ctx);
+  return h;
+}
+function leaveSheet(ctx) {
+  const { esc } = ctx, w = wd, last = w.today; // 最終受講日を選ぶと、その日までの授業に印が付く（studentsInput の wd-last）
+  const rows = w.lessons.map(l => {
+    const fixed = ['draft', 'adjusting'].includes(l.stage);
+    return `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line);font-weight:400"><input style="width:auto;margin-top:5px" type="checkbox" name="keep" value="${esc(l.id)}" data-date="${l.date}" data-stage="${l.stage}" data-free="${esc(l.freeBefore)}"${fixed ? ' disabled' : l.date <= last ? ' checked' : ''}>
+      <span style="flex:1">${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)} ${esc(l.subject)}${l.kind && l.kind !== '通常' ? '（' + esc(l.kind) + '）' : ''}<small class="muted" style="display:block">${STAGE[l.stage] || ''}${fixed ? '・取り下げます' : ''}</small></span></label>`;
+  }).join('');
+  return sheet(esc, w.student.name + 'さんの退塾', `<form class="stack" data-form="wd-save" data-id="${esc(w.student.id)}" data-version="${w.student.version}">
+    <div class="row"><label style="flex:1">最終受講日<input type="date" name="lastDay" value="${esc(last)}" data-input="wd-last" required></label><label style="flex:1">保護者から連絡を受けた日時<input type="datetime-local" name="receivedAt" value="${nowLocal()}" max="${nowLocal()}" required></label></div>
+    <div><strong>これからの授業</strong>${w.lessons.length ? '<p class="small muted" style="margin:4px 0 0">受ける授業に印を付けます。印のない授業はやめます。</p>' + rows : '<p class="muted small">ありません。</p>'}</div>
+    <button class="primary"${ctx.dis()}>手続きをして保護者に知らせる</button></form>`, 'wd-close');
+}
+async function leaveSave(ctx, el) {
+  const v = Object.fromEntries(new FormData(el).entries()), keep = [...el.querySelectorAll('input[name="keep"]:checked')];
+  const stop = [...el.querySelectorAll('input[name="keep"]:not(:checked)')], at = Date.parse(v.receivedAt + ':00+09:00');
+  const late = stop.filter(i => i.dataset.stage === 'decided' && at > Date.parse(i.dataset.free)), after = keep.filter(i => i.dataset.date > v.lastDay);
+  if (after.length) { ctx.say(`最終受講日より後の授業に印が付いています（${after.map(i => md(i.dataset.date)).join('・')}）`, 'error'); return; }
+  const lines = [`最終受講日：${md(v.lastDay)}`, `受ける授業：${keep.length}件`, `やめる授業：${stop.length}件` + (late.length ? `（うち ${late.map(i => md(i.dataset.date)).join('・')} は前日23時を過ぎた連絡なので、キャンセル料がかかります）` : '')];
+  if (!confirm(`退塾の手続きをして、保護者にメールで知らせますか？\n\n${lines.join('\n')}\n\n在籍は、最終受講日のあとに「退会にする」で退会にします。`)) return;
+  const r = await ctx.call('admin/withdrawal/save', { studentId: el.dataset.id, version: Number(el.dataset.version), lastDay: v.lastDay, receivedAt: v.receivedAt, keep: keep.map(i => i.value) });
+  if (!r.ok) { if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); return; }
+  wd = null; hub = null; hubFor = ''; list = null;
+  ctx.say(`退塾の手続きをしました。${r.stopped ? `${r.stopped}件の授業をやめ${r.feeTotal ? `（キャンセル料 ${yen(r.feeTotal)}）` : ''}、` : ''}${r.mailed ? '保護者にメールで知らせました' : '保護者ページを使っていないので、メールは送っていません。LINE などで知らせてください'}`, r.mailed ? 'ok' : 'error');
+}
+async function leaveClick(ctx, a, b) {
+  if (a === 'wd-close') { wd = null; return true; }
+  if (a === 'wd-open') {
+    const r = await ctx.call('admin/withdrawal/show', { studentId: b.dataset.id });
+    if (r.ok) wd = r; else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
+  if (a !== 'wd-finish' && a !== 'wd-undo') return false;
+  const s = hub && hub.student; if (!s) return true;
+  const w = await ctx.call('admin/withdrawal/show', { studentId: s.id }); if (!w.ok) { if (!ctx.handleAuth(w)) ctx.say(w.error.message, 'error'); return true; }
+  if (a === 'wd-undo') {
+    if (!confirm('退塾の予定を取り消しますか？ やめた授業は戻りません。必要なら予定表で入れ直してください。')) return true;
+    const r = await ctx.call('admin/withdrawal/undo', { studentId: s.id, version: w.student.version });
+    if (r.ok) { hub = null; hubFor = ''; list = null; ctx.say('退塾の予定を取り消しました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
+  if (!confirm(`${s.name}さんを退会にしますか？\n生徒の専用リンクは使えなくなり、保護者ページにもこの生徒は出なくなります。記録は残ります。`)) return true;
+  const r = await ctx.call('admin/withdrawal/finish', { studentId: s.id, version: w.student.version });
+  if (!r.ok) { if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); return true; }
+  hub = null; hubFor = ''; list = null;
+  ctx.say(r.siblings ? '退会にしました' : '退会にしました。兄弟がいないので、最後の請求の支払いが済んだら、家族の画面で「保護者ページとメールを止める」を押せます', 'ok');
+  return true;
+}
+
 // ---------- 体験生 ----------
 export async function studentsSubmit(ctx, kind, el) {
+  if (kind === 'wd-save') { await leaveSave(ctx, el); return true; }
   if (kind === 'enroll-offer') {
     const v = { ...Object.fromEntries(new FormData(el).entries()), subjects: readSubjects(el) };
     offerDraft = { studentId: el.dataset.id, v };
@@ -258,6 +328,7 @@ export async function studentsSubmit(ctx, kind, el) {
   return true;
 }
 export async function studentsClick(ctx, a, b) {
+  if (await leaveClick(ctx, a, b)) return true;
   if (a === 'hub-newlink') {
     if (b.dataset.has && !confirm('専用リンクを作り直しますか？ 今のリンクはすぐに使えなくなります。生徒に新しいリンクを渡してください。')) return true;
     const r = await ctx.call('admin/students/newLink', { id: b.dataset.id, version: Number(b.dataset.version) });

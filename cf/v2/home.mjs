@@ -35,6 +35,9 @@ export const homeRoutes = {
     if (manager && fees) add('fees', 'キャンセル料の判断', fees.fees.filter(f => f.decision === 'pending' || f.reliefStatus === 'pending').length, '#billing');
     if (manager && plans) add('plans', '承認待ちの計画', plans.n, '#plans', '保護者の承認を待っている');
     if (manager) add('effects', '送れなかったお知らせ', failedEffects, '#effects', 'メール・カレンダー。送り直せます');
+    // 最終受講日を過ぎた退塾の予定（在籍の「退会」は代表が押す。2026-10-28 本人「最終受講日のあとに代表が押す」）
+    if (manager) { const leave = (await c.db.prepare("select id, familyName, givenName from students where leaveOn <> '' and leaveOn < ? and status <> 'left' order by leaveOn").bind(today).all()).results;
+      add('withdrawal', '退塾を終える', leave.length, leave.length === 1 ? '#student=' + encodeURIComponent(leave[0].id) + '/basic' : '#students', leave.map(s => [s.familyName, s.givenName].filter(Boolean).join(' ')).join('・') + '（最終受講日を過ぎました）'); }
     const pendingIds = new Set(pending.lessons.map(l => l.id));
     const name = Object.fromEntries(range.students.map(s => [s.id, s.name])), staff = Object.fromEntries(range.staff.map(s => [s.id, s.name]));
     const lessons = range.lessons.filter(l => ['held', 'proposed', 'decided', 'done'].includes(l.status)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start))

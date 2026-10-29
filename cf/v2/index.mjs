@@ -26,6 +26,7 @@ import { cutoverRoutes } from './cutover.mjs';
 import { previewRoutes, isPreviewToken, READS as PREVIEW_READS } from './preview.mjs';
 import { homeRoutes } from './home.mjs';
 import { studentHubRoutes } from './student-hub.mjs';
+import { withdrawalRoutes } from './withdrawal.mjs';
 import { lessonPlanRoutes } from './lesson-plan.mjs';
 import { monthlyRoutes } from './monthly.mjs';
 import { recordEffects, deliverEffects } from './effects.mjs';
@@ -44,7 +45,7 @@ import { docsSampleRoutes } from './docs-sample.mjs';
 import { agreementDocumentRoutes } from './agreement-documents.mjs';
 import { contractRoutes } from './contracts.mjs';
 
-const ROUTES = { ...staffRegistrationRoutes, ...staffBankRoutes, ...staffRulesRoutes, ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...lessonPlanRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...enrollmentRoutes, ...mcpWriteRoutes };
+const ROUTES = { ...withdrawalRoutes, ...staffRegistrationRoutes, ...staffBankRoutes, ...staffRulesRoutes, ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...lessonPlanRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...enrollmentRoutes, ...mcpWriteRoutes };
 const MAX_BODY = 200000;
 
 // 毎日0時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、終わった授業を実施済みにする。切り替えたあとは、3日以降に前月分の請求を確定する。
