@@ -6,7 +6,7 @@ import { invoiceDueText, normalDueDate } from '../../assets/v2/invoice-due.js';
 // - 保護者: 計画の承認（回数を減らす・見送るも）・先生が記録した承諾の確認、請求の確認・振込の連絡、キャンセル料の減額・免除の申請
 // - 毎日0時10分: 3日以降、前月分の請求を家族ごとに確定する（確かめることがある家族は止める）。切り替え（settings.live）まで動かさない
 // 料金は承認した計画の行で決まる。計画の承認がない授業は請求しない（承認されたら、その月か次の月の請求に入る）。
-import { consentEvidence, evidenceView } from './consent-evidence.mjs';
+import { consentEvidence, evidenceView, consentLine, COPY_PLACE } from './consent-evidence.mjs';
 import { fail, newId, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
@@ -215,6 +215,14 @@ async function staffFees(c, where, ...args) {
 }
 async function familyStudentIds(c, familyId) { return (await c.db.prepare('select id from students where familyId = ?').bind(familyId).all()).results.map(r => r.id); }
 
+// 承認した受講計画書の控えを保護者にメールで送る（保護者ページで承認したときも、教室が LINE などの承諾を記録したときも）
+const mdn = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
+async function sendPlanCopy(c, id) {
+  const l = await c.db.prepare('select * from planLines where id = ?').bind(id).first();
+  if (!l || l.status !== 'approved') return;
+  const s = await getStudent(c, l.studentId);
+  await familyNotice(c, s.id, '受講計画書の控え', `${fullName(s)}さんの受講計画書（${l.subject}${l.kind && l.kind !== '通常' ? '・' + l.kind : ''}・${mdn(l.startDate)}〜${mdn(l.endDate)}）を承認いただきました。\n承認：${consentLine(l.consentedAt || l.approvedAt, l.approvedVia, l.consenterName)}\n内容：${l.approvedCount}回・1回${l.minutes}分 ${Number(l.fee).toLocaleString('ja-JP')}円（税込）\n${COPY_PLACE.replace('同意した', '承認した')}`, 'contracts');
+}
 export const billingRoutes = {
   // ---- 計画（教室管理者） ----
   // 月の計画の一覧: 在籍・休会の生徒ごとに、その月にかかる計画の行と、授業の入り具合
@@ -358,6 +366,7 @@ export const billingRoutes = {
     const saved = await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
       .bind(count, now, 'staff:' + me.id, via, todayJst(Date.parse(evidence.consentedAt)), note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, now, l.id, l.version).run();
     if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
+    await sendPlanCopy(c, l.id);
     await audit(c, 'planConsent', l.id, { via, consentDate, count });
     return { line: lineView(await getLine(c, l.id)) };
   },
@@ -559,6 +568,7 @@ export const billingRoutes = {
     if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
     const s = await getStudent(c, l.studentId);
     await staffNotice(c, `【計画の${count > 0 ? '承認' : '見送り'}】${fullName(s)}さん`, `${fullName(s)}さん ${l.subject}（${md(l.startDate)}〜${md(l.endDate)}）\n${count > 0 ? `${count}回で承認されました（お知らせは${l.count}回）` : '見送りになりました'}`);
+    if (count > 0) await sendPlanCopy(c, l.id);
     await audit(c, 'planDecide', l.id, { count });
     return { line: lineView(await getLine(c, l.id)) };
   },

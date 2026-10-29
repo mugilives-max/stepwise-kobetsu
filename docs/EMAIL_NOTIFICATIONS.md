@@ -346,6 +346,9 @@ https://www.stepwise-education.jp/family/#money?kind=invoice&refs=iv_a8c60f18fdb
 | 共通規約と個別受講条件書のご確認のお願い | 管理者が家族の画面の「契約の更新を案内する」（2026-10-29）。家族に1通（兄弟をまとめる）。生徒名・適用開始月・同意までは今の決まりのまま。料金は書かない。保護者ページ未登録なら招待のリンクつき。「もう一度送る」も同じ文 | 契約の更新（#enroll） | [enrollment](../cf/v2/enrollment.mjs) |
 | 入塾のお申込みを受け付けました | 保護者が入塾の申込みを終えたとき（2026-10-29）。生徒名・入塾日・開始月・日程はLINEなどで相談・控えの場所。料金は書かない | 契約・同意の控え | [enrollment](../cf/v2/enrollment.mjs) |
 | 同意を受け付けました | 保護者が契約の更新で同意したとき（2026-10-29）。生徒名・条件書の版・適用開始月・控えの場所。生徒ごとに1通 | 契約・同意の控え | [enrollment](../cf/v2/enrollment.mjs) |
+| 個別受講条件書の控え | 条件書に同意したとき（保護者ページ・教室が記録した同意とも。2026-10-29）。版・同意の日・方法・同意者・主な条件（料金を含む）・控えの場所。入塾の申込み・契約の更新では送らない（受付のメールがあるため） | 契約・同意の控え | [conditions](../cf/v2/conditions.mjs) |
+| 特別単価合意書の控え | 特別単価を承認したとき（保護者ページ・教室の記録とも。2026-10-29）。名称・承認の日・方法・承認者・期間・料金・控えの場所 | 契約・同意の控え | [specials](../cf/v2/specials.mjs) |
+| 受講計画書の控え | 計画を承認したとき（保護者ページ・教室の記録とも。見送りは送らない。2026-10-29）。科目・期間・承認の日・方法・承認者・回数・料金・控えの場所。計画ごとに1通 | 契約・同意の控え | [billing](../cf/v2/billing.mjs) |
 | キャンセル料のお知らせ | 管理者が料金を設定。日時・科目・金額と任意の説明 | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L387) |
 | キャンセル料の申請への回答 | 管理者が免除・減額等を回答。金額・回答文。対象生徒・授業日時は自動では入らない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L392-L407) |
 | M月分の授業料のお知らせ | 手動・自動の請求確定。対象年月・合計金額。支払期限や振込手順は本文にない | ホーム | [billing](https://github.com/mugilives-max/stepwise-kobetsu/blob/d13c5e0ce8b7f34a41b8a8e446d4aab096e36a36/cf/v2/billing.mjs#L155-L191) |

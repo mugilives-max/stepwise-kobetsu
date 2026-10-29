@@ -12,12 +12,19 @@ import { familyNotice } from './schedule.mjs';
 import { currentTerms, termsForVersion } from './terms.mjs';
 import { putGenerated } from './files.mjs';
 import { specialDocHtml } from './special-doc.mjs';
-import { consentEvidence, evidenceView } from './consent-evidence.mjs';
+import { consentEvidence, evidenceView, consentLine, COPY_PLACE } from './consent-evidence.mjs';
 
 const validDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
 const fullName = s => `${s.familyName} ${s.givenName}`.trim();
 export const STATUS_LABEL = { proposed: '承認待ち', agreed: '承認済み', replaced: '置き換え', ended: '終了' };
 
+// 承認した特別単価合意書の控えを保護者にメールで送る
+async function sendSpecialCopy(c, id) {
+  const r = await c.db.prepare('select p.*, s.familyName, s.givenName from specials p join students s on s.id = p.studentId where p.id = ?').bind(id).first();
+  if (!r || r.status !== 'agreed') return;
+  const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
+  await familyNotice(c, r.studentId, '特別単価合意書の控え', `${fullName(r)}さんの特別単価合意書「${r.title}」${r.no > 1 ? `（第${r.no}版）` : ''}を承認いただきました。\n承認：${consentLine(r.agreedAt, r.agreedVia, r.consenterName)}\n主な条件：${md(r.fromDate)}〜${md(r.toDate)}・1回${r.minutes}分 ${Number(r.fee).toLocaleString('ja-JP')}円（税込）\n${COPY_PLACE.replace('同意した', '承認した')}`, 'contracts');
+}
 export const specialView = r => r ? ({ ...evidenceView(r), id: r.id, studentId: r.studentId, no: r.no, title: r.title, purpose: r.purpose || '', content: r.content, reason: r.reason, prep: r.prep, minutes: r.minutes, fee: r.fee, fromDate: r.fromDate, toDate: r.toDate, note: r.note,
   termsVersion: r.termsVersion, status: r.status, statusLabel: STATUS_LABEL[r.status] || r.status, proposedAt: r.proposedAt, agreedAt: r.agreedAt, agreedVia: r.agreedVia, agreedNote: r.agreedNote, endedAt: r.endedAt }) : null;
 
@@ -114,6 +121,7 @@ export const specialRoutes = {
     const evidence = consentEvidence(c, b, me);
     await markAgreed(c, row, { at: evidence.consentedAt, via, by: 'staff:' + me.id, note, evidence });
     await storeDoc(c, row.id);
+    await sendSpecialCopy(c, row.id);
     await audit(c, 'specialRecorded', row.id, { via, date });
     return await studentSpecials(c.db, row.studentId);
   },
@@ -140,6 +148,7 @@ export const specialRoutes = {
     if (b.agree !== true) fail('needAgree', '内容を確かめて「承認します」に印を付けてください');
     await markAgreed(c, row, { at: iso(c.now), via: '保護者ページ', by: 'family:' + me.id, note: '', evidence: consentEvidence(c, b, me, me) });
     await storeDoc(c, row.id);
+    await sendSpecialCopy(c, row.id);
     await audit(c, 'specialAgreed', row.id, { familyId: me.id });
     const students = (await c.db.prepare("select * from students where familyId = ? and status <> 'left' order by createdAt").bind(me.id).all()).results;
     return { specials: await familySpecials(c.db, students) };

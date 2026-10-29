@@ -12,7 +12,7 @@ import { familyNotice } from './schedule.mjs';
 import { currentTerms, termsForVersion } from './terms.mjs';
 import { putGenerated } from './files.mjs';
 import { conditionDocHtml } from './condition-doc.mjs';
-import { consentEvidence, evidenceView } from './consent-evidence.mjs';
+import { consentEvidence, evidenceView, consentLine, COPY_PLACE } from './consent-evidence.mjs';
 
 const MODES = { in_person: '教室', online: 'オンライン', both: '教室とオンライン' };
 export const MODE_LABEL = MODES;
@@ -71,6 +71,13 @@ export function conditionFields(b) {
 }
 function studentRow(c, id) { return c.db.prepare('select * from students where id = ?').bind(String(id || '')).first(); }
 
+// 同意した個別受講条件書の控えを保護者にメールで送る（保護者ページで同意したときも、教室が LINE などの同意を記録したときも）
+async function sendConditionCopy(c, id) {
+  const r = await c.db.prepare('select c.*, s.familyName, s.givenName from conditions c join students s on s.id = c.studentId where c.id = ?').bind(id).first();
+  if (!r || r.status !== 'agreed') return;
+  const month = Number(r.fromMonth.slice(0, 4)) + '年' + Number(r.fromMonth.slice(5, 7)) + '月';
+  await familyNotice(c, r.studentId, '個別受講条件書の控え', `${fullName(r)}さんの個別受講条件書（第${r.no}版）に同意いただきました。\n同意：${consentLine(r.agreedAt, r.agreedVia, r.consenterName)}\n主な条件：${month}から・1回${r.minutes}分 ${Number(r.fee).toLocaleString('ja-JP')}円（税込）・${MODES[r.deliveryMode] || ''}\n${COPY_PLACE}`, 'contracts');
+}
 async function markAgreed(c, row, { at, via, by, note, evidence }) {
   const now = iso(c.now);
   const saved = await c.db.prepare("update conditions set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'").bind(at, via, by, note, evidence.consenterName, evidence.recordedAt, evidence.recordedByName, now, row.id).run();
@@ -125,6 +132,7 @@ export const conditionRoutes = {
     const evidence = consentEvidence(c, b, me);
     await markAgreed(c, row, { at: evidence.consentedAt, via, by: 'staff:' + me.id, note, evidence });
     await storeDoc(c, row.id);
+    await sendConditionCopy(c, row.id);
     await audit(c, 'conditionRecorded', row.id, { via, date });
     return await studentConditions(c.db, row.studentId);
   },
@@ -142,6 +150,7 @@ export const conditionRoutes = {
     if (b.agree !== true) fail('needAgree', '内容を確かめて「同意します」に印を付けてください');
     await markAgreed(c, row, { at: iso(c.now), via: '保護者ページ', by: 'family:' + me.id, note: '', evidence: consentEvidence(c, b, me, me) });
     await storeDoc(c, row.id);
+    await sendConditionCopy(c, row.id);
     await audit(c, 'conditionAgreed', row.id, { familyId: me.id });
     const students = (await c.db.prepare("select * from students where familyId = ? and status <> 'left' order by createdAt").bind(me.id).all()).results;
     return { conditions: await familyConditions(c.db, students) };
