@@ -109,11 +109,16 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   assert.equal((await parent.locator('#app').innerText()).includes('共通規約への同意'),false,'申込みで同意したので、別に求めない');
   report.checks.push('parent: password then the application page, required fields marked, confirm records nothing, consent required, enrolled at once with the typed name');
   // 3. 代表: 入塾した
+  // 入塾したあとは概要に大きな枠を出さず1行だけ（2026-10-29 本人）。お申込みの内容は基本情報の表
   await owner.goto(origin+'/staff/#student='+trial.studentId+'/summary');
-  await owner.getByRole('heading',{name:'入塾しました',exact:true}).waitFor();
+  await owner.getByText('に入塾しました').waitFor();
+  assert.equal(await owner.getByRole('heading',{name:'入塾しました',exact:true}).count(),0,'大きな枠は出さない');
   await owner.screenshot({path:path.join(out,'06-owner-enrolled.png'),fullPage:true});
+  await owner.getByRole('link',{name:'お申込みの内容',exact:true}).click();
+  await owner.getByRole('heading',{name:'入塾のお申込み',exact:true}).waitFor();
+  await owner.screenshot({path:path.join(out,'07-owner-enrolled-basic.png'),fullPage:true});
   assert.deepEqual(report.errors,[]);assert.deepEqual(report.externalRequests,[]);
-  report.checks.push('owner sees the enrolled state and the next step (plans)');
+  report.checks.push('owner sees one line on the summary and the application details in the basic info');
  }catch(e){report.failure=e.stack;if(owner)await owner.screenshot({path:path.join(out,'failure-owner.png'),fullPage:true}).catch(()=>{});if(parent)await parent.screenshot({path:path.join(out,'failure-parent.png'),fullPage:true}).catch(()=>{});throw e;}
  finally{console.log(JSON.stringify(report));fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(report,null,2));await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1;});
