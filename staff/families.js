@@ -72,7 +72,7 @@ export function familyDetailPage(ctx, id) {
   const ct = detail.terms || { version: '' };
   const terms = !ct.version ? '' : f.termsVersion === ct.version ? `${esc(ct.version)}：同意済み（${esc(String(f.termsAcceptedAt).slice(0, 10))}）` : `${esc(ct.version)}：<span class="tag warn">未同意</span>${f.termsVersion ? `（${esc(f.termsVersion)} には同意）` : ''}`;
   const invite = f.email && f.status !== 'stopped' ? `<button class="small-btn" data-action="fam-invite"${ctx.dis()}>${f.hasPassword ? '登録のやり直しを案内する' : '招待を送る'}</button>` : '';
-  h += `<div class="sec-title">保護者</div><table class="grid-table"><tbody>${row('氏名', esc(f.guardianName || ''))}${row('メール', esc(f.email || ''))}${row('電話', esc(f.phone || ''))}`
+  h += `<div class="sec-title">保護者</div><table class="grid-table"><tbody>${row('氏名', esc(f.guardianName || ''))}${row('メール', esc(f.email || ''))}${row('電話', esc(f.phone || ''))}${row('住所', esc(f.address || ''))}`
     + row('保護者ページ', cell(f.status === 'stopped' ? '止めています（メールも届きません）' : f.hasPassword ? '登録済み' : 'まだ登録していません', `<button class="small-btn" data-action="pv-open" data-kind="family" data-id="${esc(f.id)}">見る</button>${invite}`))
     + row('共通規約', terms && cell(terms, `<button class="small-btn" data-action="fam-sheet" data-mode="terms"${ctx.dis()}>同意を記録</button>`))
     + `${row('メモ', esc(f.note || ''))}</tbody></table><p style="margin-top:10px"><button data-action="fam-sheet" data-mode="family" data-id="${esc(f.id)}"${ctx.dis()}>保護者の情報を直す</button></p>`;
@@ -93,9 +93,9 @@ function renewalSection(ctx, f) {
   const state = s => s.renewal && s.renewal.status === 'applied' ? `<span class="tag ok">同意済み</span> <span class="muted">${mdOf(s.renewal.appliedAt)}</span>`
     : s.renewal && s.renewal.status === 'offered' ? `<span class="tag warn">ご案内中</span> <span class="muted">${mdOf(s.renewal.offeredAt)}</span>`
     : s.condition && s.condition.agreed ? `<span class="muted">第${s.condition.agreed.no}版に同意済み</span>` : '<span class="tag gray">まだ</span>';
-  const open = list.find(s => s.renewal && s.renewal.status === 'offered');
+  const open = list.find(s => s.renewal && s.renewal.status === 'offered'), allDone = list.every(s => s.renewal && s.renewal.status === 'applied');
   return `<div class="sec-title">契約の更新</div><table class="grid-table"><tbody>${list.map(s => `<tr><th scope="row"><span>${esc(s.name)}</span></th><td>${state(s)}</td></tr>`).join('')}</tbody></table>
-    <div class="row" style="margin-top:10px"><button data-action="fam-sheet" data-mode="renewal"${ctx.dis()}>${open ? '条件を直して送り直す' : '契約の更新を案内する'}</button>${open ? `<button data-action="renewal-resend" data-id="${esc(open.renewal.id)}"${ctx.dis()}>もう一度送る</button>` : ''}</div>`;
+    <div class="row" style="margin-top:10px">${allDone ? '' : `<button data-action="fam-sheet" data-mode="renewal"${ctx.dis()}>${open ? '条件を直して送り直す' : '契約の更新を案内する'}</button>`}${open ? `<button data-action="renewal-resend" data-id="${esc(open.renewal.id)}"${ctx.dis()}>もう一度送る</button>` : ''}</div>`;
 }
 function renewalSheet(ctx, f) {
   const { esc } = ctx, list = renewalTargets(f);
@@ -203,8 +203,8 @@ export async function familiesSubmit(ctx, kind, el) {
     const students = renewalTargets(detail).map((s, i) => ({ s, i })).filter(({ i }) => el.querySelector(`[name="pick_${i}"]`).checked)
       .map(({ s, i }) => ({ studentId: s.id, minutes: Number(v['minutes_' + i]), fee: Number(v['fee_' + i]), deliveryMode: v['mode_' + i], subjects: readSubjects(el, 'subjects_' + i) }));
     if (!students.length) { ctx.say('案内する生徒に印を付けてください', 'error'); return true; }
-    const names = students.map(x => detail.students.find(s => s.id === x.studentId).name).join('・');
-    if (!confirm(`${names}さんの共通規約と個別受講条件書（${Number(v.fromMonth.slice(5))}月から）を、${detail.email} にメールで案内しますか？`)) return true;
+    const names = students.map(x => detail.students.find(s => s.id === x.studentId).name + 'さん').join('・');
+    if (!confirm(`${names}の共通規約と個別受講条件書（${Number(v.fromMonth.slice(5))}月から）を、${detail.email} にメールで案内しますか？`)) return true;
     r = await ctx.call('admin/renewal/offer', { familyId: detail.id, fromMonth: v.fromMonth, students });
     if (r.ok) { famSheet = null; detail = null; ctx.say(r.mailed ? '契約の更新を案内しました' : '案内を作りました。メールはまだ送られていません', r.mailed ? 'ok' : 'error'); return true; }
   } else if (kind === 'cond-propose') {
