@@ -235,7 +235,7 @@ export const billingRoutes = {
   'billing/plans/list': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const month = validMonth(b.month) ? b.month : todayJst(c.now).slice(0, 7), from = month + '-01', to = monthEnd(month);
-    const students = (await c.db.prepare("select s.*, f.name familyLabel from students s join families f on f.id = s.familyId where s.status <> 'left' order by s.familyKana, s.familyName, s.givenName").all()).results;
+    const students = (await c.db.prepare("select s.*, coalesce(nullif(f.guardianName, ''), f.name) familyLabel from students s join families f on f.id = s.familyId where s.status <> 'left' order by s.familyKana, s.familyName, s.givenName").all()).results;
     const kinds = (await c.db.prepare('select * from lessonKinds order by sortOrder, name').all()).results;
     const rows = [];
     for (const s of students) {
@@ -468,10 +468,10 @@ export const billingRoutes = {
     const families = (await c.db.prepare('select * from families order by name').all()).results, rows = [];
     for (const f of families) {
       const inv = await activeInvoice(c, f.id, month);
-      if (inv) { rows.push({ familyId: f.id, name: f.name, invoice: invoiceView(inv) }); continue; }
+      if (inv) { rows.push({ familyId: f.id, name: f.guardianName || f.name, invoice: invoiceView(inv) }); continue; }
       const p = await monthPreview(c, f.id, month);
       const asks = (await c.db.prepare("select count(*) n, max(remindedAt) last from planLines where status = 'proposed' and studentId in (select id from students where familyId = ?)").bind(f.id).first());
-      if (p.students.length || p.issues.length) rows.push({ familyId: f.id, name: f.name, preview: { total: p.total, issues: p.issues, pendingCount: p.pendingCount, canConfirm: p.canConfirm, auto: p.auto }, proposedPlans: asks.n, remindedAt: asks.last || '' });
+      if (p.students.length || p.issues.length) rows.push({ familyId: f.id, name: f.guardianName || f.name, preview: { total: p.total, issues: p.issues, pendingCount: p.pendingCount, canConfirm: p.canConfirm, auto: p.auto }, proposedPlans: asks.n, remindedAt: asks.last || '' });
     }
     const voided = (await c.db.prepare("select v.*, f.name from invoices v join families f on f.id = v.familyId where v.month = ? and v.status = 'void' order by v.voidedAt").bind(month).all()).results;
     return { month, closeOn: shiftMonth(month, 1) + '-03', families: rows, voided: voided.map(v => ({ ...invoiceView(v), name: v.name })) };
@@ -485,9 +485,9 @@ export const billingRoutes = {
     const names = Object.fromEntries((await c.db.prepare('select * from students where familyId = ?').bind(f.id).all()).results.map(s => [s.id, fullName(s)]));
     if (inv) {
       const items = (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(inv.id).all()).results;
-      return { family: { id: f.id, name: f.name }, invoice: { ...invoiceView(inv), ...(await billingDocIds(c.db, inv.id)) }, items: items.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) };
+      return { family: { id: f.id, name: f.guardianName || f.name }, invoice: { ...invoiceView(inv), ...(await billingDocIds(c.db, inv.id)) }, items: items.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) };
     }
-    return { family: { id: f.id, name: f.name }, preview: await monthPreview(c, f.id, b.month) };
+    return { family: { id: f.id, name: f.guardianName || f.name }, preview: await monthPreview(c, f.id, b.month) };
   },
   'billing/confirm': async (c, b) => {
     const me = await requireStaff(c, b, 'manager');

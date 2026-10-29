@@ -6,7 +6,7 @@ import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-vie
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
-import { renewalBox } from '/staff/families.js?v=20261029-ctrrenew';
+import { renewalBox } from '/staff/families.js?v=20261029-contractor';
 
 let list = null, query = '', hub = null, hubFor = '';
 let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）
@@ -49,7 +49,7 @@ export function studentsPage(ctx) {
   }).join('') + '</div>';
   const any = shown.length > 0;
   if (!any) h += '<p class="muted small" style="margin-top:14px">見つかりませんでした。</p>';
-  if (addOpen === 'menu') h += sheet(esc, '生徒を追加', `<div class="group">${rowButton(esc, 'stu-add-trial', {}, '体験生を登録', '')}${rowButton(esc, 'stu-add-family', {}, '家族を登録（入塾）', '')}</div>`, 'stu-add-close');
+  if (addOpen === 'menu') h += sheet(esc, '生徒を追加', `<div class="group">${rowButton(esc, 'stu-add-trial', {}, '体験生を登録', '')}${rowButton(esc, 'stu-add-family', {}, '契約者を登録（入塾）', '')}</div>`, 'stu-add-close');
   if (addOpen === 'trial') h += sheet(esc, '体験生を登録', `<form class="stack" data-form="trial-create">
     <div class="row"><label style="flex:1">名字<input name="familyName" maxlength="40" required placeholder="高橋"></label><label style="flex:1">名前<input name="givenName" maxlength="40" placeholder="香帆"></label><label style="flex:1">学年<select name="grade">${gradeOptions(esc, '')}</select></label></div>
     <label>学校<input name="school" maxlength="60" placeholder="〇〇中学校"></label>
@@ -167,7 +167,7 @@ function lessonPlan(ctx, x) {
 function money(ctx, x) {
   const { esc } = ctx;
   return lessonPlan(ctx, x)
-    + '<h2>家族の請求（最近6か月）</h2>' + (x.invoices.length ? '<div class="rows">' + x.invoices.map(v => `<div class="ev"><span class="t">${Number(v.month.slice(5))}月分</span><span class="b" style="color:var(--ink)">${yen(v.total)}</span><span><span class="tag ${(INV[v.status] || ['', 'gray'])[1]}">${(INV[v.status] || [v.status])[0]}</span></span></div>`).join('') + '</div>' : '<p class="muted small">まだ請求はありません。</p>')
+    + '<h2>契約者の請求（最近6か月）</h2>' + (x.invoices.length ? '<div class="rows">' + x.invoices.map(v => `<div class="ev"><span class="t">${Number(v.month.slice(5))}月分</span><span class="b" style="color:var(--ink)">${yen(v.total)}</span><span><span class="tag ${(INV[v.status] || ['', 'gray'])[1]}">${(INV[v.status] || [v.status])[0]}</span></span></div>`).join('') + '</div>' : '<p class="muted small">まだ請求はありません。</p>')
     + '<p class="small"><a href="#billing">請求の画面を開く</a></p>';
 }
 function basic(ctx, x) {
@@ -177,14 +177,14 @@ function basic(ctx, x) {
   // 生徒の専用リンク（生徒の情報のいちばん下。2026-10-28 本人）。作り直すと前のリンクはすぐ使えなくなる
   const linkRow = `<tr><th scope="row"><span>専用リンク</span></th><td><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span style="flex:1 1 220px;min-width:0;overflow-wrap:anywhere">${b.studentLink ? esc(b.studentLink) : 'まだありません'}</span>${b.studentLink ? `<button class="small-btn" data-action="copy" data-text="${esc(b.studentLink)}">コピー</button>` : ''}<button class="small-btn" data-action="hub-newlink" data-id="${esc(s.id)}" data-version="${b.studentVersion}" data-has="${b.studentLink ? 1 : ''}"${ctx.dis()}>${b.studentLink ? '作り直す' : '作る'}</button></div></td></tr>`;
   const trialBox = s.trial ? `<div class="notice" style="margin-top:12px"><strong>体験生</strong>（授業は無料）・<a href="#student=${encodeURIComponent(s.id)}/summary">入塾の手続き</a>
-    <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">共通規約・個別受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
+    <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">共通規約・個別受講条件書の同意は、契約者の画面で別に記録してください。</p></details></div>` : '';
   // 契約者（保護者）の表。家族の名前の行は出さない（2026-10-29 本人「「家族」という行は要らなくて、契約者（保護者）ですね」）
   return trialBox + `<h2>生徒</h2><table class="grid-table"><tbody>${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('授業料（90分）', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('個別受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}${linkRow}</tbody></table>
     <h2>契約者（保護者）</h2><table class="grid-table"><tbody>${row('氏名', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</tbody></table>
     ${enrollRows(x, row)}
     <h2>その人の目で見る</h2>
     <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る</button></div>
-    <p style="margin-top:12px"><a class="small-btn" href="#family=${encodeURIComponent(b.familyId)}">直す・招待・専用リンク（家族の画面）</a></p>` + leaveBox(ctx, x);
+    <p style="margin-top:12px"><a class="small-btn" href="#family=${encodeURIComponent(b.familyId)}">直す・招待・専用リンク（契約者の画面）</a></p>` + leaveBox(ctx, x);
 }
 
 // ---------- 入塾の手続き（2026-10-18 本人決定。cf/v2/enrollment.mjs） ----------
@@ -207,7 +207,7 @@ function offerForm(ctx, x, again) {
   return `<form class="reg-form" data-form="enroll-offer" data-id="${esc(s.id)}" novalidate>
     <fieldset class="reg-field"><legend>保護者のメールアドレス <span class="req">必須</span></legend>
       <input type="email" name="email" value="${esc(d && !e.familyActive ? d.email : e.email || '')}" ${e.familyActive ? 'readonly' : ''} autocomplete="off" placeholder="parent@example.com">
-      ${e.familyActive ? '<p class="reg-help">登録済み（変えるときは家族の画面で）</p>' : ''}</fieldset>
+      ${e.familyActive ? '<p class="reg-help">登録済み（変えるときは契約者の画面で）</p>' : ''}</fieldset>
     <fieldset class="reg-field cond-box"><legend>受講条件</legend>
       <div class="row"><label style="flex:1">適用開始月<input type="month" name="fromMonth" value="${esc(from)}" required></label><label style="flex:1">1回の時間（分）<input type="number" name="minutes" value="${esc(minutes)}" min="15" max="300" step="5" required></label><label style="flex:1">1回の授業料（円・税込）<input type="number" name="fee" value="${esc(fee)}" min="0" max="100000" step="10" required></label></div>
       <div class="cond-sub">実施形態</div>
@@ -348,7 +348,7 @@ async function leaveClick(ctx, a, b) {
   const r = await ctx.call('admin/withdrawal/finish', { studentId: s.id, version: w.student.version });
   if (!r.ok) { if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); return true; }
   hub = null; hubFor = ''; list = null;
-  ctx.say(r.siblings ? '退会にしました' : '退会にしました。兄弟がいないので、最後の請求の支払いが済んだら、家族の画面で「保護者ページとメールを止める」を押せます', 'ok');
+  ctx.say(r.siblings ? '退会にしました' : '退会にしました。兄弟がいないので、最後の請求の支払いが済んだら、契約者の画面で「保護者ページとメールを止める」を押せます', 'ok');
   return true;
 }
 
@@ -408,6 +408,6 @@ export async function studentsClick(ctx, a, b) {
   if (a !== 'trial-enroll') return false;
   if (!confirm('この生徒を入塾にしますか？（入塾日は今日。体験の授業はそのまま無料で残ります）')) return true;
   const r = await ctx.call('admin/trials/enroll', { studentId: b.dataset.id });
-  if (r.ok) { list = null; hub = null; hubFor = ''; ctx.say('入塾にしました。家族の画面でメールを入れて招待してください', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+  if (r.ok) { list = null; hub = null; hubFor = ''; ctx.say('入塾にしました。契約者の画面でメールを入れて招待してください', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;
 }

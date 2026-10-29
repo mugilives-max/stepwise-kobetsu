@@ -77,9 +77,9 @@ export function termsPage(ctx) {
     return h + `<section class="reg-card" style="margin-top:12px"><div class="reg-card-head"><h2>${esc(latest.title)}</h2></div>${kv(esc, [['版', esc(verLabel(latest.version))], ['適用日', esc(latest.from ? jaDay(latest.from) : '同意した日から')], ['全文', open(latest.url, '全文を読む') + (latest.pdf ? '・' + open(latest.pdf, 'PDF') : '')]])}</section>
       <section class="reg-card"><div class="reg-card-head"><h2>${first ? '使い始める' : '切り替える'}とどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
         <li>これから作る個別受講条件書・特別単価合意書は、この規約によります。</li>
-        <li>新しく入塾する家族は、申込みのときにこの規約に同意します。</li>
-        <li>今通っている家族には、まだ何も出ません。</li>
-        <li>内容を変えるときは、新しい版を作って切り替えます。同意済みの家族には、新しい版にあらためて同意をお願いします（同意するまでは、前の版のままです）。</li></ul></section>
+        <li>新しく入塾する契約者は、申込みのときにこの規約に同意します。</li>
+        <li>今通っている契約者には、まだ何も出ません。</li>
+        <li>内容を変えるときは、新しい版を作って切り替えます。同意済みの契約者には、新しい版にあらためて同意をお願いします（同意するまでは、前の版のままです）。</li></ul></section>
       <form class="reg-form" data-form="terms-decide">
         <div class="stack"><button class="primary wide"${ctx.dis()}>${first ? 'この版を使い始める' : 'この版に切り替える'}</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
@@ -88,15 +88,15 @@ export function termsPage(ctx) {
     const picked = termsFams.filter(fm => termsPick.includes(fm.id) && state(fm) === 'not');
     if (!picked.length) { termsStep = ''; return termsPage(ctx); }
     const noPage = picked.filter(fm => !fm.hasPassword);
-    return h + `<p style="margin-top:12px">次の${picked.length}家族に、「${esc(t.title || t.version)}」への同意をお願いします。</p>
-      <div class="group">${picked.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.name)}</span>${fm.hasPassword ? '' : '<small>保護者ページに未登録</small>'}</span></div>`).join('')}</div>
+    return h + `<p style="margin-top:12px">次の${picked.length}契約者に、「${esc(t.title || t.version)}」への同意をお願いします。</p>
+      <div class="group">${picked.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.guardianName || fm.name)}</span>${fm.hasPassword ? '' : '<small>保護者ページに未登録</small>'}</span></div>`).join('')}</div>
       <section class="reg-card"><div class="reg-card-head"><h2>お願いするとどうなるか</h2></div><ul style="margin:8px 0 0;padding-left:1.2em;line-height:1.8">
-        <li>選んだ家族の保護者ページに、規約の全文と「同意する」が出ます。</li>
-        <li>同意するまで、その家族は次の受講計画書を承認できません（見送りはできます）。</li>
-        ${noPage.length ? `<li>保護者ページに登録していない家族（${noPage.map(fm => esc(fm.name)).join('・')}）は、お願いを見られません。</li>` : ''}</ul></section>
+        <li>選んだ契約者の保護者ページに、規約の全文と「同意する」が出ます。</li>
+        <li>同意するまで、その契約者は次の受講計画書を承認できません（見送りはできます）。</li>
+        ${noPage.length ? `<li>保護者ページに登録していない契約者（${noPage.map(fm => esc(fm.guardianName || fm.name)).join('・')}）は、お願いを見られません。</li>` : ''}</ul></section>
       <form class="reg-form" data-form="terms-request">
         <fieldset class="reg-field"><legend>保護者への一言 <span class="opt">任意</span></legend><textarea name="note" rows="3" maxlength="500" placeholder="例：11月からの受講のきまりをまとめました。全文をお読みいただき、同意をお願いします。"></textarea></fieldset>
-        <label class="choice"><input type="checkbox" name="mail" checked><span>メールでも知らせる（保護者ページに登録している家族だけ）</span></label>
+        <label class="choice"><input type="checkbox" name="mail" checked><span>メールでも知らせる（保護者ページに登録している契約者だけ）</span></label>
         <div class="stack"><button class="primary wide"${ctx.dis()}>同意をお願いする</button><button type="button" class="wide" data-action="terms-back"${ctx.dis()}>やめて戻る</button></div></form>`;
   }
   // 1. 今の版
@@ -117,20 +117,20 @@ export function termsPage(ctx) {
   // 2. 保護者への同意のお願い
   if (t.version && termsFams) {
     const n = { agreed: 0, asked: 0, not: 0 }; termsFams.forEach(fm => n[state(fm)]++);
-    h += `<div class="sec-title">この版への同意（家族ごと）</div>
-      <p class="small muted" style="margin:0 2px 8px">同意済み ${n.agreed}・お願い中 ${n.asked}・まだお願いしていない ${n.not}（${termsFams.length}家族）</p>`;
-    if (!termsFams.length) h += '<p class="small muted">家族がまだいません。</p>';
+    h += `<div class="sec-title">この版への同意（契約者ごと）</div>
+      <p class="small muted" style="margin:0 2px 8px">同意済み ${n.agreed}・お願い中 ${n.asked}・まだお願いしていない ${n.not}（${termsFams.length}契約者）</p>`;
+    if (!termsFams.length) h += '<p class="small muted">契約者がまだいません。</p>';
     else {
       const rowOf = fm => {
         const s = state(fm), r = asked(fm.id);
         const sub = s === 'agreed' ? esc(jaDay(fm.termsAcceptedAt)) : s === 'asked' ? (r ? `${esc(jaDay(r.requestedAt))}${r.mailed ? '・メールも送信' : ''}` : `${esc(jaDay(renewing(fm.id).offeredAt))}・契約の更新で`) : fm.hasPassword ? '' : '保護者ページに未登録';
         return s === 'not'
-          ? `<label class="todo-row" style="grid-template-columns:auto minmax(0,1fr);cursor:pointer"><input type="checkbox" name="fam" value="${esc(fm.id)}"${termsPick.includes(fm.id) ? ' checked' : ''}><span class="v"><span class="lbl">${esc(fm.name)}</span>${sub ? `<small>${sub}</small>` : ''}</span></label>`
-          : `<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#family=${esc(fm.id)}"><span class="v"><span class="lbl">${esc(fm.name)}</span><small>${s === 'agreed' ? '<span class="tag ok">同意済み</span> ' : '<span class="tag warn">お願い中</span> '}${sub}</small></span><span class="go" aria-hidden="true">›</span></a>`;
+          ? `<label class="todo-row" style="grid-template-columns:auto minmax(0,1fr);cursor:pointer"><input type="checkbox" name="fam" value="${esc(fm.id)}"${termsPick.includes(fm.id) ? ' checked' : ''}><span class="v"><span class="lbl">${esc(fm.guardianName || fm.name)}</span>${sub ? `<small>${sub}</small>` : ''}</span></label>`
+          : `<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#family=${esc(fm.id)}"><span class="v"><span class="lbl">${esc(fm.guardianName || fm.name)}</span><small>${s === 'agreed' ? '<span class="tag ok">同意済み</span> ' : '<span class="tag warn">お願い中</span> '}${sub}</small></span><span class="go" aria-hidden="true">›</span></a>`;
       };
       const order = { not: 0, asked: 1, agreed: 2 }, list = termsFams.slice().sort((a, b) => order[state(a)] - order[state(b)]);
       h += `<form data-form="terms-pick"><div class="group">${list.map(rowOf).join('')}</div>`;
-      if (n.not) h += `<div class="stack" style="margin-top:10px"><button type="button" class="wide" data-action="terms-pick-all"${ctx.dis()}>まだの家族をすべて選ぶ</button><button class="primary wide"${ctx.dis()}>選んだ家族に同意をお願いする</button></div>`;
+      if (n.not) h += `<div class="stack" style="margin-top:10px"><button type="button" class="wide" data-action="terms-pick-all"${ctx.dis()}>まだの契約者をすべて選ぶ</button><button class="primary wide"${ctx.dis()}>選んだ契約者に同意をお願いする</button></div>`;
       h += '</form>';
     }
   }
@@ -138,7 +138,7 @@ export function termsPage(ctx) {
   h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトの共通規約</span></span><span class="go" aria-hidden="true">›</span></a></div>`;
   if (terms.history.length) h += `<details style="margin-top:12px"><summary>同意の記録（新しい${terms.history.length}件）</summary><div class="group">` + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(jaDay(x.acceptedAt))}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}・同意者：${esc(x.consenterName || '記録なし')}${x.actorKind === 'staff' ? `（${esc(x.recordedByName || '教室')}が記録）` : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div></details>';
   const openReq = termsFams ? termsFams.filter(fm => state(fm) === 'asked' && asked(fm.id)) : []; // 取り下げられるのは規約だけのお願い（契約の更新は家族の画面から）
-  if (openReq.length) h += `<details style="margin-top:12px"><summary>同意のお願いを取り下げる</summary><p class="small muted">お願いした記録は残ります。</p><div class="group">${openReq.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.name)}</span></span><button type="button" class="small-btn" data-action="terms-withdraw" data-id="${esc(fm.id)}"${ctx.dis()}>取り下げる</button></div>`).join('')}</div></details>`;
+  if (openReq.length) h += `<details style="margin-top:12px"><summary>同意のお願いを取り下げる</summary><p class="small muted">お願いした記録は残ります。</p><div class="group">${openReq.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.guardianName || fm.name)}</span></span><button type="button" class="small-btn" data-action="terms-withdraw" data-id="${esc(fm.id)}"${ctx.dis()}>取り下げる</button></div>`).join('')}</div></details>`;
   return h;
 }
 
@@ -187,12 +187,12 @@ export async function extrasSubmit(ctx, kind, el) {
   const fd = new FormData(el), v = Object.fromEntries(fd.entries());
   if (kind === 'terms-pick') {
     termsPick = fd.getAll('fam').map(String);
-    if (!termsPick.length) { ctx.say('同意をお願いする家族を選んでください', 'error'); return true; }
+    if (!termsPick.length) { ctx.say('同意をお願いする契約者を選んでください', 'error'); return true; }
     termsStep = 'request'; ctx.say(''); scrollTo(0, 0); return true;
   }
   if (kind === 'terms-request') {
     const r = await ctx.call('admin/terms/request', { familyIds: termsPick, note: String(v.note || '').trim(), mail: !!v.mail });
-    if (r.ok) { terms = null; termsStep = ''; termsPick = []; scrollTo(0, 0); ctx.say(`${r.requested}家族に同意をお願いしました${r.mailed ? `（メール ${r.mailed}通）` : ''}`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    if (r.ok) { terms = null; termsStep = ''; termsPick = []; scrollTo(0, 0); ctx.say(`${r.requested}契約者に同意をお願いしました${r.mailed ? `（メール ${r.mailed}通）` : ''}`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
     return true;
   }
   const latest = termsSite?.versions?.[0];
@@ -206,7 +206,7 @@ export async function extrasClick(ctx, a, b) {
   if (a === 'terms-decide-start') { termsStep = 'decide'; ctx.say(''); scrollTo(0, 0); return true; }
   if (a === 'terms-pick-all') { termsPick = [...b.closest('form').querySelectorAll('input[name="fam"]')].map(x => x.value); ctx.say(''); return true; }
   if (a === 'terms-withdraw') {
-    if (!confirm('この家族への同意のお願いを取り下げますか？')) return true;
+    if (!confirm('この契約者への同意のお願いを取り下げますか？')) return true;
     r = await ctx.call('admin/terms/request/withdraw', { familyId: b.dataset.id });
     if (r.ok) { terms = null; ctx.say('同意のお願いを取り下げました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
     return true;
