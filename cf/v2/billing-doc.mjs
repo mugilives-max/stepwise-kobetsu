@@ -6,6 +6,7 @@ import { invoiceDueText } from '../../assets/v2/invoice-due.js';
 import { fail, iso, audit } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { putGenerated } from './files.mjs';
+import { bankAccount } from './staff-bank.mjs';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const yen = n => Number(n || 0).toLocaleString('ja-JP');
@@ -80,9 +81,17 @@ export function receiptDocHtml({ inv, family }) {
 }
 
 export async function billingSettings(db) {
-  const rows = (await db.prepare("select key, value from settings where key in ('invoiceBank', 'invoiceNote')").all()).results;
+  const rows = (await db.prepare("select key, value from settings where key in ('invoiceBank', 'invoiceBankFields', 'invoiceNote')").all()).results;
   const v = Object.fromEntries(rows.map(r => [r.key, r.value]));
-  return { bank: v.invoiceBank || '', note: v.invoiceNote || '' };
+  let bankFields = null; try { bankFields = v.invoiceBankFields ? JSON.parse(v.invoiceBankFields) : null; } catch { bankFields = null; }
+  return { bank: v.invoiceBank || '', bankFields, note: v.invoiceNote || '' };
+}
+// 振込先を項目ごとに決める（2026-10-29 本人「自由記述的な感じになっているので、もう少ししっかりと形式的に登録できるようにした方が良い」）。
+// 項目の確かめは給与の振込先と同じ（bankAccount）。請求書・保護者ページには、項目から作った1行（invoiceBank）を載せる
+const ACCOUNT_TYPE = { ordinary: '普通', current: '当座' };
+export function invoiceBankText(f) {
+  const holder = f.holderName ? `${f.holderName}（${f.holderKana}）` : f.holderKana;
+  return `${f.bankName} ${f.branchName}${f.branchCode ? `（支店番号 ${f.branchCode}）` : ''} ${ACCOUNT_TYPE[f.accountType]} ${f.accountNumber} 口座名義 ${holder}`;
 }
 // 書面の id（最新）。kind: invoice / receipt
 export async function billingDocIds(db, invoiceId) {
@@ -113,10 +122,21 @@ export const billingDocRoutes = {
   // 振込先と備考（請求書に載せる文）。口座の情報はここ（本番の台帳）にだけ置く
   'admin/billing/settings/set': async (c, b) => {
     const me = await requireStaff(c, b, 'manager');
-    const bank = String(b.bank || '').trim(), note = String(b.note || '').trim();
+    const note = String(b.note || '').trim();
+    let bank = String(b.bank || '').trim(), fields = '';
+    if (b.bankFields && typeof b.bankFields === 'object') { // 画面からは項目ごと。全部空なら振込先を消す
+      const raw = b.bankFields;
+      if (['bankName', 'branchName', 'branchCode', 'accountType', 'accountNumber', 'holderKana', 'holderName'].every(k => !String(raw[k] ?? '').trim())) bank = '';
+      else {
+        const f = bankAccount(raw), holderName = String(raw.holderName ?? '').normalize('NFKC').trim();
+        if (holderName.length > 100 || /[\x00-\x1f\x7f]/.test(holderName)) fail('badBank', '口座名義（漢字）は100文字以内にしてください');
+        const v = { bankName: f.bankName, branchName: f.branchName, branchCode: f.branchCode, accountType: f.accountType, accountNumber: f.accountNumber, holderKana: f.holderKana, holderName };
+        bank = invoiceBankText(v); fields = JSON.stringify(v);
+      }
+    }
     if (bank.length > 300 || note.length > 500) fail('tooLong', '振込先は300文字、備考は500文字以内にしてください');
     const now = iso(c.now);
-    await c.db.batch([['invoiceBank', bank], ['invoiceNote', note]].map(([k, v]) => c.db.prepare('insert into settings (key, value, updatedAt) values (?, ?, ?) on conflict(key) do update set value = excluded.value, updatedAt = excluded.updatedAt').bind(k, v, now)));
+    await c.db.batch([['invoiceBank', bank], ['invoiceBankFields', fields], ['invoiceNote', note]].map(([k, v]) => c.db.prepare('insert into settings (key, value, updatedAt) values (?, ?, ?) on conflict(key) do update set value = excluded.value, updatedAt = excluded.updatedAt').bind(k, v, now)));
     await audit(c, 'billingSettings', '', { by: me.id, bank: bank ? 'set' : '', note: note ? 'set' : '' });
     return { settings: await billingSettings(c.db) };
   },
