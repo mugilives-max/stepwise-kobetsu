@@ -365,7 +365,8 @@ export const billingRoutes = {
     const termsVersion = prior?.version || (family.termsAcceptedAt && knownBy({acceptedAt:family.termsAcceptedAt}) ? family.termsVersion : '') || '';
     const saved = await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
       .bind(count, now, 'staff:' + me.id, via, todayJst(Date.parse(evidence.consentedAt)), note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, now, l.id, l.version).run();
-    if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
+    // 本番の D1 は、planLines の履歴を書くトリガーの行も changes に数える（2026-10-29 検証環境で、承認は保存されたのに 409 になった）。id と版で 1 行に絞っているので、1 行以上なら書けている
+    if (!(saved.meta.changes >= 1)) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
     await sendPlanCopy(c, l.id);
     await audit(c, 'planConsent', l.id, { via, consentDate, count });
     return { line: lineView(await getLine(c, l.id)) };
@@ -565,7 +566,8 @@ export const billingRoutes = {
     if (count > 0) await assertPriorConsent(c, l, evidence.consentedAt);
     const saved = await c.db.prepare("update planLines set status = ?, approvedCount = ?, approvedAt = ?, approvedBy = 'family', approvedVia = '保護者ページ', consentDate = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?")
       .bind(count > 0 ? 'approved' : 'declined', count, now, todayJst(c.now), terms.agreed.version, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, l.id, l.version).run();
-    if (saved.meta.changes !== 1) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
+    // 本番の D1 は、planLines の履歴を書くトリガーの行も changes に数える（2026-10-29 検証環境で、承認は保存されたのに 409 になった）。id と版で 1 行に絞っているので、1 行以上なら書けている
+    if (!(saved.meta.changes >= 1)) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
     const s = await getStudent(c, l.studentId);
     await staffNotice(c, `【計画の${count > 0 ? '承認' : '見送り'}】${fullName(s)}さん`, `${fullName(s)}さん ${l.subject}（${md(l.startDate)}〜${md(l.endDate)}）\n${count > 0 ? `${count}回で承認されました（お知らせは${l.count}回）` : '見送りになりました'}`);
     if (count > 0) await sendPlanCopy(c, l.id);
