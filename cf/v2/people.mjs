@@ -4,6 +4,7 @@ import { isPreviewToken, previewSubject } from './preview.mjs';
 import { studentConditions } from './conditions.mjs';
 import { studentSpecials } from './specials.mjs';
 import { currentTerms } from './terms.mjs';
+import { familyRenewals } from './enrollment.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { issueChallenge, revokeSessions, SITE } from './accounts.mjs';
@@ -76,7 +77,8 @@ export const peopleRoutes = {
     await requireStaff(c, b, 'manager');
     const f = await getFamily(c, b.id);
     const studs = (await c.db.prepare('select * from students where familyId = ? order by createdAt').bind(f.id).all()).results;
-    const students = []; for (const s of studs) students.push({ ...studentAdminView(s), condition: await studentConditions(c.db, s.id), specials: await studentSpecials(c.db, s.id) }); // 個別指導条件・特別単価の状態も
+    const renewals = await familyRenewals(c.db, f.id); // 契約の更新（生徒ごとの最後の案内）
+    const students = []; for (const s of studs) students.push({ ...studentAdminView(s), condition: await studentConditions(c.db, s.id), specials: await studentSpecials(c.db, s.id), renewal: renewals[s.id] || null }); // 個別指導条件・特別単価の状態も
     return { terms: await currentTerms(c.db), family: { ...familyAdminView(f), students } };
   },
   'admin/families/create': async (c, b) => {

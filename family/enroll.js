@@ -1,6 +1,7 @@
 // 保護者の「入塾のお申込み」（#enroll。2026-10-18 本人決定。cf/v2/enrollment.mjs）。
 // 1 つの画面で: 保護者さまの情報 → 生徒さんの情報の確認 → 個別受講条件書・共通規約 → 確認 → 「同意して入塾を申し込む」。
 // 入力 → 確認 → 完了 の 3 画面（一般的な申込みの形）。同意者名は入れた保護者の氏名。申し込むとそのまま入塾。
+// 以前からの家族の「契約の更新」（kind = renewal。2026-10-29 本人）も同じ画面。名前と完了の文だけ変え、兄弟は 1 人ずつ続けて確かめる
 import { GRADES, normGrade } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 let data = null, step = 'input', draft = null, agree = false, missing = [], opened = new Set();
 export function resetEnroll() { data = null; step = 'input'; draft = null; agree = false; missing = []; opened = new Set(); }
@@ -23,6 +24,9 @@ export function needEnroll(ctx) {
   return data.loading;
 }
 const open = () => (data && data.offers || []).filter(o => o.status === 'offered');
+const isRenewal = o => !!o && o.kind === 'renewal';
+// 上の帯とホームのやることの名前（契約の更新だけなら「契約の更新」）
+export const enrollTitle = () => { const o = open(); return o.length && o.every(isRenewal) ? '契約の更新' : '入塾のお申込み'; };
 // 申込みでまとめて同意するもの（その間は、規約・個別受講条件書の別々の同意を出さない）
 export function enrollCovers(ctx) {
   if (needEnroll(ctx)) return { terms: false, students: new Set() };
@@ -32,7 +36,7 @@ export function enrollCovers(ctx) {
 export function enrollTodo(ctx) {
   if (needEnroll(ctx)) return null;
   const o = open(); if (!o.length) return null;
-  return ['#enroll', 'file', '#c0392b', '入塾のお申込み', o.map(x => x.student.givenName + 'さん').join('・'), o.length];
+  return ['#enroll', 'file', '#c0392b', enrollTitle(), o.map(x => x.student.givenName + 'さん').join('・'), o.length];
 }
 
 // 同意の前に開く全文（個別受講条件書・ご利用共通規約）。開くまで「同意します」に印を付けられない（2026-10-26 本人「実際に表示しないと同意できないように」）
@@ -55,8 +59,8 @@ function check() {
   return !missing.length;
 }
 
-function steps(i) {
-  return '<ol class="steps s3" aria-label="お申込みの進み具合">' + ['アカウント', 'お申込み', '入塾'].map((t, k) => `<li class="${k < i ? 'done' : k === i ? 'now' : ''}"${k === i ? ' aria-current="step"' : ''}><span class="n">${k < i ? '✓' : k + 1}</span><span class="t">${t}</span></li>`).join('') + '</ol>';
+function steps(i, o) {
+  return '<ol class="steps s3" aria-label="お申込みの進み具合">' + (isRenewal(o) ? ['ご確認', '同意', '完了'] : ['アカウント', 'お申込み', '入塾']).map((t, k) => `<li class="${k < i ? 'done' : k === i ? 'now' : ''}"${k === i ? ' aria-current="step"' : ''}><span class="n">${k < i ? '✓' : k + 1}</span><span class="t">${t}</span></li>`).join('') + '</ol>';
 }
 function condRows(esc, o) {
   const c = o.condition || {};
@@ -91,7 +95,7 @@ function agreeDocs(esc, o) {
 }
 function inputPage(ctx, o) {
   const { esc } = ctx, bad = () => '';
-  return `${steps(1)}<h1>入塾のお申込み</h1>${ctx.noticeHtml()}
+  return `${steps(isRenewal(o) ? 0 : 1, o)}<h1>${isRenewal(o) ? `${esc(o.student.givenName)}さんの契約の更新` : '入塾のお申込み'}</h1>${ctx.noticeHtml()}
   <form class="reg-form" data-form="enroll-input" novalidate>
     <fieldset class="reg-field cond-box"><legend>保護者さまの情報 <span class="req">必須</span></legend>
       <div class="row">${field(esc, 'guardianFamilyName', '姓', { ph: '例：山田', auto: 'family-name', max: 30 })}${field(esc, 'guardianGivenName', '名', { ph: '例：花子', auto: 'given-name', max: 30 })}</div>
@@ -113,18 +117,22 @@ function confirmPage(ctx, o) {
   const { esc } = ctx, d = draft;
   const left = unopened(o); if (left.length) agree = false;
   const zip = d.zip.trim().replace(/^(\d{3})(\d{4})$/, '$1-$2');
-  return `${steps(1)}<h1>入力内容の確認</h1>${ctx.noticeHtml()}
+  return `${steps(1, o)}<h1>入力内容の確認</h1>${ctx.noticeHtml()}
     <section class="reg-card"><div class="reg-card-head"><h2>保護者さまの情報</h2></div>${gridTable(esc, [['氏名', d.guardianFamilyName + ' ' + d.guardianGivenName], ['ふりがな', d.guardianFamilyKana + ' ' + d.guardianGivenKana], ['保護者|メールアドレス', data.guardian && data.guardian.email], ['保護者|電話番号', d.phone], ['住所', '〒' + zip + '\n' + d.address]])}</section>
     <section class="reg-card"><div class="reg-card-head"><h2>生徒さんの情報</h2></div>${gridTable(esc, [['氏名', d.familyName + ' ' + d.givenName], ['ふりがな', d.familyKana + ' ' + d.givenKana], ['学年', d.grade], ['学校', d.school]])}</section>
     ${condCard(esc, o, false)}
     <form class="reg-form" data-form="enroll-apply" novalidate>
       <section class="reg-card agree-card">${agreeDocs(esc, o)}
       <label class="choice"><input type="checkbox" name="agree" data-enroll-agree${agree ? ' checked' : ''}${left.length ? ' disabled' : ''}><span>共通規約と個別受講条件書の内容を確認し、同意します<small>同意する方：${esc(d.guardianFamilyName + ' ' + d.guardianGivenName)}（保護者）</small></span></label></section>
-      <div class="row"><button class="primary"${ctx.dis()}>同意して入塾を申し込む</button></div>
+      <div class="row"><button class="primary"${ctx.dis()}>${isRenewal(o) ? '同意する' : '同意して入塾を申し込む'}</button></div>
       <p class="small"><a href="javascript:void 0" data-action="enroll-back">入力画面に戻って直す</a></p></form>`;
 }
 function donePage(ctx, o) {
-  const { esc } = ctx;
+  const { esc } = ctx, next = open()[0];
+  if (isRenewal(o)) return `${steps(3, o)}<h1>同意を受け付けました</h1>
+    <section class="flow"><ol><li class="done"><div class="ft">${esc(o.student.givenName)}さんの共通規約と個別受講条件書</div><div class="fb">控えは「アカウント」の「契約・同意の控え」にあります。</div></li>
+      <li class="now"><div class="ft">${esc(jaMonth(o.fromMonth))}からの授業</div><div class="fb">新しい個別受講条件書の内容で行います。</div></li></ol></section>
+    <p>${next ? `<button class="primary" data-action="enroll-next">続けて${esc(next.student.givenName)}さんの内容を確かめる</button>` : '<a class="small-btn primary" href="#home">ホームへ</a>'}</p>`;
   return `${steps(3)}<h1>お申込みを受け付けました</h1>
     <section class="flow"><h2>このあとの流れ</h2><ol>
       <li class="done"><div class="ft">入塾のお申込み</div><div class="fb">控えは「お支払い」の「過去の契約・同意の控え」にあります。</div></li>
@@ -136,7 +144,7 @@ export function enrollPage(ctx) {
   if (data.error) return `<p class="notice error">${ctx.esc(data.error)}</p>`;
   const o = open()[0];
   if (step === 'done' && draft) { const applied = data.offers.find(x => x.id === draft.offerId); if (applied) return donePage(ctx, applied); }
-  if (!o) return `<h1>入塾のお申込み</h1><p class="muted">お申込みをお願いしているものはありません。</p><p><a href="#home">ホームへ</a></p>`;
+  if (!o) return `<h1>${enrollTitle()}</h1><p class="muted">お願いしているものはありません。</p><p><a href="#home">ホームへ</a></p>`;
   if (!draft || draft.offerId !== o.id) { initDraft(o); step = 'input'; agree = false; missing = []; opened = new Set(); }
   return step === 'confirm' ? confirmPage(ctx, o) : inputPage(ctx, o);
 }
@@ -185,6 +193,7 @@ export function enrollClick(ctx, a, b) {
   // 全文を開いたしるし。個別受講条件書は入れた氏名を宛名にして作る。共通規約は公開している全文
   if (a === 'enroll-cond') { opened.add('cond'); openCondDoc(ctx); if (step === 'confirm') ctx.render(); return true; }
   if (a === 'enroll-terms') { opened.add('terms'); window.open(b.href, '_blank', 'noopener'); if (step === 'confirm') ctx.render(); return true; }
+  if (a === 'enroll-next') { draft = null; step = 'input'; ctx.say(''); ctx.render(); scrollTo(0, 0); return true; }
   if (a !== 'enroll-back') return false;
   step = 'input'; ctx.say(''); ctx.render(); return true;
 }
