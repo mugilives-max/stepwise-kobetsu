@@ -2,7 +2,7 @@
 // ctx は app.js から渡す共通の道具（call / say / render / run / esc / busy / notice）。
 // 一覧はすっきり、直す・足す・生徒ごとの操作は押すと下から出る画面で（famSheet = { mode, id }）。
 import { sheet, rowButton, rowLink } from '/staff/ui.js?v=20261025-layout';
-import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-contracts';
+import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 const STATUS = { invited: ['warn', '招待前・登録待ち'], active: ['', '利用中'], stopped: ['gray', '停止'] };
 const STUDENT_STATUS = { enrolled: ['', '在籍'], paused: ['warn', '休会'], left: ['gray', '退会'] };

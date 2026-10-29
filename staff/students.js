@@ -4,7 +4,7 @@ import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
-import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-contracts';
+import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 
 let list = null, query = '', hub = null, hubFor = '';

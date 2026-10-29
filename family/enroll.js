@@ -1,7 +1,7 @@
 // 保護者の「入塾のお申込み」（#enroll。2026-10-18 本人決定。cf/v2/enrollment.mjs）。
 // 1 つの画面で: 保護者さまの情報 → 生徒さんの情報の確認 → 個別受講条件書・共通規約 → 確認 → 「同意して入塾を申し込む」。
 // 入力 → 確認 → 完了 の 3 画面（一般的な申込みの形）。同意者名は入れた保護者の氏名。申し込むとそのまま入塾。
-import { GRADES, normGrade } from '/assets/v2/grade-options.js?v=20261029-contracts';
+import { GRADES, normGrade } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 let data = null, step = 'input', draft = null, agree = false, missing = [], opened = new Set();
 export function resetEnroll() { data = null; step = 'input'; draft = null; agree = false; missing = []; opened = new Set(); }
 const jaMonth = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
