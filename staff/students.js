@@ -6,6 +6,7 @@ import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-vie
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
+import { renewalBox } from '/staff/families.js?v=20261029-ctrrenew';
 
 let list = null, query = '', hub = null, hubFor = '';
 let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）
@@ -280,6 +281,8 @@ function contracts(ctx, x) {
     `${esc(l.subject)}${l.kind && l.kind !== '通常' ? '（' + esc(l.kind) + '）' : ''}・${l.count}回・1回${l.minutes}分 ${yen(l.fee)}　${tag(P_STATUS[l.status] || [l.status, 'gray'])}${l.approvedAt ? `<small class="muted" style="display:block">${esc(consentText(l.approvedAt, l.approvedVia, ''))}</small>` : ''}`)));
   const o = ctr.enrollment && ctr.enrollment.offer;
   if (o && o.status === 'applied') h += '<h2>入塾のお申込み</h2>' + table([row('申込みの日', esc(jaAt(o.appliedAt))), row('同意', '共通規約・個別受講条件書')]);
+  // 契約の更新の案内も、ここから送れる（家族の画面と同じ欄。案内は家族に 1 通）
+  if (!x.student.trial && x.student.status !== 'left' && x.basic) h += renewalBox(ctx, x.basic.familyId, () => { ctr = null; });
   return h;
 }
 
