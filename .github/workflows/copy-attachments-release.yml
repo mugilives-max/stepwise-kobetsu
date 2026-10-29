@@ -1,0 +1,47 @@
+name: Copy attachments release
+on:
+  push:
+    branches: ['claude/copy-attachments-release-20261029']
+    paths: ['scripts/copy-attachments-release-request.json', 'scripts/release-copy-attachments.mjs', '.github/workflows/copy-attachments-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: stepwise-production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'mugilives-max/stepwise-kobetsu'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: release-control
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 413b818a582779b38dae821d8dddf3ccd0a9f019
+          path: release-source
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 08cc198855629b406b18394115c59289d0855714
+          path: baseline
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: release-source
+      - run: npm ci
+        working-directory: baseline
+      - name: Check pinned release
+        run: |
+          node --check release-control/scripts/release-copy-attachments.mjs
+      - name: Preserve records and perform explicitly requested operation
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: node release-control/scripts/release-copy-attachments.mjs
