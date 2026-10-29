@@ -7,6 +7,7 @@ import { fail, newId, iso, audit, selectIn } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { todayJst, nowHmJst, addDays, studentByLink } from './schedule.mjs';
+import { normGrade } from '../../assets/v2/grade-options.js';
 
 const STAFF_NOTE_KEYS = ['plannedUnit', 'understanding', 'pace', 'homeworkReview', 'homeworkAccuracy', 'nextFocus', 'memo'];
 // 選ぶ項目の値（表記がずれないように）。写した記録の自由な文字は、直さない限りそのまま残す
@@ -114,7 +115,7 @@ export const recordRoutes = {
     for (const h of hwRows.slice().reverse()) if (h.material && !materials.includes(h.material)) materials.push(h.material);
     return {
       lesson: { id: l.id, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, status: l.status, staffId: l.staffId, version: l.version },
-      student: { id: s.id, name: fullName(s), grade: s.grade },
+      student: { id: s.id, name: fullName(s), grade: normGrade(s.grade) },
       record: recordStaffView(r),
       homework: hwRows.filter(h => r && h.recordId === r.id).map(h => homeworkView(h, lessons)),
       openHomework: hwRows.filter(h => (!r || h.recordId !== r.id) && ['open', 'reported'].includes(h.status)).map(h => homeworkView(h, lessons)),

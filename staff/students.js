@@ -4,15 +4,16 @@ import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
-import { gradeOptions } from '/assets/v2/grade-options.js?v=20261025-layout';
+import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-contracts';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 
 let list = null, query = '', hub = null, hubFor = '';
 let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）
-export function resetStudents() { list = null; hub = null; hubFor = ''; wd = null; }
+let ctr = null; // 契約のタブ（students/contracts の答え。for = 生徒の id）
+export function resetStudents() { list = null; hub = null; hubFor = ''; wd = null; ctr = null; }
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
-const TABS = [['summary', '概要'], ['schedule', '予定'], ['records', '記録と宿題'], ['grades', '成績'], ['money', '計画と請求', true], ['basic', '基本情報', true]];
+const TABS = [['summary', '概要'], ['schedule', '予定'], ['records', '記録と宿題'], ['grades', '成績'], ['money', '計画と請求', true], ['contracts', '契約', true], ['basic', '基本情報', true]];
 const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['振込の連絡あり', 'warn'], paid: ['入金済み', 'ok'] };
 const PLAN = { draft: ['下書き', 'gray'], proposed: ['承認待ち', 'warn'], approved: ['承認', 'ok'], declined: ['見送り', 'gray'] };
 
@@ -67,7 +68,7 @@ export function studentsInput(ctx, name, el) {
 export const studentHubBar = () => hub && hub.student ? { title: hub.student.name, sub: [hub.student.grade || '', hub.student.status === 'paused' ? '休会' : hub.student.status === 'left' ? '退会' : ''].filter(Boolean).join('・'), right: '' } : { title: '生徒', sub: '', right: '' };
 export function studentPage(ctx, id, tab) {
   const { esc } = ctx;
-  if (hubFor !== id) { hubFor = id; hub = null; ctx.call('students/hub', { studentId: id }).then(r => { if (hubFor !== id) return; hub = r.ok ? r : { error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
+  if (hubFor !== id) { hubFor = id; hub = null; ctr = null; ctx.call('students/hub', { studentId: id }).then(r => { if (hubFor !== id) return; hub = r.ok ? r : { error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
   let h = '';
   if (!hub) return h + '<p class="muted">読み込んでいます…</p>';
   if (hub.error) return h + `<p class="notice error">${esc(hub.error)}</p>`;
@@ -75,7 +76,7 @@ export function studentPage(ctx, id, tab) {
   if (!tabs.some(t => t[0] === tab)) tab = 'summary';
   h += ctx.notice();
   h += '<div class="tabs2" role="tablist">' + tabs.map(([k, label]) => `<a role="tab" href="#student=${encodeURIComponent(s.id)}/${k}" class="${k === tab ? 'on' : ''}"${k === tab ? ' aria-selected="true"' : ''}>${label}</a>`).join('') + '</div>';
-  return h + ({ summary, schedule, records, grades, money, basic }[tab])(ctx, hub);
+  return h + ({ summary, schedule, records, grades, money, contracts, basic }[tab])(ctx, hub);
 }
 
 const lessonRow = (esc, l, href = '') => `<div class="lesson-row"><span class="t">${md(l.date)}<small>${l.start}・${l.minutes}分</small></span>
@@ -248,6 +249,38 @@ async function enrollDone(ctx, r, okText) {
   lastInvite = r.inviteUrl ? { id: r.enrollment.id, url: r.inviteUrl } : null;
   list = null; hub = null; hubFor = '';
   ctx.say(okText + (r.mailed === false ? '（メールはまだ送られていません。下の「招待のリンクをコピー」で保護者に渡してください）' : ''), r.mailed === false ? 'error' : 'ok');
+}
+
+// ---------- 契約（2026-10-29 本人「この生徒に関係する契約書をまとめて確認するためのタブ」） ----------
+// 共通規約・個別受講条件書・特別単価合意書・受講計画書・入塾のお申込みを、版と同意（いつ・どの方法で・だれが）つきで並べる。書面は「開く」で別のタブに
+const C_STATUS = { proposed: ['同意待ち', 'warn'], agreed: ['同意済み', 'ok'], replaced: ['前の版', 'gray'], ended: ['終了', 'gray'] };
+const P_STATUS = { proposed: ['承認待ち', 'warn'], approved: ['承認', 'ok'], declined: ['見送り', 'gray'] };
+const consentText = (at, via, who) => [at ? jaAt(at) : '', via, who].filter(Boolean).join('・');
+function contracts(ctx, x) {
+  const { esc } = ctx, id = x.student.id;
+  if (!ctr || ctr.for !== id) {
+    ctr = { for: id, loading: true };
+    ctx.call('students/contracts', { studentId: id }).then(r => { if (!ctr || ctr.for !== id) return; ctr = r.ok ? { for: id, ...r } : { for: id, error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); });
+  }
+  if (ctr.loading) return '<p class="muted">読み込んでいます…</p>';
+  if (ctr.error) return `<p class="notice error">${esc(ctr.error)}</p>`;
+  const tag = ([t, k]) => `<span class="tag ${k}">${t}</span>`, open = fid => fid ? `<button class="small-btn" data-action="gr-open" data-id="${esc(fid)}">書面を開く</button>` : '';
+  const row = (th, body, btn = '') => `<tr><th scope="row"><span>${th}</span></th><td><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span style="flex:1 1 220px;min-width:0">${body}</span>${btn}</div></td></tr>`;
+  const table = rows => `<table class="grid-table"><tbody>${rows.join('')}</tbody></table>`;
+  const t = ctr.terms, cur = t.current || {}, ag = t.agreed || {};
+  let h = '<h2>共通規約</h2>' + table([
+    row('今の版', esc(cur.version || '決めていません'), /^https:\/\//.test(cur.url || '') ? `<a class="small-btn" href="${esc(cur.url)}" target="_blank" rel="noopener">全文を開く</a>` : ''),
+    row('同意', ag.version ? `${esc(ag.version)}　${tag(ag.version === cur.version ? ['同意済み', 'ok'] : ['前の版', 'gray'])}<small class="muted" style="display:block">${esc(consentText(ag.at, ag.via, ag.consenterName))}</small>` : tag(['まだ', 'warn'])),
+  ]);
+  h += '<h2>個別受講条件書</h2>' + (ctr.conditions.length ? table(ctr.conditions.map(cd => row(`第${cd.no}版`,
+    `${esc(jaMonth(cd.fromMonth))}から・1回${cd.minutes}分 ${yen(cd.fee)}・${esc(cd.deliveryLabel)}　${tag(C_STATUS[cd.status] || [cd.status, 'gray'])}${cd.agreedAt ? `<small class="muted" style="display:block">同意 ${esc(consentText(cd.agreedAt, cd.agreedVia, cd.consenterName))}</small>` : ''}`, open(cd.docFileId)))) : '<p class="muted small">ありません。</p>');
+  if (ctr.specials.length) h += '<h2>特別単価合意書</h2>' + table(ctr.specials.map(sp => row(esc(sp.title) + (sp.no > 1 ? ` 第${sp.no}版` : ''),
+    `${md(sp.fromDate)}〜${md(sp.toDate)}・1回${sp.minutes}分 ${yen(sp.fee)}　${tag(C_STATUS[sp.status] || [sp.status, 'gray'])}${sp.agreedAt ? `<small class="muted" style="display:block">承認 ${esc(consentText(sp.agreedAt, sp.agreedVia, sp.consenterName))}</small>` : ''}`, open(sp.docFileId))));
+  if (ctr.plans.length) h += '<h2>受講計画書</h2>' + table(ctr.plans.map(l => row(`${md(l.startDate)}〜`,
+    `${esc(l.subject)}${l.kind && l.kind !== '通常' ? '（' + esc(l.kind) + '）' : ''}・${l.count}回・1回${l.minutes}分 ${yen(l.fee)}　${tag(P_STATUS[l.status] || [l.status, 'gray'])}${l.approvedAt ? `<small class="muted" style="display:block">${esc(consentText(l.approvedAt, l.approvedVia, ''))}</small>` : ''}`)));
+  const o = ctr.enrollment && ctr.enrollment.offer;
+  if (o && o.status === 'applied') h += '<h2>入塾のお申込み</h2>' + table([row('申込みの日', esc(jaAt(o.appliedAt))), row('同意', '共通規約・個別受講条件書')]);
+  return h;
 }
 
 // ---------- 退塾の手続き（2026-10-28 本人。共通規約 第22条） ----------

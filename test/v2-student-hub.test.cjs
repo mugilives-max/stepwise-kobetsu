@@ -28,3 +28,22 @@ test('the student screen gathers lessons, records, homework, grades, plans and b
   const tl = await h.ok('students/list', { auth: tAuth });
   assert.deepEqual([tl.families.length, tl.families[0].name, tl.families[0].students.map(s => s.name)], [1, '', ['架空 一郎']], '講師には担当の生徒だけ、家族は出さない');
 });
+
+// 生徒の画面の「契約」（2026-10-29 本人「この生徒に関係する契約書をまとめて確認するためのタブ」）
+test('the contracts tab lists the terms consent and every condition version with consent and document; managers only', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
+  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
+  const other = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '花子', baseRate30: 1500 })).student;
+  const c1 = (await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', studentContact: true, subjects: '数学', note: '', fromMonth: '2026-11' })).condition;
+  await h.ok('admin/conditions/record', { auth, id: c1.id, date: '2026-10-02', consenterName: '架空 保護者', consentedAt: '2026-10-02T12:00:00+09:00', via: 'LINE' });
+  await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 5000, deliveryMode: 'in_person', studentContact: true, subjects: '数学', note: '', fromMonth: '2026-12' });
+  await h.ok('admin/conditions/propose', { auth, studentId: other.id, minutes: 60, fee: 3000, deliveryMode: 'online', studentContact: true, subjects: '英語', note: '', fromMonth: '2026-11' });
+  const r = await h.ok('students/contracts', { auth, studentId: kid.id });
+  assert.deepEqual(r.conditions.map(x => [x.no, x.status, x.fee]), [[2, 'proposed', 5000], [1, 'agreed', 4500]], 'その生徒の条件書だけ、新しい版から');
+  assert.deepEqual([r.conditions[1].agreedVia, r.conditions[1].consenterName, !!r.conditions[1].docFileId], ['LINE', '架空 保護者', true]);
+  assert.ok(r.terms && 'agreed' in r.terms && 'current' in r.terms);
+  assert.deepEqual([r.specials, r.plans, r.enrollment], [[], [], null]);
+  const tAuth = await h.staffWith(auth, ['teacher'], 't@example.invalid');
+  assert.equal((await h.call('students/contracts', { auth: tAuth, studentId: kid.id })).error.code, 'forbidden', '講師には出さない');
+});
