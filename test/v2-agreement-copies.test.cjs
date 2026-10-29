@@ -66,3 +66,39 @@ test('a copy is mailed for an approved special rate and an approved plan, but no
   assert.equal(m.length, 1, '教室が記録した承諾も控えを送る');
   assert.match(m[0].body, /国語・11\/1〜11\/30）を承認いただきました。\n承認：10月19日・電話・架空 保護者\n内容：4回/);
 });
+
+// 書面そのものを付ける（2026-10-29 本人「その形で進めましょう」）。記録には書面の id だけ、送るときに中身を Apps Script に渡す
+test('the copy mail carries the agreed document; the relay receives its content; the wording says attached only after the switch', async () => {
+  const { h, auth, kid, parent, toParent } = await world();
+  const c1 = (await h.ok('admin/conditions/propose', { auth, studentId: kid.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', studentContact: true, subjects: '数学', note: '', fromMonth: '2026-11' })).condition;
+  let n = h.mails().length;
+  await h.ok('family/conditions/agree', { consenterName: '架空 保護者', auth: parent, id: c1.id, agree: true });
+  let m = toParent(n)[0];
+  const doc = h.rows("select id, name from files where refType = 'condition' and refId = ? and status = 'ready' order by createdAt desc, rowid desc", c1.id)[0];
+  assert.deepEqual(m.attachFiles, [doc.id], '同意した版の書面を付ける');
+  assert.doesNotMatch(m.body, /添付しています/, '入れ替えを確かめるまでは「添付」と書かない');
+  const row = h.rows("select id, payload from effects where kind = 'mail' order by id desc")[0];
+  assert.doesNotMatch(row.payload, /base64/, '記録には中身を残さない');
+  // 送るときに中身を読んで渡す（手元のテストは切り替え前の扱いなので held を外して送る）
+  const { deliverEffects } = await import('../cf/v2/effects.mjs');
+  h.db2._sqlite.prepare("update effects set status = 'pending', deliveryState = '', error = '' where id = ?").run(row.id);
+  let sent = null;
+  await deliverEffects({ ...h.env, GAS_URL: 'https://example.invalid/relay', SYNC_KEY: 'synthetic-only' }, h.db2, [{ id: row.id, item: { ...JSON.parse(row.payload), held: false } }], async (_u, init) => { const items = JSON.parse(init.body).items; sent = items[0]; return { ok: true, status: 200, json: async () => ({ ok: true, results: [{ id: items[0].deliveryId, status: 'sent' }] }) }; }, h.clock);
+  assert.equal(sent.attachFiles, undefined);
+  assert.equal(sent.attachments.length, 1);
+  assert.equal(sent.attachments[0].name, doc.name);
+  assert.match(sent.attachments[0].mimeType, /^text\/html/);
+  assert.match(Buffer.from(sent.attachments[0].base64, 'base64').toString('utf8'), /個別受講条件書/);
+  // 入れ替えを確かめたら「添付しています」。受講計画書は承認した版の書面を作って付ける
+  h.db2._sqlite.prepare("insert into settings (key, value, updatedAt) values ('mailAttachments', 'on', '2026-10-29T00:00:00Z')").run();
+  const line = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-11-01', endDate: '2026-11-30', count: 4, minutes: 90, fee: 4500 })).line;
+  await h.ok('billing/plans/send', { auth, familyId: kid.familyId });
+  const cur = h.rows('select * from planLines where id = ?', line.id)[0];
+  n = h.mails().length;
+  await h.ok('family/plans/decide', { consenterName: '架空 保護者', auth: parent, id: line.id, version: cur.version, approvedCount: 4 });
+  m = toParent(n)[0];
+  assert.match(m.body, /承認した書面の控えを、このメールに添付しています/);
+  const pf = h.rows("select id, name, refId from files where refType = 'plan' order by createdAt desc")[0];
+  assert.deepEqual([m.attachFiles, pf.refId], [[pf.id], line.id + ':' + h.rows('select version from planLines where id = ?', line.id)[0].version]);
+  assert.match(pf.name, /^受講計画書_2026-11_架空 一郎_数学\.html$/);
+});

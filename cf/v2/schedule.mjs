@@ -126,10 +126,10 @@ export async function calendarEffect(c, kind, lesson, studentName) {
 // 保護者あての短いお知らせ（中身は保護者ページで見る）。切り替え前は held
 // page: 保護者ページの開く画面（例 'confirm' → …/family/#confirm。ログインしていなければ、ログインのあとその画面へ）
 export const FAMILY_URL = 'https://www.stepwise-education.jp/family/';
-export async function familyNotice(c, studentId, subject, text, page = 'money', notice = null) {
+export async function familyNotice(c, studentId, subject, text, page = 'money', notice = null, extra = {}) {
   const s = await c.db.prepare('select f.email, f.testOnly, f.status from students s join families f on f.id = s.familyId where s.id = ?').bind(studentId).first();
   if (!s || !s.email || s.status !== 'active') return false;
-  c.effects.push({ kind: 'mail', to: s.email, name: 'ステップワイズ個別指導', subject: '【ステップワイズ】' + subject, body: text + (text.includes('保護者ページ') ? '' : '\n保護者ページでご確認ください。') + '\n\n確認する：\n' + FAMILY_URL + (page ? '#' + page : '') + '\n\nご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。', replyTo: 'mugilives@gmail.com', notice, testOnly: !!s.testOnly, audience: 'family', held: !(await isLive(c)) });
+  c.effects.push({ kind: 'mail', to: s.email, name: 'ステップワイズ個別指導', subject: '【ステップワイズ】' + subject, body: text + (text.includes('保護者ページ') ? '' : '\n保護者ページでご確認ください。') + '\n\n確認する：\n' + FAMILY_URL + (page ? '#' + page : '') + '\n\nご不明な点・変更のご希望は、いつものLINEまたは mugilives@gmail.com へご連絡ください。', replyTo: 'mugilives@gmail.com', notice, testOnly: !!s.testOnly, audience: 'family', held: !(await isLive(c)) , ...extra});
   return true;
 }
 // Bind the exact notice to the lessons it covers (including the MCP sender).

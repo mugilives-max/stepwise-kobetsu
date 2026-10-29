@@ -56,6 +56,8 @@ export const effectsAdminRoutes = {
   'admin/effects/test': async (c, b) => {
     const me = await requireStaff(c, b, 'manager');
     const item = { kind: 'mail', to: 'TEACHER', subject: '[ステップワイズ] 送信の確認', body: `${me.name} さんがスタッフ画面から送った確認のメールです。届いていれば、メールとカレンダーの送る先は生きています。\n送った時刻: ${new Date(c.now + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}`, audience: 'staff' };
+    // ファイルが付いて届けば、送る先の Apps Script は添付に対応した版（2026-10-29）
+    item.attachments = [{ name: '添付の確認.txt', mimeType: 'text/plain', base64: btoa(unescape(encodeURIComponent('このファイルが付いていれば、控えの書面もメールに付けて送れます。'))) }];
     const queued = await recordEffects(c.db, [item], c.now);
     const r = await deliverEffects(c.env, c.db, queued,fetch,c.now);
     await audit(c, 'effectsTest', '', { sent: r.sent, error: r.error || r.skipped || '' });

@@ -204,6 +204,13 @@ function effectsSendMail_(item) {
   var options = { to: to, subject: String(item.subject || ''), body: String(item.body || '') };
   if (item.name) options.name = String(item.name);
   if (item.replyTo) options.replyTo = String(item.replyTo);
+  // 合意した書面の控えを付ける（2026-10-29 本人）。Worker が置き場所から読んで base64 で渡す。3 件・合わせて 5MB まで
+  var files = Array.isArray(item.attachments) ? item.attachments.slice(0, 3) : [], total = 0;
+  if (files.length) options.attachments = files.map(function (a) {
+    var bytes = Utilities.base64Decode(String(a.base64 || '')); total += bytes.length;
+    if (total > 5 * 1024 * 1024) throw new Error('添付が大きすぎます');
+    return Utilities.newBlob(bytes, String(a.mimeType || 'application/octet-stream'), String(a.name || 'file'));
+  });
   MailApp.sendEmail(options);
 }
 
