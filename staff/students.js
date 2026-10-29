@@ -178,6 +178,7 @@ function basic(ctx, x) {
     <details style="margin-top:8px"><summary class="small">保護者ページを使わずに入塾にする</summary><div class="row" style="margin-top:8px"><button data-action="trial-enroll" data-id="${esc(s.id)}"${ctx.dis()}>入塾にする</button></div><p class="small muted" style="margin:6px 0 0">共通規約・個別受講条件書の同意は、家族の画面で別に記録してください。</p></details></div>` : '';
   return trialBox + `<h2>生徒</h2><table class="grid-table"><tbody>${row('ふりがな', s.kana)}${row('学年', s.grade)}${row('学校', b.school)}${row('受講科目', b.subjects)}${row('入塾日', b.enrolledOn)}${row('授業の形式', s.deliveryMode === 'online' ? 'オンライン' : s.deliveryMode === 'in_person' ? '対面' : '')}${row('授業料（90分）', (Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) ? yen(Number(b.baseFee90 || 0) || Number(b.baseRate30 || 0) * 3) + '／90分' : '')}${row('個別受講条件書', b.condition && b.condition.latest ? `第${b.condition.latest.no}版 1回${b.condition.latest.minutes}分 ${yen(b.condition.latest.fee)}・${b.condition.latest.deliveryLabel}（${b.condition.needs ? '同意待ち' : '同意済み'}）` : '')}${row('メモ', b.note)}${linkRow}</tbody></table>
     <h2>家族</h2><table class="grid-table"><tbody>${row('家族', b.familyName)}${row('保護者', b.guardianName)}${row('メール', b.email)}${row('電話', b.phone)}${row('保護者ページ', b.familyStatus === 'active' ? '登録済み' : b.familyStatus === 'stopped' ? '停止' : 'まだ')}</tbody></table>
+    ${enrollRows(x, row)}
     <h2>その人の目で見る</h2>
     <div class="row"><button data-action="pv-open" data-kind="student" data-id="${esc(s.id)}">生徒ページを見る</button><button data-action="pv-open" data-kind="family" data-id="${esc(b.familyId)}">保護者ページを見る</button></div>
     <p style="margin-top:12px"><a class="small-btn" href="#family=${encodeURIComponent(b.familyId)}">直す・招待・専用リンク（家族の画面）</a></p>` + leaveBox(ctx, x);
@@ -213,16 +214,22 @@ function offerForm(ctx, x, again) {
     <div class="row"><button class="primary"${ready ? ctx.dis() : ' disabled'}>${again ? 'この条件で送り直す' : '入塾の案内を送る'}</button></div>
     <p class="small muted" style="margin:0">送ると保護者にメールが届きます。保護者が申し込むと、そのまま入塾になります。</p></form>`;
 }
+// 入塾のお申込み（基本情報）。保護者・電話・入塾日は上の表にあるので、申込みの日・住所・同意だけ
+function enrollRows(x, row) {
+  const o = x.enrollment && x.enrollment.offer;
+  if (!o || o.status !== 'applied') return '';
+  const a = o.application || {};
+  return `<h2>入塾のお申込み</h2><table class="grid-table"><tbody>${row('申込みの日', jaAt(o.appliedAt))}${row('住所', a.guardian && a.guardian.address)}${row('同意', '共通規約・個別受講条件書')}</tbody></table>`;
+}
 function enrollCard(ctx, x) {
   const { esc } = ctx, e = x.enrollment, o = e.offer, s = x.student, cond = (x.basic.condition && x.basic.condition.latest) || null;
   const row = (k, v) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`;
   const condTable = c => `<div class="cond-box cond-view"><h3 class="info-head">受講条件</h3><dl class="info-table">${row('適用期間', jaMonth(c.fromMonth) + 'から、条件変更日まで')}${row('1回', c.minutes + '分')}${row('1回の授業料', yen(c.fee) + '（税込）')}${row('実施形態', MODE[c.deliveryMode] || '')}${c.subjects ? row('科目', c.subjects) : ''}</dl></div>`;
+  // 入塾したあとは大きな枠を出さない（2026-10-29 本人「入塾手続きが完了したのにずっとこれが表示されている…ずっとこの画面を表示するわけにもいかない」）。
+  // 7日間だけ1行で知らせ、お申込みの内容は基本情報に置く（enrollRows）
   if (o && o.status === 'applied') {
-    if (Date.parse(o.appliedAt) < Date.parse(x.today) - 30 * 86400e3) return '';
-    const a = o.application || {};
-    return `<section class="reg-card"><div class="reg-card-head"><h2>入塾しました</h2></div>${enrollSteps(4)}
-      <dl class="info-table">${row('申込みの日', jaAt(o.appliedAt))}${row('保護者', (a.guardian && a.guardian.name) || o.consenterName)}${a.guardian ? row('電話', a.guardian.phone) + row('住所', a.guardian.address) : ''}${row('入塾日', a.enrolledOn || '')}${row('同意', '共通規約・個別受講条件書')}</dl>
-      <div class="row" style="margin-top:8px"><a class="small-btn primary" href="#plans">${esc(jaMonth(o.fromMonth))}の計画を作る</a></div></section>`;
+    if (Date.parse(o.appliedAt) < Date.parse(x.today) - 7 * 86400e3) return '';
+    return `<div class="notice ok" style="margin-top:12px">${esc(jaAt(o.appliedAt))}に入塾しました　<a href="#student=${encodeURIComponent(s.id)}/basic">お申込みの内容</a></div>`;
   }
   if (!s.trial) return '';
   if (!o) return `<section class="reg-card"><div class="reg-card-head"><h2>入塾の手続き</h2></div>${enrollSteps(1)}${offerForm(ctx, x, false)}</section>`;
