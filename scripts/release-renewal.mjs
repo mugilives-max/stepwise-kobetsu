@@ -81,11 +81,11 @@ try{
  async function assertMigrated(state){
   same(await applied(),localMigrations,'Migration set differs from reviewed source.');
   const migrationRows=await rows('SELECT * FROM d1_migrations ORDER BY id');
-  same(migrationRows.filter(r=>r.name!==migration),state.migrationRows,'Existing migration history changed.');
+  same(migrationRows.filter(r=>r.name!==migration),state.migrationRows.filter(r=>r.name!==migration),'Existing migration history changed.');
   check(migrationRows.filter(r=>r.name===migration).length===1,'Expected migration not recorded once.');
   const current=await columnsNow();
   same(Object.keys(current).sort(),[...Object.keys(state.columns),...addedTables].sort(),'Unexpected schema change.');
-  for(const table of Object.keys(state.columns))same(current[table],[...state.columns[table],...(addedColumns[table]||[])],'Existing columns changed: '+table);
+  for(const table of Object.keys(state.columns))same(current[table],[...state.columns[table],...(addedColumns[table]||[]).filter(n=>!state.columns[table].includes(n))],'Existing columns changed: '+table);
   for(const table of addedTables)check((await rows('SELECT count(*) n FROM '+q(table)))[0].n===0,'New table has unexpected records.');
   check((await rows("SELECT count(*) n FROM enrollmentOffers WHERE kind<>'enroll'"))[0].n===0,'New column has unexpected values.');
   return assertRecordsPreserved(state.columns,state.data,await snapshot(state.columns),'Existing contract, consent, payroll, registration or other records changed. Stop for review.').activity.map(a=>a.table);
@@ -107,14 +107,18 @@ try{
   stage='read-only production preflight';before=await deployed();const raw=await rawWorker();
   await modulesMatch(raw,baseline,'baseline');
   const names=await applied();check(new Set(names).size===names.length&&names.every(n=>localMigrations.includes(n)),'Unknown migration history.');
-  same(localMigrations.filter(n=>!names.includes(n)),[migration],'Only the additive offer kind migration may be pending.');
+  // 2026-10-29: the first publish (run 40820467192) applied 0036 and then stopped because a lesson was edited live before the Worker was published.
+  // Resume: 0036 may already be recorded once (with enrollmentOffers.kind present and every offer 'enroll'); nothing else may be pending.
+  var alreadyMigrated=names.includes(migration);
+  same(localMigrations.filter(n=>!names.includes(n)),alreadyMigrated?[]:[migration],'Only the additive offer kind migration may be pending.');
+  if(alreadyMigrated){check((await rows('SELECT count(*) n FROM d1_migrations WHERE name='+q(migration).replaceAll('"',"'")))[0].n===1,'Expected migration not recorded once.');check((await rows("SELECT count(*) n FROM pragma_table_info('enrollmentOffers') WHERE name='kind'"))[0].n===1&&(await rows("SELECT count(*) n FROM enrollmentOffers WHERE kind<>'enroll'"))[0].n===0,'Applied migration is not in the expected state.');}
   const columns=await columnsNow();
   check(['families','students','conditions','termsConsents','termsVersions','authChallenges','staff','employmentProfiles','employmentContracts','employmentEvents','staffRegistrationRequests','staffRegistrationState','staffRegistrationReviews','workDays','payrollMonths','payrollItems'].every(t=>columns[t]),'Required existing tables missing.');
   state={columns,data:await snapshot(columns),migrationRows:await rows('SELECT * FROM d1_migrations ORDER BY id')};
   settings=await cf('/workers/scripts/'+worker+'/settings');
   if(request.operation==='inspect'){
    same(before,await deployed(),'Concurrent deployment during inspection.');
-   console.log(JSON.stringify({operation:'inspect',source:sourceSha,baseline:base,workerVersion:before.versionId,baselineModulesMatch:true,pendingMigrations:[migration],tablesChecked:Object.keys(columns).length,privateBucket:true,productionWrites:false}));
+   console.log(JSON.stringify({operation:'inspect',source:sourceSha,baseline:base,workerVersion:before.versionId,baselineModulesMatch:true,pendingMigrations:alreadyMigrated?[]:[migration],alreadyMigrated,tablesChecked:Object.keys(columns).length,privateBucket:true,productionWrites:false}));
   }else{
    stage='verified private backup';
    runWrangler(source,['d1','export','DB2','--remote','--config','cf/wrangler.jsonc','--output',join(dir,'db2.sql')]);
@@ -127,7 +131,8 @@ try{
    assertRecordsPreserved(state.columns,state.data,await snapshot(state.columns),'Records changed before migration; stop.');
    same(state.migrationRows,await rows('SELECT * FROM d1_migrations ORDER BY id'),'Migrations changed before publication.');
    stage='apply additive offer kind migration 0036';
-   runWrangler(source,['d1','migrations','apply','DB2','--remote','--config','cf/wrangler.jsonc']);
+   if(alreadyMigrated)console.log(JSON.stringify({migration,alreadyApplied:true}));
+   else runWrangler(source,['d1','migrations','apply','DB2','--remote','--config','cf/wrangler.jsonc']);
    await assertMigrated(state);
    await save('manifest-migrated.json',Buffer.from(JSON.stringify({...manifest,migration,existingRecordsPreserved:true})));
    same(before,await deployed(),'Concurrent Worker deployment after migration.');
