@@ -69,8 +69,8 @@ export function termsPage(ctx) {
   if (terms.error) return h + `<p class="notice error">${esc(terms.error)}</p>`;
   const t = terms.terms, latest = termsSite?.versions?.[0];
   const open = (url, label) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`;
-  const asked = id => terms.requests.find(r => r.familyId === id);
-  const state = fm => fm.termsVersion === t.version ? 'agreed' : asked(fm.id) ? 'asked' : 'not';
+  const asked = id => terms.requests.find(r => r.familyId === id), renewing = id => (terms.renewals || []).find(r => r.familyId === id);
+  const state = fm => fm.termsVersion === t.version ? 'agreed' : asked(fm.id) || renewing(fm.id) ? 'asked' : 'not';
   // 規約を決める確認（別の画面）
   if (termsStep === 'decide' && latest) {
     const first = !t.version;
@@ -123,7 +123,7 @@ export function termsPage(ctx) {
     else {
       const rowOf = fm => {
         const s = state(fm), r = asked(fm.id);
-        const sub = s === 'agreed' ? esc(jaDay(fm.termsAcceptedAt)) : s === 'asked' ? `${esc(jaDay(r.requestedAt))}${r.mailed ? '・メールも送信' : ''}` : fm.hasPassword ? '' : '保護者ページに未登録';
+        const sub = s === 'agreed' ? esc(jaDay(fm.termsAcceptedAt)) : s === 'asked' ? (r ? `${esc(jaDay(r.requestedAt))}${r.mailed ? '・メールも送信' : ''}` : `${esc(jaDay(renewing(fm.id).offeredAt))}・契約の更新で`) : fm.hasPassword ? '' : '保護者ページに未登録';
         return s === 'not'
           ? `<label class="todo-row" style="grid-template-columns:auto minmax(0,1fr);cursor:pointer"><input type="checkbox" name="fam" value="${esc(fm.id)}"${termsPick.includes(fm.id) ? ' checked' : ''}><span class="v"><span class="lbl">${esc(fm.name)}</span>${sub ? `<small>${sub}</small>` : ''}</span></label>`
           : `<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#family=${esc(fm.id)}"><span class="v"><span class="lbl">${esc(fm.name)}</span><small>${s === 'agreed' ? '<span class="tag ok">同意済み</span> ' : '<span class="tag warn">お願い中</span> '}${sub}</small></span><span class="go" aria-hidden="true">›</span></a>`;
@@ -137,7 +137,7 @@ export function termsPage(ctx) {
   // 3. めったに使わないもの
   h += `<div class="group" style="margin-top:20px"><a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="https://www.stepwise-education.jp/terms/" target="_blank" rel="noopener"><span class="v"><span class="lbl">サイトの共通規約</span></span><span class="go" aria-hidden="true">›</span></a></div>`;
   if (terms.history.length) h += `<details style="margin-top:12px"><summary>同意の記録（新しい${terms.history.length}件）</summary><div class="group">` + terms.history.map(x => `<div class="evrow"><span class="t"><small>${esc(jaDay(x.acceptedAt))}</small></span><span class="b"><span class="nm">${esc(x.familyName)}</span><small>${esc(x.version)}・${esc(x.via)}・同意者：${esc(x.consenterName || '記録なし')}${x.actorKind === 'staff' ? `（${esc(x.recordedByName || '教室')}が記録）` : ''}${x.note ? '・' + esc(x.note) : ''}</small></span><span></span></div>`).join('') + '</div></details>';
-  const openReq = termsFams ? termsFams.filter(fm => state(fm) === 'asked') : [];
+  const openReq = termsFams ? termsFams.filter(fm => state(fm) === 'asked' && asked(fm.id)) : []; // 取り下げられるのは規約だけのお願い（契約の更新は家族の画面から）
   if (openReq.length) h += `<details style="margin-top:12px"><summary>同意のお願いを取り下げる</summary><p class="small muted">お願いした記録は残ります。</p><div class="group">${openReq.map(fm => `<div class="evrow" style="grid-template-columns:minmax(0,1fr) auto"><span class="b"><span class="nm">${esc(fm.name)}</span></span><button type="button" class="small-btn" data-action="terms-withdraw" data-id="${esc(fm.id)}"${ctx.dis()}>取り下げる</button></div>`).join('')}</div></details>`;
   return h;
 }

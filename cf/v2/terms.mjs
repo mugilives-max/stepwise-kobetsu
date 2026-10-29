@@ -73,7 +73,9 @@ export const termsRoutes = {
     const total = fam.reduce((n, r) => n + r.n, 0), agreed = terms.version ? fam.filter(r => r.termsVersion === terms.version).reduce((n, r) => n + r.n, 0) : 0;
     const history = (await c.db.prepare('select t.*, f.name familyName from termsConsents t join families f on f.id = t.familyId order by t.id desc limit 50').all()).results;
     const requests = terms.version ? (await c.db.prepare("select familyId, requestedAt, requestedByName, note, mailed from termsRequests where version = ? and status = 'open' order by requestedAt").bind(terms.version).all()).results : [];
-    return { terms, catalogue: (await c.db.prepare('select version,title,url,fromDate,note,contentHash,registeredAt from termsVersions order by registeredAt desc').all()).results, families: { total, agreed }, requests, history: history.map(h => ({ id: h.id, familyName: h.familyName, version: h.version, acceptedAt: h.acceptedAt, via: h.via, actorKind: h.actorKind, note: h.note, consenterName: h.consenterName, recordedAt: h.recordedAt, recordedByName: h.recordedByName })) };
+    // 契約の更新（規約と個別受講条件書をまとめて案内）を案内中の家族。家族ごとの一覧で「ご案内中」に数える
+    const renewals = (await c.db.prepare("select familyId, min(offeredAt) offeredAt from enrollmentOffers where kind = 'renewal' and status = 'offered' group by familyId").all()).results;
+    return { terms, catalogue: (await c.db.prepare('select version,title,url,fromDate,note,contentHash,registeredAt from termsVersions order by registeredAt desc').all()).results, families: { total, agreed }, requests, renewals, history: history.map(h => ({ id: h.id, familyName: h.familyName, version: h.version, acceptedAt: h.acceptedAt, via: h.via, actorKind: h.actorKind, note: h.note, consenterName: h.consenterName, recordedAt: h.recordedAt, recordedByName: h.recordedByName })) };
   },
   // 使う規約（今の版）を決める。決めただけでは、今の家族に同意のお願いは出ない（お願いは admin/terms/request）
   'admin/terms/set': async (c, b) => {
