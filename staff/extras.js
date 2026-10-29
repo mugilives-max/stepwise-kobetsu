@@ -4,7 +4,7 @@
 import { sheet, ICON } from '/staff/ui.js?v=20261025-layout';
 
 let termsStep = '', termsFams = null, termsSite = null, termsPick = []; // 共通規約: '' | 'decide'（使う規約を決める確認）| 'request'（同意をお願いする確認）。termsPick: お願いする家族
-let terms = null, effects = null, effOpen = 0, backups = null;
+let terms = null, effects = null, effOpen = 0, backups = null, effTab = 'mail'; // effTab: 送信の記録のタブ（mail / calendar）
 export function resetExtras() { termsStep = ''; termsPick = []; termsFams = null; termsSite = null; terms = null; effects = null; effOpen = 0; backups = null; }
 export function leaveExtras() { effOpen = 0; termsStep = ''; effects = null; } // 開き直すたびに送信の記録を読み直す
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ''}</svg>`;
@@ -149,10 +149,14 @@ export function effectsPage(ctx) {
   let h = ctx.notice();
   if (effects.loading) return h + '<p class="muted" style="margin-top:20px">読み込んでいます…</p>';
   if (effects.error) return h + `<p class="notice error">${esc(effects.error)}</p>`;
+  // メールとカレンダーをタブで分ける（2026-10-29 本人）。送れなかったものの数は、タブの名前に添える
+  const isMail = x => x.kind === 'mail', pick = list => list.filter(x => (effTab === 'mail') === isMail(x)), failed = pick(effects.failed), recent = pick(effects.recent);
+  const nFail = k => effects.failed.filter(x => (k === 'mail') === isMail(x)).length;
+  h += '<div class="tabs2" role="tablist">' + [['mail', 'メール'], ['calendar', 'カレンダー']].map(([k, label]) => `<a role="tab" href="#effects" data-action="eff-tab" data-tab="${k}" class="${k === effTab ? 'on' : ''}"${k === effTab ? ' aria-selected="true"' : ''}>${label}${nFail(k) ? ` <span class="count">${nFail(k)}</span>` : ''}</a>`).join('') + '</div>';
   const row = x => `<button type="button" class="irow" data-action="eff-open" data-id="${x.id}"><span class="b"><b>${esc(x.subject || x.label)}</b><small>${esc(x.label)}${x.to ? '・' + esc(x.to) : ''}・${jst(x.createdAt)}${['unknown','sending'].includes(x.deliveryState) ? '・<span class="tag warn">送信結果の確認が必要</span>' : x.status === 'failed' ? `・<span class="tag danger">送れなかった</span>` : x.status === 'pending' ? '・<span class="tag warn">止まっている</span>' : ''}</small></span><span class="go">›</span></button>`;
-  h += `<div class="sec-title">送れなかったもの${effects.failed.length ? ` <span class="count">${effects.failed.length}</span>` : ''}${effects.failed.length ? `<button class="small-btn primary" style="margin-left:auto" data-action="eff-retry-all"${ctx.dis()}>全部送り直す</button>` : ''}</div>`;
-  h += effects.failed.length ? '<div class="group">' + effects.failed.map(row).join('') + '</div>' : '<p class="muted small">ありません。</p>';
-  h += '<div class="sec-title">最近送ったもの</div>' + (effects.recent.length ? '<div class="group">' + effects.recent.map(row).join('') + '</div>' : '<p class="muted small">直近 30 日に送ったものはありません。</p>');
+  h += `<div class="sec-title">送れなかったもの${failed.length ? ` <span class="count">${failed.length}</span>` : ''}${failed.length ? `<button class="small-btn primary" style="margin-left:auto" data-action="eff-retry-all"${ctx.dis()}>全部送り直す</button>` : ''}</div>`;
+  h += failed.length ? '<div class="group">' + failed.map(row).join('') + '</div>' : '<p class="muted small">ありません。</p>';
+  h += '<div class="sec-title">最近送ったもの</div>' + (recent.length ? '<div class="group">' + recent.map(row).join('') + '</div>' : '<p class="muted small">直近 30 日に送ったものはありません。</p>');
   if (effects.dismissed) h += `<p class="small muted">送らなかったもの ${effects.dismissed}件（切り替え前・テスト用・取り下げ）</p>`;
   h += `<p><button class="small-btn" data-action="eff-test"${ctx.dis()}>テスト送信（代表あてに 1 通）</button></p>`;
   h += backupHtml(ctx);
@@ -216,6 +220,7 @@ export async function extrasClick(ctx, a, b) {
     return true;
   }
   if (a === 'eff-open') { effOpen = Number(b.dataset.id); ctx.say(''); return true; }
+  if (a === 'eff-tab') { effTab = b.dataset.tab === 'calendar' ? 'calendar' : 'mail'; effOpen = 0; return true; }
   if (a === 'eff-close') { effOpen = 0; return true; }
   if (a === 'eff-test') {
     r = await ctx.call('admin/effects/test');
@@ -228,7 +233,7 @@ export async function extrasClick(ctx, a, b) {
     return true;
   }
   if (a === 'eff-retry' || a === 'eff-retry-all') {
-    const ids = a === 'eff-retry' ? [Number(b.dataset.id)] : effects.failed.filter(x=>x.canRetry).map(x => x.id);
+    const ids = a === 'eff-retry' ? [Number(b.dataset.id)] : effects.failed.filter(x => x.canRetry && (effTab === 'mail') === (x.kind === 'mail')).map(x => x.id); // 全部送り直すは、開いているタブの分だけ
     r = await ctx.call('admin/effects/retry', { ids });
     if (r.ok) { effects = null; effOpen = 0; ctx.say((r.failed||r.unknown) ? `${r.sent}件送信、${r.failed||0}件失敗、${r.unknown||0}件は結果不明です。${r.error}` : `${r.sent}件を送りました${r.dismissed ? '。変更・完了した対象は送信を取り下げました' : ''}`, (r.failed||r.unknown) ? 'error' : 'ok'); }
   } else if (a === 'eff-dismiss') {

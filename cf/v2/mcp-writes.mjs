@@ -17,6 +17,7 @@ import { fail, audit, newId, iso, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
 import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
+import { normGrade } from '../../assets/v2/grade-options.js';
 
 const MAX_ITEMS = 30;
 const RID = /^[A-Za-z0-9._:-]{8,80}$/, KEY = /^[A-Za-z0-9._:-]{1,40}$/;
@@ -42,7 +43,7 @@ function checkScope(c, s) {
   if (!c.serviceWrite) return; // スタッフの画面から呼んだときは範囲を絞らない
   if (scopeOf(c) === 'test' && !isTestStudent(s, { testOnly: s.familyTestOnly })) fail('outOfScope', 'いまはテスト用の生徒（名字が【テスト】）だけ登録できます（V2_SERVICE_WRITE_SCOPE）', 403);
 }
-const studentLabel = s => ({ id: s.id, name: fullName(s), grade: s.grade, trial: !!s.trial });
+const studentLabel = s => ({ id: s.id, name: fullName(s), grade: normGrade(s.grade), trial: !!s.trial });
 
 // ---- 冪等の記録 ----
 async function beginRequest(c, requestId, kind, input) {
@@ -330,7 +331,7 @@ export const mcpWriteRoutes = {
     const grade = String(b.grade || '').trim().slice(0, 20), note = String(b.note || '').trim().slice(0, 1000);
     // 同じ名前の体験生がもういれば知らせる（二重登録を避ける。登録はしない）
     const same = (await c.db.prepare("select id, familyName, givenName, grade from students where trial = 1 and familyName = ? and givenName = ? and status <> 'left'").bind(familyName, givenName).all()).results;
-    const preview = { familyName, givenName, grade, family: familyName + 'さん（メールなし・保護者ページなし・お知らせは届かない）', studentPage: '専用リンクは作らない（生徒ページは管理画面の「専用リンクを作り直す」で使えるようになる）', sameNameTrials: same.map(x => ({ id: x.id, grade: x.grade })) };
+    const preview = { familyName, givenName, grade, family: familyName + 'さん（メールなし・保護者ページなし・お知らせは届かない）', studentPage: '専用リンクは作らない（生徒ページは管理画面の「専用リンクを作り直す」で使えるようになる）', sameNameTrials: same.map(x => ({ id: x.id, grade: normGrade(x.grade) })) };
     if (b.dryRun === true) return { dryRun: true, ...preview };
     const req = await beginRequest(c, b.requestId, 'trialCreate', { familyName, givenName, grade, note });
     if (req.status === 'done') return { ...parse(req.result), repeated: true };

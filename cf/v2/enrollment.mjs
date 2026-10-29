@@ -145,7 +145,7 @@ export const enrollmentRoutes = {
       if (r.status === 'applied' && r.appliedAt < iso(c.now - 14 * 86400e3)) continue; // 申し込んだものは 2 週間だけ「済み」として見せる
       const s = await getStudent(c, r.studentId), conds = await studentConditions(c.db, s.id);
       const cond = (conds.history || []).find(x => x.id === r.conditionId) || null;
-      offers.push({ ...offerView(r), student: { id: s.id, familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana, grade: s.grade, school: s.school, name: fullName(s) }, condition: cond });
+      offers.push({ ...offerView(r), student: { id: s.id, familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana, grade: normGrade(s.grade), school: s.school, name: fullName(s) }, condition: cond });
     }
     const zip = /^〒(\d{3}-\d{4}) ?(.*)$/.exec(me.address || '');
     // 姓・名を分けて持つ前の家族は、「姓 名」の空白で分けて最初の値にする

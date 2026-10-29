@@ -22,12 +22,12 @@ export function familyAdminView(f) {
 }
 export function studentAdminView(s) {
   return { id: s.id, familyId: s.familyId, name: fullName(s), familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana,
-    grade: s.grade, school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, status: s.status, enrolledOn: s.enrolledOn, subjects: s.subjects, note: s.note,
+    grade: normGrade(s.grade), school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, status: s.status, enrolledOn: s.enrolledOn, subjects: s.subjects, note: s.note,
     testOnly: !!s.testOnly, trial: !!s.trial, link: String(s.linkCode || '').startsWith('off.') ? '' : studentLink(s.linkCode), // off. は使えない鍵（MCP で登録した体験生）。「専用リンクを作り直す」で使えるようになる
     legacyId: s.legacyId, version: s.version };
 }
 // 保護者・生徒に見せる形（料金・先生用の備考・専用リンクは出さない）
-const studentPublicView = s => ({ id: s.id, name: fullName(s), familyName: s.familyName, givenName: s.givenName, grade: s.grade, school: s.school, status: s.status });
+const studentPublicView = s => ({ id: s.id, name: fullName(s), familyName: s.familyName, givenName: s.givenName, grade: normGrade(s.grade), school: s.school, status: s.status });
 
 const TEXT_LIMITS = { familyName: 40, givenName: 40, familyKana: 40, givenKana: 40, grade: 20, school: 60, subjects: 100, note: 1000 };
 function studentFields(b, base = {}) {

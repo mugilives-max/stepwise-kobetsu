@@ -34,7 +34,8 @@ export const effectsAdminRoutes = {
     const rows = (await c.db.prepare('select id, createdAt, kind, payload, status, attempts, error, sentAt, deliveryState from effects where createdAt >= ? order by id desc limit 400').bind(since).all()).results;
     return {
       failed: rows.filter(r => r.status === 'failed' || (r.status === 'pending' && r.createdAt < stale)).map(view),
-      recent: rows.filter(r => r.status === 'sent').slice(0, 50).map(view),
+      // メールとカレンダーを分けて見る（2026-10-29 本人「メールの送信と、カレンダーの送信が混ざっていて、重要な情報が分かりづらい」）。種類ごとに新しい50件
+      recent: [...rows.filter(r => r.status === 'sent' && r.kind === 'mail').slice(0, 50), ...rows.filter(r => r.status === 'sent' && r.kind !== 'mail').slice(0, 50)].map(view),
       dismissed: rows.filter(r => r.status === 'dismissed').length,
     };
   },

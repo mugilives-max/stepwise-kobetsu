@@ -55,7 +55,7 @@ test('enrollment: offer → password → one application with consents → enrol
   assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, guardianGivenKana: 'Hanako' })).error.code, 'badKana');
   assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, phone: '12' })).error.code, 'badPhone');
   assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, zip: '12' })).error.code, 'badZip');
-  assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, student: { ...APP.student, grade: '中学3年' } })).error.code, 'badGrade', '学年は選択肢から');
+  assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, student: { ...APP.student, grade: '中学4年' } })).error.code, 'badGrade', '学年は選択肢から（中学3年 は 中3 にそろえて受け付ける）');
   assert.equal((await h.call('family/enrollment/apply', { ...base, agree: true, student: { ...APP.student, school: '' } })).error.code, 'needField', '学校は必須');
   h.db2._sqlite.prepare("update students set linkCode = 'off.mcp' where id = ?").run(sid); // MCP で登録した体験生の使えない鍵
   const staffMails = h.mails().filter(m => m.audience === 'staff').length;
