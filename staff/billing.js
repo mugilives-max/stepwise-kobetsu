@@ -315,7 +315,8 @@ export async function billingSubmit(ctx, kind, el) {
     r = await ctx.call('billing/fees/relief', { id, version, result: v.result, amount: num(v.amount), response: v.response });
     msg = '申請に回答しました'; if (r.ok) { fees = null; bill = null; feeOpen = ''; }
   } else if (kind === 'bl-settings') {
-    r = await ctx.call('admin/billing/settings/set', { bank: v.bank, note: v.note }); msg = '請求書の設定を保存しました'; if (r.ok) billSettings = null;
+    const bankFields = Object.fromEntries(BANK_FIELDS.map(([k]) => [k, v[k] || '']));
+    r = await ctx.call('admin/billing/settings/set', { bankFields, note: v.note }); msg = '請求書の設定を保存しました'; if (r.ok) billSettings = null;
   } else if (kind === 'bl-paid') {
     r = await ctx.call('billing/paid', { id, version, paidOn: v.paidOn, method: v.method }); msg = '入金を記録しました'; if (r.ok) { bill = null; detail = null; }
   } else if (kind === 'bl-unpaid') {
@@ -328,12 +329,17 @@ export async function billingSubmit(ctx, kind, el) {
   return true;
 }
 // 請求書の設定（振込先・備考）。請求の画面の下に出す
+// 振込先は項目ごとに入れる（2026-10-29 本人「もう少ししっかりと形式的に登録できるように」）。確かめは給与の振込先と同じ
+const BANK_FIELDS = [['bankName', '銀行名'], ['branchName', '支店名'], ['branchCode', '支店番号（3桁）'], ['accountType', '口座種別'], ['accountNumber', '口座番号（7桁）'], ['holderKana', '口座名義（カナ）'], ['holderName', '口座名義（漢字・任意）']];
+const bankInputs = (esc, f) => '<div class="row" style="flex-wrap:wrap">' + BANK_FIELDS.map(([k, label]) => `<label style="flex:1 1 200px">${label}`
+  + (k === 'accountType' ? `<select name="${k}"><option value="">選んでください</option>${[['ordinary', '普通'], ['current', '当座']].map(([v, t]) => `<option value="${v}"${f[k] === v ? ' selected' : ''}>${t}</option>`).join('')}</select>`
+    : `<input name="${k}" value="${esc(f[k] || '')}"${['branchCode', 'accountNumber'].includes(k) ? ` inputmode="numeric" maxlength="${k === 'branchCode' ? 3 : 7}"` : ' maxlength="100"'}>`) + '</label>').join('') + '</div>';
 export function billingSettingsHtml(ctx) {
   const { esc } = ctx;
   if (!billSettings) { billSettings = { loading: true }; ctx.call('admin/billing/settings').then(r => { billSettings = r.ok ? r.settings : { bank: '', note: '', error: r.error.message }; ctx.render(); }); }
   if (billSettings.loading) return '';
   return `<details class="gupload" style="margin-top:20px"><summary>請求書の設定（振込先・備考）${billSettings.bank ? '' : ' <span class="tag warn">振込先が未設定</span>'}</summary>
-    <form class="stack" data-form="bl-settings" style="margin-top:8px"><label>お振込先（銀行名・支店名・種別・口座番号・口座名義）<textarea name="bank" maxlength="300" rows="2">${esc(billSettings.bank || '')}</textarea></label>
+    <form class="stack" data-form="bl-settings" autocomplete="off" style="margin-top:8px"><strong>お振込先</strong>${bankInputs(esc, billSettings.bankFields || {})}${billSettings.bank ? `<p class="small" style="margin:0">請求書と保護者ページには、次のように載ります。<br><span style="overflow-wrap:anywhere">${esc(billSettings.bank)}</span></p>` : ''}
     <label>備考<textarea name="note" maxlength="500" rows="2" placeholder="空なら「キャンセル料は、共通規約に基づき…」">${esc(billSettings.note || '')}</textarea></label>
     <p class="small muted">作成済みの請求書・領収書は「書面を作り直す」まで変わりません。</p>
     <button class="primary"${ctx.dis()}>保存</button></form></details>`;

@@ -369,3 +369,20 @@ test('lessons agreed one by one are billed without a plan; lessons without any a
   assert.deepEqual(p.students.find(s => s.studentId === sis.id).items.map(i => i.amount), [3500, 3500]);
   assert.equal((await h.ok('students/plan', { auth, studentId: sis.id, month: '2026-09' })).unrecorded.length, 0);
 });
+
+// 振込先を項目ごとに決める（2026-10-29 本人「もう少ししっかりと形式的に登録できるように」）。確かめは給与の振込先と同じ
+test('the invoice bank account is entered field by field and printed as one line', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  const f = { bankName: '架空銀行', branchName: '架空支店', branchCode: '001', accountType: 'ordinary', accountNumber: '0000000', holderKana: 'カクウ タロウ', holderName: '架空 太郎' };
+  const s = (await h.ok('admin/billing/settings/set', { auth, bankFields: f, note: '' })).settings;
+  assert.equal(s.bank, '架空銀行 架空支店（支店番号 001） 普通 0000000 口座名義 架空 太郎（カクウ タロウ）');
+  assert.deepEqual(s.bankFields, f);
+  assert.equal((await h.ok('admin/billing/settings/set', { auth, bankFields: { ...f, holderName: '' }, note: '' })).settings.bank, '架空銀行 架空支店（支店番号 001） 普通 0000000 口座名義 カクウ タロウ');
+  assert.equal((await h.call('admin/billing/settings/set', { auth, bankFields: { ...f, accountNumber: '12345' }, note: '' })).error.code, 'badBank', '口座番号は7桁');
+  assert.equal((await h.call('admin/billing/settings/set', { auth, bankFields: { ...f, holderKana: '架空 太郎' }, note: '' })).error.code, 'badBank', '名義はカナ');
+  assert.equal((await h.call('admin/billing/settings/set', { auth, bankFields: { ...f, accountType: '' }, note: '' })).error.code, 'badBank', '種別を選ぶ');
+  assert.equal((await h.ok('admin/billing/settings', { auth })).settings.bank, '架空銀行 架空支店（支店番号 001） 普通 0000000 口座名義 カクウ タロウ', 'うまくいかなかった保存では変わらない');
+  const empty = (await h.ok('admin/billing/settings/set', { auth, bankFields: Object.fromEntries(Object.keys(f).map(k => [k, ''])), note: '' })).settings;
+  assert.deepEqual([empty.bank, empty.bankFields], ['', null], '全部空なら振込先を消す');
+  assert.equal(JSON.stringify(h.rows("select detail from auditLog where action = 'billingSettings'")).includes('0000000'), false, '記録に口座番号を残さない');
+});
