@@ -216,8 +216,9 @@ export function billingPage(ctx) {
   }
   if (!fees) { fees = { loading: true }; ctx.call('billing/fees/list').then(r => { fees = r.ok ? r : { fees: [] }; ctx.render(); }); }
   let h = ctx.notice();
-  h += feesPart(ctx);
+  // キャンセル料は選んだ月の請求に入るものだけ（その月の末日までで、まだ請求していないもの）。月の下に出す（2026-10-29 本人「9月のところに10月のキャンセル料がなぜか表示されている」）
   h += `<div class="sec-title">月の請求</div>${monthPicker(billMonth, 'bl-month')}`;
+  h += feesPart(ctx, billMonth);
   if (bill.loading) return h + '<p class="muted">読み込んでいます…</p>';
   if (!bill.families.length) h += '<p class="muted small">この月に請求するものはありません。</p>';
   else h += '<div class="group">' + bill.families.map(f => {
@@ -273,13 +274,14 @@ function detailPart(ctx) {
   else if (!ended) h += '<p class="small muted">月が終わってから確定できます。</p>';
   return h + '</div>';
 }
-function feesPart(ctx) {
+function feesPart(ctx, month) {
   const { esc } = ctx;
   if (fees.loading) return '';
-  const open = fees.fees.filter(f => f.decision === 'pending' || f.reliefStatus === 'pending');
-  const rest = fees.fees.filter(f => !open.includes(f) && !f.invoiceId);
-  let h = `<div class="sec-title">キャンセル料${open.length ? ` <span class="count">${open.length}</span>` : ''}</div>`;
-  if (!fees.fees.length) return h + '<p class="small muted">請求前のキャンセル料はありません。</p>';
+  const mine = fees.fees.filter(f => !f.invoiceId && f.date <= monthEnd(month));
+  const open = mine.filter(f => f.decision === 'pending' || f.reliefStatus === 'pending');
+  const rest = mine.filter(f => !open.includes(f));
+  if (!mine.length) return '';
+  let h = `<h3>キャンセル料${open.length ? ` <span class="count">${open.length}</span>` : ''}</h3>`;
   const title = f => `${esc(f.studentName)} ${md(f.date)} ${esc(f.start)} ${esc(f.subject)}`;
   h += '<div class="group">' + open.map(f => rowButton(esc, 'fee-open', { id: f.id }, `${title(f)} <span class="tag danger">${f.reliefStatus === 'pending' ? '減額・免除の申請' : '判断待ち'}</span>`, `${FEE_TYPE[f.type]}・規定額 ${yen(f.standardAmount)}`)).join('')
     + rest.map(f => `<div class="todo"><span class="b"><strong>${title(f)}</strong><small class="muted">${f.rule === 'rate' && f.decision === 'charge' ? '自動' : f.decision === 'charge' ? '規定どおり' : f.decision === 'waive' ? '免除' : '減額'} ${yen(f.amount)}${f.note ? '・' + esc(f.note) : ''}${f.reliefStatus ? '・申請への回答済み' : ''}（請求前）${(f.parts || []).length ? '<br>' + f.parts.map(p => esc(partText(p, f.date))).join('<br>') : ''}</small></span></div>`).join('') + '</div>';
