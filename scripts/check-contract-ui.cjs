@@ -72,7 +72,7 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   assert.match(await page.locator('#app').innerText(),/お願い中/,'the family asked to agree is listed as asked');
   await page.locator('[data-action="terms-decide-start"]').click();
   await page.getByRole('heading',{name:'切り替えるとどうなるか',exact:true}).waitFor();
-  assert.match(await page.locator('#app').innerText(),/今通っている家族には、まだ何も出ません/);
+  assert.match(await page.locator('#app').innerText(),/今通っている契約者には、まだ何も出ません/);
   assert.equal(await page.locator('[data-form="terms-decide"] input[name="confirm"]').count(),0,'代表に「確かめました」の印は求めない');
   assert.equal((await h.ok('admin/terms/get',{auth})).terms.version,'new','opening the confirmation does not change the terms in use');
   report.checks.push('deciding the terms in use is separate from asking families to agree, and needs its own confirmation');
