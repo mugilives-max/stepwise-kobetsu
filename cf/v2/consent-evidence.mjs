@@ -12,3 +12,10 @@ export function consentEvidence(c, b, actor, family = null) {
   return { consenterName: name, consentedAt: at, recordedAt: iso(c.now), recordedByName: family ? name : String(actor.name || '').trim() };
 }
 export const evidenceView = r => ({ consenterName: r.consenterName || '', consentedAt: r.consentedAt || r.agreedAt || '', recordedAt: r.recordedAt || '', recordedByName: r.recordedByName || '', proposedByName: r.proposedByName || '' });
+
+// 合意した書面の控えのメール（2026-10-29 本人「個別受講条件書と受講計画書は合意したら控えを送ってほしい」）。同意の日（日本時間）・方法・同意した方
+export const consentLine = (at, via, who) => {
+  const t = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(String(at || '')) ? at + 'T00:00:00+09:00' : at || ''), d = Number.isFinite(t) ? new Date(t + 9 * 3600e3) : null;
+  return [d ? (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日' : '', via, who].filter(Boolean).join('・');
+};
+export const COPY_PLACE = '同意した書面の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも開けます。';
