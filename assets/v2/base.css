@@ -410,6 +410,8 @@ button:active:not(:disabled), a.btn:active { transform: scale(.97); }
 @supports (view-transition-name: none) {
   #app { view-transition-name: page; }
   .top { view-transition-name: topbar; }
+  /* view-transition-name で #app は別の重なりの層になり、中の下から出る画面が上の帯（.top）の下に隠れる。開いているあいだは #app を帯より上に（2026-10-29 本人「モーダル上部が見切れている」） */
+  #app:has(.overlay, .bsheet, .panel.open, .panel-overlay.open) { position: relative; z-index: 20; }
   ::view-transition-old(page), ::view-transition-new(page) { animation-duration: .34s; animation-timing-function: cubic-bezier(.32, .72, 0, 1); }
   html[data-nav="push"]::view-transition-new(page) { animation-name: vt-in-right; }
   html[data-nav="push"]::view-transition-old(page) { animation-name: vt-out-left; }
