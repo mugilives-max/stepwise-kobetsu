@@ -6,7 +6,7 @@ import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-vie
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
-import { renewalBox } from '/staff/families.js?v=20261029-contractor';
+import { renewalBox } from '/staff/families.js?v=20261030-renewonce';
 
 let list = null, query = '', hub = null, hubFor = '';
 let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）
