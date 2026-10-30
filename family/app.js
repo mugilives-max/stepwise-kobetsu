@@ -142,9 +142,9 @@ function homePage() {
   // 宿題は保護者が対応することではないので、ここに置かない（下の「授業記録」と並べる。2026-10-27 本人）。見出しは「対応が必要なこと」（同日 本人「やることっていうのが名前として微妙」）
   h += secTitle('対応が必要なこと');
   h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}${note ? `（${esc(note)}）` : ''}</span></span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">対応が必要なことはありません。</p>';
-  // そのあとの授業（最大 4 件）
+  // 今後の授業（最大 4 件。2026-10-30 本人「そのあとの授業ではなくて、今後の授業」）
   const more = next.slice(1, 5);
-  if (more.length) h += secTitle('そのあとの授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { names: names(), today: sched.today });
+  if (more.length) h += secTitle('今後の授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { names: names(), today: sched.today });
   const tests = sched.events.filter(e => e.kind === 'test' && e.dateTo >= sched.today).slice(0, 2);
   if (tests.length) h += secTitle('テスト') + eventRows(tests, { names: multiKids() ? names() : {}, today: sched.today });
   // 授業記録と宿題（2026-10-27 本人「新しい授業の記録ってのは要らない…宿題は…下の方に移動して、「授業記録」というのと並べて」）

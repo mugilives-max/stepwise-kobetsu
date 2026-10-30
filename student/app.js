@@ -104,7 +104,7 @@ function render() {
     const test = sched.events.filter(e => e.kind === 'test' && e.dateTo >= sched.today)[0];
     if (test) h += secTitle('次のテスト') + `<div class="group"><div class="evrow"><span class="t">${md(test.date)}</span><span class="b"><span class="nm">${esc(test.title || 'テスト')}</span><small>${esc(daysText(test.date, sched.today) || '今日')}</small></span><span></span></div></div>`;
     const more = next.slice(1, 4);
-    if (more.length) h += secTitle('そのあとの授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { today: sched.today });
+    if (more.length) h += secTitle('今後の授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { today: sched.today });
   }
   keepSheet(app, () => { app.innerHTML = h + sheetHtml(); });
   if (page === 'schedule' && cal) cal.afterRender(render);
