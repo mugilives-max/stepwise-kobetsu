@@ -8,6 +8,7 @@ import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageL
 import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261028-r16b';
 
 let month = null, data = null, sel = null, sheet = null, families = null, loadedFor = '';
+let wantTodo = false; // 「今日」から来たとき、読み込みのあとで対応することの一覧を開く
 // スマホ（ライフベアの形）: はじめは月全体。日付を押すと、その週が一番上まで滑り上がり、下から一覧が出る（2週分）。同じ日をもう一度押すか取っ手で月全体に戻る
 let calOpen = true, wasOpen = true, calH = null, calTop = null, shownSel = '';
 const phone = () => matchMedia('(max-width: 719px)').matches;
@@ -55,10 +56,11 @@ function shortNames() {
 export function schedulePage(ctx, me, r = {}) {
   const { esc } = ctx, manager = me.roles.includes('manager');
   // 「今日」の対応すること（連絡・調整中）から来たら、対応することの一覧を開く。閉じたあとまた開かないよう、アドレスは #schedule に戻す
-  if (r.open === 'todo') { sheet = { kind: 'todo' }; history.replaceState(null, '', '#schedule'); }
+  if (r.open === 'todo') { wantTodo = true; history.replaceState(null, '', '#schedule'); }
   if (!month) month = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
   if ((!data || loadedFor !== month) && cache[month]) { data = cache[month]; loadedFor = month; prefetchNear(ctx); } // 先に読んであった月はすぐ出す
   if (!data || loadedFor !== month) { if (loadedFor !== month) load(ctx); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
+  if (wantTodo) { wantTodo = false; sheet = { kind: 'todo' }; } // 読み込みが済んでから開く（読み込み前の初期化で閉じられないように）
   const nameOf = Object.fromEntries(data.students.map(s => [s.id, s.name])), staffOf = Object.fromEntries(data.staff.map(s => [s.id, s.name])), short = shortNames();
   const held = {}; heldLessons().forEach(l => { held[l.studentId] = (held[l.studentId] || 0) + 1; });
   const adjusting = {}; adjustingLessons().forEach(l => { adjusting[l.studentId] = (adjusting[l.studentId] || 0) + 1; });
