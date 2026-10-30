@@ -99,17 +99,40 @@ export function schedulePage(ctx, me, r = {}) {
   if (!calOpen || !phone()) h += `<div class="cal-handle" role="separator" aria-label="押すか下へ引くと月全体に戻る"><span></span></div>`; // 取っ手: 下へ引くか、押すと閉じる（月全体へ）
   const changed = shownSel && shownSel !== sel; shownSel = sel;
   const showDay = !calOpen || !phone(), leaving = calOpen && !wasOpen && phone();
-  if (showDay || leaving) h += `<div class="sch-day${changed && showDay && !wasOpen ? ' enter' : ''}${leaving ? ' leaving' : ''}">${dayPanel(ctx, me, manager, nameOf, staffOf)}</div>`;
+  const agenda = phone() && (showDay || leaving);
+  if (showDay || leaving) h += `<div class="sch-day${agenda ? ' agenda' : ''}${changed && showDay && !wasOpen ? ' enter' : ''}${leaving ? ' leaving' : ''}">${dayPanel(ctx, me, manager, nameOf, staffOf, agenda)}</div>`;
   h += '</div>';
   animCal(ctx);
   if (sheet) h += sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting);
   return h;
 }
 
+// スマホの一覧（agenda）: 高さを画面の下まで、選んだ日を一番上に。スクロールで一番上に来た日を「選んだ日」にし、表の印と窓（2週分）も合わせる。描き直さない
+function bindAgenda() {
+  const day = document.querySelector('.sch-day.agenda'), win = document.querySelector('.cal-win');
+  if (!day || !win || day.classList.contains('leaving')) return;
+  const fit = () => { if (!day.isConnected) return; const nav = document.querySelector('nav#nav'), navH = nav && getComputedStyle(nav).position === 'fixed' ? nav.offsetHeight : 0; day.style.height = Math.max(180, innerHeight - day.getBoundingClientRect().top - navH - 4) + 'px'; };
+  fit(); setTimeout(fit, 450); // カレンダーが2週分に縮み終わったあとにもう一度
+  const head = day.querySelector(`.agenda-day[data-day="${sel}"]`); if (head) day.scrollTop = head.offsetTop;
+  let ticking = false;
+  day.onscroll = () => {
+    if (ticking) return; ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      let cur = null; for (const el of day.querySelectorAll('.agenda-day')) { if (el.offsetTop <= day.scrollTop + 8) cur = el; else break; }
+      const d = cur && cur.dataset.day; if (!d || d === sel) return;
+      sel = d; shownSel = d;
+      win.querySelectorAll('.cell.sel').forEach(c => c.classList.remove('sel', 'enter'));
+      const cell = win.querySelector(`.cell[data-date="${d}"]`); if (!cell) return; cell.classList.add('sel');
+      const wd = win.querySelector('.wd'), wdH = wd ? wd.offsetHeight : 0;
+      if (cell.offsetTop < win.scrollTop + wdH || cell.offsetTop + cell.offsetHeight > win.scrollTop + win.clientHeight) { const top = Math.max(0, cell.offsetTop - wdH); win.scrollTo({ top, behavior: 'smooth' }); calTop = top; }
+    });
+  };
+}
 // スマホ: カレンダーの窓の高さと位置を、前の形から新しい形へ 0.38秒で動かす（最初は速く、最後はゆっくり）。一覧は下から出入りする
 let animPending = false;
 function animCal(ctx) {
-  setTimeout(() => { bindDrag(ctx); bindSwipe(ctx); }, 0); // 描くたびに、取っ手と月の表に指の動きを付ける（動きの途中でも）
+  setTimeout(() => { bindDrag(ctx); bindSwipe(ctx); bindAgenda(); }, 0); // 描くたびに、取っ手と月の表に指の動きを付ける（動きの途中でも）
   if (animPending) return; animPending = true; // 続けて描き直しても、最後に描いた画面で1回だけ動かす
   requestAnimationFrame(() => {
     animPending = false;
@@ -174,21 +197,28 @@ function bindDrag(ctx) {
   hd.onpointerdown = e => { y0 = lastY = e.clientY; lastT = e.timeStamp; dy = 0; v = 0; twoH = win.offsetHeight; full = win.scrollHeight; top0 = win.scrollTop; try { hd.setPointerCapture(e.pointerId); } catch {} hd.classList.add('grab'); };
   hd.onpointermove = e => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); v = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT); lastY = e.clientY; lastT = e.timeStamp; apply(dy); };
   const end = e => {
-    if (y0 === null) return; y0 = null; hd.classList.remove('grab');
+    if (y0 === null) return; y0 = null; hd.classList.remove('grab'); swipeAt = Date.now(); // 取っ手を離した押しは、日のマスに届かせない
     const close = dy > 70 || (v > 0.5 && dy > 16) || (dy < 6 && e && e.type === 'pointerup'), // 押しただけでも月全体へ（2026-10-27 本人「タップするだけで下にバーが下がるように」）
       fromD = dy, toD = close ? Math.max(1, full - twoH) : 0, ms = close ? 260 : 220, t0 = performance.now(), ease = q => 1 - Math.pow(1 - q, 3);
     const step = now => {
       const q = Math.min(1, (now - t0) / ms); apply(fromD + (toD - fromD) * ease(q));
       if (q < 1) return requestAnimationFrame(step);
-      if (close) { calOpen = true; wasOpen = true; calH = full; calTop = 0; ctx.render(); } else { day.style.opacity = ''; }
+      if (close) { calOpen = true; wasOpen = true; calH = full; calTop = 0; swipeAt = Date.now(); ctx.render(); } else { day.style.opacity = ''; } // 広げた直後に指の下へ来たマスを選ばない
     };
     requestAnimationFrame(step);
   };
   hd.onpointerup = end; hd.onpointercancel = end;
 }
 // 選んだ日の一覧と、そのあとの6日（1行ずつ。押すと下から詳しい画面）
-function dayPanel(ctx, me, manager, nameOf, staffOf) {
+// スマホで週の表示のとき（agenda）は、表の範囲の日をすべて並べ、一覧の中でスクロールして前後の日も見られる。
+// スクロールに合わせて、表の選んだ日も動く（bindAgenda。2026-10-30 本人「下から出てくるバーの中でスクロールして、前後の予定も見れるようにしたい」）
+function dayPanel(ctx, me, manager, nameOf, staffOf, agenda = false) {
   const last = addDays(gridStart(month), 41);
+  if (agenda) {
+    const first = gridStart(month), n = ymOf(addDays(first, 35)) !== month ? 35 : 42; let h = '';
+    for (let i = 0; i < n; i++) { const d = addDays(first, i); h += `<section class="agenda-day" data-day="${d}">${oneDay(ctx, me, manager, nameOf, staffOf, d, true)}</section>`; }
+    return h;
+  }
   let h = oneDay(ctx, me, manager, nameOf, staffOf, sel, true);
   for (let i = 1; i <= 6; i++) { const d = addDays(sel, i); if (d > last) break; h += oneDay(ctx, me, manager, nameOf, staffOf, d, false); }
   return h;
@@ -196,7 +226,7 @@ function dayPanel(ctx, me, manager, nameOf, staffOf) {
 function oneDay(ctx, me, manager, nameOf, staffOf, d, first) {
   const { esc } = ctx;
   const ls = data.lessons.filter(l => l.date === d).sort((a, b) => a.start.localeCompare(b.start)), offs = data.unavailability.filter(o => o.date === d), evs = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo)), mts = data.meetings.filter(m => m.date === d);
-  let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span style="flex:1"></span>${manager ? `<button class="small-btn" data-action="sch-sheet" data-k="create">${d < data.today ? '＋ 実施した授業を登録' : '＋ この日に授業'}</button>` : ''}</div>`
+  let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span style="flex:1"></span>${manager ? `<button class="small-btn" data-action="sch-sheet" data-k="create" data-date="${d}">${d < data.today ? '＋ 実施した授業を登録' : '＋ この日に授業'}</button>` : ''}</div>`
     : `<button class="day-band" data-action="sch-day" data-date="${d}">${mdw(d)}</button>`;
   if (!ls.length && !offs.length && !evs.length && !mts.length) return h + `<p class="muted small"${first ? '' : ' style="margin:4px 2px 8px"'}>予定はありません。</p>`;
   h += '<div class="rows">';
@@ -450,7 +480,7 @@ export async function scheduleClick(ctx, a, b) {
     return true;
   }
   if (a === 'sch-goto') { sel = b.dataset.date; sheet = b.dataset.id ? { kind: 'lesson', id: b.dataset.id } : null; if (ymOf(sel) !== month) { month = ymOf(sel); data = null; } return true; }
-  if (a === 'sch-sheet') { sheet = { kind: b.dataset.k }; return true; }
+  if (a === 'sch-sheet') { if (b.dataset.date) sel = b.dataset.date; sheet = { kind: b.dataset.k }; return true; } // 一覧の日ごとの「＋」は、その日で作る
   if (a === 'sch-open') { sheet = { kind: 'lesson', id }; return true; }
   if (a === 'sch-close') { sheet = null; return true; }
   if (a === 'sch-edit') { sheet = { kind: 'lesson', id, edit: true }; return true; }

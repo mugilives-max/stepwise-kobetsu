@@ -139,12 +139,12 @@ function confirmPage(ctx, list) {
 function donePage(ctx, list) {
   const { esc } = ctx, next = open()[0], o = list[0];
   if (isRenewal(o)) return `${steps(3, true)}<h1>同意を受け付けました</h1>
-    <section class="flow"><ol><li class="done"><div class="ft">${list.map(x => esc(x.student.givenName) + 'さん').join('・')}の共通規約と個別受講条件書</div><div class="fb">控えは「アカウント」の「契約・同意の控え」にあります。</div></li>
+    <section class="flow"><ol><li class="done"><div class="ft">${list.map(x => esc(x.student.givenName) + 'さん').join('・')}の共通規約と個別受講条件書</div><div class="fb">控えはメニューの「契約」にあります。</div></li>
       <li class="now"><div class="ft">${esc(jaMonth(o.fromMonth))}からの授業</div><div class="fb">新しい個別受講条件書の内容で行います。</div></li></ol></section>
     <p>${next ? `<button class="primary" data-action="enroll-next">続けて${esc(next.student.givenName)}さんの手続きへ</button>` : '<a class="small-btn primary" href="#home">ホームへ</a>'}</p>`;
   return `${steps(3, false)}<h1>お申込みを受け付けました</h1>
     <section class="flow"><h2>このあとの流れ</h2><ol>
-      <li class="done"><div class="ft">入塾のお申込み</div><div class="fb">控えは「お支払い」の「過去の契約・同意の控え」にあります。</div></li>
+      <li class="done"><div class="ft">入塾のお申込み</div><div class="fb">控えはメニューの「契約」にあります。</div></li>
       <li class="now"><div class="ft">${esc(jaMonth(o.fromMonth))}からの授業の日程</div><div class="fb">LINE などで日程を相談します。決まった授業の日時と授業料は、保護者ページで確かめられます。</div></li></ol></section>
     <p><a class="small-btn primary" href="#home">ホームへ</a></p>`;
 }
