@@ -6,12 +6,12 @@ import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=202610
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
 import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261030-renewonce';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261030-agenda';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261030-agenda2';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261028-r16b';
 import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261029-feemonth';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261030-renewonce';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261028-r16b';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda2';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261026-p4';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261030-renewonce';
