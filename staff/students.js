@@ -1,8 +1,8 @@
 // スタッフの「生徒」（docs/UX_STRUCTURE.md 3）。#students（家族ごとの一覧）と #student=<id>/<タブ>（1人の生徒の画面）。
-// タブ: 概要・予定・記録と宿題・成績・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
+// タブ: 概要・予定・記録と宿題・資料（テスト結果と学校の書類）・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
-import { examCard, trendBox, examPager, seriesPick } from '/assets/v2/grades-view.js?v=20261026-p4';
+import { examCard, trendBox, examPager, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
@@ -14,7 +14,7 @@ let ctr = null; // 契約のタブ（students/contracts の答え。for = 生徒
 export function resetStudents() { list = null; hub = null; hubFor = ''; wd = null; ctr = null; }
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
-const TABS = [['summary', '概要'], ['schedule', '予定'], ['records', '記録と宿題'], ['grades', '成績'], ['money', '計画と請求', true], ['contracts', '契約', true], ['basic', '基本情報', true]];
+const TABS = [['summary', '概要'], ['schedule', '予定'], ['records', '記録と宿題'], ['grades', '資料'], ['money', '計画と請求', true], ['contracts', '契約', true], ['basic', '基本情報', true]];
 const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['振込の連絡あり', 'warn'], paid: ['入金済み', 'ok'] };
 const PLAN = { draft: ['下書き', 'gray'], proposed: ['承認待ち', 'warn'], approved: ['承認', 'ok'], declined: ['見送り', 'gray'] };
 
@@ -131,13 +131,21 @@ function records(ctx, x) {
     <small class="muted">${r.status === 'draft' ? '下書き・' : ''}${esc(noteText(r.staffNotes) || r.comment.slice(0, 60))}</small></span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">まだ記録はありません。</p>');
   return h;
 }
+// 資料: テスト結果と、学校の書類（年間行事予定など。教室管理者だけ。2026-10-31 本人）
 function grades(ctx, x) {
   const sid = encodeURIComponent(x.student.id), g = x.grades;
-  let h = `<p style="margin-top:12px"><a class="small-btn primary" href="#grades=${sid}">結果を入れる・直す</a></p>`;
+  let h = `<div class="sp-head"><h2>テスト結果</h2><span class="grow"></span><a class="small-btn primary" href="#grades=${sid}">結果を入れる・直す</a></div>`;
   if (g.nextTest) h += `<p class="small">次のテスト: ${ctx.esc(g.nextTest.title || '')} ${md(g.nextTest.date)}（あと${g.nextTest.days}日）</p>`;
-  if (!g.exams.length) return h + '<p class="muted small">まだ記録はありません。</p>';
-  const pk = seriesPick(g.exams, x.student.id);
-  return h + pk.bar + trendBox(pk.list, x.student.id) + examPager(pk.list, x.student.id, e => examCard(e, { sheets: (g.files || []).filter(f => f.examId === e.id && f.status !== 'dismissed') }));
+  if (!g.exams.length) h += '<p class="muted small">まだ記録はありません。</p>';
+  else { const pk = seriesPick(g.exams, x.student.id); h += pk.bar + trendBox(pk.list, x.student.id) + examPager(pk.list, x.student.id, e => examCard(e, { sheets: (g.files || []).filter(f => f.examId === e.id && f.status !== 'dismissed') })); }
+  return x.docs ? h + schoolDocs(ctx, x) : h;
+}
+function schoolDocs(ctx, x) {
+  const { esc } = ctx;
+  let h = '<h2>学校の書類</h2>';
+  h += x.docs.length ? '<div class="list">' + x.docs.map(f => `<div><div>${esc(f.name)}<div class="small muted">${esc(jst(f.createdAt).slice(0, 10))}${f.note ? '・' + esc(f.note) : ''}</div></div><div class="row"><button type="button" data-action="gr-open" data-id="${esc(f.id)}">開く</button><button type="button" data-action="hub-doc-del" data-id="${esc(f.id)}" data-name="${esc(f.name)}"${ctx.dis()}>消す</button></div></div>`).join('') + '</div>' : '<p class="muted small">年間行事予定や学校のお便りを置いておけます。</p>';
+  return h + `<form class="stack" data-form="hub-doc-upload" data-id="${esc(x.student.id)}"><label>写真か PDF<input type="file" name="file" accept="image/*,application/pdf" required></label>
+    <label>一言（任意）<input name="note" maxlength="200" placeholder="例: 2026年度 年間行事予定"></label><button class="primary"${ctx.dis()}>置く</button></form>`;
 }
 // 授業の計画（月ごと）: 受講計画書ではなく授業そのもの（2026-10-27 本人「今度は授業の計画に焦点を当てる」「受講計画書にない授業が承認済みであるかどうかが不明なのが問題」）。
 // 科目ごとの授業の数、合意待ち（保護者に承認をお願いする）、合意の記録がない授業（合意を記録）、授業料の見込み。受講計画書はあるときだけ1行で
@@ -354,6 +362,12 @@ async function leaveClick(ctx, a, b) {
 
 // ---------- 体験生 ----------
 export async function studentsSubmit(ctx, kind, el) {
+  if (kind === 'hub-doc-upload') {
+    const file = el.querySelector('input[type=file]').files[0], note = new FormData(el).get('note') || '', studentId = el.dataset.id; if (!file) return true;
+    const r = await uploadFile(file, note, meta => ctx.call('students/docs/upload', { ...meta, studentId }));
+    if (r.ok) { hub = null; hubFor = ''; ctx.say('書類を置きました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   if (kind === 'wd-save') { await leaveSave(ctx, el); return true; }
   if (kind === 'enroll-offer') {
     const v = { ...Object.fromEntries(new FormData(el).entries()), subjects: readSubjects(el) };
@@ -373,6 +387,12 @@ export async function studentsSubmit(ctx, kind, el) {
 }
 export async function studentsClick(ctx, a, b) {
   if (await leaveClick(ctx, a, b)) return true;
+  if (a === 'hub-doc-del') {
+    if (!confirm(`「${b.dataset.name}」を消しますか？`)) return true;
+    const r = await ctx.call('files/delete', { id: b.dataset.id });
+    if (r.ok) { hub = null; hubFor = ''; ctx.say('書類を消しました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   if (a === 'hub-newlink') {
     if (b.dataset.has && !confirm('専用リンクを作り直しますか？ 今のリンクはすぐに使えなくなります。生徒に新しいリンクを渡してください。')) return true;
     const r = await ctx.call('admin/students/newLink', { id: b.dataset.id, version: Number(b.dataset.version) });

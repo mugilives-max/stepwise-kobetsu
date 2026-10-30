@@ -13,6 +13,7 @@ import { studentLink } from './people.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { todayJst, nowHmJst, addDays } from './schedule.mjs';
 import { gradesRoutes } from './grades.mjs';
+import { startUpload } from './files.mjs';
 import { studentBilling, lineCap } from './plan-calc.mjs';
 import { normGrade } from '../../assets/v2/grade-options.js';
 
@@ -24,6 +25,12 @@ async function teacherStudents(c, staffId) {
 }
 
 export const studentHubRoutes = {
+  // 学校の書類を置く（教室管理者）。2026-10-31 本人「成績ではなくて資料に…年間行事とかのやつをアップロードできるように」。塾だけが上げて塾だけが見る
+  'students/docs/upload': async (c, b) => {
+    const me = await requireStaff(c, b, 'manager');
+    const s = await c.db.prepare('select id, familyId from students where id = ?').bind(String(b.studentId || '')).first(); if (!s) fail('notFound', '生徒が見つかりません', 404);
+    return startUpload(c, { category: 'other', studentId: s.id, refType: 'schoolDoc', name: b.name, mime: b.mime, size: b.size, note: b.note, by: { kind: 'staff', id: me.id } });
+  },
   'students/list': async (c, b) => {
     const me = await requireStaff(c, b, 'manager', 'teacher'), manager = rolesOf(me).includes('manager'), today = todayJst(c.now);
     let students = (await c.db.prepare("select s.*, f.name familyLabel from students s join families f on f.id = s.familyId order by s.status = 'left', f.testOnly, f.name, s.familyKana, s.givenKana").all()).results;
@@ -84,6 +91,8 @@ export const studentHubRoutes = {
       grades: { exams: grades.exams, nextTest: grades.nextTest, pendingTests: grades.pendingTests, subjects: grades.subjects, files: grades.files },
     };
     if (manager) {
+      // 学校の書類（年間行事予定など）。種類は other・つながる先 schoolDoc なので、保護者・生徒・講師には開けない（files.mjs の canRead）
+      out.docs = (await c.db.prepare("select id, name, note, mime, createdAt from files where studentId = ? and category = 'other' and refType = 'schoolDoc' and status = 'ready' order by createdAt desc").bind(s.id).all()).results;
       // 計画: 今月と来月にかかる行と、入り具合
       const month = today.slice(0, 7), sb = await studentBilling(c.db, s.id);
       const nextMonthEnd = addDays(addDays(month + '-01', 62).slice(0, 7) + '-01', -1);
