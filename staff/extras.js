@@ -123,7 +123,7 @@ export function termsPage(ctx) {
     else {
       const rowOf = fm => {
         const s = state(fm), r = asked(fm.id);
-        const sub = s === 'agreed' ? esc(jaDay(fm.termsAcceptedAt)) : s === 'asked' ? (r ? `${esc(jaDay(r.requestedAt))}${r.mailed ? '・メールも送信' : ''}` : `${esc(jaDay(renewing(fm.id).offeredAt))}・契約の更新で`) : fm.hasPassword ? '' : '保護者ページに未登録';
+        const sub = s === 'agreed' ? esc(jaDay(fm.termsAcceptedAt)) : s === 'asked' ? (r ? `${esc(jaDay(r.requestedAt))}${r.mailed ? '・メールも送信' : ''}` : `${esc(jaDay(renewing(fm.id).offeredAt))}・契約更新の手続きで`) : fm.hasPassword ? '' : '保護者ページに未登録';
         return s === 'not'
           ? `<label class="todo-row" style="grid-template-columns:auto minmax(0,1fr);cursor:pointer"><input type="checkbox" name="fam" value="${esc(fm.id)}"${termsPick.includes(fm.id) ? ' checked' : ''}><span class="v"><span class="lbl">${esc(fm.guardianName || fm.name)}</span>${sub ? `<small>${sub}</small>` : ''}</span></label>`
           : `<a class="todo-row" style="grid-template-columns:minmax(0,1fr) auto" href="#family=${esc(fm.id)}"><span class="v"><span class="lbl">${esc(fm.guardianName || fm.name)}</span><small>${s === 'agreed' ? '<span class="tag ok">同意済み</span> ' : '<span class="tag warn">お願い中</span> '}${sub}</small></span><span class="go" aria-hidden="true">›</span></a>`;

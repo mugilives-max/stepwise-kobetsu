@@ -49,8 +49,9 @@ async function getOffer(c, id) { const r = await c.db.prepare('select * from enr
 const inviteMail = (s, cond) => ({ subject: '【ステップワイズ】入塾のお手続きのご案内', body: url => `${fullName(s)}さんの保護者さま\n\nステップワイズ個別指導です。入塾のお手続きをご案内します。\n7日以内に次のリンクを開き、保護者ページのパスワードを決めてください。続けて、保護者さまの情報のご登録と、共通規約・個別受講条件書のご確認をお願いします。\n\n${url}\n\n保護者ページで「同意して入塾を申し込む」を押すと、お申込みが完了します。\nリンクの期限が切れた場合は、いつものLINEまたは mugilives@gmail.com へご連絡ください。\n心当たりがない場合は、このメールを破棄してください。` });
 const activeText = (s, cond) => `${fullName(s)}さんの入塾のお手続きをご案内します。保護者ページの「入塾のお申込み」で、保護者さまの情報と共通規約・個別受講条件書をご確認のうえ、お申し込みください。`; // 料金などは申込みの画面で（2026-10-26 本人「料金とかはこの段階では見せなくていい」）
 
-// 契約の更新の案内（家族に 1 通。生徒が何人でも）
-const renewalText = (names, fromMonth) => `${names}の共通規約と個別受講条件書が新しくなりました。保護者ページの「契約の更新」で、保護者さまの情報と内容をご確認のうえ、同意をお願いします。\n${monthText(fromMonth)}からの授業に適用します。ご同意いただくまでは、今までの決まりのまま授業を続けます。`;
+// 契約更新の手続きの案内（家族に 1 通。生徒が何人でも）
+// 初めて書面を交わす家族にも合う文（2026-10-30 本人「山本さんは…今まで契約書とかは一回も書いたことがない」）
+const renewalText = (names, fromMonth) => `${names}の共通規約と個別受講条件書をご用意しました。保護者ページの「契約更新の手続き」で、保護者さまの情報と内容をご確認のうえ、同意をお願いします。\n${monthText(fromMonth)}からの授業に適用します。ご同意いただくまでは、今までどおり授業を続けます。`;
 const renewalMail = (names, fromMonth) => ({ subject: '【ステップワイズ】共通規約と個別受講条件書のご確認のお願い', body: url => `${names}の保護者さま\n\nステップワイズ個別指導です。${renewalText(names, fromMonth)}\n\n下のリンクから保護者ページを開いてください（7日間有効・1回だけ）。\n${url}` });
 async function sendRenewal(c, f, students, fromMonth) {
   const names = students.map(s => fullName(s) + 'さん').join('・');
@@ -97,6 +98,55 @@ function applicationFields(b) {
   if (!GRADES.includes(student.grade)) fail('badGrade', '学年を選んでください');
   if (!KANA.test(student.familyKana + student.givenKana)) fail('badKana', 'ふりがなは、ひらがなかカタカナで入れてください');
   return { guardian: { familyName: gFamily, givenName: gGiven, familyKana: gFamilyKana, givenKana: gGivenKana, name: guardianName, kana: guardianKana, phone, address: '〒' + zip + ' ' + addr }, student };
+}
+
+// ---- 申込み・同意の書き込み（入塾は 1 人ずつ、契約の更新は兄弟をまとめて） ----
+async function applyTerms(c, b) {
+  const terms = await currentTerms(c.db);
+  if (!terms.version) fail('noTerms', '共通規約の準備ができていません。教室にお問い合わせください', 409);
+  if (String(b.termsVersion || '') !== terms.version) fail('staleVersion', '共通規約が新しくなっています。画面を更新して、もう一度確かめてください', 409);
+  return terms;
+}
+async function applyTarget(c, me, offerId, conditionId) {
+  const r = await getOffer(c, offerId);
+  if (r.familyId !== me.id) fail('notFound', '入塾の案内が見つかりません', 404);
+  if (r.status !== 'offered') fail('closed', r.status === 'applied' ? 'お申込みはもう完了しています' : 'この案内は取り消されました。教室にお問い合わせください', 409);
+  const cond = await c.db.prepare('select * from conditions where id = ?').bind(r.conditionId).first();
+  if (String(conditionId || '') !== r.conditionId || !cond || cond.status !== 'proposed') fail('staleCondition', '個別受講条件書が変わりました。画面を更新して、もう一度確かめてください', 409);
+  return { r, cond, s: await getStudent(c, r.studentId) };
+}
+// 案内・生徒・個別受講条件書の書き込み（家族と共通規約は呼ぶ側で 1 回）
+function applyStatements(c, me, { r, cond, s }, app, terms, evidence) {
+  const renewal = r.kind === 'renewal', now = iso(c.now), at = evidence.consentedAt, today = todayJst(c.now);
+  const enrolledOn = renewal ? s.enrolledOn || '' : r.fromMonth + '-01' > today ? r.fromMonth + '-01' : today;
+  const via = renewal ? '保護者ページ（契約更新の手続き）' : '保護者ページ（入塾の申込み）';
+  const snapshot = { appliedAt: now, guardian: { ...app.guardian, email: me.email }, student: app.student,
+    condition: { id: cond.id, no: cond.no, minutes: cond.minutes, fee: cond.fee, deliveryMode: cond.deliveryMode, subjects: cond.subjects, note: cond.note, fromMonth: cond.fromMonth },
+    terms: { version: terms.version, title: terms.title, url: terms.url }, enrolledOn };
+  const json = JSON.stringify(snapshot);
+  return { via, enrolledOn, stmts: [
+    c.db.prepare("update enrollmentOffers set status = 'applied', appliedAt = ?, application = ?, contentHash = ?, termsVersion = ?, consenterName = ?, version = version + 1 where id = ? and status = 'offered'")
+      .bind(now, json, sha256Hex(json), terms.version, evidence.consenterName, r.id),
+    renewal ? c.db.prepare('update students set familyName = ?, givenName = ?, familyKana = ?, givenKana = ?, grade = ?, school = ?, updatedAt = ?, version = version + 1 where id = ?')
+      .bind(app.student.familyName, app.student.givenName, app.student.familyKana, app.student.givenKana, app.student.grade, app.student.school, now, s.id)
+    : c.db.prepare("update students set familyName = ?, givenName = ?, familyKana = ?, givenKana = ?, grade = ?, school = ?, trial = 0, enrolledOn = ?, linkCode = case when linkCode like 'off.%' then ? else linkCode end, updatedAt = ?, version = version + 1 where id = ?")
+      .bind(app.student.familyName, app.student.givenName, app.student.familyKana, app.student.givenKana, app.student.grade, app.student.school, enrolledOn, newLinkCode(), now, s.id),
+    c.db.prepare("update conditions set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'")
+      .bind(at, via, 'family:' + me.id, '', evidence.consenterName, evidence.recordedAt, evidence.recordedByName, now, cond.id),
+  ] };
+}
+const familyUpdate = (c, me, app, label, now) => c.db.prepare('update families set name = ?, guardianName = ?, guardianKana = ?, guardianFamilyName = ?, guardianGivenName = ?, guardianFamilyKana = ?, guardianGivenKana = ?, phone = ?, address = ?, updatedAt = ?, version = version + 1 where id = ?')
+  .bind(label, app.guardian.name, app.guardian.kana, app.guardian.familyName, app.guardian.givenName, app.guardian.familyKana, app.guardian.givenKana, app.guardian.phone, app.guardian.address, now, me.id);
+// 契約更新の受付: 保護者に 1 通、代表に 1 通（兄弟をまとめて）
+async function renewalMails(c, guardianName, list) {
+  const nm = ({ app }) => app.student.familyName + ' ' + app.student.givenName + 'さん';
+  const names = list.map(nm).join('・'), month = monthText(list[0].x.r.fromMonth);
+  const docs = list.map(o => `${nm(o)}：個別受講条件書（第${o.x.cond.no}版）`).join('\n');
+  await familyNotice(c, list[0].x.s.id, '契約更新の手続きを受け付けました', `${names}の契約更新の手続き（共通規約と個別受講条件書への同意）を受け付けました。
+${docs}
+${month}からの授業は、新しい個別受講条件書の内容で行います。
+同意した書面の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも確かめられます。`, 'contracts');
+  await staffNotice(c, `【契約更新】${names}`, `${names}の保護者（${guardianName}）が、共通規約と個別受講条件書に同意しました（${month}から）。\n${docs}`);
 }
 
 export const enrollmentRoutes = {
@@ -203,7 +253,9 @@ export const enrollmentRoutes = {
     }
     const zip = /^〒(\d{3}-\d{4}) ?(.*)$/.exec(me.address || '');
     // 姓・名を分けて持つ前の家族は、「姓 名」の空白で分けて最初の値にする
-    const split = v => { const m = /^(\S+)[\s　]+(.+)$/.exec(String(v || '').trim()); return m ? [m[1], m[2]] : [String(v || '').trim(), '']; };
+    // 空白がなければ、生徒の名字で始まるところで分ける（例: 「山本あさこ」→ 山本・あさこ。2026-10-30 山本さんの契約更新の手続きの前に）
+    const surnames = offers.map(o => o.student.familyName).filter(Boolean);
+    const split = v => { const t = String(v || '').trim(), m = /^(\S+)[\s　]+(.+)$/.exec(t); if (m) return [m[1], m[2]]; const sn = surnames.find(x => t.startsWith(x) && t.length > x.length); return sn ? [sn, t.slice(sn.length)] : [t, '']; };
     const [nf, ng] = me.guardianFamilyName || me.guardianGivenName ? [me.guardianFamilyName, me.guardianGivenName] : split(me.guardianName);
     const [kf, kg] = me.guardianFamilyKana || me.guardianGivenKana ? [me.guardianFamilyKana, me.guardianGivenKana] : split(me.guardianKana);
     return { offers, terms: await currentTerms(c.db),
@@ -227,52 +279,46 @@ export const enrollmentRoutes = {
   // ③ 申し込む（共通規約と個別受講条件書への同意を含む）→ ④ そのまま入塾
   'family/enrollment/apply': async (c, b) => {
     const me = await requireFamily(c, b);
-    const r = await getOffer(c, b.offerId);
-    if (r.familyId !== me.id) fail('notFound', '入塾の案内が見つかりません', 404);
-    if (r.status !== 'offered') fail('closed', r.status === 'applied' ? 'お申込みはもう完了しています' : 'この案内は取り消されました。教室にお問い合わせください', 409);
     if (b.agree !== true) fail('needAgree', '共通規約と個別受講条件書を確かめて「同意します」に印を付けてください');
-    const terms = await currentTerms(c.db);
-    if (!terms.version) fail('noTerms', '共通規約の準備ができていません。教室にお問い合わせください', 409);
-    if (String(b.termsVersion || '') !== terms.version) fail('staleVersion', '共通規約が新しくなっています。画面を更新して、もう一度確かめてください', 409);
-    const cond = await c.db.prepare('select * from conditions where id = ?').bind(r.conditionId).first();
-    if (String(b.conditionId || '') !== r.conditionId || !cond || cond.status !== 'proposed') fail('staleCondition', '個別受講条件書が変わりました。画面を更新して、もう一度確かめてください', 409);
-    const s = await getStudent(c, r.studentId), app = applicationFields(b), renewal = r.kind === 'renewal';
-    const evidence = consentEvidence(c, { consenterName: app.guardian.name }, me, me), now = iso(c.now), at = evidence.consentedAt;
-    const today = todayJst(c.now), enrolledOn = renewal ? s.enrolledOn || '' : r.fromMonth + '-01' > today ? r.fromMonth + '-01' : today;
-    const via = renewal ? '保護者ページ（契約の更新）' : '保護者ページ（入塾の申込み）';
-    const snapshot = { appliedAt: now, guardian: { ...app.guardian, email: me.email }, student: app.student,
-      condition: { id: cond.id, no: cond.no, minutes: cond.minutes, fee: cond.fee, deliveryMode: cond.deliveryMode, subjects: cond.subjects, note: cond.note, fromMonth: cond.fromMonth },
-      terms: { version: terms.version, title: terms.title, url: terms.url }, enrolledOn };
-    const json = JSON.stringify(snapshot), surname = app.guardian.familyName;
+    const terms = await applyTerms(c, b), x = await applyTarget(c, me, b.offerId, b.conditionId);
+    const app = applicationFields(b), renewal = x.r.kind === 'renewal', now = iso(c.now);
+    const evidence = consentEvidence(c, { consenterName: app.guardian.name }, me, me);
     // 体験のときの「◯◯さん」の表示名は、保護者の名字の「◯◯家」にする（代表が付けた名前は変えない）
-    const familyLabel = !renewal && me.name === s.familyName + 'さん' && surname ? surname + '家' : me.name;
-    await c.db.batch([
-      c.db.prepare("update enrollmentOffers set status = 'applied', appliedAt = ?, application = ?, contentHash = ?, termsVersion = ?, consenterName = ?, version = version + 1 where id = ? and status = 'offered'")
-        .bind(now, json, sha256Hex(json), terms.version, evidence.consenterName, r.id),
-      c.db.prepare('update families set name = ?, guardianName = ?, guardianKana = ?, guardianFamilyName = ?, guardianGivenName = ?, guardianFamilyKana = ?, guardianGivenKana = ?, phone = ?, address = ?, updatedAt = ?, version = version + 1 where id = ?')
-        .bind(familyLabel, app.guardian.name, app.guardian.kana, app.guardian.familyName, app.guardian.givenName, app.guardian.familyKana, app.guardian.givenKana, app.guardian.phone, app.guardian.address, now, me.id),
-      renewal ? c.db.prepare('update students set familyName = ?, givenName = ?, familyKana = ?, givenKana = ?, grade = ?, school = ?, updatedAt = ?, version = version + 1 where id = ?')
-        .bind(app.student.familyName, app.student.givenName, app.student.familyKana, app.student.givenKana, app.student.grade, app.student.school, now, s.id)
-      : c.db.prepare("update students set familyName = ?, givenName = ?, familyKana = ?, givenKana = ?, grade = ?, school = ?, trial = 0, enrolledOn = ?, linkCode = case when linkCode like 'off.%' then ? else linkCode end, updatedAt = ?, version = version + 1 where id = ?")
-        .bind(app.student.familyName, app.student.givenName, app.student.familyKana, app.student.givenKana, app.student.grade, app.student.school, enrolledOn, newLinkCode(), now, s.id),
-      c.db.prepare("update conditions set status = 'agreed', agreedAt = ?, agreedVia = ?, agreedBy = ?, agreedNote = ?, consenterName = ?, recordedAt = ?, recordedByName = ?, updatedAt = ? where id = ? and status = 'proposed'")
-        .bind(at, via, 'family:' + me.id, '', evidence.consenterName, evidence.recordedAt, evidence.recordedByName, now, cond.id),
-      ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at, via, actorKind: 'family', actorId: me.id, note: '', evidence })),
-    ]);
-    await storeDoc(c, cond.id); // 同意済みの個別受講条件書
+    const surname = app.guardian.familyName, familyLabel = !renewal && me.name === x.s.familyName + 'さん' && surname ? surname + '家' : me.name;
+    const one = applyStatements(c, me, x, app, terms, evidence);
+    await c.db.batch([...one.stmts, familyUpdate(c, me, app, familyLabel, now), ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at: evidence.consentedAt, via: one.via, actorKind: 'family', actorId: me.id, note: '', evidence }))]);
+    await storeDoc(c, x.cond.id); // 同意済みの個別受講条件書
     // 保護者にも受付のメール（2026-10-29 本人「入塾の手続きが完了した後に、保護者に通知が行ってない」）。控えは保護者ページの「契約・同意の控え」
-    const sname = app.student.familyName + ' ' + app.student.givenName;
-    if (renewal) await familyNotice(c, s.id, '同意を受け付けました', `${sname}さんの共通規約と個別受講条件書（第${cond.no}版）への同意を受け付けました。
-${monthText(r.fromMonth)}からの授業は、新しい個別受講条件書の内容で行います。
-同意した書面の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも確かめられます。`, 'contracts');
-    else await familyNotice(c, s.id, '入塾のお申込みを受け付けました', `${sname}さんの入塾のお申込みを受け付けました。ありがとうございます。
+    const sname = app.student.familyName + ' ' + app.student.givenName, enrolledOn = one.enrolledOn;
+    if (renewal) await renewalMails(c, app.guardian.name, [{ x, app }]);
+    else {
+      await familyNotice(c, x.s.id, '入塾のお申込みを受け付けました', `${sname}さんの入塾のお申込みを受け付けました。ありがとうございます。
 入塾日：${Number(enrolledOn.slice(5, 7))}月${Number(enrolledOn.slice(8))}日
-${monthText(r.fromMonth)}からの授業の日程は、LINE などでご相談します。
+${monthText(x.r.fromMonth)}からの授業の日程は、LINE などでご相談します。
 同意した共通規約と個別受講条件書の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも確かめられます。`, 'contracts');
-    const name = app.student.familyName + ' ' + app.student.givenName;
-    if (renewal) await staffNotice(c, `【契約の更新】${name}さん`, `${name}さんの保護者（${app.guardian.name}）が、共通規約と個別受講条件書（第${cond.no}版・${monthText(r.fromMonth)}から）に同意しました。`);
-    else await staffNotice(c, `【入塾の申込み】${name}さん`, `${name}さん（${app.student.grade}）の入塾の申込みがありました。\n保護者：${app.guardian.name}\n開始：${monthText(r.fromMonth)}から（入塾日 ${enrolledOn}）\n共通規約・個別受講条件書（第${cond.no}版）に同意済みです。${monthText(r.fromMonth)}からの授業の日程を保護者と相談してください（まとまった回数の授業なら、受講計画書も作れます）。`);
-    await audit(c, renewal ? 'renewalApplied' : 'enrollmentApplied', r.id, { studentId: s.id, conditionId: cond.id, termsVersion: terms.version });
-    return { enrollment: offerView(await getOffer(c, r.id)), enrolledOn };
+      await staffNotice(c, `【入塾の申込み】${sname}さん`, `${sname}さん（${app.student.grade}）の入塾の申込みがありました。\n保護者：${app.guardian.name}\n開始：${monthText(x.r.fromMonth)}から（入塾日 ${enrolledOn}）\n共通規約・個別受講条件書（第${x.cond.no}版）に同意済みです。${monthText(x.r.fromMonth)}からの授業の日程を保護者と相談してください（まとまった回数の授業なら、受講計画書も作れます）。`);
+    }
+    await audit(c, renewal ? 'renewalApplied' : 'enrollmentApplied', x.r.id, { studentId: x.s.id, conditionId: x.cond.id, termsVersion: terms.version });
+    return { enrollment: offerView(await getOffer(c, x.r.id)), enrolledOn };
+  },
+  // 契約更新の手続きは、兄弟をまとめて 1 回で（2026-10-30 本人「兄弟が複数人いるときに、２回同じ手順をやることに違和感」）。
+  // 保護者の情報と共通規約は 1 回、生徒ごとの情報と個別受講条件書はまとめて確かめ、1 回の書き込みで同意する。受付のメールも 1 通
+  'family/enrollment/apply-all': async (c, b) => {
+    const me = await requireFamily(c, b);
+    const items = Array.isArray(b.items) ? b.items : [];
+    if (!items.length || items.length > 10) fail('badRequest', '同意する生徒がありません');
+    if (b.agree !== true) fail('needAgree', '共通規約と個別受講条件書を確かめて「同意します」に印を付けてください');
+    const terms = await applyTerms(c, b), xs = [];
+    for (const it of items) xs.push(await applyTarget(c, me, it && it.offerId, it && it.conditionId));
+    if (xs.some(x => x.r.kind !== 'renewal')) fail('badRequest', 'まとめて同意できるのは、契約更新の手続きだけです');
+    if (new Set(xs.map(x => x.r.id)).size !== xs.length) fail('badRequest', '同じ生徒が 2 回入っています');
+    const apps = items.map(it => applicationFields({ ...b, student: it.student })), now = iso(c.now);
+    const evidence = consentEvidence(c, { consenterName: apps[0].guardian.name }, me, me);
+    const all = xs.map((x, i) => applyStatements(c, me, x, apps[i], terms, evidence));
+    await c.db.batch([...all.flatMap(o => o.stmts), familyUpdate(c, me, apps[0], me.name, now), ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at: evidence.consentedAt, via: all[0].via, actorKind: 'family', actorId: me.id, note: '', evidence }))]);
+    for (const x of xs) await storeDoc(c, x.cond.id);
+    await renewalMails(c, apps[0].guardian.name, xs.map((x, i) => ({ x, app: apps[i] })));
+    for (const x of xs) await audit(c, 'renewalApplied', x.r.id, { studentId: x.s.id, conditionId: x.cond.id, termsVersion: terms.version, together: xs.length });
+    return { enrollments: await Promise.all(xs.map(async x => offerView(await getOffer(c, x.r.id)))) };
   },
 };

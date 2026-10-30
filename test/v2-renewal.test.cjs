@@ -44,16 +44,16 @@ test('renewal: one mail for the siblings, the parent confirms details and agrees
   await apply(o1, a);
   const toParent = h.mails().slice(m0).filter(m => m.audience === 'family');
   assert.equal(toParent.length, 1, '保護者にも受付のメール');
-  assert.match(toParent[0].subject, /同意を受け付けました/);
+  assert.match(toParent[0].subject, /契約更新の手続きを受け付けました/);
   assert.match(toParent[0].body, /2026年11月からの授業は、新しい個別受講条件書の内容で行います/);
   const sa = h.rows('select * from students where id = ?', a.id)[0];
   assert.deepEqual([sa.trial, sa.enrolledOn, sa.grade], [0, '2025-04-01', '中3'], '入塾日は変えない。学年は入れた値');
   const f1 = h.rows('select * from families where id = ?', fam.id)[0];
   assert.deepEqual([f1.name, f1.termsVersion, f1.address], ['【テスト】岡野家', TERMS.version, '〒343-0002 【テスト】越谷市1-2-3'], '家族の表示名は変えず、規約の同意と住所が入る');
   const c1 = h.rows("select * from conditions where studentId = ? and status = 'agreed'", a.id)[0];
-  assert.deepEqual([c1.agreedVia, c1.consenterName, c1.fromMonth], ['保護者ページ（契約の更新）', '【テスト】岡野 花子', '2026-11']);
-  assert.equal(h.rows("select via from termsConsents where familyId = ?", fam.id)[0].via, '保護者ページ（契約の更新）');
-  assert.match(h.mails().filter(m => m.audience === 'staff').at(-1).subject, /【契約の更新】/);
+  assert.deepEqual([c1.agreedVia, c1.consenterName, c1.fromMonth], ['保護者ページ（契約更新の手続き）', '【テスト】岡野 花子', '2026-11']);
+  assert.equal(h.rows("select via from termsConsents where familyId = ?", fam.id)[0].via, '保護者ページ（契約更新の手続き）');
+  assert.match(h.mails().filter(m => m.audience === 'staff').at(-1).subject, /【契約更新】/);
   // 2 人目: 規約は同意済みなので重ねて記録しない
   await apply(o2, b);
   assert.equal(h.rows('select count(*) n from termsConsents where familyId = ?', fam.id)[0].n, 1);
@@ -76,4 +76,43 @@ test('renewal: trial students and other families are refused, resending sends on
   assert.notEqual(again.renewals[a.id].id, r.renewals[a.id].id, '前の案内は取り下げて新しく');
   assert.equal(h.rows("select count(*) n from enrollmentOffers where studentId = ? and status = 'offered'", a.id)[0].n, 1);
   assert.deepEqual(h.rows("select fee from conditions where studentId = ? and status = 'proposed'", a.id).map(x => x.fee), [4800]);
+});
+
+// 兄弟はまとめて 1 回で（2026-10-30 本人「兄弟が複数人いるときに、２回同じ手順をやることに違和感」）。保護者の情報と規約は 1 回、受付のメールも 1 通
+test('renewal: the parent agrees for all siblings at once; one write, one mail each to the parent and the classroom', async () => {
+  const { h, auth, fam, a, b, parent } = await world();
+  await h.ok('admin/terms/set', { auth, ...TERMS });
+  await h.ok('admin/renewal/offer', { auth, familyId: fam.id, fromMonth: '2026-11', students: offer(a, b) });
+  const page = await h.ok('family/enrollment', { auth: parent });
+  const [o1, o2] = page.offers;
+  const items = [{ offerId: o1.id, conditionId: o1.conditionId, student: stu(a) }, { offerId: o2.id, conditionId: o2.conditionId, student: { ...stu(b), grade: '小6' } }];
+  assert.equal((await h.call('family/enrollment/apply-all', { auth: parent, termsVersion: TERMS.version, agree: false, ...APP, items })).error.code, 'needAgree');
+  assert.equal((await h.call('family/enrollment/apply-all', { auth: parent, termsVersion: TERMS.version, agree: true, ...APP, items: [items[0], items[0]] })).error.code, 'badRequest', '同じ生徒を 2 回は入れない');
+  const m0 = h.mails().length;
+  const r = await h.ok('family/enrollment/apply-all', { auth: parent, termsVersion: TERMS.version, agree: true, ...APP, items });
+  assert.deepEqual(r.enrollments.map(e => e.status), ['applied', 'applied']);
+  const mails = h.mails().slice(m0), toParent = mails.filter(m => m.audience === 'family'), toStaff = mails.filter(m => m.audience === 'staff');
+  assert.equal(toParent.length, 1, '保護者への受付のメールは 1 通');
+  assert.match(toParent[0].subject, /契約更新の手続きを受け付けました/);
+  assert.match(toParent[0].body, /【テスト】岡野 一郎さん・【テスト】岡野 二郎さんの契約更新の手続き/);
+  assert.match(toParent[0].body, /【テスト】岡野 二郎さん：個別受講条件書（第1版）/);
+  assert.equal(toStaff.length, 1);
+  assert.match(toStaff[0].subject, /【契約更新】【テスト】岡野 一郎さん・【テスト】岡野 二郎さん/);
+  assert.equal(h.rows('select count(*) n from termsConsents where familyId = ?', fam.id)[0].n, 1, '規約の同意は 1 回');
+  for (const s of [a, b]) assert.equal(h.rows("select agreedVia from conditions where studentId = ? and status = 'agreed'", s.id)[0].agreedVia, '保護者ページ（契約更新の手続き）');
+  assert.equal(h.rows('select grade from students where id = ?', b.id)[0].grade, '小6');
+  assert.equal((await h.ok('family/enrollment', { auth: parent })).offers.filter(o => o.status === 'offered').length, 0);
+  assert.equal((await h.call('family/enrollment/apply-all', { auth: parent, termsVersion: TERMS.version, agree: true, ...APP, items })).error.code, 'closed', '2 回目は受け付けない');
+});
+
+// 保護者の氏名に空白がない家族（例: 「山本あさこ」）は、生徒の名字で姓と名に分けて入れておく（2026-10-30 山本さんの手続きの前に）
+test('renewal: a guardian name without a space is split at the students\' surname', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  await h.ok('admin/terms/set', { auth, ...TERMS });
+  const fam = (await h.ok('admin/families/create', { auth, name: '【テスト】山本さん', email: 'yama@example.invalid', guardianName: '【テスト】山本あさこ' })).family;
+  const s = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '【テスト】山本', givenName: '一郎', grade: '中3', baseRate30: 1500 })).student;
+  const parent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' })).auth;
+  await h.ok('admin/renewal/offer', { auth, familyId: fam.id, fromMonth: '2026-11', students: [{ studentId: s.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', subjects: '数学' }] });
+  const g = (await h.ok('family/enrollment', { auth: parent })).guardian;
+  assert.deepEqual([g.familyName, g.givenName], ['【テスト】山本', 'あさこ']);
 });
