@@ -24,8 +24,9 @@ export const homeRoutes = {
     const failedEffects = manager ? await failedEffectsCount(c.db, c.now) : 0;
     const todo = [];
     const add = (key, label, count, link, note = '') => { if (count) todo.push({ key, label, count, link, note }); };
-    if (manager) add('requests', '生徒・保護者からの連絡', range.openRequests.length, '#schedule', '変更・お休み・キャンセル');
-    if (manager && near) add('adjusting', '調整中のまま近づいている授業', near.n, '#schedule', '5日以内。確認をお願いするか、合意を記録して確定');
+    // 予定の画面の「対応すること」を開いた状態で（2026-10-30 本人「押しても、カレンダーに飛ぶだけ…どんな連絡が来ているのか分からない」）
+    if (manager) add('requests', '生徒・保護者からの連絡', range.openRequests.length, '#schedule/todo', '変更・お休み・キャンセル');
+    if (manager && near) add('adjusting', '調整中のまま近づいている授業', near.n, '#schedule/todo', '5日以内。確認をお願いするか、合意を記録して確定');
     // 授業記録は努力義務（2026-10-27 本人「授業記録はあくまで努力義務程度に抑えておこうかな。もう管理の方で手間がかかってしまって、逆にシステムに苦しめられています」）: 書いていない記録は数えない。書きかけ（下書き）だけ出す
     add('records', '書きかけの授業記録', pending.lessons.filter(l => l.draft).length, '#records', '');
     add('handover', '読んでいない引き継ぎメモ', pending.unreadHandover, '#records');

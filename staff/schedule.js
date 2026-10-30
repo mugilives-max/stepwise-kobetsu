@@ -52,8 +52,10 @@ function shortNames() {
   return Object.fromEntries(data.students.map(s => { const [f, g] = s.name.split(' '); return [s.id, fam[f] > 1 && g ? g : f]; }));
 }
 
-export function schedulePage(ctx, me) {
+export function schedulePage(ctx, me, r = {}) {
   const { esc } = ctx, manager = me.roles.includes('manager');
+  // 「今日」の対応すること（連絡・調整中）から来たら、対応することの一覧を開く。閉じたあとまた開かないよう、アドレスは #schedule に戻す
+  if (r.open === 'todo') { sheet = { kind: 'todo' }; history.replaceState(null, '', '#schedule'); }
   if (!month) month = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
   if ((!data || loadedFor !== month) && cache[month]) { data = cache[month]; loadedFor = month; prefetchNear(ctx); } // 先に読んであった月はすぐ出す
   if (!data || loadedFor !== month) { if (loadedFor !== month) load(ctx); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
