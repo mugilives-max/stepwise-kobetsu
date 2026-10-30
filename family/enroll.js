@@ -29,8 +29,17 @@ const isRenewal = o => !!o && o.kind === 'renewal';
 // 今回の手続きで扱う案内: 契約更新の手続きなら兄弟をまとめて、入塾のお申込みは 1 人ずつ
 const batch = () => { const o = open(); return !o.length ? [] : isRenewal(o[0]) ? o.filter(isRenewal) : [o[0]]; };
 const TITLE_RENEWAL = '契約更新の手続き';
+// 契約内容のご説明の動画（全家庭共通。共通規約 r18。2026-10-30 本人「保護者ページの契約更新の手続きの画面に置く」）。
+// 字幕は映像に入っている。作り方は stepwise-terms-video の renewal/（手元の制作データ）
+const VIDEO = { src: '/family/media/contract-explainer.mp4?v=20261030', poster: '/family/media/contract-explainer-poster.jpg?v=20261030' };
+const explainVideo = () => `<video class="explain-video" controls playsinline preload="none" poster="${VIDEO.poster}" aria-label="契約内容のご説明（動画）"><source src="${VIDEO.src}" type="video/mp4"></video>`;
 // 上の帯とホームのやることの名前（2026-10-30 本人「まずは、「契約更新の手続き」ですね」）
-export const enrollTitle = () => { const o = open(); return o.length && o.every(isRenewal) ? TITLE_RENEWAL : '入塾のお申込み'; };
+// 同意したあとの完了の画面も、終えた手続きの名前のまま（2026-10-30。案内が残っていないと「入塾のお申込み」と出ていた）
+export const enrollTitle = () => {
+  const o = open(), done = step === 'done' && data && data.offers ? doneIds.map(id => data.offers.find(x => x.id === id)).filter(Boolean) : [];
+  const list = o.length ? o : done;
+  return list.length && list.every(isRenewal) ? TITLE_RENEWAL : '入塾のお申込み';
+};
 // 申込みでまとめて同意するもの（その間は、規約・個別受講条件書の別々の同意を出さない）
 export function enrollCovers(ctx) {
   if (needEnroll(ctx)) return { terms: false, students: new Set() };
@@ -109,7 +118,7 @@ function studentFields(esc, o, i, many) {
 }
 function inputPage(ctx, list) {
   const { esc } = ctx, renewal = isRenewal(list[0]), many = list.length > 1;
-  return `${steps(renewal ? 0 : 1, renewal)}<h1>${renewal ? TITLE_RENEWAL : '入塾のお申込み'}</h1>${renewal ? `<p class="muted" style="margin-top:-4px">${list.map(o => esc(o.student.givenName) + 'さん').join('・')}</p>` : ''}${ctx.noticeHtml()}
+  return `${steps(renewal ? 0 : 1, renewal)}<h1>${renewal ? TITLE_RENEWAL : '入塾のお申込み'}</h1>${renewal ? `<p class="muted" style="margin-top:-4px">${list.map(o => esc(o.student.givenName) + 'さん').join('・')}</p>${explainVideo()}` : ''}${ctx.noticeHtml()}
   <form class="reg-form" data-form="enroll-input" novalidate>
     <fieldset class="reg-field cond-box"><legend>保護者さまの情報 <span class="req">必須</span></legend>
       <div class="row">${field(esc, 'guardianFamilyName', '姓', { ph: '例：山田', auto: 'family-name', max: 30 })}${field(esc, 'guardianGivenName', '名', { ph: '例：花子', auto: 'given-name', max: 30 })}</div>
