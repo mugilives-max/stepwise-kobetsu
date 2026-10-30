@@ -18,9 +18,9 @@ export const consentLine = (at, via, who) => {
   const t = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(String(at || '')) ? at + 'T00:00:00+09:00' : at || ''), d = Number.isFinite(t) ? new Date(t + 9 * 3600e3) : null;
   return [d ? (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日' : '', via, who].filter(Boolean).join('・');
 };
-export const COPY_PLACE = '同意した書面の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも開けます。';
+export const COPY_PLACE = '同意した書面の控えは、保護者ページの「契約」でいつでも開けます。';
 // 書面のファイルは、いつもメールに付けて渡す（前の Apps Script は付けずに送る）。本文の「添付しています」は、入れ替えを確かめてから（settings の mailAttachments = on）
-export const COPY_ATTACHED = '同意した書面の控えを、このメールに添付しています。保護者ページの「アカウント」→「契約・同意の控え」でもいつでも開けます。';
+export const COPY_ATTACHED = '同意した書面の控えを、このメールに添付しています。保護者ページの「契約」でもいつでも開けます。';
 export async function copyMail(db, fileId) {
   const on = ((await db.prepare("select value from settings where key = 'mailAttachments'").first()) || {}).value === 'on';
   return { extra: fileId ? { attachFiles: [fileId] } : {}, place: on && fileId ? COPY_ATTACHED : COPY_PLACE };

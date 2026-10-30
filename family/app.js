@@ -1,7 +1,7 @@
 import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principles';
 import { safeFamilyTarget, targetParts, targetPurpose } from '/assets/v2/family-target.js?v=20261027-ease7';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-r15';
-import { enrollPage, enrollTitle, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261030-renewonce';
+import { enrollPage, enrollTitle, enrollTodo, enrollCovers, enrollSubmit, enrollClick, enrollInput, enrollChange, resetEnroll } from '/family/enroll.js?v=20261030-agenda2';
 // 保護者の画面（作り直し v2）。入口は ホーム・予定・学習・お支払い（docs/UX_STRUCTURE.md 4）。子どもが2人以上なら上で切り替える。
 // 一覧は白い枠に 1 件 1 行、操作（連絡・承認・振込の連絡・申請）は押すと下から出る画面で（assets/v2/portal-ui.js）。
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
@@ -82,9 +82,10 @@ const ICON = {
   schedule: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   learning: '<path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5c.8 0 1.5-.7 1.5-1.5z"/>',
   money: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  contracts: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 13l2 2 3-4"/>',
 };
-const TABS = [['home', 'ホーム'], ['schedule', '予定'], ['learning', '学習'], ['money', 'お支払い']];
-const TITLE = { home: 'ホーム', schedule: '予定', confirm: '予定', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み', plan: '受講計画の承認', agree: '同意のお願い', contracts: '契約・同意の控え' };
+const TABS = [['home', 'ホーム'], ['schedule', '予定'], ['learning', '学習'], ['money', 'お支払い'], ['contracts', '契約']];
+const TITLE = { home: 'ホーム', schedule: '予定', confirm: '予定', learning: '学習', money: 'お支払い', account: 'アカウント', enroll: '入塾のお申込み', plan: '受講計画の承認', agree: '同意のお願い', contracts: '契約' };
 // 前の URL（#events・#grades）も開けるように
 const pageOf = p => p === 'events' ? 'schedule' : p === 'grades' ? 'learning' : p;
 
@@ -142,9 +143,9 @@ function homePage() {
   // 宿題は保護者が対応することではないので、ここに置かない（下の「授業記録」と並べる。2026-10-27 本人）。見出しは「対応が必要なこと」（同日 本人「やることっていうのが名前として微妙」）
   h += secTitle('対応が必要なこと');
   h += todo.length ? '<div class="group">' + todo.map(([href, ic, color, label, note, n]) => `<a class="todo-row" href="${href}">${ibox(ic, color, label)}<span class="v"><span class="lbl">${esc(label)}${note ? `（${esc(note)}）` : ''}</span></span><span class="cnt">${n}</span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">対応が必要なことはありません。</p>';
-  // そのあとの授業（最大 4 件）
+  // 今後の授業（最大 4 件。2026-10-30 本人「そのあとの授業ではなくて、今後の授業」）
   const more = next.slice(1, 5);
-  if (more.length) h += secTitle('そのあとの授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { names: names(), today: sched.today });
+  if (more.length) h += secTitle('今後の授業', '<a class="more" href="#schedule">すべて見る ›</a>') + lessonRows(more, { names: names(), today: sched.today });
   const tests = sched.events.filter(e => e.kind === 'test' && e.dateTo >= sched.today).slice(0, 2);
   if (tests.length) h += secTitle('テスト') + eventRows(tests, { names: multiKids() ? names() : {}, today: sched.today });
   // 授業記録と宿題（2026-10-27 本人「新しい授業の記録ってのは要らない…宿題は…下の方に移動して、「授業記録」というのと並べて」）
@@ -272,7 +273,7 @@ function moneySelection() {
 }
 // 2026-10-27 本人「受講計画書の承認は「お支払い」でするべきことではない」→「その形で作り直して」:
 // 保護者が来る用事ごとに画面を分ける。承認（#plan）・同意（#agree）は「やること」とメールのリンクから、その 1 枚へ。
-// お支払い（#money）は請求とキャンセル料だけ。過去の契約・同意の控え（#contracts）はアカウントから
+// お支払い（#money）は請求とキャンセル料だけ。契約・同意の控え（#contracts）はメニューの「契約」
 const noneLeft = text => `<p class="muted" style="margin-top:16px">${text}</p><p><a href="#home">ホームへ</a></p>`;
 // 受講計画書の承認（月ごとに 1 枚。先に共通規約・個別受講条件書への同意が要る）
 function planPage() {
@@ -308,7 +309,7 @@ function moneyPage() {
   if (selected.fees.length) h += secTitle('キャンセル料') + feeRows(selected.fees, { multi });
   return h;
 }
-// 契約・同意の控え（アカウントから）: 今の共通規約・個別受講条件書・特別単価合意書、決まった受講計画書、過去の控え
+// 契約（メニュー。2026-10-30 本人）: 今の共通規約・個別受講条件書・特別単価合意書、決まった受講計画書、過去の控え
 function contractsPage() {
   if (need('money')) return loading;
   const multi = new Set(money.plans.map(l => l.studentId)).size > 1, { others } = planGroups(money.plans);
@@ -323,7 +324,7 @@ function contractsPage() {
 function accountPage() {
   if (previewToken) return `<p class="muted">プレビューでは使えません。</p>`;
   need('sched');
-  return `<p>${esc(me.name)}（${esc(me.email)}）</p>${noticeHtml()}<div class="group" style="margin:12px 0"><a class="todo-row" href="#contracts">${ibox('file', '#5b6672', '契約・同意の控え')}<span class="v"><span class="lbl">契約・同意の控え</span></span><span class="go">›</span></a></div>${kids().length ? `<h2>生徒さん本人からのお休みの連絡</h2><div class="choices">${kids().map(k => `<label class="choice"><input type="checkbox" data-contact="${esc(k.id)}"${k.studentContact ? ' checked' : ''}${dis()}><span>${esc(k.name)}さん本人から受け付ける</span></label>`).join('')}</div>` : ''}<h2>パスワードを変える</h2><form class="stack" data-form="password"><input type="email" value="${esc(me.email)}" autocomplete="username" hidden>
+  return `<p>${esc(me.name)}（${esc(me.email)}）</p>${noticeHtml()}${kids().length ? `<h2>生徒さん本人からのお休みの連絡</h2><div class="choices">${kids().map(k => `<label class="choice"><input type="checkbox" data-contact="${esc(k.id)}"${k.studentContact ? ' checked' : ''}${dis()}><span>${esc(k.name)}さん本人から受け付ける</span></label>`).join('')}</div>` : ''}<h2>パスワードを変える</h2><form class="stack" data-form="password"><input type="email" value="${esc(me.email)}" autocomplete="username" hidden>
     <label>今のパスワード<input type="password" name="current" autocomplete="current-password" required></label><label>新しいパスワード（12文字以上）<input type="password" name="next" autocomplete="new-password" minlength="12" required></label>
     <label>もう一度<input type="password" name="confirm" autocomplete="new-password" minlength="12" required></label><button class="primary"${dis()}>変える</button></form><h2>ログアウト</h2><p><button data-action="logout"${dis()}>この端末からログアウト</button></p>`;
 }

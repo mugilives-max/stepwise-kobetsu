@@ -6,12 +6,12 @@ import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=202610
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
 import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261030-renewonce';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261028-r16b';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261030-agenda2';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261028-r16b';
 import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261029-feemonth';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261030-renewonce';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261028-r16b';
-import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261027-r15';
+import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda2';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261026-p4';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261030-renewonce';
@@ -27,7 +27,7 @@ let lastPage = '';
 let me = null, busy = false, notice = null, staffList = null, shownLink = null, bootstrap = null, staffOpen = '';
 
 // 上の帯に出す画面の名前（本文には大見出しを置かない）
-const PAGE_TITLE = { rules:'講師マニュアル', bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講計画書', billing: '請求', payroll: '給与', grades: '成績', families: '契約者と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: '共通規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信の記録と控え' };
+const PAGE_TITLE = { rules:'講師マニュアル', bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講計画書', billing: '請求', payroll: '給与', grades: '成績', families: '契約者と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: '共通規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信履歴と控え' };
 const legacyToken = () => { try { return localStorage.getItem('sw_admt') || ''; } catch { return ''; } };
 function route() {
   const h = location.hash;
@@ -40,6 +40,7 @@ function route() {
   if (h.startsWith('#family=')) return { page: 'family', id: decodeURIComponent(h.slice(8)) };
   if (h.startsWith('#record=')) return { page: 'record', id: decodeURIComponent(h.slice(8)) };
   if (h.startsWith('#grades=')) return { page: 'gradesOf', id: decodeURIComponent(h.slice(8)) };
+  if (h === '#schedule/todo') return { page: 'schedule', open: 'todo' }; // 「今日」の対応することから: 予定の画面で一覧を開く
   if (h.startsWith('#student=')) { const [id, tab] = h.slice(9).split('/'); return { page: 'student', id: decodeURIComponent(id), tab: tab || 'summary' }; }
   return { page: h.slice(1) || 'home' };
 }
@@ -223,7 +224,7 @@ function render() {
   else if(r.page==='work')h=workPage(ctx,me,r.id,r.date);
   else if(r.page==='rules')h=rulesPage(ctx,me);
   else if(me.employmentAccess===false&&!['account','settings','payroll'].includes(r.page))h=employmentPage(ctx,me);
-  else if (r.page === 'schedule' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = schedulePage(ctx, me);
+  else if (r.page === 'schedule' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = schedulePage(ctx, me, r);
   else if (r.page === 'records' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = recordsPage(ctx);
   else if (r.page === 'record' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = recordPage(ctx, r.id);
   else if (r.page === 'students' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = studentsPage(ctx);

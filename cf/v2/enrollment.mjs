@@ -145,7 +145,7 @@ async function renewalMails(c, guardianName, list) {
   await familyNotice(c, list[0].x.s.id, '契約更新の手続きを受け付けました', `${names}の契約更新の手続き（共通規約と個別受講条件書への同意）を受け付けました。
 ${docs}
 ${month}からの授業は、新しい個別受講条件書の内容で行います。
-同意した書面の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも確かめられます。`, 'contracts');
+同意した書面の控えは、保護者ページの「契約」でいつでも確かめられます。`, 'contracts');
   await staffNotice(c, `【契約更新】${names}`, `${names}の保護者（${guardianName}）が、共通規約と個別受講条件書に同意しました（${month}から）。\n${docs}`);
 }
 
@@ -295,7 +295,7 @@ export const enrollmentRoutes = {
       await familyNotice(c, x.s.id, '入塾のお申込みを受け付けました', `${sname}さんの入塾のお申込みを受け付けました。ありがとうございます。
 入塾日：${Number(enrolledOn.slice(5, 7))}月${Number(enrolledOn.slice(8))}日
 ${monthText(x.r.fromMonth)}からの授業の日程は、LINE などでご相談します。
-同意した共通規約と個別受講条件書の控えは、保護者ページの「アカウント」→「契約・同意の控え」でいつでも確かめられます。`, 'contracts');
+同意した共通規約と個別受講条件書の控えは、保護者ページの「契約」でいつでも確かめられます。`, 'contracts');
       await staffNotice(c, `【入塾の申込み】${sname}さん`, `${sname}さん（${app.student.grade}）の入塾の申込みがありました。\n保護者：${app.guardian.name}\n開始：${monthText(x.r.fromMonth)}から（入塾日 ${enrolledOn}）\n共通規約・個別受講条件書（第${x.cond.no}版）に同意済みです。${monthText(x.r.fromMonth)}からの授業の日程を保護者と相談してください（まとまった回数の授業なら、受講計画書も作れます）。`);
     }
     await audit(c, renewal ? 'renewalApplied' : 'enrollmentApplied', x.r.id, { studentId: x.s.id, conditionId: x.cond.id, termsVersion: terms.version });
