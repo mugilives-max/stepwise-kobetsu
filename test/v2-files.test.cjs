@@ -69,3 +69,18 @@ test('an opening link works for five minutes and then stops', async () => {
   assert.equal((await h.raw('GET', 'files/get?t=nonsense')).status, 403);
   assert.equal((await h.raw('POST', 'files/get?t=x')).status, 405);
 });
+
+// 生徒の「資料」の学校の書類（2026-10-31 本人「年間行事とかのやつをアップロードできるように」）。塾だけが上げて塾だけが見る
+test('school documents on the student screen: managers upload, open and delete; families and teachers cannot', async () => {
+  const { h, auth, kid, a, teacherAuth } = await world();
+  assert.equal((await h.call('students/docs/upload', { auth: teacherAuth, studentId: kid.id, name: 'x.pdf', mime: 'application/pdf', size: 10 })).error.code, 'forbidden', '講師は置けない');
+  const body = pdf(30), st = await h.ok('students/docs/upload', { auth, studentId: kid.id, name: '年間行事予定.pdf', mime: 'application/pdf', size: body.length, note: '2026年度' });
+  assert.equal((await h.raw('POST', st.uploadUrl, body)).status, 200);
+  const hub = await h.ok('students/hub', { auth, studentId: kid.id });
+  assert.deepEqual(hub.docs.map(d => [d.name, d.note]), [['年間行事予定.pdf', '2026年度']]);
+  assert.ok((await h.ok('files/link', { auth, id: st.fileId })).url, '代表は開ける');
+  assert.equal((await h.call('files/link', { auth: a, id: st.fileId })).error.code, 'notFound', '保護者には開けない');
+  assert.equal((await h.call('files/link', { auth: teacherAuth, id: st.fileId })).error.code, 'notFound', '講師には開けない');
+  await h.ok('files/delete', { auth, id: st.fileId });
+  assert.deepEqual((await h.ok('students/hub', { auth, studentId: kid.id })).docs, [], '消したら出ない');
+});
