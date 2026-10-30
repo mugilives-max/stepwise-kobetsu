@@ -849,6 +849,8 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .reg-confirm .cond-dl { grid-template-columns: minmax(6.5em, 38%) minmax(0, 1fr); }
 .reg-confirm .cond-dl dt { white-space: normal; }
 /* 入職の手続き: 登録内容（見出しの下に内容） */
+/* 契約内容のご説明の動画（縦長。スマホは幅いっぱい、PC は高さを抑える） */
+.explain-video { display: block; width: 100%; max-width: 360px; aspect-ratio: 9 / 16; max-height: 70vh; margin: 8px auto 16px; border-radius: 12px; background: #16233F; }
 .reg-card { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 14px 0; }
 .reg-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .reg-card-head h2 { margin: 0; font-size: 16px; }
