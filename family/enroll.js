@@ -31,7 +31,7 @@ const batch = () => { const o = open(); return !o.length ? [] : isRenewal(o[0]) 
 const TITLE_RENEWAL = '契約更新の手続き';
 // 契約内容のご説明の動画（全家庭共通。共通規約 r18。2026-10-30 本人「保護者ページの契約更新の手続きの画面に置く」）。
 // 字幕は映像に入っている。作り方は stepwise-terms-video の renewal/（手元の制作データ）
-const VIDEO = { src: '/family/media/contract-explainer.mp4?v=20261030', poster: '/family/media/contract-explainer-poster.jpg?v=20261030' };
+const VIDEO = { src: '/family/media/contract-explainer.mp4?v=20261031', poster: '/family/media/contract-explainer-poster.jpg?v=20261031' };
 const explainVideo = () => `<video class="explain-video" controls playsinline preload="none" poster="${VIDEO.poster}" aria-label="契約内容のご説明（動画）"><source src="${VIDEO.src}" type="video/mp4"></video>`;
 // 上の帯とホームのやることの名前（2026-10-30 本人「まずは、「契約更新の手続き」ですね」）
 // 同意したあとの完了の画面も、終えた手続きの名前のまま（2026-10-30。案内が残っていないと「入塾のお申込み」と出ていた）
