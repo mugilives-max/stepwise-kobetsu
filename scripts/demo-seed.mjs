@@ -96,6 +96,13 @@ export async function seed({ live = false } = {}) {
   // 入塾の流れを試すための架空の体験生（家族は「◯◯さん」・メールなし。生徒の画面の「入塾の案内を送る」から始める）
   h.clock = at('2026-10-12T15:00:00');
   await h.ok('admin/trials/create', { auth, familyName: '架空', givenName: '体験', grade: '中3', school: '架空市立第一中学校', note: '入塾の流れを試す体験生' });
+  // 契約更新の手続きを試す家族（2026-10-30 本人「検証環境で実際に山本さんが経験することを追体験したい」）。
+  // 本番で最初に案内する家族と同じ形: 保護者の氏名に空白がない・電話と住所はまだ・保護者ページは登録済み・兄弟 2 人（前の書き方の学年）・個別受講条件書はまだない
+  const yfam = (await h.ok('admin/families/create', { auth, name: '山本さん', guardianName: '山本さくら', email: 'renewal-parent@example.invalid' })).family;
+  for (const [givenName, grade, school] of [['大和', '中学３年生', '架空市立北中学校'], ['空', '小学６年生', '架空市立北小学校']])
+    await h.ok('admin/students/create', { auth, familyId: yfam.id, familyName: '山本', givenName, grade, school, baseRate30: 1500, deliveryMode: 'in_person', enrolledOn: '2024-04-01' });
+  await h.ok('admin/families/invite', { auth, id: yfam.id });
+  await h.ok('family/invite/accept', { token: h.linkFrom(h.mails().at(-1)), password: 'family password 3' });
   const k = h.rows('select linkCode from students where id = ?', taro.id)[0].linkCode;
   const kh = h.rows('select linkCode from students where id = ?', hana.id)[0].linkCode;
   if (live) h.db2._sqlite.prepare("insert into settings (key, value, updatedAt) values ('live', '1', ?) on conflict(key) do update set value = '1'").run(new Date().toISOString());

@@ -35,6 +35,7 @@
     <div class="group who">
       <button type="button" class="todo-row" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#students"><span class="lbl">体験手続き</span><span class="go">›</span></button>
       <div class="todo-row stage" id="enroll-row" hidden><span class="lbl">入塾手続き</span><span class="stg"><button type="button" class="small-btn" id="trial" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/">塾</button><span class="arrow" aria-hidden="true">→</span><button type="button" class="small-btn" id="trial-parent">保護者</button></span></div>
+      <div class="todo-row stage" id="renewal-row" hidden><span class="lbl">契約更新手続き</span><span class="stg"><button type="button" class="small-btn" id="renewal-staff" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/">塾</button><span class="arrow" aria-hidden="true">→</span><button type="button" class="small-btn" data-login="family" data-email="renewal-parent@example.invalid" data-pass="family password 3" data-to="/family/">保護者</button></span></div>
       <div class="todo-row stage"><span class="lbl">雇用手続き</span><span class="stg"><button type="button" class="small-btn" data-login="staff" data-email="owner@example.invalid" data-pass="correct horse battery" data-to="/staff/#employment">塾</button><span class="arrow" aria-hidden="true">→</span><button type="button" class="small-btn" data-login="staff" data-email="teacher-new@example.invalid" data-pass="teacher password 1" data-to="/staff/">新しい講師</button></span></div>
     </div>
   </main>
@@ -46,6 +47,8 @@
       if (r.links && r.links.taro) document.getElementById('taro').href = r.links.taro;
       if (r.links && r.links.trial) { const t = document.getElementById('trial-student'); t.href = r.links.trial; t.hidden = false; }
       if (r.trial) { document.getElementById('trial').dataset.to = '/staff/#student=' + r.trial; document.getElementById('trial-parent').dataset.trial = r.trial; document.getElementById('enroll-row').hidden = false; }
+      // 契約更新の手続き: 塾は山本さんの契約者の画面から案内を送り、保護者は山本さんとして受け取る
+      if (r.renewal) { document.getElementById('renewal-staff').dataset.to = '/staff/#family=' + r.renewal; document.getElementById('renewal-row').hidden = false; }
     });
     // 押したしるし（一覧の › か、ボタンの文字を … に）
     const busy = b => { b.disabled = true; const g = b.querySelector('.go'); if (g) g.textContent = '…'; else b.textContent = '…'; };
