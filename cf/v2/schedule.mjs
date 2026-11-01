@@ -353,13 +353,17 @@ export async function studentByLink(c, b) {
 }
 const studentMay = (s, key) => { try { return JSON.parse(s.permissions || '{}')[key] !== false; } catch { return true; } };
 const EVENT_KINDS = ['test', 'event', 'unavailable'];
-async function addEvent(c, studentId, by, b) {
+export function eventInput(b) {
   const kind = String(b.kind || ''), date = String(b.date || ''), dateTo = String(b.dateTo || b.date || ''), title = String(b.title || '').trim();
   if (!EVENT_KINDS.includes(kind)) fail('badKind', '種類を選んでください（テスト・行事・授業ができない日）');
   if (!validDate(date) || !validDate(dateTo) || dateTo < date || Date.parse(dateTo) - Date.parse(date) > 62 * DAY) fail('badDate', '日付を確かめてください');
   const start = b.start ? String(b.start) : '', end = b.end ? String(b.end) : '';
   if ((start || end) && (!validTime(start) || !validTime(end) || end <= start)) fail('badTime', '時間帯を確かめてください（開始 < 終了）');
   if (title.length > 60 || (kind !== 'unavailable' && !title)) fail('needTitle', '内容を60文字以内で入れてください（例: 2学期中間テスト）');
+  return { kind, date, dateTo, start, end, title };
+}
+export async function addEvent(c, studentId, by, b) {
+  const { kind, date, dateTo, start, end, title } = eventInput(b);
   const id = newId('ev');
   await c.db.prepare('insert into sharedEvents (id, studentId, kind, date, dateTo, start, end, title, createdByKind, createdById, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .bind(id, studentId, kind, date, dateTo, start, end, title, by.kind, by.id, iso(c.now), iso(c.now)).run();
