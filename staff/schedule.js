@@ -81,8 +81,9 @@ export function schedulePage(ctx, me, r = {}) {
     const d = addDays(start, i);
     if (i === 35 && ymOf(d) !== month) break; // 6週目がまるごと次の月なら描かない
     const ls = data.lessons.filter(l => l.date === d && l.status in RANK);
-    // テスト・行事の帯に誰のかを添える（2人まで。3人以上は人数。2026-10-31 本人「期末テスト（岡野）が欲しい」）
-    const whose = g => { const n = g.items.map(e => short[e.studentId] || '').filter(Boolean); return n.length && n.length <= 2 ? `（${esc(n.join('・'))}）` : g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''; };
+    // テスト・行事の帯に誰のかを添える（2人まで。3人以上は人数。2026-10-31 本人「期末テスト（岡野）が欲しい」）。
+    // 括弧は幅を食うので、面談と同じく空けて並べる（2026-11-01 本人「面談と同じような表示に」）
+    const whose = g => { const n = g.items.map(e => short[e.studentId] || '').filter(Boolean); return n.length && n.length <= 2 ? ' ' + esc(n.join('・')) : g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''; };
     const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable')).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${whose(g)}</span>`)
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
       .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));

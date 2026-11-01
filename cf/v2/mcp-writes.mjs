@@ -10,6 +10,7 @@
 //  7. mcp/trials/create    … 体験生の登録。専用リンク（生徒ページへの永続アクセス）は作らない（off. の鍵。管理画面で作り直すまで使えない）
 //  8. mcp/requests/get     … requestId の結果と、送ったメールの今の状態
 //  9. mcp/events/add      … 生徒のテスト・行事・授業ができない日を登録する（メール・カレンダーは 0）。同じ日の同じ予定があれば止める
+// 10. mcp/lessons/show    … 選んだ下書きを調整中にする（保護者・生徒のページに「調整中」で出る。メール・カレンダーは 0。体験生は除く）
 //
 // 入口は Worker の別の鍵（V2_SERVICE_WRITE_KEY。読み取りの V2_SERVICE_KEY とは別）で、mcp/ の道だけを通す（cf/v2/service.mjs）。
 // 対象は V2_SERVICE_WRITE_SCOPE が 'all' でなければ「テスト用の生徒」（testOnly か名字が【テスト】）だけ。
@@ -17,7 +18,7 @@
 import { fail, audit, newId, iso, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
-import { scheduleRoutes, eventInput, addEvent, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
+import { scheduleRoutes, pickedLessons, eventInput, addEvent, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
 import { normGrade } from '../../assets/v2/grade-options.js';
 
 const MAX_ITEMS = 30;
@@ -397,6 +398,25 @@ export const mcpWriteRoutes = {
     if (near.length && b.allowOverlap !== true) { await finishRequest(c, b.requestId, 'failed', { error: 'overlap' }); fail('overlap', '同じ期間にもう同じ種類の予定があります（登録していません）。別の予定なら allowOverlap を付けて、新しい requestId で', 409, { events: near }); }
     const r = await addEvent(c, s.id, { kind: 'staff', id: c.actor.id }, ev);
     const result = { requestId: b.requestId, student: studentLabel(s), event: r.event, mails: 0 };
+    await finishRequest(c, b.requestId, 'done', result);
+    return result;
+  },
+
+  // 下書き → 調整中（2026-11-01 本人「いまある下書きの授業予定は調整中として表示しておいて」。AI が「MCP からは調整中にできない」と答えたため）。
+  // 管理画面の「調整中にする」と同じ（schedule/lessons/show）。保護者・生徒のページに出るが、メール・カレンダー・締め切りは 0。
+  // 体験生の授業には調整中がない（見せると確定になる）ので断り、send_lesson_notice に回す
+  'mcp/lessons/show': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const s = await studentWithFamily(c, b.studentId); checkScope(c, s);
+    if (s.trial) fail('trial', '体験生の授業には調整中がありません。確定にするなら preview_lesson_notice → send_lesson_notice で（何も変えていません）', 409);
+    const lessonIds = Array.isArray(b.lessonIds) ? [...new Set(b.lessonIds.map(String))].sort() : [];
+    const pick = () => pickedLessons(c, { studentId: s.id, lessonIds }, ['draft']); // 1 つでも下書きでない・ほかの生徒・過去なら何もしない
+    if (b.dryRun === true) { const { rows } = await pick(); return { dryRun: true, student: studentLabel(s), lessons: rows.map(l => ({ id: l.id, date: l.date, start: l.start, end: endOf(l.start, l.minutes), subject: l.subject, kind: l.kind })), to: '調整中（保護者・生徒のページに出る）', mails: 0, calendar: 0 }; }
+    const req = await beginRequest(c, b.requestId, 'lessonsShow', { studentId: s.id, lessonIds });
+    if (req.status === 'done') return { ...parse(req.result), repeated: true };
+    try { await pick(); } catch (e) { await finishRequest(c, b.requestId, 'failed', { error: e.code || 'error' }); throw e; }
+    const r = await scheduleRoutes['schedule/lessons/show'](c, { studentId: s.id, lessonIds });
+    const result = { requestId: b.requestId, student: studentLabel(s), shown: r.shown, draftsLeft: r.left, lessons: await readLessons(c, lessonIds), mails: 0 };
     await finishRequest(c, b.requestId, 'done', result);
     return result;
   },

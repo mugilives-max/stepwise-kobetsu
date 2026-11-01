@@ -380,7 +380,7 @@ async function deleteEvent(c, studentIds, by, b) {
 
 // ---- 段階を進める（下書き → 調整中 → 確認待ち）----
 // 選んだ授業（b.studentId の、今日以降の、stages のどれか）。1 つでも合わなければ何もしない
-async function pickedLessons(c, b, stages) {
+export async function pickedLessons(c, b, stages) {
   const s = await studentRow(c, b.studentId), today = todayJst(c.now);
   const ids = Array.isArray(b.lessonIds) ? [...new Set(b.lessonIds.map(String))] : [];
   if (!ids.length) fail('needIds', '授業を選んでください');
