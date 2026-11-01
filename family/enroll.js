@@ -191,17 +191,26 @@ export function enrollSubmit(ctx, kind) {
   });
   return true;
 }
+// 書面はこのページの上に重ねて開く（2026-11-01 山本さん「個別の全文が開けなくなっている」。新しいタブは LINE の中のブラウザやポップアップの設定で開かないことがあり、
+// 失敗の知らせもページの上に出て見えなかった）。閉じると入力の途中に戻る
 function openCondDoc(ctx, offerId) {
-  const list = batch(), i = list.findIndex(o => o.id === offerId); if (i < 0) return;
-  const win = window.open('', '_blank');
-  if (!win) { ctx.say('書面のタブを開けませんでした。ポップアップを許可して、もう一度お試しください。', 'error'); ctx.render(); return; }
-  win.opener = null; win.document.title = '個別受講条件書'; win.document.body.textContent = '書面を読み込んでいます…';
-  const d = draft;
+  const list = batch(), i = list.findIndex(o => o.id === offerId);
+  const view = document.createElement('div'); view.className = 'doc-view';
+  view.innerHTML = '<div class="doc-view-bar"><strong>個別受講条件書</strong><button type="button" class="btn sm">閉じる</button></div><p class="doc-view-msg">書面を読み込んでいます…</p>';
+  const close = () => { view.remove(); document.body.classList.remove('doc-open'); };
+  view.querySelector('button').addEventListener('click', close);
+  document.body.append(view); document.body.classList.add('doc-open');
+  const msg = text => { const p = view.querySelector('.doc-view-msg'); if (p) p.textContent = text; };
+  if (i < 0) return msg('この案内は新しくなっています。ページを読み込み直してください。');
+  const d = draft || {};
   ctx.call('family/enrollment/document', { offerId, guardianFamilyName: d.guardianFamilyName, guardianGivenName: d.guardianGivenName, familyName: d[sk('familyName', i)], givenName: d[sk('givenName', i)], grade: d[sk('grade', i)] }).then(r => {
     if (!r.ok) throw new Error(r.error.message);
-    if (win.closed) return;
-    const url = URL.createObjectURL(new Blob([r.html], { type: 'text/html' })); win.location.replace(url); setTimeout(() => URL.revokeObjectURL(url), 60000);
-  }).catch(e => { if (!win.closed) win.close(); ctx.say(e.message || '通信できませんでした。もう一度お試しください。', 'error'); ctx.render(); });
+    if (!view.isConnected) return;
+    const f = document.createElement('iframe'); f.title = '個別受講条件書'; f.srcdoc = r.html;
+    // 書面は A4 の幅なので、スマホでは画面の幅に縮めて見せる（新しいタブのときと同じ見え方）
+    f.addEventListener('load', () => { const el = f.contentDocument && f.contentDocument.documentElement; if (el && el.scrollWidth > f.clientWidth) el.style.zoom = String(f.clientWidth / el.scrollWidth); });
+    view.querySelector('.doc-view-msg').replaceWith(f);
+  }).catch(e => msg(e.message || '通信できませんでした。もう一度お試しください。'));
 }
 export function enrollClick(ctx, a, b) {
   // 全文を開いたしるし。個別受講条件書は入れた氏名を宛名にして作る。共通規約は公開している全文
