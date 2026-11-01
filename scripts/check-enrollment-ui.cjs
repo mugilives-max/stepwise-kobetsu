@@ -89,9 +89,12 @@ const {createV2}=require('../test/helpers/v2-harness.cjs');
   assert.equal(await parent.locator('[data-form="enroll-apply"] input[name="agree"]').isDisabled(),true,'全文を開くまで同意の印は付けられない');
   await parent.locator('[data-form="enroll-apply"] button.primary').click();
   await parent.getByText('共通規約と個別受講条件書の全文を開いて確かめてください',{exact:true}).waitFor();
-  for(const name of ['個別受講条件書の全文を開く','共通規約の全文を開く']){const [doc]=await Promise.all([parent.context().waitForEvent('page'),parent.locator(`.agree-docs [aria-label="${name}"]`).click()]);
-    if(name.startsWith('個別受講条件書')){await doc.waitForURL(/^blob:/);await doc.waitForLoadState();assert.ok((await doc.textContent('body')).includes('【テスト】架空 花子 様'),'個別受講条件書の宛名は入れた保護者の氏名');}
-    await doc.close();}
+  // 個別受講条件書はページの上に重ねて開く（2026-11-01。新しいタブは LINE の中のブラウザなどで開かないことがあった）。共通規約は公開している全文を新しいタブで
+  await parent.locator('.agree-docs [aria-label="個別受講条件書の全文を開く"]').click();
+  const docFrame=parent.frameLocator('.doc-view iframe');await docFrame.locator('body').waitFor();
+  assert.ok((await docFrame.locator('body').textContent()).includes('【テスト】架空 花子 様'),'個別受講条件書の宛名は入れた保護者の氏名');
+  await parent.locator('.doc-view').getByRole('button',{name:'閉じる',exact:true}).click();await parent.locator('.doc-view').waitFor({state:'detached'});
+  {const [doc]=await Promise.all([parent.context().waitForEvent('page'),parent.locator('.agree-docs [aria-label="共通規約の全文を開く"]').click()]);await doc.close();}
   report.externalRequests=report.externalRequests.filter(u=>u!=='https://example.invalid'); // 共通規約の全文（このテストの架空の URL）を開いた分
   assert.equal(await parent.locator('[data-form="enroll-apply"] input[name="agree"]').isDisabled(),false,'両方を開いたら印を付けられる');
   assert.equal(await parent.locator('.agree-docs li.done').count(),2,'開いた全文に ✓');
