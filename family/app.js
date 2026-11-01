@@ -9,7 +9,7 @@ import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261026-p4';
 import { monthCalendar, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261027-dense2';
 import { EVENT_KIND, endOf } from '/assets/v2/schedule-view.js?v=20261028-r16b';
-import { contractArchive, termsCard, termsLine, conditionCard, conditionLine, specialCard, specialLine, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261028-r17';
+import { contractArchive, contractDocs, termsCard, conditionCard, specialCard, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261101-docs';
 
 // スタッフのプレビュー（#preview=pv2.…）: 本物のログイン（sw2_family）には触れず、このタブだけで使う。書き込みはサーバーが断る
 const PV_KEY = 'sw2_family_preview';
@@ -314,9 +314,8 @@ function contractsPage() {
   if (need('money')) return loading;
   const multi = new Set(money.plans.map(l => l.studentId)).size > 1, { others } = planGroups(money.plans);
   let h = noticeHtml();
-  if (money.terms) h += termsLine(money.terms);
-  if (money.conditions) h += conditionLine(money.conditions.items);
-  if (money.specials) h += specialLine(money.specials.items);
+  const docs = contractDocs(money);
+  if (docs) h += secTitle('規約と条件書') + docs;
   if (others.length) h += secTitle('受講計画書') + planHistory(others, { multi });
   return h + '<p><button data-action="contracts-open">前の版も見る</button></p>' + contractArchive(contracts);
 }

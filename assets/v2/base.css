@@ -718,6 +718,11 @@ form[data-form=sch-meeting]:has(select[name=familyId] option[value=""]:checked) 
 .cond-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 10px 0; font-size: 14px; }
 .cond-dl dt { color: var(--muted); white-space: nowrap; }
 .cond-dl dd { margin: 0; }
+/* 契約の画面の書類（同意・適用・終了を同じ並びで） */
+.pcard.doc .cond-dl { margin: 0; }
+.pcard.doc .pc-head { align-items: flex-start; }
+.btn.sm { padding: 4px 10px; font-size: 13px; min-height: 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.btn.sm svg { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 /* 体験生（2026-10-12） */
 .trial-new { margin: 10px 0 4px; }
 .trial-new summary { cursor: pointer; color: var(--primary); font-weight: 700; font-size: 14px; padding: 6px 2px; }

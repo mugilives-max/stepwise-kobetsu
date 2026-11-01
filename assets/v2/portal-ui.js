@@ -237,6 +237,29 @@ export function specialCard(x, { busy = false, checked = false, consenterName = 
     <button class="primary wide" data-action="special-agree" data-id="${esc(x.id)}"${busy ? ' disabled' : ''}>承認する</button></div>`;
 }
 export const specialLine = items => (items || []).filter(x => x.status === 'agreed').map(x => `<p class="small muted">${esc(given(x.studentName))}さんの特別単価「${esc(x.title)}」承認済み（${esc(String(x.agreedAt).slice(0, 10))}）・${x.minutes}分 ${yen(x.fee)}・${ymdJa(x.fromDate)}〜${ymdJa(x.toDate)}${x.docFileId ? `　<button type="button" class="linkish" data-action="gr-open" data-id="${esc(x.docFileId)}">条件書を開く</button>` : ''}</p>`).join('');
+// 今の書類の一覧（契約の画面）。書類ごとに 同意・適用・終了 を同じ並びで見せる（2026-11-01 本人「何の書類なのか、いつ同意したのか、適用日はいつか、終了日はいつか…パッと分かるのが良い」）。
+// 規約と個別受講条件書には終わりの日がない（受講の終了か、次の版への同意で替わる）
+export function contractDocs({ terms, conditions, specials } = {}) {
+  const day = v => ymdJa(String(v || '').slice(0, 10));
+  const open = (label, attrs) => `<button type="button" class="btn sm" ${attrs}>${picon('file')} ${label}</button>`;
+  const card = (title, who, rows, btn) => `<div class="pcard doc"><div class="pc-head"><span><strong>${title}</strong>${who ? `<small class="muted"> ${esc(who)}</small>` : ''}</span>${btn || ''}</div><dl class="cond-dl">${rows.map(([k, v]) => condRow(k, v)).join('')}</dl></div>`;
+  const out = [];
+  if (terms && terms.agreed && terms.agreed.version) {
+    const t = terms.agreed;
+    out.push(card(esc(t.title || '共通規約'), '', [['同意', day(t.at)], ['適用', t.from ? ymdJa(t.from) + 'から' : '同意した日から'], ['終了', '定めなし']],
+      /^https:\/\//.test(t.url || '') ? `<a class="btn sm" href="${esc(t.url)}" target="_blank" rel="noopener">${picon('file')} 全文</a>` : ''));
+  }
+  for (const x of (conditions && conditions.items || []).filter(x => x.agreed)) {
+    const c = x.agreed;
+    out.push(card(`個別受講条件書${c.no > 1 ? ` 第${c.no}版` : ''}`, given(x.studentName) + 'さん', [['内容', `1回 ${c.minutes}分 ${yen(c.fee)}・${esc(c.deliveryLabel)}`], ['同意', day(c.agreedAt)], ['適用', c.fromMonth ? monthJa(c.fromMonth) + 'から' : '同意した日から'], ['終了', '定めなし']],
+      c.docFileId ? open('書面', `data-action="gr-open" data-id="${esc(c.docFileId)}"`) : ''));
+  }
+  for (const x of (specials && specials.items || []).filter(x => x.status === 'agreed')) {
+    out.push(card(`特別単価合意書「${esc(x.title)}」`, given(x.studentName) + 'さん', [['内容', `1回 ${x.minutes}分 ${yen(x.fee)}`], ['同意', day(x.agreedAt)], ['適用', ymdJa(x.fromDate) + 'から'], ['終了', ymdJa(x.toDate) + 'まで']],
+      x.docFileId ? open('書面', `data-action="gr-open" data-id="${esc(x.docFileId)}"`) : ''));
+  }
+  return out.join('');
+}
 export const termsLine = terms => terms && terms.agreed.version ? `<p class="small muted">共通規約に同意済み（${ymdJa(String(terms.agreed.at).slice(0, 10))}）${terms.agreed.url ? `・<a href="${esc(terms.agreed.url)}" target="_blank" rel="noopener">同意した版の全文</a>` : ''}</p>` : '';
 
 // ---- 請求 ----
