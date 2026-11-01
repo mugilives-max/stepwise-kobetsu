@@ -9,6 +9,7 @@
 //  6. mcp/lessons/reschedule … 日程の変更。未送信なら黙って直す。送ったあとの授業は、お知らせ・カレンダーをプレビューして確認値が合うときだけ
 //  7. mcp/trials/create    … 体験生の登録。専用リンク（生徒ページへの永続アクセス）は作らない（off. の鍵。管理画面で作り直すまで使えない）
 //  8. mcp/requests/get     … requestId の結果と、送ったメールの今の状態
+//  9. mcp/events/add      … 生徒のテスト・行事・授業ができない日を登録する（メール・カレンダーは 0）。同じ日の同じ予定があれば止める
 //
 // 入口は Worker の別の鍵（V2_SERVICE_WRITE_KEY。読み取りの V2_SERVICE_KEY とは別）で、mcp/ の道だけを通す（cf/v2/service.mjs）。
 // 対象は V2_SERVICE_WRITE_SCOPE が 'all' でなければ「テスト用の生徒」（testOnly か名字が【テスト】）だけ。
@@ -16,7 +17,7 @@
 import { fail, audit, newId, iso, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
-import { scheduleRoutes, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
+import { scheduleRoutes, eventInput, addEvent, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
 import { normGrade } from '../../assets/v2/grade-options.js';
 
 const MAX_ITEMS = 30;
@@ -378,6 +379,26 @@ export const mcpWriteRoutes = {
     }
     await audit(c, 'calendarRepair', '', { lessons: lessons.length, meetings: meetings.length });
     return { targets, queued: targets.length, mails: 0, note: '予定を作る頼みを送りました。届いたかは授業の calendarEventId が「…@google.com」に変わるか、送信の記録で確かめてください' };
+  },
+
+  // テスト・行事の登録（2026-11-01 本人「MCP の機能を拡張しましょう」。AI が「テストの日程は書き込めない」と答えたため）。
+  // 管理画面の「予定」と同じ行（sharedEvents、登録者はスタッフ）。メール・カレンダー・保護者への知らせは 0。直すのは管理画面
+  'mcp/events/add': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const s = await studentWithFamily(c, b.studentId); checkScope(c, s);
+    const ev = eventInput(b);
+    // 期間が重なる同じ種類の予定（二重登録を避ける）
+    const near = (await c.db.prepare('select * from sharedEvents where studentId = ? and kind = ? and date <= ? and dateTo >= ? order by date').bind(s.id, ev.kind, ev.dateTo, ev.date).all()).results
+      .map(e => ({ id: e.id, kind: e.kind, date: e.date, dateTo: e.dateTo, title: e.title }));
+    const preview = { student: studentLabel(s), event: ev, overlapping: near, mails: 0 };
+    if (b.dryRun === true) return { dryRun: true, ...preview };
+    const req = await beginRequest(c, b.requestId, 'eventAdd', { studentId: s.id, ...ev });
+    if (req.status === 'done') return { ...parse(req.result), repeated: true };
+    if (near.length && b.allowOverlap !== true) { await finishRequest(c, b.requestId, 'failed', { error: 'overlap' }); fail('overlap', '同じ期間にもう同じ種類の予定があります（登録していません）。別の予定なら allowOverlap を付けて、新しい requestId で', 409, { events: near }); }
+    const r = await addEvent(c, s.id, { kind: 'staff', id: c.actor.id }, ev);
+    const result = { requestId: b.requestId, student: studentLabel(s), event: r.event, mails: 0 };
+    await finishRequest(c, b.requestId, 'done', result);
+    return result;
   },
 
   'mcp/requests/get': async (c, b) => {

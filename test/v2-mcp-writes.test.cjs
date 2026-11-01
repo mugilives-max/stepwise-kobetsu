@@ -227,3 +227,32 @@ test('trial students: dry run writes nothing, no permanent link is made, same na
   assert.equal(count('select count(*) n from students'), n0 + 1);
   assert.equal((await w('mcp/trials/create', { requestId: 'req-trial-002', familyName: '【テスト】森', givenName: '彩', grade: '中2' })).error.code, 'sameName');
 });
+
+test('events: tests and school events are added without mail; dry run writes nothing; the same period is caught; scope and validation hold', async () => {
+  const { h, auth, a, w, wok, count } = await world();
+  const before = { events: count('select count(*) n from sharedEvents'), effects: count('select count(*) n from effects') };
+  const body = { studentId: a.id, kind: 'test', date: '2026-11-19', dateTo: '2026-11-20', title: '期末テスト' };
+  const dry = await wok('mcp/events/add', { ...body, dryRun: true });
+  assert.equal(dry.dryRun, true); assert.equal(dry.student.id, a.id); assert.deepEqual(dry.overlapping, []);
+  assert.equal(count('select count(*) n from sharedEvents'), before.events, 'dryRun は何も書かない');
+  const r = await wok('mcp/events/add', { ...body, requestId: 'req-event-001' });
+  assert.equal(r.mails, 0); assert.deepEqual([r.event.kind, r.event.date, r.event.dateTo, r.event.title, r.event.createdByKind], ['test', '2026-11-19', '2026-11-20', '期末テスト', 'staff']);
+  assert.equal(count('select count(*) n from effects'), before.effects, 'メールもカレンダーも 0');
+  // 管理画面の予定に出る
+  const staff = await h.ok('schedule/staff/range', { auth, from: '2026-11-01', to: '2026-11-30' });
+  assert.ok(staff.events.some(e => e.id === r.event.id && e.title === '期末テスト'));
+  // 同じ requestId は増えない。期間が重なる同じ種類は止まる。別の予定なら allowOverlap
+  assert.equal((await wok('mcp/events/add', { ...body, requestId: 'req-event-001' })).repeated, true);
+  assert.equal(count('select count(*) n from sharedEvents'), before.events + 1);
+  const dup = await w('mcp/events/add', { ...body, date: '2026-11-20', dateTo: '2026-11-20', requestId: 'req-event-002' });
+  assert.equal(dup.error.code, 'overlap'); assert.equal(dup.error.events[0].id, r.event.id);
+  assert.equal((await wok('mcp/events/add', { studentId: a.id, kind: 'event', date: '2026-11-20', title: '文化祭', requestId: 'req-event-003' })).event.kind, 'event', '種類が違えば重なりとしない');
+  assert.equal((await wok('mcp/events/add', { ...body, date: '2026-11-20', dateTo: '2026-11-20', title: '実技テスト', allowOverlap: true, requestId: 'req-event-004' })).event.title, '実技テスト');
+  // 入力の誤り・範囲
+  assert.equal((await w('mcp/events/add', { studentId: a.id, kind: 'test', date: '2026-11-20', title: '', requestId: 'req-event-005' })).error.code, 'needTitle');
+  assert.equal((await w('mcp/events/add', { studentId: a.id, kind: 'party', date: '2026-11-20', title: 'x', requestId: 'req-event-006' })).error.code, 'badKind');
+  assert.equal((await w('mcp/events/add', { ...body, requestId: 'bad' })).error.code, 'badRequestId');
+  const fam = (await h.ok('admin/families/create', { auth, name: '本物風さん', email: 'real@example.invalid' })).family;
+  const real = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '本物風', givenName: '太郎', baseRate30: 1500 })).student;
+  assert.equal((await w('mcp/events/add', { ...body, studentId: real.id, requestId: 'req-event-007' })).error.code, 'outOfScope');
+});
