@@ -84,7 +84,9 @@ export function schedulePage(ctx, me, r = {}) {
     // テスト・行事の帯に誰のかを添える（2人まで。3人以上は人数。2026-10-31 本人「期末テスト（岡野）が欲しい」）。
     // 括弧は幅を食うので、面談と同じく空けて並べる（2026-11-01 本人「面談と同じような表示に」）
     const whose = g => { const n = g.items.map(e => short[e.studentId] || '').filter(Boolean); return n.length && n.length <= 2 ? ' ' + esc(n.join('・')) : g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''; };
-    const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable')).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${whose(g)}</span>`)
+    // 月の表ではテストの名前を縮める（「2学期期末テスト」→「期末」、「北辰テスト（3年6回）」→「北辰」）。日の一覧は元の名前のまま（2026-11-01 本人「期末だけで伝わる。北辰も同じ。見切れちゃってるから縮めよう」）
+    const shortTitle = e => e.kind !== 'test' ? e : { ...e, title: String(e.title || '').replace(/[（(][^）)]*[）)]/g, '').replace(/^[0-9０-９一二三]学期/, '').replace(/テスト$/, '').trim() || e.title };
+    const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable').map(shortTitle)).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${whose(g)}</span>`)
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
       .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));
     // 開始時刻と名前だけ（2026-10-27 本人「まだあまり整理できていない」→「開始＋名前だけ」）。同じ開始時刻は1行に「13:00 実祈・岡野」。
