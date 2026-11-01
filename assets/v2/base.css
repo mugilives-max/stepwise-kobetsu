@@ -722,6 +722,12 @@ form[data-form=sch-meeting]:has(select[name=familyId] option[value=""]:checked) 
 .pcard.doc .cond-dl { margin: 0; }
 .pcard.doc .pc-head { align-items: flex-start; }
 .btn.sm { padding: 4px 10px; font-size: 13px; min-height: 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+/* 書面をページの上に重ねて開く（入塾・契約更新の個別受講条件書） */
+.doc-view { position: fixed; inset: 0; z-index: 60; background: var(--white); display: flex; flex-direction: column; }
+.doc-view-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top)); border-bottom: 1px solid var(--line); }
+.doc-view iframe { flex: 1; width: 100%; border: 0; }
+.doc-view-msg { padding: 24px 16px; color: var(--muted); }
+body.doc-open { overflow: hidden; }
 .btn.sm svg { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 /* 体験生（2026-10-12） */
 .trial-new { margin: 10px 0 4px; }
