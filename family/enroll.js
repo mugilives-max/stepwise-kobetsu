@@ -207,6 +207,8 @@ function openCondDoc(ctx, offerId) {
     if (!r.ok) throw new Error(r.error.message);
     if (!view.isConnected) return;
     const f = document.createElement('iframe'); f.title = '個別受講条件書'; f.srcdoc = r.html;
+    // 書面は A4 の幅なので、スマホでは画面の幅に縮めて見せる（新しいタブのときと同じ見え方）
+    f.addEventListener('load', () => { const el = f.contentDocument && f.contentDocument.documentElement; if (el && el.scrollWidth > f.clientWidth) el.style.zoom = String(f.clientWidth / el.scrollWidth); });
     view.querySelector('.doc-view-msg').replaceWith(f);
   }).catch(e => msg(e.message || '通信できませんでした。もう一度お試しください。'));
 }
