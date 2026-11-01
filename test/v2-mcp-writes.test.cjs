@@ -256,3 +256,24 @@ test('events: tests and school events are added without mail; dry run writes not
   const real = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '本物風', givenName: '太郎', baseRate30: 1500 })).student;
   assert.equal((await w('mcp/events/add', { ...body, studentId: real.id, requestId: 'req-event-007' })).error.code, 'outOfScope');
 });
+
+test('show: chosen drafts become 調整中 on the family page with zero mail; dry run writes nothing; non-drafts, other students and trials are refused', async () => {
+  const { h, A, a, b, trialId, w, wok, count } = await world();
+  const saved = await wok('mcp/lessons/save', { requestId: 'req-show-save1', items: [item('s1', a.id, '2026-10-20', '17:00'), item('s2', a.id, '2026-10-22', '17:00'), item('s3', a.id, '2026-10-24', '17:00'), item('b1', b.id, '2026-10-21', '17:00'), item('t1', trialId, '2026-10-23', '18:00')] });
+  const [s1, s2, s3, b1, t1] = saved.items.map(i => i.lessonId);
+  const effects = count('select count(*) n from effects');
+  const dry = await wok('mcp/lessons/show', { studentId: a.id, lessonIds: [s1, s2], dryRun: true });
+  assert.deepEqual(dry.lessons.map(l => l.id).sort(), [s1, s2].sort()); assert.equal(dry.mails, 0);
+  assert.equal(count("select count(*) n from lessons where status = 'held'"), 5, 'dryRun は何も書かない');
+  const r = await wok('mcp/lessons/show', { studentId: a.id, lessonIds: [s1, s2], requestId: 'req-show-0001' });
+  assert.equal(r.shown, 2); assert.equal(r.draftsLeft, 1); assert.equal(r.mails, 0);
+  assert.ok(r.lessons.every(l => l.status === 'proposed' && l.stage === 'adjusting'), JSON.stringify(r.lessons.map(l => [l.status, l.stage])));
+  assert.equal(count('select count(*) n from effects'), effects, 'メールもカレンダーも 0');
+  const fam = await h.ok('family/schedule', { auth: A.parent, from: '2026-10-20', to: '2026-10-24' });
+  assert.deepEqual(fam.lessons.map(l => l.id).sort(), [s1, s2].sort(), '調整中は保護者ページに出る。残りの下書きは出ない');
+  assert.equal((await wok('mcp/lessons/show', { studentId: a.id, lessonIds: [s1, s2], requestId: 'req-show-0001' })).repeated, true);
+  assert.equal((await w('mcp/lessons/show', { studentId: a.id, lessonIds: [s1, s3], requestId: 'req-show-0002' })).error.code, 'badTargets', '下書きでない授業が入っていれば何もしない');
+  assert.equal(count("select count(*) n from lessons where id = ? and status = 'held'".replace('?', `'${s3}'`)), 1);
+  assert.equal((await w('mcp/lessons/show', { studentId: a.id, lessonIds: [b1], requestId: 'req-show-0003' })).error.code, 'badTargets', 'ほかの生徒の授業');
+  assert.equal((await w('mcp/lessons/show', { studentId: trialId, lessonIds: [t1], requestId: 'req-show-0004' })).error.code, 'trial');
+});
