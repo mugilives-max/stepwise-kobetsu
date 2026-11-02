@@ -678,7 +678,6 @@ table.gsum-t .agg, table.gsum-t .tot { font-weight: 600; }
 table.gsum-t .agg:not(.agg + .agg), table.gsum-t .tot { border-left: 2px solid var(--line); }
 table.gsum-t .agg + .tot { border-left-width: 1px; }
 @media (max-width: 480px) { table.gsum-t th, table.gsum-t td { padding: 6px 4px; } table.gsum-t { font-size: 13px; } }
-.gcard .ghead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 button.linkish { background: none; border: 0; padding: 0; color: var(--primary); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; }
 /* 入力欄: 模試は順位・人数の列を隠し、定期テストは偏差値の列を隠す（種類を切り替えるとその場で変わる） */
 form[data-form=gr-save]:has(select[name=series] option[value="__new"]:checked) .c-newseries, form[data-form=gr-save]:has(select[name=series] option:not([value="定期テスト"]):checked) .c-rank, form[data-form=gr-save]:has(select[name=series] option[value="定期テスト"]:checked) .c-dev { display: none; }
@@ -698,15 +697,6 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 .gtrend .gsum { margin: 0 0 6px; }
 .gtrend .gchart { margin: 10px 0 4px; }
 .gtrend .gchart svg { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
-.gbook { border: 1px solid var(--line); border-radius: 12px; background: var(--white); overflow: hidden; margin: 8px 0 0; }
-.gbook .gpager { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: var(--soft); border-bottom: 1px solid var(--line); }
-.gbook .gpager .gpager-t { flex: 1; text-align: center; display: flex; flex-direction: column; line-height: 1.25; }
-.gbook .gpager .gpager-t strong { font-size: 16px; }
-.gbook .gpager .gpager-t small { color: var(--muted); }
-.gbook .gpager button.icon { width: 36px; height: 36px; border-radius: 50%; font-size: 24px; padding: 0; display: grid; place-items: center; background: var(--white); }
-.gbook .gpager .icon-ph { width: 36px; height: 36px; }
-.gbook .gcard { border: 0; border-radius: 0; margin: 0; }
-.gbook .gcard .ghead { display: none; } /* 題名は上の帯にある */
 .gsheets { display: flex; flex-direction: column; gap: 6px; }
 .gsheet-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .gsheet-btn .ic { flex: none; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 6px; background: var(--soft); color: var(--muted); }
