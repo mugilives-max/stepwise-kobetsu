@@ -471,7 +471,7 @@ export const billingRoutes = {
       if (inv) { rows.push({ familyId: f.id, name: f.guardianName || f.name, invoice: invoiceView(inv) }); continue; }
       const p = await monthPreview(c, f.id, month);
       const asks = (await c.db.prepare("select count(*) n, max(remindedAt) last from planLines where status = 'proposed' and studentId in (select id from students where familyId = ?)").bind(f.id).first());
-      if (p.students.length || p.issues.length) rows.push({ familyId: f.id, name: f.guardianName || f.name, preview: { total: p.total, issues: p.issues, pendingCount: p.pendingCount, canConfirm: p.canConfirm, auto: p.auto }, proposedPlans: asks.n, remindedAt: asks.last || '' });
+      if (p.students.length || p.issues.length) rows.push({ familyId: f.id, name: f.guardianName || f.name, preview: { total: p.total, issues: p.issues, pendingCount: p.pendingCount, canConfirm: p.canConfirm, auto: p.auto, cancelFees: p.students.reduce((n, s) => n + s.items.filter(i => i.kind === 'cancelFee').length, 0) }, proposedPlans: asks.n, remindedAt: asks.last || '' });
     }
     const voided = (await c.db.prepare("select v.*, f.name from invoices v join families f on f.id = v.familyId where v.month = ? and v.status = 'void' order by v.voidedAt").bind(month).all()).results;
     return { month, closeOn: shiftMonth(month, 1) + '-03', families: rows, voided: voided.map(v => ({ ...invoiceView(v), name: v.name })) };

@@ -216,14 +216,15 @@ export function billingPage(ctx) {
   }
   if (!fees) { fees = { loading: true }; ctx.call('billing/fees/list').then(r => { fees = r.ok ? r : { fees: [] }; ctx.render(); }); }
   let h = ctx.notice();
-  // キャンセル料は選んだ月の請求に入るものだけ（その月の末日までで、まだ請求していないもの）。月の下に出す（2026-10-29 本人「9月のところに10月のキャンセル料がなぜか表示されている」）
+  // キャンセル料は選んだ月の請求に入るものだけ（その月の末日までで、まだ請求していないもの）。月の下に出す（2026-10-29 本人「9月のところに10月のキャンセル料がなぜか表示されている」）。
+  // ここに出すのは判断が要るものだけ。決まったものは契約者の行に件数、中身は契約者の請求の内訳で（2026-11-02 本人「個人の請求ページで開ければ十分…○月はN件のキャンセルがありました」）
   h += `<div class="sec-title">月の請求</div>${monthPicker(billMonth, 'bl-month')}`;
   h += feesPart(ctx, billMonth);
   if (bill.loading) return h + '<p class="muted">読み込んでいます…</p>';
   if (!bill.families.length) h += '<p class="muted small">この月に請求するものはありません。</p>';
   else h += '<div class="group">' + bill.families.map(f => {
     const st = invStatus(f), n = f.preview ? f.preview.issues.length : 0;
-    return `<button type="button" class="irow" data-action="bl-open" data-id="${esc(f.familyId)}"><span class="b"><b>${esc(f.name)}</b><small><span class="tag ${st[1]}">${st[0]}</span>${n && f.preview.pendingCount ? ` 承認のない授業 ${f.preview.pendingCount}件` : ''}</small></span><span class="amt">${yen(f.invoice ? f.invoice.total : f.preview.total)}</span><span class="go">›</span></button>`;
+    return `<button type="button" class="irow" data-action="bl-open" data-id="${esc(f.familyId)}"><span class="b"><b>${esc(f.name)}</b><small><span class="tag ${st[1]}">${st[0]}</span>${n && f.preview.pendingCount ? ` 承認のない授業 ${f.preview.pendingCount}件` : ''}${f.preview && f.preview.cancelFees ? ` キャンセル料 ${f.preview.cancelFees}件` : ''}</small></span><span class="amt">${yen(f.invoice ? f.invoice.total : f.preview.total)}</span><span class="go">›</span></button>`;
   }).join('') + '</div>';
   h += `<p class="small muted">${Number(shift(billMonth, 1).slice(5))}/3 0:10 に自動で確定（確かめることがある契約者は除く）</p>`;
   const f = openFamily && bill.families.find(x => x.familyId === openFamily);
@@ -279,12 +280,10 @@ function feesPart(ctx, month) {
   if (fees.loading) return '';
   const mine = fees.fees.filter(f => !f.invoiceId && f.date <= monthEnd(month));
   const open = mine.filter(f => f.decision === 'pending' || f.reliefStatus === 'pending');
-  const rest = mine.filter(f => !open.includes(f));
-  if (!mine.length) return '';
-  let h = `<h3>キャンセル料${open.length ? ` <span class="count">${open.length}</span>` : ''}</h3>`;
+  if (!open.length) return '';
+  let h = `<h3>判断が要るキャンセル料 <span class="count">${open.length}</span></h3>`;
   const title = f => `${esc(f.studentName)} ${md(f.date)} ${esc(f.start)} ${esc(f.subject)}`;
-  h += '<div class="group">' + open.map(f => rowButton(esc, 'fee-open', { id: f.id }, `${title(f)} <span class="tag danger">${f.reliefStatus === 'pending' ? '減額・免除の申請' : '判断待ち'}</span>`, `${FEE_TYPE[f.type]}・規定額 ${yen(f.standardAmount)}`)).join('')
-    + rest.map(f => `<div class="todo"><span class="b"><strong>${title(f)}</strong><small class="muted">${f.rule === 'rate' && f.decision === 'charge' ? '自動' : f.decision === 'charge' ? '規定どおり' : f.decision === 'waive' ? '免除' : '減額'} ${yen(f.amount)}${f.note ? '・' + esc(f.note) : ''}${f.reliefStatus ? '・申請への回答済み' : ''}（請求前）${(f.parts || []).length ? '<br>' + f.parts.map(p => esc(partText(p, f.date))).join('<br>') : ''}</small></span></div>`).join('') + '</div>';
+  h += '<div class="group">' + open.map(f => rowButton(esc, 'fee-open', { id: f.id }, `${title(f)} <span class="tag danger">${f.reliefStatus === 'pending' ? '減額・免除の申請' : '判断待ち'}</span>`, `${FEE_TYPE[f.type]}・規定額 ${yen(f.standardAmount)}`)).join('') + '</div>';
   const f = feeOpen && open.find(x => x.id === feeOpen);
   if (f) {
     let body = `<div class="small">${f.rule === 'rate' ? '自動の計算 ' + yen(f.standardAmount) + '<br>' + f.parts.map(p => esc(partText(p, f.date))).join('<br>') : FEE_TYPE[f.type] + '・規定額 ' + yen(f.standardAmount)}${f.receivedAt ? `<br><span class="muted">連絡 ${esc(f.receivedAt.slice(5, 16).replace('T', ' '))}</span>` : ''}</div>`;
