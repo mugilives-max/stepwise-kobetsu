@@ -101,14 +101,16 @@ export function scoreTable(scores) {
     : k === 'rank' ? (s.rank !== null ? `${s.rank}位${s.rankOf ? `<small>/${s.rankOf}</small>` : ''}` : '') : n1(s[k]);
   return `<div class="gwrap"><table class="gtable"><thead><tr><th></th>${cols.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${scores.map(s => `<tr><th>${esc(s.subject)}</th>${cols.map(([k]) => `<td>${cell(s, k)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
-// 試験をまたいだ一覧（行: 科目と合計、列: 試験）。模試は偏差値、定期テストは点数で、種類ごとに別の表。その種類の試験が 2 つ以上あるときだけ
+// 試験をまたいだ一覧（行: 試験・新しい回が上、列: 科目と合計）。模試は偏差値、定期テストは点数で、種類ごとに別の表。その種類の試験が 2 つ以上あるときだけ。
+// 回は増えるが科目は増えないので、回を行にして横幅を一定にする（2026-11-02 本人「科目と回数が列と行逆になるべき」）。科目ごとの推移は下のグラフ
 function oneSummary(list, useDev, caption) {
   if (list.length < 2) return '';
   const subjects = subjectsOf(list);
   const val = (e, s) => { const x = e.scores.find(r => r.subject === s); return x ? n1(useDev ? x.deviation : x.score) : ''; };
-  const tot = e => n1(useDev ? e.total.deviation : e.total.score);
-  const head = e => `<th><span class="nm">${esc(e.name)}</span><small>${esc(md(e.date))}</small></th>`;
-  return `<figure class="gsum"><figcaption class="small muted">${caption}</figcaption><div class="gwrap"><table class="gtable"><thead><tr><th></th>${list.map(head).join('')}</tr></thead><tbody>${subjects.map(s => `<tr><th>${esc(s)}</th>${list.map(e => `<td>${val(e, s)}</td>`).join('')}</tr>`).join('')}${list.some(e => tot(e)) ? `<tr class="tot"><th>合計</th>${list.map(e => `<td>${tot(e)}</td>`).join('')}</tr>` : ''}</tbody></table></div></figure>`;
+  const tot = e => n1(useDev ? e.total.deviation : e.total.score), hasTot = list.some(e => tot(e));
+  const agg = s => /教科$/.test(s) ? ' class="agg"' : ''; // 3教科・5教科は合計の側に寄せて区切る
+  const rows = list.slice().reverse().map(e => `<tr><th><span class="nm">${esc(e.name)}</span><small>${esc(md(e.date))}</small></th>${subjects.map(s => `<td${agg(s)}>${val(e, s)}</td>`).join('')}${hasTot ? `<td class="tot">${tot(e)}</td>` : ''}</tr>`).join('');
+  return `<figure class="gsum"><figcaption class="small muted">${caption}</figcaption><div class="gwrap"><table class="gtable gsum-t"><thead><tr><th></th>${subjects.map(s => `<th${agg(s)}>${esc(s)}</th>`).join('')}${hasTot ? '<th class="tot">合計</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div></figure>`;
 }
 // 推移の箱: 一覧とグラフ。試験が 2 つ以上あるときだけ。right は見出しの右に置くもの（スタッフの「＋ 結果を入れる」）
 export function trendBox(exams, studentId, right = '') {

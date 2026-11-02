@@ -670,6 +670,14 @@ table.gtable td { text-align: right; font-variant-numeric: tabular-nums; }
 table.gtable td small { color: var(--muted); font-size: 11px; }
 table.gtable tr.tot th, table.gtable tr.tot td { border-top: 2px solid var(--line); font-weight: 600; }
 .gsum { margin: 12px 0; }
+/* 試験をまたいだ一覧: 行が試験、列が科目。3教科・合計は線で区切って太字に。スマホでは詰めて 1 画面に収める */
+table.gsum-t tbody th .nm { display: block; font-size: 13px; }
+table.gsum-t tbody th small { display: block; color: var(--muted); font-size: 11px; font-weight: 400; }
+table.gsum-t thead th { color: var(--ink); font-size: 13px; }
+table.gsum-t .agg, table.gsum-t .tot { font-weight: 600; }
+table.gsum-t .agg:not(.agg + .agg), table.gsum-t .tot { border-left: 2px solid var(--line); }
+table.gsum-t .agg + .tot { border-left-width: 1px; }
+@media (max-width: 480px) { table.gsum-t th, table.gsum-t td { padding: 6px 4px; } table.gsum-t { font-size: 13px; } }
 .gcard .ghead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 button.linkish { background: none; border: 0; padding: 0; color: var(--primary); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; }
 /* 入力欄: 模試は順位・人数の列を隠し、定期テストは偏差値の列を隠す（種類を切り替えるとその場で変わる） */
