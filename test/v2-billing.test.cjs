@@ -139,6 +139,7 @@ test('cancellation fees: late notice is 1,000 yen, a no-show costs the lesson, d
   await h.ok('billing/fees/relief', { auth, id: fee.id, version: fee.version, result: 'waived', response: 'お大事になさってください' });
   p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
   assert.deepEqual([p.total, p.canConfirm, p.students[0].items.map(i => i.label)], [1500, true, ['キャンセル料（減額）']]);
+  assert.equal((await h.ok('billing/month', { auth, month: '2026-09' })).families.find(f => f.familyId === kid.familyId).preview.cancelFees, 1, '月の請求の行にキャンセル料の件数（免除は 0 円なので数えない）');
   const cur = h.rows('select * from lessons where id = ?', l2.id)[0];
   await h.ok('billing/confirm', { auth, dueReviewed:true, familyId: kid.familyId, month: '2026-09' });
   assert.equal((await h.call('schedule/lessons/delete', { auth, id: l2.id, version: cur.version })).error.code, 'invoiced');
