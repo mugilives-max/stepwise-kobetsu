@@ -2,7 +2,7 @@
 // タブ: 概要・予定・記録と宿題・資料（テスト結果と学校の書類）・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
-import { examCard, trendBox, examPager, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261026-p4';
+import { trendBox, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261102-gtable2';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
@@ -137,7 +137,7 @@ function grades(ctx, x) {
   let h = `<div class="sp-head"><h2>テスト結果</h2><span class="grow"></span><a class="small-btn primary" href="#grades=${sid}">結果を入れる・直す</a></div>`;
   if (g.nextTest) h += `<p class="small">次のテスト: ${ctx.esc(g.nextTest.title || '')} ${md(g.nextTest.date)}（あと${g.nextTest.days}日）</p>`;
   if (!g.exams.length) h += '<p class="muted small">まだ記録はありません。</p>';
-  else { const pk = seriesPick(g.exams, x.student.id); h += pk.bar + trendBox(pk.list, x.student.id) + examPager(pk.list, x.student.id, e => examCard(e, { sheets: (g.files || []).filter(f => f.examId === e.id && f.status !== 'dismissed') })); }
+  else { const pk = seriesPick(g.exams, x.student.id); h += pk.bar + trendBox(pk.list, x.student.id, '', { sheets: e => (g.files || []).filter(f => f.examId === e.id && f.status !== 'dismissed') }); }
   return x.docs ? h + schoolDocs(ctx, x) : h;
 }
 function schoolDocs(ctx, x) {

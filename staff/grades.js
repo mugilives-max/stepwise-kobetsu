@@ -1,6 +1,6 @@
 // スタッフの画面: 成績（6段目）。#grades（一覧・届いた成績票・結果の入力待ち）と #grades=<生徒>（試験の記録・入力）。
 // 講師は担当の生徒の担当科目だけ入力でき、ほかの科目は合計だけ見える。成績票は教室管理者だけ。
-import { examCard, trendBox, examPager, gradeSel, seriesPick, seriesOf, SERIES_FIRST, fileList, uploadForm, uploadFile, openFile, jst } from '/assets/v2/grades-view.js?v=20261026-p4';
+import { trendBox, gradeSel, seriesPick, seriesOf, SERIES_FIRST, fileList, uploadForm, uploadFile, openFile, jst } from '/assets/v2/grades-view.js?v=20261102-gtable2';
 import { sheet, rowButton, rowLink } from '/staff/ui.js?v=20261025-layout';
 
 let overview = null, student = null, studentFor = '', editing = '', prefill = null, pick = null; // pick: 下から出る画面 { kind: 'file'|'test'|'resolve', id }
@@ -53,15 +53,15 @@ export function gradesStudentPage(ctx, studentId) {
   h += `${st.subjects ? `<p class="small muted" style="margin-top:12px">担当 ${st.subjects.map(esc).join('・')}</p>` : ''}${ctx.notice()}`;
   if (st.nextTest) h += `<p class="small">次のテスト: ${esc(st.nextTest.title || '')}（${esc(md(st.nextTest.date))}、あと${st.nextTest.days}日）</p>`;
   if (st.pendingTests.length) h += `<div class="sec-title">結果の入力待ち <span class="count">${st.pendingTests.length}</span></div>${pendingList(ctx, st.pendingTests, false)}`;
-  // 階層: 何の試験か（定期テスト・北辰テスト …）のタブ → 推移（一覧とグラフ）→ 試験ごと（‹ › で 1 つずつ。実際の成績票はカードから開く）
+  // 階層: 何の試験か（定期テスト・北辰テスト …）のタブ → 推移（一覧とグラフ）。回の名前を押すと直す画面（成績票をつける・消すもそこ）。成績票は回の日付の横から開く
   const addBtn = `<button class="small-btn primary" data-action="gr-new"${ctx.dis()}>＋ 結果を入れる</button>`;
   const pk = seriesPick(st.exams, studentId);
   h += pk.bar;
   if (!st.exams.length) h += `<p><button class="primary" data-action="gr-new"${ctx.dis()}>＋ 試験の結果を入れる</button></p><p class="muted">まだ記録がありません。</p>`;
-  const trend = trendBox(pk.list, studentId, addBtn);
+  const sheetsOf = e => st.manager ? st.files.filter(f => f.examId === e.id && f.status !== 'dismissed') : [];
+  const trend = trendBox(pk.list, studentId, addBtn, { sheets: sheetsOf, edit: true });
   h += trend || (st.exams.length ? `<p style="margin:10px 0 0">${addBtn}</p>` : '');
   const attachForm = e => st.manager ? `<form class="gattach" data-form="gr-attach" data-exam="${esc(e.id)}"><label class="gsheet-btn as-label"><span class="ic">＋</span><span class="nm">成績票（PDF・写真）をつける</span><input type="file" name="file" accept="image/*,application/pdf" hidden></label></form>` : '';
-  h += examPager(pk.list, studentId, e => examCard(e, { sheets: st.manager ? st.files.filter(f => f.examId === e.id && f.status !== 'dismissed') : [], attach: attachForm(e), actions: `<div class="row"><button data-action="gr-edit" data-id="${esc(e.id)}"${ctx.dis()}>直す</button>${st.manager ? `<button class="danger" data-action="gr-delete" data-id="${esc(e.id)}" data-version="${e.version}"${ctx.dis()}>消す</button>` : ''}</div>` }));
   if (st.manager) {
     // 試験にひもづいていない成績票: ここから結果を入れる（入れると自動でひもづく）か、できている試験にひもづける
     const loose = st.files.filter(f => !f.examId && f.status !== 'dismissed'), dismissed = st.files.filter(f => f.status === 'dismissed');
@@ -76,7 +76,9 @@ export function gradesStudentPage(ctx, studentId) {
     h += `<details class="gupload"><summary>成績票だけを残す</summary>${uploadForm(ctx.dis())}</details>`;
   }
   h += testSheet(ctx, st.pendingTests);
-  if (editing) { const e = editing === 'new' ? null : st.exams.find(x => x.id === editing); if (e || editing === 'new') h += sheet(esc, e ? e.name + ' を直す' : '試験の結果を入れる', examForm(ctx, e), 'gr-close', { wide: true }); }
+  // 直す画面の下に、その回の成績票（開く・つける）と「消す」
+  const examExtras = e => `${sheetsOf(e).length ? `<div class="gsheets">${sheetsOf(e).map(f => `<button type="button" class="gsheet-btn" data-action="gr-open" data-id="${esc(f.id)}"><span class="ic">${f.mime === 'application/pdf' ? 'PDF' : '写真'}</span><span class="nm">${esc(f.name)}</span><span class="go">開く ›</span></button>`).join('')}</div>` : attachForm(e)}${st.manager ? `<div class="row" style="margin-top:12px"><button class="danger" data-action="gr-delete" data-id="${esc(e.id)}" data-version="${e.version}"${ctx.dis()}>この回を消す</button></div>` : ''}`;
+  if (editing) { const e = editing === 'new' ? null : st.exams.find(x => x.id === editing); if (e || editing === 'new') h += sheet(esc, e ? e.name + ' を直す' : '試験の結果を入れる', examForm(ctx, e) + (e ? examExtras(e) : ''), 'gr-close', { wide: true }); }
   return h;
 }
 // 試験の入力欄（作る・直す）。科目の行・全体（教室管理者）・振り返り
