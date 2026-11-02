@@ -9,7 +9,7 @@ import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClic
 import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261101-short';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261028-r16b';
 import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261029-feemonth';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261102-gtable2';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261102-docsentry';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261028-r16b';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda2';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261026-p4';
@@ -41,7 +41,7 @@ function route() {
   if (h.startsWith('#record=')) return { page: 'record', id: decodeURIComponent(h.slice(8)) };
   if (h.startsWith('#grades=')) return { page: 'gradesOf', id: decodeURIComponent(h.slice(8)) };
   if (h === '#schedule/todo') return { page: 'schedule', open: 'todo' }; // 「今日」の対応することから: 予定の画面で一覧を開く
-  if (h.startsWith('#student=')) { const [id, tab] = h.slice(9).split('/'); return { page: 'student', id: decodeURIComponent(id), tab: tab || 'summary' }; }
+  if (h.startsWith('#student=')) { const [id, tab, sub] = h.slice(9).split('/'); return { page: 'student', id: decodeURIComponent(id), tab: tab || 'summary', sub: sub || '' }; }
   return { page: h.slice(1) || 'home' };
 }
 const say = (message, kind = '') => { notice = message ? { message, kind } : null; };
@@ -83,7 +83,8 @@ function tabOf(page) {
 // 戻る（入口の下の画面の左上）。来た道をたどる。直接開いたときは、その画面の入口へ
 let trail = [], lastHash = location.hash || '#home';
 function parentOf(r) {
-  if (r.page === 'gradesOf') return '#student=' + encodeURIComponent(r.id) + '/grades';
+  if (r.page === 'gradesOf') return '#student=' + encodeURIComponent(r.id) + '/grades/tests';
+  if (r.page === 'student' && r.sub) return '#student=' + encodeURIComponent(r.id) + '/' + r.tab; // 資料の中の画面からは資料の入口へ
   const t = tabOf(r.page);
   return t === r.page ? '' : '#' + t;
 }
@@ -228,7 +229,7 @@ function render() {
   else if (r.page === 'records' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = recordsPage(ctx);
   else if (r.page === 'record' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = recordPage(ctx, r.id);
   else if (r.page === 'students' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = studentsPage(ctx);
-  else if (r.page === 'student' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = studentPage(ctx, r.id, r.tab);
+  else if (r.page === 'student' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = studentPage(ctx, r.id, r.tab, r.sub);
   else if (r.page === 'grades' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = gradesOverviewPage(ctx);
   else if (r.page === 'payroll' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = payrollPage(ctx, me);
   else if (r.page === 'gradesOf' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = gradesStudentPage(ctx, r.id);

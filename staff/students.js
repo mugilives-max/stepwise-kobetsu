@@ -67,7 +67,7 @@ export function studentsInput(ctx, name, el) {
 
 // ---------- 1人の生徒 ----------
 export const studentHubBar = () => hub && hub.student ? { title: hub.student.name, sub: [hub.student.grade || '', hub.student.status === 'paused' ? '休会' : hub.student.status === 'left' ? '退会' : ''].filter(Boolean).join('・'), right: '' } : { title: '生徒', sub: '', right: '' };
-export function studentPage(ctx, id, tab) {
+export function studentPage(ctx, id, tab, sub = '') {
   const { esc } = ctx;
   if (hubFor !== id) { hubFor = id; hub = null; ctr = null; ctx.call('students/hub', { studentId: id }).then(r => { if (hubFor !== id) return; hub = r.ok ? r : { error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
   let h = '';
@@ -77,7 +77,7 @@ export function studentPage(ctx, id, tab) {
   if (!tabs.some(t => t[0] === tab)) tab = 'summary';
   h += ctx.notice();
   h += '<div class="tabs2" role="tablist">' + tabs.map(([k, label]) => `<a role="tab" href="#student=${encodeURIComponent(s.id)}/${k}" class="${k === tab ? 'on' : ''}"${k === tab ? ' aria-selected="true"' : ''}>${label}</a>`).join('') + '</div>';
-  return h + ({ summary, schedule, records, grades, money, contracts, basic }[tab])(ctx, hub);
+  return h + ({ summary, schedule, records, grades, money, contracts, basic }[tab])(ctx, hub, sub);
 }
 
 const lessonRow = (esc, l, href = '') => `<div class="lesson-row"><span class="t">${md(l.date)}<small>${l.start}・${l.minutes}分</small></span>
@@ -131,14 +131,24 @@ function records(ctx, x) {
     <small class="muted">${r.status === 'draft' ? '下書き・' : ''}${esc(noteText(r.staffNotes) || r.comment.slice(0, 60))}</small></span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">まだ記録はありません。</p>');
   return h;
 }
-// 資料: テスト結果と、学校の書類（年間行事予定など。教室管理者だけ。2026-10-31 本人）
-function grades(ctx, x) {
+// 資料: テスト結果と、学校の書類（年間行事予定など。教室管理者だけ。2026-10-31 本人）。
+// まず入口の一覧を出し、押すとそれぞれの画面（#student=<id>/grades/tests・/docs）。2026-11-02 本人「いきなりテストの結果がバーンって表示されて、下の方に行くと行事予定があって…構造がいびつ。入り口を作っておく」
+function grades(ctx, x, sub) {
+  if (sub === 'tests') return testResults(ctx, x);
+  if (sub === 'docs' && x.docs) return schoolDocs(ctx, x);
+  const { esc } = ctx, sid = encodeURIComponent(x.student.id), g = x.grades;
+  const last = g.exams.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+  const testSub = [last ? `${esc(last.series || '')} ${esc(last.name)}（${md(last.date)}）` : 'まだ記録はありません', g.nextTest ? `次は ${esc(g.nextTest.title || 'テスト')} ${md(g.nextTest.date)}` : ''].filter(Boolean).join('・');
+  const row = (href, title, small) => `<a class="todo" href="${href}"><span class="b"><strong>${title}</strong><small class="muted">${small}</small></span><span class="go">›</span></a>`;
+  return `<div class="rows" style="margin-top:12px">${row(`#student=${sid}/grades/tests`, 'テスト結果', testSub)}${x.docs ? row(`#student=${sid}/grades/docs`, '学校の書類', x.docs.length ? `${x.docs.length}件（年間行事予定など）` : '年間行事予定や学校のお便り') : ''}</div>`;
+}
+function testResults(ctx, x) {
   const sid = encodeURIComponent(x.student.id), g = x.grades;
   let h = `<div class="sp-head"><h2>テスト結果</h2><span class="grow"></span><a class="small-btn primary" href="#grades=${sid}">結果を入れる・直す</a></div>`;
   if (g.nextTest) h += `<p class="small">次のテスト: ${ctx.esc(g.nextTest.title || '')} ${md(g.nextTest.date)}（あと${g.nextTest.days}日）</p>`;
   if (!g.exams.length) h += '<p class="muted small">まだ記録はありません。</p>';
   else { const pk = seriesPick(g.exams, x.student.id); h += pk.bar + trendBox(pk.list, x.student.id, '', { sheets: e => (g.files || []).filter(f => f.examId === e.id && f.status !== 'dismissed') }); }
-  return x.docs ? h + schoolDocs(ctx, x) : h;
+  return h;
 }
 function schoolDocs(ctx, x) {
   const { esc } = ctx;
