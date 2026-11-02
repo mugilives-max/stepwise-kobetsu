@@ -218,7 +218,7 @@ export function billingPage(ctx) {
   let h = ctx.notice();
   // キャンセル料は選んだ月の請求に入るものだけ（その月の末日までで、まだ請求していないもの）。月の下に出す（2026-10-29 本人「9月のところに10月のキャンセル料がなぜか表示されている」）。
   // ここに出すのは判断が要るものだけ。決まったものは契約者の行に件数、中身は契約者の請求の内訳で（2026-11-02 本人「個人の請求ページで開ければ十分…○月はN件のキャンセルがありました」）
-  h += `<div class="sec-title">月の請求</div>${monthPicker(billMonth, 'bl-month')}`;
+  h += monthPicker(billMonth, 'bl-month'); // 見出しは上の帯の「請求」だけ（2026-11-02 本人「左上の『月の請求』が不要」）
   h += feesPart(ctx, billMonth);
   if (bill.loading) return h + '<p class="muted">読み込んでいます…</p>';
   if (!bill.families.length) h += '<p class="muted small">この月に請求するものはありません。</p>';
