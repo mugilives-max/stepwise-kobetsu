@@ -53,13 +53,24 @@ function shortNames() {
   return Object.fromEntries(data.students.map(s => { const [f, g] = s.name.split(' '); return [s.id, fam[f] > 1 && g ? g : f]; }));
 }
 
+// 1 人の生徒の予定（生徒の画面の「予定」タブ。2026-11-03 本人「普通に生徒のカレンダーを表示したい」）: 同じ予定表を、その生徒の授業・テスト・面談だけにして描く。
+// 読み込みと操作（授業を押したときの画面など）は予定表と共通。マスには名前の代わりに科目を出す
+let only = '', fullData = null;
+const onlyView = (d, sid) => { const fam = (d.students.find(s => s.id === sid) || {}).familyId, mine = l => l.studentId === sid;
+  return { ...d, lessons: d.lessons.filter(mine), events: d.events.filter(mine), openRequests: d.openRequests.filter(mine), meetings: d.meetings.filter(m => fam && m.familyId === fam),
+    unavailability: d.unavailability.filter(o => !o.staffId), heldAll: d.heldAll && d.heldAll.filter(mine), adjustingAll: d.adjustingAll && d.adjustingAll.filter(mine) }; };
 export function schedulePage(ctx, me, r = {}) {
+  only = r.student || '';
+  try { return monthPage(ctx, me, r); } finally { if (fullData) { data = fullData; fullData = null; } } // 描いたら全員の予定に戻す（操作は全員の予定で探す）
+}
+function monthPage(ctx, me, r) {
   const { esc } = ctx, manager = me.roles.includes('manager');
   // 「今日」の対応すること（連絡・調整中）から来たら、対応することの一覧を開く。閉じたあとまた開かないよう、アドレスは #schedule に戻す
   if (r.open === 'todo') { wantTodo = true; history.replaceState(null, '', '#schedule'); }
   if (!month) month = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
   if ((!data || loadedFor !== month) && cache[month]) { data = cache[month]; loadedFor = month; prefetchNear(ctx); } // 先に読んであった月はすぐ出す
   if (!data || loadedFor !== month) { if (loadedFor !== month) load(ctx); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
+  if (only) { fullData = data; data = onlyView(data, only); }
   if (wantTodo) { wantTodo = false; sheet = { kind: 'todo' }; } // 読み込みが済んでから開く（読み込み前の初期化で閉じられないように）
   const nameOf = Object.fromEntries(data.students.map(s => [s.id, s.name])), staffOf = Object.fromEntries(data.staff.map(s => [s.id, s.name])), short = shortNames();
   const held = {}; heldLessons().forEach(l => { held[l.studentId] = (held[l.studentId] || 0) + 1; });
@@ -92,7 +103,7 @@ export function schedulePage(ctx, me, r = {}) {
     // 開始時刻と名前だけ（2026-10-27 本人「まだあまり整理できていない」→「開始＋名前だけ」）。同じ開始時刻は1行に「13:00 実祈・岡野」。
     // 終わりの時刻・科目は右（スマホは下）の一覧で。色はその時刻のうち一番決まっていない段階
     const byStart = new Map();
-    ls.slice().sort((a, b) => a.start.localeCompare(b.start)).forEach(l => { const g = byStart.get(l.start) || { rank: 9, names: [] }; g.rank = Math.min(g.rank, RANK[l.status]); g.names.push(short[l.studentId] || ''); byStart.set(l.start, g); });
+    ls.slice().sort((a, b) => a.start.localeCompare(b.start)).forEach(l => { const g = byStart.get(l.start) || { rank: 9, names: [] }; g.rank = Math.min(g.rank, RANK[l.status]); g.names.push(only ? l.subject : short[l.studentId] || ''); byStart.set(l.start, g); });
     const chips = [...byStart].map(([start, g]) => `<span class="nm t2 r${g.rank}"><small class="tm">${start}</small><b>${esc(g.names.join('・'))}</b></span>`);
     // マスに出す行の数（2026-10-27 本人「授業が多すぎて表示がうまくできない」）: パソコンは5つ、スマホは2つまで出し、それより多いときは「+n」（途中で切らない）
     const lines = bars.concat(chips), cap = phone() ? 3 : 6, shown = lines.length > cap ? lines.slice(0, cap - 1) : lines, more = lines.length - shown.length;
