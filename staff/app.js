@@ -5,11 +5,11 @@ import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=202610
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
-import { familiesPage, familyDetailPage, familyBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261030-renewonce';
+import { familiesPage, familyDetailPage, familyBar, familiesBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261103-contracts';
 import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261103-stucal2';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261028-r16b';
 import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261102-billtitle';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261103-pvlinks';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261103-contracts';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261028-r16b';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda2';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261026-p4';
@@ -27,7 +27,7 @@ let lastPage = '';
 let me = null, busy = false, notice = null, staffList = null, shownLink = null, bootstrap = null, staffOpen = '';
 
 // 上の帯に出す画面の名前（本文には大見出しを置かない）
-const PAGE_TITLE = { rules:'講師マニュアル', bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講計画書', billing: '請求', payroll: '給与', grades: '成績', families: '契約者と生徒', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: '共通規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信履歴と控え' };
+const PAGE_TITLE = { rules:'講師マニュアル', bank:'給与の振込先', employment:'雇用・勤務',work:'勤務の確認', monthly: '月の仕事', settings: '設定', plans: '受講計画書', billing: '請求', payroll: '給与', grades: '成績', families: '契約', rates: '時給と源泉徴収', kinds: '授業の種類と標準料金', staff: 'スタッフ', account: 'アカウント', records: '記録', terms: '共通規約', 'staff-stopped': '停止中のアカウント', 'employment-stopped': '停止中の講師', 'employment-new': '新しい講師を登録', docs: '書類のひな形', effects: '送信履歴と控え' };
 const legacyToken = () => { try { return localStorage.getItem('sw_admt') || ''; } catch { return ''; } };
 function route() {
   const h = location.hash;
@@ -55,6 +55,7 @@ async function run(task) { if (busy) return; captureEmployment(); captureBank();
 const ICON = {
   home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
   schedule: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  families: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>',
   students: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
   monthly: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
@@ -65,14 +66,15 @@ function navItems() {
   if (!me) return [];
   if(me.employmentAccess===false)return [['employment','入職の手続き','employment'],['settings','設定']]; // 入職の手続き中は、手続きの画面だけ（給与明細は契約のあとに雇用・勤務の中から）
   const m = me.roles.includes('manager'), t = me.roles.includes('teacher');
-  if (m) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['monthly', '月の仕事'], ['settings', '設定']];
+  if (m) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['families', '契約'], ['monthly', '月の仕事'], ['settings', '設定']]; // 契約（2026-11-03 本人）
   if (t) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['payroll', '給与'], ['settings', '設定']];
   return [['home', '今日'], ['settings', '設定']]; // システム管理者だけのとき
 }
 // いまの画面が、どの入口の下にあるか
 function tabOf(page) {
   const m = me && me.roles.includes('manager');
-  if (['student', 'family', 'families', 'gradesOf', 'grades'].includes(page)) return 'students';
+  if (['family', 'families'].includes(page)) return m ? 'families' : 'students';
+  if (['student', 'gradesOf', 'grades'].includes(page)) return 'students';
   if (['records', 'record'].includes(page)) return 'home';
   if (['plans', 'billing'].includes(page)) return 'monthly';
   if (page === 'payroll') return m ? 'monthly' : 'payroll';
@@ -101,7 +103,7 @@ function renderBack(r) {
   if (html) bar.insertAdjacentHTML('afterbegin', html);
   document.body.classList.toggle('has-back', !!html);
   // 記録を書く画面: 上の帯に名前と日時・三本線（「ステップワイズ」は出さない）。下のメニューは隠して、その画面だけにする
-  const info = !me ? null : r.page === 'record' ? recordBar() : r.page === 'home' ? todayBar() : r.page === 'students' ? studentsBar() : r.page === 'student' ? studentHubBar() : r.page === 'family' ? familyBar() : r.page === 'gradesOf' ? gradesBar() : PAGE_TITLE[r.page] ? { title: r.page === 'employment' && me.employmentAccess === false ? '入職の手続き' : PAGE_TITLE[r.page], sub: '', right: '' } : null; // 上の帯に画面の名前
+  const info = !me ? null : r.page === 'record' ? recordBar() : r.page === 'home' ? todayBar() : r.page === 'students' ? studentsBar() : r.page === 'student' ? studentHubBar() : r.page === 'family' ? familyBar() : r.page === 'families' ? familiesBar() : r.page === 'gradesOf' ? gradesBar() : PAGE_TITLE[r.page] ? { title: r.page === 'employment' && me.employmentAccess === false ? '入職の手続き' : PAGE_TITLE[r.page], sub: '', right: '' } : null; // 上の帯に画面の名前
   bar.querySelectorAll('.bar-title, .bar-right').forEach(x => x.remove());
   if (info) {
     const back = bar.querySelector('a.back');

@@ -20,16 +20,27 @@ const tag = ([cls, label]) => `<span class="tag ${cls}">${label}</span>`;
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 // 契約者（保護者）の名前で出す。保護者の氏名がまだなければ登録の名前（例: 山田家）
 export const contractorOf = f => f.guardianName || f.name || '';
+// 一覧の丸（生徒の一覧と同じ色の決め方）
+const AV = ['#2f6fde', '#2e9b5f', '#7b4fd6', '#d0533c', '#138a8a', '#c98a00', '#5b6672'];
+const avColor = t => AV[[...String(t)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 9973, 7) % AV.length];
+const initial = name => (String(name).replace(/^[【\[（(「『\s]+/, '') || '?').slice(0, 1);
+export const familiesBar = () => list ? { title: '契約', sub: `${list.filter(f => f.status !== 'stopped').length}件`, right: '' } : { title: '契約', sub: '', right: '' };
 const match = (f, q) => !q || [f.name, f.guardianName, f.email, ...f.students.map(s => s.name + (s.familyKana || '') + (s.givenKana || ''))].join(' ').toLowerCase().includes(q.toLowerCase());
 
 export function familiesPage(ctx) {
   const { esc } = ctx;
   if (!list) { load(ctx); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
   let h = ctx.notice();
-  h += `<div class="row" style="margin-top:10px"><label class="search" style="flex:1;margin:0"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" placeholder="名前・ふりがな・メールで探す" value="${esc(query)}" data-input="fam-query" aria-label="契約者を探す"></label><button class="primary" data-action="fam-sheet" data-mode="create"${ctx.dis()}>契約者を登録</button></div>`;
+  // メニューの「契約」（2026-11-03 本人「メニューに契約を追加…生徒画面みたいな感じで契約者を並べましょうか」）: 生徒の一覧と同じ形。1 行に契約者と、その下に生徒の名前
+  h += `<div class="stu-tools"><label class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" placeholder="名前・ふりがな・メールで探す" value="${esc(query)}" data-input="fam-query" aria-label="契約者を探す"></label><button type="button" class="small-btn primary" data-action="fam-sheet" data-mode="create"${ctx.dis()}>＋ 契約者を登録</button></div>`;
   const shownList = list.filter(f => match(f, query));
-  h += `<div class="sec-title">${shownList.length}契約者</div><div class="group">` + shownList.map(f => rowLink('#family=' + encodeURIComponent(f.id), `${esc(contractorOf(f))} ${tag(STATUS[f.status] || ['gray', f.status])}${f.testOnly ? '<span class="tag gray">テスト</span>' : ''}`,
-    `${f.students.length ? f.students.map(s => `${esc(s.name)}（${esc(s.grade || '学年なし')}）${s.status === 'enrolled' ? '' : tag(STUDENT_STATUS[s.status])}`).join('、') : '生徒がいません'}<br>${esc(f.email || 'メールなし')}`)).join('') + '</div>';
+  if (shownList.length) h += '<div class="group stu-list">' + shownList.map(f => {
+    const name = contractorOf(f), kids = f.students.filter(s => s.status !== 'left').map(s => s.name.split(/[\s　]/).pop()).join('・') || '生徒がいません';
+    const tags = (f.status === 'active' ? '' : tag(STATUS[f.status] || ['gray', f.status])) + (f.testOnly ? '<span class="tag gray">テスト</span>' : '');
+    return `<a class="srow" href="#family=${encodeURIComponent(f.id)}"><span class="av" style="background:${avColor(name)}" aria-hidden="true">${esc(initial(name))}</span>
+      <span class="b"><strong>${esc(name)}</strong><small class="muted">${esc(kids)}</small>${tags}</span><span class="go">›</span></a>`;
+  }).join('') + '</div>';
+  else h += '<p class="muted small" style="margin-top:14px">見つかりませんでした。</p>';
   if (famSheet && famSheet.mode === 'create') h += sheet(esc, '契約者を登録', `<form class="stack" data-form="fam-create">${familyInputs(esc, {})}<button class="primary"${ctx.dis()}>登録する</button></form>`, 'fam-close');
   return h;
 }
