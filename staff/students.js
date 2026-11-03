@@ -7,6 +7,7 @@ import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 import { renewalBox } from '/staff/families.js?v=20261030-renewonce';
+import { schedulePage } from '/staff/schedule.js?v=20261103-stucal2'; // app.js と同じ URL（同じ部品の状態を使う）
 
 let list = null, query = '', hub = null, hubFor = '';
 let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）
@@ -115,8 +116,10 @@ function planList(esc, plans) {
   return '<div class="rows">' + plans.map(p => `<div class="ev"><span class="t">${md(p.startDate)}〜</span><span class="b" style="color:var(--ink)">${esc(p.subject)}${p.kind !== '通常' ? '（' + esc(p.kind) + '）' : ''}${p.parentId ? ' <small class="muted">追加</small>' : ''}
     <small class="muted">${p.used} / ${p.cap}回・1回 ${p.minutes}分 ${yen(p.fee)}</small></span><span><span class="tag ${PLAN[p.status][1]}">${PLAN[p.status][0]}</span></span></div>`).join('') + '</div>';
 }
+// 予定: 予定表と同じ月のカレンダーを、この生徒の分だけで（2026-11-03 本人「普通に生徒のカレンダーを表示したい」）。授業の記録は「記録と宿題」タブ
 function schedule(ctx, x) {
   const { esc } = ctx;
+  if (ctx.me) return schedulePage(ctx, ctx.me, { student: x.student.id });
   return `<h2>これからの授業 <span class="count">${x.upcoming.length}</span></h2>` + (x.upcoming.length ? '<div class="rows">' + x.upcoming.map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">ありません。</p>')
     + (x.events.length ? '<h2>テスト・行事・授業ができない日</h2><div class="rows">' + x.events.map(e => `<div class="ev ${e.kind}"><span class="t">${md(e.date)}${e.dateTo !== e.date ? '〜' : ''}</span><span class="b">${esc(e.title || (e.kind === 'unavailable' ? '授業ができない日' : ''))}</span><span></span></div>`).join('') + '</div>' : '')
     + '<h2>これまでの授業</h2>' + (x.past.length ? '<div class="rows">' + x.past.map(l => lessonRow(esc, l, ['decided', 'done'].includes(l.status) ? '#record=' + encodeURIComponent(l.id) : '')).join('') + '</div>' : '<p class="muted small">まだありません。</p>')
