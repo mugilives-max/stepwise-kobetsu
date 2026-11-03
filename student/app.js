@@ -4,7 +4,7 @@
 // 鍵は端末に保存して URL から消す。保護者が「保護者だけ」にした操作はできない。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261102-gtable2';
-import { monthCalendar, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261027-dense2';
+import { monthCalendar, shortTestTitle, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261103-shortbars2';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261101-docs2';
 
@@ -82,7 +82,7 @@ function render() {
       const kari = lessons.filter(l => l.status === 'proposed' && l.confirmBy);
       if (kari.length) h += `<p class="notice small" style="margin:0 0 6px">確認待ち ${kari.length}件・連絡がなければ締め切りで決まります</p>`;
       const cell = date => { const ls = lessons.filter(l => l.date === date && l.status in RANK).sort((a, b) => a.start.localeCompare(b.start));
-        return { lines: events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`).concat(ls.map(l => `<span class="nm t2 r${RANK[l.status]}"><small class="tm">${l.start}</small><b>${esc(l.subject)}</b></span>`)) /* 開始時刻と科目（2026-11-03 本人「スマホ版だと開始時刻が表示されない」。保護者・スタッフの表と同じ形） */, count: ls.length }; };
+        return { lines: events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.kind === 'test' && e.title ? shortTestTitle(e.title) : e.title || EVENT_KIND[e.kind])}</span>`).concat(ls.map(l => `<span class="nm t2 r${RANK[l.status]}"><small class="tm">${l.start}</small><b>${esc(l.subject)}</b></span>`)) /* 開始時刻と科目（2026-11-03 本人「スマホ版だと開始時刻が表示されない」。保護者・スタッフの表と同じ形） */, count: ls.length }; };
       const day = (date, first) => cal.dayHead(date, first) + dayRows(date, lessons, events, { canDelete: e => sched.permissions.events && e.createdByKind === 'student' });
       h += cal.html(esc, { cell, day });
     }

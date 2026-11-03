@@ -4,6 +4,8 @@
 // パソコンでは、左に月の表、右に選んだ日の一覧。
 // 使い方: const cal = monthCalendar({ today, onChange }) を 1 つ持ち、描くときに cal.html(...)、描いたあとに cal.afterRender()、押したときに cal.click(action, el)。
 export const ymOf = d => d.slice(0, 7);
+// 月の表のマスではテストの名前を縮める（「2学期期末テスト」→「期末」、「北辰テスト（3年6回）」→「北辰」）。スタッフの表と同じ（2026-11-03 本人「テストの帯も縮めて」）
+export const shortTestTitle = t => String(t || '').replace(/[（(][^）)]*[）)]/g, '').replace(/^[0-9０-９一二三]学期/, '').replace(/テスト$/, '').trim() || String(t || '');
 export const addMonths = (ym, n) => { const [y, m] = ym.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1)); return t.toISOString().slice(0, 7); };
 export const gridStart = ym => { const first = new Date(ym + '-01T00:00:00Z'); return new Date(first - first.getUTCDay() * 86400e3).toISOString().slice(0, 10); };
 export const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400e3).toISOString().slice(0, 10);

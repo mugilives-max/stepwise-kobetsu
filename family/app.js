@@ -7,7 +7,7 @@ import { enrollPage, enrollTitle, enrollTodo, enrollCovers, enrollSubmit, enroll
 // ログイン・招待・再設定、アカウント（右上）。切り替える前は「準備中」の案内を出す（health の cutover.live で決める）。
 import { call, session, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261102-gtable2';
-import { monthCalendar, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261027-dense2';
+import { monthCalendar, shortTestTitle, gridStart, gridEnd, addDays } from '/assets/v2/calendar.js?v=20261103-shortbars2';
 import { EVENT_KIND, endOf } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { contractArchive, contractDocs, termsCard, conditionCard, specialCard, lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, planGroups, planApprovalCard, planAckCard, planHistory, inquirySheet, invoiceRows, invoiceSheet, feeRows, feeSheet, eventRows, eventSheet, wireSheets, keepSheet, ibox, picon, yen, md, monthLabel, daysText, given } from '/assets/v2/portal-ui.js?v=20261101-docs2';
 
@@ -191,7 +191,7 @@ function schedulePage() {
   if (adjusting.length) h += `<p style="margin:0 0 6px"><span class="tag warn">調整中 ${adjusting.length}件</span></p>`;
   const cell = date => {
     const ls = lessons.filter(l => l.date === date && l.status in RANK);
-    const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`);
+    const bars = events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.kind === 'test' && e.title ? shortTestTitle(e.title) : e.title || EVENT_KIND[e.kind])}</span>`);
     // 授業ごとに時刻と科目（全員を出すときは科目の代わりに名。狭い表で切れないように）。2026-10-27 本人「時間帯もカレンダー上の表記で分かるようにしたい」
     const chips = ls.sort((a, b) => a.start.localeCompare(b.start)).map(l => { const on = askOn.has(l.id) && l.status === 'proposed'; return `<span class="nm t2 r${RANK[l.status]}${on ? ' on' : ''}"><small class="tm">${on ? '✓ ' : ''}${l.start}<span class="te">〜${endOf(l.start, l.minutes)}</span></small><b>${multi ? esc(shortName(l.studentId)) + `<span class="sj"> ${esc(l.subject)}</span>` : esc(l.subject)}</b></span>`; });
     return { lines: bars.concat(chips), count: ls.length };
