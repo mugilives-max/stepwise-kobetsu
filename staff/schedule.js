@@ -94,7 +94,7 @@ function monthPage(ctx, me, r) {
     const ls = data.lessons.filter(l => l.date === d && l.status in RANK);
     // テスト・行事の帯に誰のかを添える（2人まで。3人以上は人数。2026-10-31 本人「期末テスト（岡野）が欲しい」）。
     // 括弧は幅を食うので、面談と同じく空けて並べる（2026-11-01 本人「面談と同じような表示に」）
-    const whose = g => { const n = g.items.map(e => short[e.studentId] || '').filter(Boolean); return n.length && n.length <= 2 ? ' ' + esc(n.join('・')) : g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''; };
+    const whose = g => { if (only) return ''; const n = g.items.map(e => short[e.studentId] || '').filter(Boolean); return n.length && n.length <= 2 ? ' ' + esc(n.join('・')) : g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''; };
     // 月の表ではテストの名前を縮める（「2学期期末テスト」→「期末」、「北辰テスト（3年6回）」→「北辰」）。日の一覧は元の名前のまま（2026-11-01 本人「期末だけで伝わる。北辰も同じ。見切れちゃってるから縮めよう」）
     const shortTitle = e => e.kind !== 'test' ? e : { ...e, title: String(e.title || '').replace(/[（(][^）)]*[）)]/g, '').replace(/^[0-9０-９一二三]学期/, '').replace(/テスト$/, '').trim() || e.title };
     const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable').map(shortTitle)).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${whose(g)}</span>`)
