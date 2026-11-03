@@ -82,7 +82,7 @@ function render() {
       const kari = lessons.filter(l => l.status === 'proposed' && l.confirmBy);
       if (kari.length) h += `<p class="notice small" style="margin:0 0 6px">確認待ち ${kari.length}件・連絡がなければ締め切りで決まります</p>`;
       const cell = date => { const ls = lessons.filter(l => l.date === date && l.status in RANK).sort((a, b) => a.start.localeCompare(b.start));
-        return { lines: events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`).concat(ls.map(l => `<span class="nm r${RANK[l.status]}">${esc(l.subject)}</span>`)), count: ls.length }; };
+        return { lines: events.filter(e => e.date <= date && date <= e.dateTo).map(e => `<span class="bar ${e.kind === 'unavailable' ? 'off' : e.kind}">${esc(e.title || EVENT_KIND[e.kind])}</span>`).concat(ls.map(l => `<span class="nm t2 r${RANK[l.status]}"><small class="tm">${l.start}</small><b>${esc(l.subject)}</b></span>`)) /* 開始時刻と科目（2026-11-03 本人「スマホ版だと開始時刻が表示されない」。保護者・スタッフの表と同じ形） */, count: ls.length }; };
       const day = (date, first) => cal.dayHead(date, first) + dayRows(date, lessons, events, { canDelete: e => sched.permissions.events && e.createdByKind === 'student' });
       h += cal.html(esc, { cell, day });
     }

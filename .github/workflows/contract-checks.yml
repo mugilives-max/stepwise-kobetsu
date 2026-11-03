@@ -1,7 +1,7 @@
 name: Contract history checks
 on:
   pull_request:
-    paths: ['scripts/check-contract-ui.cjs', 'scripts/check-enrollment-ui.cjs', 'cf/v2/**', 'cf/migrations-v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'test/v2-*', '.github/workflows/contract-checks.yml']
+    paths: ['scripts/check-contract-ui.cjs', 'scripts/check-enrollment-ui.cjs', 'cf/v2/**', 'cf/migrations-v2/**', 'assets/v2/**', 'family/**', 'staff/**', 'student/**', 'cf/worker/**', 'test/v2-*', '.github/workflows/contract-checks.yml']
 permissions:
   contents: read
 jobs:
@@ -18,7 +18,7 @@ jobs:
         run: |
           npm run check
           for f in cf/v2/*.mjs; do node --check "$f"; done
-          for f in staff/*.js family/*.js assets/v2/*.js; do node --check --input-type=module < "$f"; done
+          for f in staff/*.js family/*.js student/*.js assets/v2/*.js; do node --check --input-type=module < "$f"; done
       - name: V2 regression tests
         run: node --test test/v2-*.test.cjs
       - name: D1 migration check on isolated GitHub runner
