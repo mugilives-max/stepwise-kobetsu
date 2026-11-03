@@ -266,7 +266,7 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
     const past = l.date <= data.today, mine = manager || l.staffId === me.id;
     title = `${mdw(l.date)} ${l.start}〜${endOf(l.start, l.minutes)}`;
     body = `<div class="stack" style="margin:0"><div><strong style="font-size:17px">${esc(nameOf[l.studentId] || '')}</strong> ${esc(l.subject)}${l.kind !== '通常' ? '（' + esc(l.kind) + '）' : ''}</div>
-      <div>${statusTag(l)}${requestTags(l)}${l.lateStart ? '<span class="tag gray">当日の時間変更</span>' : ''}${l.lostMinutes ? `<span class="tag warn">遅刻 ${l.lostMinutes}分</span>` : ''}</div>
+      <div>${statusTag(l)}${requestTags(l)}${l.lateStart ? '<span class="tag gray">当日の時間変更</span>' : ''}${l.lostMinutes ? `<span class="tag warn">遅刻 ${l.lostMinutes}分</span>` : ''}${l.noCharge ? '<span class="tag gray">請求しない</span>' : ''}</div>
       <div class="small muted">担当 ${esc(staffOf[l.staffId] || '未定')}・${l.deliveryMode === 'online' ? 'オンライン' : '対面'}${l.meetUrl ? `・<a href="${esc(l.meetUrl)}" target="_blank" rel="noopener">Meet を開く</a>` : ''}${l.note ? '<br>メモ：' + esc(l.note) : ''}${['decided', 'done'].includes(l.status) && l.agreement ? '<br>確定のもと：' + esc(l.agreement) : ''}</div>`;
     if (sheet.edit) body += editForm(ctx, l);
     else if (sheet.decide) body += decideForm(ctx, l);
@@ -288,6 +288,8 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
       if (manager && l.status === 'decided' && Date.now() < Date.parse(l.date + 'T' + l.start + ':00+09:00')) sub.push(`<button data-action="sch-swap" data-id="${esc(l.id)}"${ctx.dis()}>代わりに実施した</button>`);
       if (manager && (['proposed', 'decided'].includes(l.status) || (l.status === 'done' && !l.locked))) sub.push(`<button data-action="sch-rest" data-id="${esc(l.id)}"${ctx.dis()}>お休みにする</button>`);
       if (['decided', 'done'].includes(l.status) && mine && rateRule(l) && Date.now() >= Date.parse(l.date + 'T' + l.start + ':00+09:00')) sub.push(`<button data-action="sch-tardy" data-id="${esc(l.id)}"${ctx.dis()}>${l.lostMinutes ? '遅刻を直す' : '遅刻を記録'}</button>`);
+      // 請求しない（2026-11-03 本人）: 決定・実施済みで、まだ請求していない授業
+      if (manager && ['decided', 'done'].includes(l.status) && !l.locked) sub.push(`<button data-action="sch-charge" data-id="${esc(l.id)}" data-v="${l.noCharge ? '' : '1'}"${ctx.dis()}>${l.noCharge ? '請求に戻す' : '請求しない'}</button>`);
       if (manager && (l.status === 'decided' || (l.status === 'done' && !l.locked))) danger.push(`<button class="danger" data-action="sch-cancel" data-id="${esc(l.id)}"${ctx.dis()}>キャンセルにする</button>`);
       if (manager && l.status !== 'done') danger.push(`<button class="danger" data-action="sch-delete" data-id="${esc(l.id)}"${ctx.dis()}>削除（入力ミス）</button>`);
       body += (main.length ? `<div class="row">${main.join('')}</div>` : '') + (sub.length ? `<div class="row">${sub.join('')}</div>` : '')
@@ -536,6 +538,11 @@ export async function scheduleClick(ctx, a, b) {
     if (a === 'sch-delete' && !confirm('この授業を削除しますか？ 入力ミスのときだけ使ってください（記録は残りません）。お休み・キャンセルは別のボタンです。')) return true;
     if (a === 'sch-cancel' && !confirm('この授業をキャンセル（キャンセル料の対象）にしますか？ 前日23時までの連絡なら「お休みにする」を使ってください。')) return true;
     await after(ctx, await ctx.call(simple[a][0], { id: l.id, version: l.version }), simple[a][1]); return true;
+  }
+  if (a === 'sch-charge' && l) {
+    const off = !!b.dataset.v;
+    if (off && !confirm('この授業を請求しないようにしますか？ 授業の記録と回数はそのまま残ります。')) return true;
+    await after(ctx, await ctx.call('schedule/lessons/charge', { id: l.id, version: l.version, noCharge: off }), off ? '請求しないにしました' : '請求に戻しました'); return true;
   }
   if (a === 'sch-resolve') { await after(ctx, await ctx.call('schedule/requests/resolve', { id }), '済みにしました'); return true; }
   if (a === 'sch-show' || a === 'sch-ask') {

@@ -44,8 +44,8 @@ export function assignLines(lines, lessons, invoicedLine = {}) {
 // 生徒ごとの計画・授業・請求済みの行をまとめて読む
 export async function studentBilling(db, studentId, { ignoreInvoiceId = '' } = {}) {
   const lines = (await db.prepare('select * from planLines where studentId = ? order by startDate, id').bind(studentId).all()).results;
-  // 体験の授業（種類「体験」）は無料なので請求に入れない（2026-10-12、cf/v2/trial.mjs）
-  const lessons = (await db.prepare("select * from lessons where studentId = ? and status in ('decided', 'done') and kind <> '体験' order by date, start").bind(studentId).all()).results;
+  // 体験の授業（種類「体験」）は無料なので請求に入れない（2026-10-12、cf/v2/trial.mjs）。「請求しない」にした授業も入れない（0037_lesson_no_charge.sql）
+  const lessons = (await db.prepare("select * from lessons where studentId = ? and status in ('decided', 'done') and kind <> '体験' and noCharge = 0 order by date, start").bind(studentId).all()).results;
   const items = (await db.prepare("select i.lessonId, i.planLineId, i.invoiceId from invoiceItems i join invoices v on v.id = i.invoiceId where i.studentId = ? and i.kind = 'lesson' and v.status <> 'void'").bind(studentId).all()).results;
   const invoicedLine = {};
   for (const it of items) if (it.invoiceId !== ignoreInvoiceId && it.lessonId) invoicedLine[it.lessonId] = it.planLineId;
