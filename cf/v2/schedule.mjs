@@ -80,7 +80,7 @@ export const stageOf = l => l.status === 'held' ? 'draft' : l.status === 'propos
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
 export function lessonView(l, extra = {}) {
   return { id: l.id, studentId: l.studentId, staffId: l.staffId, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, deliveryMode: l.deliveryMode,
-    noticeState: l.noticeState || '', noticeAt: l.noticeAt || '', status: l.status, locked: !!(l.invoiceId || l.payrollId), stage: stageOf(l), asked: !!l.askedAt, confirmBy: l.confirmBy, meetUrl: l.meetUrl, lateStart: !!l.lateStart, lostMinutes: Number(l.lostMinutes || 0), version: l.version, ...extra };
+    noticeState: l.noticeState || '', noticeAt: l.noticeAt || '', status: l.status, locked: !!(l.invoiceId || l.payrollId), stage: stageOf(l), asked: !!l.askedAt, confirmBy: l.confirmBy, meetUrl: l.meetUrl, lateStart: !!l.lateStart, lostMinutes: Number(l.lostMinutes || 0), noCharge: !!l.noCharge, version: l.version, ...extra };
 }
 // 連絡を受けた時刻（新しい決まりの取消料）。b.noNotice = 連絡なし（''）。b.receivedAt は ISO か 'YYYY-MM-DDTHH:MM'（日本時間）。空なら fallback（ふつうは今）
 export function noticeAt(c, b, fallback) {
@@ -713,6 +713,16 @@ export const scheduleRoutes = {
     return { lesson: lessonView(next), ...(fee ? { fee: { amount: fee.amount } } : {}) };
   },
   // 実施済み（教室管理者か、担当の講師）
+  // 請求しない（する）: 決定・実施済みで、まだ請求していない授業だけ。授業の記録・回数・給与はそのまま（2026-11-03 本人）
+  'schedule/lessons/charge': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const l = await getLesson(c, b.id); sameVersion(l, b);
+    if (!['decided', 'done'].includes(l.status)) fail('badStatus', '決定・実施済みの授業だけ選べます');
+    if (l.invoiceId) fail('invoiced', '請求に入った授業は変えられません。先に請求を取り消してください', 409);
+    const next = await setLesson(c, l, { noCharge: b.noCharge === true ? 1 : 0 });
+    await audit(c, b.noCharge === true ? 'lessonNoCharge' : 'lessonCharge', l.id);
+    return { lesson: lessonView(next) };
+  },
   'schedule/lessons/done': async (c, b) => {
     const me = await requireStaff(c, b, 'manager', 'teacher');
     const l = await getLesson(c, b.id);

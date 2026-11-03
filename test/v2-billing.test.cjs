@@ -387,3 +387,27 @@ test('the invoice bank account is entered field by field and printed as one line
   assert.deepEqual([empty.bank, empty.bankFields], ['', null], '全部空なら振込先を消す');
   assert.equal(JSON.stringify(h.rows("select detail from auditLog where action = 'billingSettings'")).includes('0000000'), false, '記録に口座番号を残さない');
 });
+
+test('no charge: a done lesson marked 請求しない leaves the bill but keeps its record; it can be undone; invoiced lessons cannot change', async () => {
+  const { h, auth, kid, plan, line, lesson, done } = await world();
+  const a = await plan(kid.id, { count: 4 });
+  await h.ok('billing/plans/consent', { auth, id: a.id, version: line(a.id).version, consenterName: '架空 保護者', consentedAt: '2026-09-01T09:00:00+09:00', consentDate: '2026-09-01', via: '電話' });
+  const l1 = await lesson(kid.id, '2026-09-08'), l2 = await lesson(kid.id, '2026-09-15', '17:00', '数学', 30);
+  h.clock = at('2026-10-02T12:00:00');
+  for (const l of [l1, l2]) await done(l);
+  let p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
+  assert.equal(p.students[0].items.length, 2);
+  let cur = h.rows('select * from lessons where id = ?', l2.id)[0];
+  const r = await h.ok('schedule/lessons/charge', { auth, id: l2.id, version: cur.version, noCharge: true });
+  assert.equal(r.lesson.noCharge, true);
+  p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
+  assert.deepEqual(p.students[0].items.map(i => i.lessonId), [l1.id], '請求しない授業は請求に入らない');
+  assert.equal(h.rows('select status from lessons where id = ?', l2.id)[0].status, 'done', '授業の記録はそのまま');
+  cur = h.rows('select * from lessons where id = ?', l2.id)[0];
+  await h.ok('schedule/lessons/charge', { auth, id: l2.id, version: cur.version, noCharge: false });
+  p = (await h.ok('billing/family', { auth, familyId: kid.familyId, month: '2026-09' })).preview;
+  assert.equal(p.students[0].items.length, 2, '請求に戻せる');
+  await h.ok('billing/confirm', { auth, dueReviewed: true, familyId: kid.familyId, month: '2026-09' });
+  cur = h.rows('select * from lessons where id = ?', l1.id)[0];
+  assert.equal((await h.call('schedule/lessons/charge', { auth, id: l1.id, version: cur.version, noCharge: true })).error.code, 'invoiced');
+});
