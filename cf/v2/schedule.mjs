@@ -209,7 +209,7 @@ async function checkEmploymentAssignment(c,x,meeting=false) {
   if(!r?.meetingConfigured||!r.meetingHourly)fail('meetingNotReady','面談の給与を本人へ書面で示し、時給を設定してから担当を登録してください',409);
  }
 }
-export async function checkConflicts(c, candidates, { force, exceptId = '', more = [] } = {}) {
+export async function checkConflicts(c, candidates, { force, exceptId = '', more = [], alongside = [] } = {}) {
   for(const x of candidates)await checkEmploymentAssignment(c,x);
   const dates = [...new Set(candidates.map(x => x.date))];
   const q = `(${dates.map(() => '?').join(', ')})`;
@@ -218,7 +218,7 @@ export async function checkConflicts(c, candidates, { force, exceptId = '', more
   const events = (await c.db.prepare(`select * from sharedEvents where kind = 'unavailable' and date <= ? and dateTo >= ?`).bind(dates.slice().sort().at(-1), dates.slice().sort()[0]).all()).results;
   const errors = [], warnings = [...more];
   candidates.forEach((x, i) => {
-    const others = lessons.concat(candidates.filter((_, j) => j !== i));
+    const others = lessons.concat(alongside, candidates.filter((_, j) => j !== i));
     if (others.some(o => o.studentId === x.studentId && overlap(o, x))) errors.push(`${x.date} ${x.start} は同じ生徒の授業と重なっています`);
     // 同じ講師の授業の重なり: 2人まで（2人同時の授業。確かめてから）。オンラインも同じ（2026-10-27 本人「オンラインも例外なく1:2まで行える」）。給与は講師が働いた時間で数える（重なりは1回。cf/v2/payroll.mjs）
     const same = x.staffId ? others.filter(o => o.staffId === x.staffId && overlap(o, x)) : [];

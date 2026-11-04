@@ -76,7 +76,7 @@ async function readLessons(c, ids) {
 }
 
 // ---- 保存の判定（1 件） ----
-async function judgeItem(c, item, accepted, today) {
+async function judgeItem(c, item, accepted, today, dry) {
   let s;
   try { s = await studentWithFamily(c, item.studentId); } catch (e) { return { status: 'invalid', error: '生徒が見つかりません' }; }
   try { checkScope(c, s); } catch (e) { return { status: 'invalid', error: e.message }; }
@@ -87,7 +87,7 @@ async function judgeItem(c, item, accepted, today) {
   if (n.date < today) return { status: 'invalid', error: '過去の日付は登録できません（実施済みの授業は管理画面の「実施した授業を登録」）' };
   const cand = { ...n, studentId: s.id };
   if (accepted.some(a => a.studentId === s.id && overlap(a, cand))) return { status: 'conflict', error: `${n.date} ${n.start} は同じ依頼のほかの授業と重なっています` };
-  try { await checkConflicts(c, [cand], { force: item.force === true }); }
+  try { await checkConflicts(c, [cand], { force: item.force === true, alongside: dry ? accepted : [] }); } // 試し実行は台帳に書かないので、同じ依頼の前の授業も渡して本当の保存と同じに判定する
   catch (e) { return { status: e.extra && e.extra.needForce ? 'needsConfirm' : 'conflict', error: e.message }; }
   return { status: 'ok', student: s, lesson: cand };
 }
@@ -179,7 +179,7 @@ export const mcpWriteRoutes = {
         const had = await c.db.prepare('select * from mcpRequestItems where requestId = ? and itemKey = ?').bind(b.requestId, key).first();
         if (had) { out.push({ key, status: 'exists', lessonId: had.lessonId }); const l = await c.db.prepare('select * from lessons where id = ?').bind(had.lessonId).first(); if (l) accepted.push(l); continue; }
       }
-      const j = await judgeItem(c, item, accepted, today);
+      const j = await judgeItem(c, item, accepted, today, dry);
       if (j.status !== 'ok') { out.push({ key, status: j.status, error: j.error, ...itemPreview(j, item) }); continue; }
       accepted.push(j.lesson);
       if (dry) { out.push({ key, status: 'wouldCreate', ...itemPreview(j, item) }); continue; }
@@ -302,7 +302,7 @@ export const mcpWriteRoutes = {
     if (l.status === 'decided' && c.now > freeDeadline(l.date)) fail('late', '前日23時を過ぎた決定の授業の変更は、取消料の判断が要るので管理画面でしてください', 409);
     const n = lessonFields({ date: b.date, start: b.start, minutes: b.minutes }, l);
     if (n.date < todayJst(c.now)) fail('past', '過去の日付にはできません');
-    await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: false, exceptId: l.id });
+    await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: b.force === true, exceptId: l.id }); // 2人同時・休みへの変更は force で（2026-11-04 本人。MCP から 1:2 に動かせなかった）
     // メールは確定した授業だけ。調整中・確認待ちはページの表示が変わるだけ（確認待ちは日時を変えると調整中に戻る）
     const mail = l.status === 'decided' && !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
     const moved = n.date !== l.date || n.start !== l.start || n.minutes !== l.minutes;
@@ -317,7 +317,7 @@ export const mcpWriteRoutes = {
     if (l.status !== 'held' && String(b.confirm || '') !== confirm) fail('needConfirm', '送ったあとの授業の変更は、先に dryRun で確かめ、その confirm を付けて実行してください（何も変えていません）', 409);
     const req = await beginRequest(c, b.requestId, 'reschedule', { lessonId: l.id, version: l.version, date: n.date, start: n.start, minutes: n.minutes });
     if (req.status === 'done') return { ...parse(req.result), repeated: true };
-    const r = await scheduleRoutes['schedule/lessons/update'](c, { id: l.id, version: l.version, date: n.date, start: n.start, minutes: n.minutes });
+    const r = await scheduleRoutes['schedule/lessons/update'](c, { id: l.id, version: l.version, date: n.date, start: n.start, minutes: n.minutes, force: b.force === true });
     const ids = await takeMails(c);
     if (ids.length) await c.db.prepare('insert into lessonNotices (id, requestId, lessonId, studentId, action, effectId, toMasked, createdAt) values (?, ?, ?, ?, ?, ?, ?, ?)').bind(newId('ln'), b.requestId, l.id, l.studentId, 'reschedule', ids[0], maskEmail(s.familyEmail), iso(c.now)).run();
     const result = { requestId: b.requestId, lesson: r.lesson, mails: ids.map(id => ({ effectId: id, to: maskEmail(s.familyEmail), status: 'queued' })), calendar: preview.effects.calendar };
