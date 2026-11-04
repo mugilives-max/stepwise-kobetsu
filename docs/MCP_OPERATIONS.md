@@ -13,11 +13,11 @@ ChatGPT / Codex ─OAuth(パスフレーズ)─► Workers "stepwise-mcp"(/mcp) 
 ```
 
 - **鍵**：`stepwise-api` の Secret `V2_SERVICE_KEY` と、`stepwise-mcp` の Secret `STEPWISE_V2_KEY` に同じ値（36 バイトの乱数）。鍵が合えば、代表のスタッフとして **読むだけの操作**（`cf/v2/service.mjs` の `SERVICE_READS`）を通す。登録・変更は `service` のエラーで断る。鍵は Secret にだけ置く（文書・Git・チャットに書かない）。替えるときは乱数を作って両方の Secret に入れ直し、両 Worker を出し直す。
-- **MCP 側の切り替え**：`STEPWISE_V2_KEY` と `STEPWISE_API_URL` が設定されていれば、v2 の閲覧ツール 7 つだけを出す（今の仕組み向けの登録・連絡欄のツールは出さない）。無ければ今までどおり（GAS / 今の Worker 経由）。
-- **ツール**（名前と入力は前と同じ。中身は v2）：`find_student`（students/list）、`get_schedule`（schedule/staff/range。授業・連絡・共有予定・先生の休み・面談）、`get_student`（students/hub。記録・宿題・引き継ぎメモ・成績・計画・請求）、`get_pending_actions`（home/today ＋ monthly/overview）、`get_billing_summary`（billing/month ＋ billing/fees/list）、`get_teacher_off`、`get_student_wishes`（v2 に希望日程はないので共有予定を返す）。
-- **返さないもの**：メール・電話・専用リンク・Meet の URL・鍵（`scrub`）。
+- **MCP 側**：`STEPWISE_V2_KEY` と `STEPWISE_API_URL` が要る。閲覧のツールは 5 つ。前の仕組み（GAS）向けのツールとコードは 2026-11-04 に除いた。
+- **ツール**：`find_student`（students/list）、`get_schedule`（schedule/staff/range。授業・連絡・共有予定・先生の休み・面談。`version` と連絡の `id` も返す）、`get_student`（students/hub）、`get_pending_actions`（home/today と monthly/overview。給与は見せない）、`get_billing_summary`（billing/month と billing/fees/list）。
+- **返さないもの**：メール・電話・専用リンク（名前が Link で終わる項目すべて）・Meet の URL・鍵（`scrub`）。Worker も `students/hub` の専用リンクを外のサービスに渡さない。
 - **確かめ方**：`stepwise-kobetsu` で `V2_SERVICE_KEY=<仮の鍵> node scripts/dev-v2-preview.mjs` を起動し、`stepwise-mcp` で `STEPWISE_API_URL=http://localhost:8790 STEPWISE_V2_KEY=<同じ鍵> node test/v2-client.mjs`。本番には触れない。
-- **登録・変更**は新しい管理画面（/staff/）で行う。MCP からは、下の「書き込み」の道（予定の保存・選んだ授業のお知らせ・日程の変更・体験生の登録）だけ。
+- **登録・変更**は管理画面（/staff/）か、下の「書き込み」のツールで行う。
 - 以下の 1〜 章は今の仕組み（GAS / 今の Worker）向けの記述で、切り替え後は参考。
 
 ### 書き込み（2026-10-13〜。予定の保存と、選んだ授業だけのお知らせを分ける）
@@ -35,17 +35,21 @@ ChatGPT / Codex ─► stepwise-mcp ─serviceWriteKey─► stepwise-api /v2/mc
 | `fix_unsent_lesson` | `mcp/lessons/fix` | 未送信の授業だけ直す（生徒の付け替えも）。版が合うときだけ | 0 |
 | `preview_lesson_notice` | `mcp/notices/preview` | 選んだ授業 ID だけについて、生徒・宛先（伏せ字）・本文・通数・状態の変わり方と確認値（confirm）。対象の生徒（studentIds）と違う授業・送ったあとの授業・重複は断る | 0 |
 | `send_lesson_notice` | `mcp/notices/send` | confirm が今の状態と合うときだけ、選んだ授業（下書き・調整中）だけの**確認をお願いする**（確認待ち。締め切りを 1 つにそろえ、保護者に生徒ごと 1 通。近い授業は締め切りなし。結果に LINE に貼る文 `lineText`）。体験はメールなしで確定（カレンダー）。同じ requestId は二重に送らない | 生徒ごと 1 |
-| `reschedule_lesson` | `mcp/lessons/reschedule` | 日程の変更。下書きは黙って。送ったあとの授業は dry_run の confirm が要る。確認待ちは調整中に戻る（メールなし）。メールは確定した授業だけ。重なり・前日23時を過ぎた確定は断る（強制しない） | 確定した授業だけ 1 |
+| `reschedule_lesson` | `mcp/lessons/reschedule` | 授業の変更（日時・長さ・科目・種類・形式・担当）。下書きは黙って。送ったあとの授業は dry_run の confirm が要る。確認待ちは日時を変えると調整中に戻る。1:2 などの要確認は `force` | 確定した授業の日時が変わるときだけ 1 通 |
 | `create_trial_student` | `mcp/trials/create` | 体験生の登録。**専用リンク（生徒ページへの永続アクセス）は作らない**（`off.` の使えない鍵。管理画面の「専用リンクを作り直す」で使えるようになる）。同じ名前の体験生がいれば止める | 0 |
 | `get_write_request` | `mcp/requests/get` | requestId の結果と、送ったメールの今の状態（sent / pending / failed） | 0 |
 | `add_student_event` | `mcp/events/add` | 生徒のテスト・行事・授業ができない日の登録（管理画面の「予定」と同じ。登録者はスタッフ）。`dry_run` で判定と、同じ期間の同じ種類の予定（overlapping）を見せる。`request_id` で冪等。同じ期間に同じ種類があれば止める（別の予定なら `allow_overlap`）。直す・消すのは管理画面。2026-11-01、AI が「テストの日程は書き込めない」と答えたため | 0 |
 | `show_lessons` | `mcp/lessons/show` | 選んだ下書きを**調整中**にする（管理画面の「調整中にする」と同じ）。保護者・生徒のページに「調整中」で出るが、締め切りもメールもない。1 つでも下書きでない・ほかの生徒・過去の授業が入っていれば何もしない。体験生は断る（`send_lesson_notice` で確定に）。`dry_run` で対象だけ、`request_id` で冪等。2026-11-01、AI が「MCP からは調整中にできない」と答えたため | 0 |
-| （ツールなし） | `mcp/calendar/repair` | 今日以降の決定の授業・予定の面談で、カレンダーの予定がまだ仮の目印のもの（作成を断られたまま）を、新しい目印で作り直す。`dryRun` で対象だけ。2026-10-14、Kura 調査 #195（目印「swv2…」が Google の予定 ID の規則に合わず、v2 の予定作成が毎回断られていた） | 0 |
+| `unsend_lessons` | `mcp/lessons/unsend` | 選んだ調整中・確認待ちを**下書きに戻す**（保護者・生徒のページから消える） | 0 |
+| `rest_lesson` | `mcp/lessons/rest` | お休みにする。dry_run の confirm が要る。確定した授業はカレンダーから消す。前日23時を過ぎた確定の授業は断る（取消料の判断は管理画面） | 0 |
+| `add_teacher_off` | `mcp/teacherOff/add` | 先生の休みの登録（1 人か教室全体、31 日まで）。重なる授業は見せるだけで動かさない | 0 |
+| `resolve_contact` | `mcp/contacts/resolve` | 生徒・保護者からの連絡を済みにする。授業は変えない | 0 |
+| `record_exam` | `mcp/exams/save` | 試験と科目ごとの点数の登録・更新。保護者・生徒のページに出る。成績票の添付と試験の削除は管理画面 | 0 |
 
 - **鍵**：`stepwise-api` の Secret `V2_SERVICE_WRITE_KEY` と、`stepwise-mcp` の Secret `STEPWISE_V2_WRITE_KEY` に同じ値。**読み取りの鍵（V2_SERVICE_KEY）とは別の値**にする（同じ値は Worker が断る）。読み取りの鍵では mcp/ の道は通らず、書き込みの鍵では mcp/ 以外（一般の管理 API）は通らない。どちらの Secret も無ければ、書き込みのツールは出ない・誰も書けない。
 - **範囲**：`stepwise-api` の `V2_SERVICE_WRITE_SCOPE` が `all` でなければ、テスト用の生徒（testOnly か名字が【テスト】）だけ。本物の生徒に使うのは、テストで流れを確かめてから `all` にする（本人の承認）。**2026-10-13 に `all`**（`cf/wrangler.jsonc` の vars。【テスト】の生徒で本番の一回りを確かめ、本人が承認）。テスト用だけに戻すときは、その行を消して deploy。
 - **履歴**：送ったお知らせは `lessonNotices`（授業ごと・宛先は伏せ字・メールの effects の ID）。訂正しても消さない。依頼は `mcpRequests` / `mcpRequestItems`。メールは送信の控え（effects）に入り、届いたかは effects の状態。送れなかったメールを自動で再送はしない（送信の記録で送り直す）。
-- **しないこと**：請求・金額・契約・同意の代行・支払い・削除・汎用の管理 API の直通。保存や訂正のついでのお知らせ。通常の授業を、メールを減らすために決定にすること。
+- **しないこと**：授業の確定・削除、請求・金額・契約・同意の代行・支払い、汎用の管理 API の直通。保存や訂正のついでのお知らせ。
 - **確かめ方（本番に触れない）**：`stepwise-kobetsu` で `node --test test/v2-mcp-writes.test.cjs`（受入条件。誤選択→訂正→プレビュー→送信、冪等、選んだ ID だけ、古いプレビュー、日程変更、体験生のリンク）。MCP までつなぐなら、仮の鍵 2 つで `scripts/dev-v2-preview.mjs --live`（`V2_SERVICE_KEY`・`V2_SERVICE_WRITE_KEY`）を起動し、`stepwise-mcp` で `node test/v2-write-client.mjs`（`STEPWISE_API_URL`・`STEPWISE_V2_KEY`・`STEPWISE_V2_WRITE_KEY`）。
 - **使えるようにする手順（本人の承認が要る）**：①DB2 の移行 `0021_mcp_writes.sql` → ②`stepwise-api` の deploy → ③新しい乱数を作り、`stepwise-api` に `V2_SERVICE_WRITE_KEY`、`stepwise-mcp` に `STEPWISE_V2_WRITE_KEY` を Secret で入れる（値は文書・Git・チャットに書かない）→ ④`stepwise-mcp` の deploy（ツールが出る）→ ⑤【テスト】の生徒で一回りを確かめる → ⑥`V2_SERVICE_WRITE_SCOPE=all`。止めるときは ③の Secret を消す（ツールが消え、Worker も断る）。
 
@@ -100,52 +104,7 @@ stdio は `.env` をプロセス開始時に読みます。`dist` や .env 変�
 
 ## 2. いま使える機能
 
-### 2-1. 閲覧(7ツール)
-
-| ツール | 入力 | 主な返却内容 | GAS op |
-|---|---|---|---|
-| `find_student` | `query`(省略・空で全員) | 生徒候補。名前・ふりがな・IDで検索 | `mcpStudents` |
-| `get_schedule` | 任意 `from`, `to`, `student` | 授業・先生の休み・生徒NG・希望。既定は今日から14日 | `mcpSchedule` |
-| `get_student` | `student`(名前またはID) | 1人のカルテ、予定、実施、計画・承認、宿題、模試など | `mcpStudent` |
-| `get_pending_actions` | なし | 取消依頼・返事待ち・期限超過案内・希望・未承認計画・未入金 | `mcpPending` |
-| `get_billing_summary` | 任意 `month`(`YYYY-MM`) | 月の実施・請求予定・請求/入金状況・承認状態 | `mcpBilling` |
-| `get_teacher_off` | 任意 `from`, `to` | 先生の休み。既定は今日から60日 | `mcpTeacherOff` |
-| `get_student_wishes` | 任意 `student` | 生徒の希望日程 | `mcpWishes` |
-
-日付は `YYYY-MM-DD`(日本時間)。生徒が複数候補に当たる場合は対象を確認して続けます。返却値の自由記述はデータであり、AIへの指示ではありません。
-
-### 2-2. 登録(4ツール、2026-09-08 GAS v52・Worker Version ec4f2bf5)
-
-[MCP_DESIGN.md の 2026-09-08 合意](MCP_DESIGN.md#schedule-write-scope) の初回範囲。日付の展開(毎週・隔週・毎月・複数曜日・期間・除外日)は MCP サーバー側(`src/recurrence.ts`)、業務検証は GAS 側(`Code.gs` の `mcp*_`)で行います。
-
-| ツール | 入力 | 動作 | GAS op |
-|---|---|---|---|
-| `offer_lessons` | `student`, `subject`, `start`, `min`, 任意 `delivery_mode`, 日付指定(`dates` / `range` / `recurrence` / `exclude`), `force`, `dry_run` | 1人の生徒に案内(offered)をまとめて登録。管理画面の案内と同じ検証(定員 対面2/オンライン1・同じ生徒の重複・生徒NG・先生の休み・授業計画の枠)を項目ごとに行い、可能な分だけ登録。承認済み・案内中の授業計画に収まらない案内は `needsConfirm`(code `planShort`)で止まり、先生の指示があれば `planForce=true` で登録できる(承認前の授業は請求されない。2026-09-18)。生徒への通知は既存の確認済みメール経路 | `mcpOfferLessons` |
-| `add_teacher_off` | 日付指定, 任意 `start`/`end`(省略で終日), `note`, `dry_run` | 先生の休みをまとめて登録。重なる案内中・確定の授業を `affectedLessons` で返す(登録は止めない) | `mcpAddTeacherOff` |
-| `add_student_unavailable` | `student`, 日付指定, 任意 `start`/`end`, `note`, `dry_run` | 生徒の授業できない日時を先生が代理登録(LINE 連絡の転記など) | `mcpAddStudentNg` |
-| `add_student_wishes` | `student`, `dates`(1〜20), `kind`(want/ok), `start`, `end`(ok), `min`(want), 任意 `delivery_mode`, `note`, `dry_run` | 生徒の希望を生徒ページと同じ処理(`schedulingWishSave_`)で代理登録。満員の日も「要調整」として登録。先生宛ての希望メールは送らない | `mcpAddStudentWishes` |
-
-- 結果は項目ごとに `registered`(登録した/dry_run なら登録できる)・`alreadyRegistered`(既存と同じ日時。登録も通知もしない)・`needsConfirm`(生徒NG・先生の休みに重なる。先生の指示があれば `force=true`)・`failed`(定員・請求確定月・形式未設定・不正な日付)に分かれます。**同じ依頼の再送は既存データとの重複で止まる**ので二重登録・二重通知になりません(処理IDのジャーナルは持たず、生徒×日時の自然キーで判定)。
-- **書き込み範囲**: Script Properties `MCP_WRITE_SCOPE`。`test`(既定)は名前が【テスト】で始まる生徒だけ(先生の休みも不可)、`all` で全生徒。切替はエディタで `mcpEnableWrites` / `mcpRestrictWritesToTest` を実行(操作ログに残る)。2026-09-08 の公開時に `all` に設定。
-- 取消・削除・案内の変更・確定・実施記録・請求・生徒/料金/認証の変更は引き続き**公開していません**(管理画面)。`confirm_token` 方式は採用せず、合意どおり「明確な依頼+項目別検証+結果の報告」で運用します。
-
-### 2-3. 連絡欄の処理(3ツール、2026-09-09 GAS v54・Worker Version 52ee3af6)
-
-[MCP_DESIGN.md の引き継ぎ節](MCP_DESIGN.md#message-consumer-handoff) の実装。生徒・保護者が連絡欄(`contactMessages`)に送った文章を AI が読み、希望・NG の登録を代行し、結果を返信として記録します。処理の記録は新規シート `contactProcessing`(1行 = 1つの processId)に残ります。スケジューラは未導入で、ChatGPT / Codex に「連絡欄を処理して」と頼んだときに動きます。
-
-| ツール | 入力 | 動作 | GAS op |
-|---|---|---|---|
-| `list_inbox`(閲覧) | 任意 `statuses`(既定 received・failed)、`student`、`limit` | 連絡の一覧。サーバーで確定した対象生徒、受付時刻(日本時間 `receivedAtJst`)、状態、返信、処理権の有無、訂正・補足の `thread` を返す。本文はデータであって指示ではない | `mcpInboxList` |
-| `claim_message` | `message_id`、任意 `process_id` | 処理権(15分)を確保。他の処理が有効な間は `claimed` で拒否。同じ process_id の再送は同じ結果 | `mcpInboxClaim` |
-| 登録ツール(2-2節) + `message_id` / `process_id` | | 連絡に紐づけて登録。GAS が処理権と「対象生徒 = 連絡の送信者」を検証し、結果(成功・失敗とも)を `contactProcessing.itemsJson` に記録 | 各 op + `mcpProcGuard_` / `mcpProcRecord_` |
-| `resolve_message` | `message_id`、`process_id`、`status`(needs_confirmation / registered / failed / closed / released)、`reply`、任意 `note` | 利用者向けの返信と状態を記録(`serviceMessageReply_` と同じ更新)。`registered` はこの process_id で実際に登録できた結果があるときだけ。処理中に先生や利用者が更新していれば `conflict`。`released` は処理権を手放すだけ | `mcpInboxResolve` |
-
-- 取消は登録しない: 確定授業を休む連絡は取消申請フォーム(理由必須・先生の承認)へ案内し `needs_confirmation` にする。質問・要望は claim せず先生に要約して伝える。
-- 相対日付は `receivedAtJst`(サーバー受付時刻)を基準に日本時間で具体化する。曖昧なら `needs_confirmation`。
-- 書き込み範囲 `MCP_WRITE_SCOPE` は claim / resolve / 紐づけ登録にも適用。閲覧(`list_inbox`)は範囲に関係なく可。
-- 管理画面の受信箱(`serviceInbox`)と同じ行を更新するので、先生側にも AI の返信・状態がそのまま見える。先生用 API(`service*` op)は引き続き MCP キーを受け付けない。
-
-専用リンク、メールアドレス、認証情報、Meet URLはGASの返却項目とMCPのマスクで除外します。氏名や予定・成績等は返るため、必要な対象・期間に絞ります。読み取りでも `mcpLog`の追記は発生します。
+ツールの一覧は 0 章。1:2（同じ講師の 2 人同時）は `save_lessons`・`fix_unsent_lesson`・`reschedule_lesson` の要確認で止まり、先生が承知なら `force` で通す。3 人同時と同じ生徒の重なりは `force` でも通らない。
 
 ## 3. 緊急停止と再開
 
@@ -174,7 +133,6 @@ GASのキー認証失敗は共通キャッシュで数え、20回以上で一時
 | Cloudflare再ログイン | `npx wrangler login` | 認証が切れたときに本人がブラウザで認証 |
 | Secret項目確認 | `npx wrangler secret list` | 名前だけで値の一致は確認できない |
 | 専用パスフレーズ変更 | `npx wrangler secret put MCP_LOGIN_PASSWORD` | 3章の既存認可への影響を確認 |
-| GASキー更新 | `npx wrangler secret put STEPWISE_MCP_KEY` | 3章の交換とセット。秘密値をコマンド引数に書かない |
 | 予備stdio用コード生成 | `npm run build` | 通常運用(リモート版)では不要。stdioに戻すときだけ。`dist`更新後はプロセス再起動 |
 | Workers再配置 | `npx wrangler deploy` | 本番変更。5章の検証と対象確認後に実行 |
 | 本番ログ参照 | `npx wrangler tail` | 必要な期間だけ実行しCtrl+Cで終了。ログを公開文書や会話へそのまま貼らない |
@@ -183,24 +141,20 @@ GASのキー認証失敗は共通キャッシュで数え、20回以上で一時
 
 | テスト | 確認できること | 実行時の影響・限界 |
 |---|---|---|
-| `node test/smoke.mjs` | GAS読み取り、許可外op・誤キー拒否 | .envのGASに接続。検索以外に全体の予定・未処理・請求等を読み、一部を端末出力する。許可外`addStudent`と誤キーも送るため、閲覧限定のままか先に確認 |
-| `node test/client.mjs` | stdioのツール一覧・代表的な呼び出し・秘密フィールド除外 | テスト生徒だけでなく全体の予定・未処理も読み、出力する。7ツール全操作の網羅試験ではない |
+| `node --test test/v2-tools.test.mjs` | 応答の組み立てと `scrub`（`npm run build` のあと） | ネットワークなし |
 | `node test/oauth-flow.mjs` | OAuthメタデータ・動的登録・認可画面・拒否。PASS指定時は認可後の呼び出しも実行 | BASEの既定はlocalhost。PASSが空でもクライアント登録と誤パスフレーズ1回を実行し、KVや失敗回数を変更する。本番へ単なる読み取り疎通として繰り返さない |
 
 本番OAuth試験が必要な場合は `BASE`を対象のWorker originへ設定し、既存の `PASS`環境変数を意図せず引き継いでいないことを確認します。パスフレーズを使う試験は秘密値を安全に入力できる環境で行い、認可コードを含む出力や生徒データを外部へ貼り付けません。全体データが不要なら既存スクリプトを一括実行せず、対象を絞った読み取りや `mcpPing`で確認します。
 
 ## 5. ツールを追加・変更する手順
 
-1. 両リポジトリの最新Git状態、稼働GAS、目的・対象ツールを確認する。現在の閲覧権限で実現できるか、業務更新・通知を増やすかを分ける。
-2. `src/tools.ts`など必要な箇所を編集する。GASに新opが必要なら `gas/Code.gs`の許可リストと `mcpDispatch_`も変更する。許可外op拒否・自由記述の扱い・秘密情報除外を検証する。
-3. `npm run build`と変更に対応する検証を行う。本番接続テストの影響は4章を確認。**データ変更の試験は名前が【テスト】で始まる生徒のみ**で、実生徒を変更しない。退避・復旧を変更範囲に合わせて準備する。
-4. GASを変えた場合は [SYSTEM.md](SYSTEM.md) の反映手順で保存・新バージョンをデプロイし、公開版とローカルの一致を確認する。MCPが新opを呼び始める前に対応GASを用意する。
-5. 配置先を確認して `npx wrangler deploy` し、ChatGPT・Codex(どちらもリモート版)から確認する。予備のstdioを使う場合は `npm run build` 後に再起動して確認。単なる再配置で通常は登録を作り直さないが、ツール一覧・認証・URL変更では接続元の再読み込みや再認証の要否を確認する。
-6. 現行の機能・接続・運用はこの文書、全体構造はSYSTEM、残件はFUTURE_WORKへ反映する。設計判断や過去検証として残す理由がある場合だけMCP_DESIGNを更新し、同じ手順を複数文書へ複製しない。
+1. `stepwise-kobetsu` の `cf/v2/mcp-writes.mjs` に `mcp/` の道を足す。`dryRun` で何も書かず、`requestId` で冪等にし、`checkScope` を通す。テストは `test/v2-mcp-writes.test.cjs`。
+2. 本番へは stepwise-kobetsu のリリース（PR → Worker → マージ）で出す。
+3. `stepwise-mcp` の `src/toolsV2.ts`（閲覧）か `src/toolsV2Write.ts`（書き込み）にツールを足し、`npm run build` と `node --test test/v2-tools.test.mjs` を通す。
+4. Worker のあとで `npx wrangler deploy` し、dry_run で確かめる。
+5. この文書の 0 章の表を直す。
 
-**更新系は 2-2 節の4ツールだけ**です(2026-09-08)。さらに追加する場合は [MCP_DESIGN.md](MCP_DESIGN.md) の非公開操作・不採用判断を守り、採用範囲を合意してから実装します。最低条件は、項目ごとの業務検証(定員・請求確定月・重複)、再送しても二重登録・二重通知にならないこと、`MCP_WRITE_SCOPE` によるサーバー側の範囲制限、`mcpLog` への記録、ローカルの GAS ハーネス(`test/mcp-writes.test.cjs`)での検証です。許可リスト追加だけで開放しません。
-
-具体的な操作が既に承認済みかは依頼の範囲で判断します。過去の設計合意や閲覧接続の許可を、将来の通知・予約・請求更新への一律承認とは扱いません。注釈だけで承認実施を保証できないため、将来のサーバー実装でも強制します。
+[MCP_DESIGN.md](MCP_DESIGN.md) の非公開の操作を増やすときは、本人に確かめる。
 
 ## 6. トラブルシューティング
 
@@ -208,12 +162,7 @@ GASのキー認証失敗は共通キャッシュで数え、20回以上で一時
 |---|---|
 | ChatGPTで認証・接続失敗 | Workerの `/`に説明ページが出るか、`/mcp`が未認証を拒否するか確認。入口が動くことだけではGAS疎通は確認できない。Worker、OAuth、GASキーのどこで失敗したかを調べ、登録修復が必要と分かってから再接続 |
 | パスフレーズ違い・試行制限 | WorkerはIP単位の失敗10回、失敗記録TTL600秒。繰り返し試さず、必要なら3章で変更。12文字未満のSecretでは設定エラー |
-| 「MCPキーが正しくありません」 | GASとPC/Workerの設定先、交換・停止履歴を確認。値を会話へ出さず照合し、必要性が確定した場合に3章で交換。原因不明のまま再発行し続けない |
-| MCP認証失敗による一時停止 | GASの共通失敗キャッシュか確認。誤った接続元を止め、記録期限を待って正しい設定で再試行 |
-| 「この操作はMCPから実行できません」 | 許可外のため拒否(取消・削除・確定・請求など)。エラーを消すためだけに許可リストへ追加しない |
-| 「MCP からの登録はいまテスト生徒に限定されています」 | `MCP_WRITE_SCOPE=test`。意図した制限なら維持。開放するときは先生がエディタで `mcpEnableWrites` を実行 |
-| 登録ツールが `needsConfirm` を返す | 生徒の授業できない日時か先生の休みに重なっている(`force=true` で再実行)。code が `planShort` なら授業計画の枠に収まらない: 先生に授業計画の案内を送るか、承認を待たずに進める(`planForce=true`)かを確認する |
-| 連絡欄の処理で `claimed` / `claimRequired` / `conflict` | 別の処理が進行中(15分で失効)、処理権なしで登録しようとした、処理中に先生・利用者が連絡を更新した。`list_inbox` で最新を確認して `claim_message` からやり直す。`contactProcessing` シートに経過が残る |
+| ツールが要確認（`needsConfirm`・`needForce`）を返す | 1:2（同じ講師の 2 人同時）か、先生の休み・生徒の授業できない時間と重なっている。先生が承知なら `force=true` で再実行 |
 | 遅い・通信失敗 | 中継は1試行25秒、例外時に1.5秒待って1回再試行。起動待ち・Spreadsheet・ScriptLock待ち等を切り分ける。正常なJSONの業務エラーは自動再試行しない。更新ツールへこの再送を流用しない |
 | Codexで接続できない | まず `codex mcp get stepwise` で `url` が上記 `/mcp` か確認し、`codex mcp login stepwise` で再認証。Workerの `/` と `/mcp`(未認証で401)の応答も確認。予備のstdioに戻す場合は Node、生成済みdist/stdio.js、プロジェクト直下.envの存在・項目を確認し、ビルド後に再起動。.envの値を丸ごと出力しない |
 | パスフレーズ変更後も接続可能 | refresh tokenで更新され得るため想定内。強制切断が目的なら3章の停止・認可失効を確認 |
