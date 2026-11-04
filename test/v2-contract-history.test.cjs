@@ -48,7 +48,7 @@ test('consent: actual approval and entry are separate, including a same-day earl
 });
 
 test('plan archive survives edits and deletion and is restricted to the family at the time', async () => {
-  const {h,auth,kid,parent,plan,row,approve}=await world();
+  const {h,auth,fam,kid,parent,plan,row,approve}=await world();
   const p=await plan({startDate:'2026-05-01',endDate:'2026-05-31'});
   assert.equal((await approve(p,'2026-05-01T09:00:00+09:00')).ok,true);
   assert.equal((await h.ok('family/money',{auth:parent})).plans.length,1,'old approved plan is visible');
@@ -59,6 +59,10 @@ test('plan archive survives edits and deletion and is restricted to the family a
   await h.ok('billing/plans/delete',{auth,id:p.id,version:row(p.id).version});
   history=(await h.ok('family/contracts',{auth:parent})).plans;
   assert.equal(history.find(x=>x.status==='approved').fee,4500);
+  const seen=await h.ok('admin/families/contracts',{auth,id:fam.id});
+  assert.deepEqual(seen.plans,history,'staff read the same archive as the family');
+  assert.equal((await h.call('admin/families/contracts',{auth:parent,id:fam.id})).ok,false,'a family cannot use the staff route');
+  assert.equal((await h.call('admin/families/contracts',{auth,id:'fa_none'})).error.code,'notFound');
   const other=(await h.ok('admin/families/create',{auth,name:'別家',email:'other@example.invalid'})).family;
   const otherAuth=(await h.ok('family/invite/accept',{token:h.linkFrom((await h.ok('admin/families/invite',{auth,id:other.id}),h.mails().at(-1))),password:'family password 2'})).auth;
   assert.deepEqual((await h.ok('family/contracts',{auth:otherAuth,familyId:kid.familyId})).plans,[]);

@@ -1,23 +1,23 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261026-p4';
 import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261025-layout';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261104-mailconfirm';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261104-famtabs';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-r15';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
-import { familiesPage, familyDetailPage, familyBar, familiesBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261104-mailconfirm';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261104-mailconfirm';
+import { familiesPage, familyDetailPage, familyBar, familiesBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261104-famtabs';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261104-famtabs';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261028-r16b';
-import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261104-mailconfirm';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261104-mailconfirm';
+import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261104-famtabs';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261104-famtabs';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261028-r16b';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda2';
-import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261104-mailconfirm';
+import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261104-famtabs';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
-import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261104-mailconfirm';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261104-famtabs';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261102-gtable2';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261102-gtable2';
-import { billingPick } from '/staff/billing.js?v=20261104-mailconfirm';
+import { billingPick } from '/staff/billing.js?v=20261104-famtabs';
 
 const store = session('sw2_staff');
 const ROLE_LABEL = { teacher: '講師', manager: '教室管理者', sysadmin: 'システム管理者' };
@@ -37,7 +37,7 @@ function route() {
   if(h.startsWith('#work=')){const [id,date]=h.slice(6).split('/');return {page:'work',id:decodeURIComponent(id),date};}
   if (h.startsWith('#invite=')) return { page: 'invite', token: decodeURIComponent(h.slice(8)) };
   if (h.startsWith('#reset=')) return { page: 'reset', token: decodeURIComponent(h.slice(7)) };
-  if (h.startsWith('#family=')) return { page: 'family', id: decodeURIComponent(h.slice(8)) };
+  if (h.startsWith('#family=')) { const [id, tab, kind] = h.slice(8).split('/'); return { page: 'family', id: decodeURIComponent(id), tab: tab || 'basic', kind: kind || '' }; }
   if (h.startsWith('#record=')) return { page: 'record', id: decodeURIComponent(h.slice(8)) };
   if (h.startsWith('#grades=')) return { page: 'gradesOf', id: decodeURIComponent(h.slice(8)) };
   if (h === '#schedule/todo') return { page: 'schedule', open: 'todo' }; // 「今日」の対応することから: 予定の画面で一覧を開く
@@ -66,7 +66,7 @@ function navItems() {
   if (!me) return [];
   if(me.employmentAccess===false)return [['employment','入職の手続き','employment'],['settings','設定']]; // 入職の手続き中は、手続きの画面だけ（給与明細は契約のあとに雇用・勤務の中から）
   const m = me.roles.includes('manager'), t = me.roles.includes('teacher');
-  if (m) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['families', '契約'], ['monthly', '月の仕事'], ['settings', '設定']]; // 契約（2026-11-03 本人）
+  if (m) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['families', '契約者'], ['monthly', '月の仕事'], ['settings', '設定']]; // 契約（2026-11-03 本人）
   if (t) return [['home', '今日'], ['schedule', '予定'], ['students', '生徒'], ['payroll', '給与'], ['settings', '設定']];
   return [['home', '今日'], ['settings', '設定']]; // システム管理者だけのとき
 }
@@ -86,6 +86,7 @@ function tabOf(page) {
 let trail = [], lastHash = location.hash || '#home';
 function parentOf(r) {
   if (r.page === 'gradesOf') return '#student=' + encodeURIComponent(r.id) + '/grades/tests';
+  if (r.page === 'family' && r.kind) return '#family=' + encodeURIComponent(r.id) + '/' + r.tab; // 契約書の種類の中からは「契約」の一覧へ
   if (r.page === 'student' && r.sub) return '#student=' + encodeURIComponent(r.id) + '/' + r.tab; // 資料の中の画面からは資料の入口へ
   const t = tabOf(r.page);
   return t === r.page ? '' : '#' + t;
@@ -237,7 +238,7 @@ function render() {
   else if (r.page === 'payroll' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = payrollPage(ctx, me);
   else if (r.page === 'gradesOf' && (me.roles.includes('manager') || me.roles.includes('teacher'))) h = gradesStudentPage(ctx, r.id);
   else if (r.page === 'families' && me.roles.includes('manager')) h = familiesPage(ctx);
-  else if (r.page === 'family' && me.roles.includes('manager')) h = familyDetailPage(ctx, r.id);
+  else if (r.page === 'family' && me.roles.includes('manager')) h = familyDetailPage(ctx, r.id, r.tab, r.kind);
   else if (r.page === 'plans' && me.roles.includes('manager')) h = plansPage(ctx);
   else if (r.page === 'billing' && me.roles.includes('manager')) h = billingPage(ctx);
   else if (r.page === 'rates' && me.roles.includes('manager')) h = ratesPage(ctx);

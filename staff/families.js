@@ -12,9 +12,9 @@ const nextMonth = () => { const d = new Date(Date.now() + 9 * 3600e3); return ne
 const SP_STATUS = { proposed: ['warn', '承認待ち'], agreed: ['ok', '承認済み'] };
 const today = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const condStatus = cd => !cd || !cd.latest ? '<span class="tag gray">条件なし</span>' : cd.needs ? `<span class="tag warn">条件 第${cd.latest.no}版 同意待ち</span>` : `<span class="tag ok">条件 第${cd.latest.no}版 同意済み</span>`;
-let list = null, detail = null, query = '', shown = null, famSheet = null;
+let list = null, detail = null, query = '', shown = null, famSheet = null, contractData = null;
 
-export function resetFamilies() { list = null; detail = null; shown = null; famSheet = null; }
+export function resetFamilies() { list = null; detail = null; shown = null; famSheet = null; contractData = null; }
 
 const tag = ([cls, label]) => `<span class="tag ${cls}">${label}</span>`;
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
@@ -24,7 +24,7 @@ export const contractorOf = f => f.guardianName || f.name || '';
 const AV = ['#2f6fde', '#2e9b5f', '#7b4fd6', '#d0533c', '#138a8a', '#c98a00', '#5b6672'];
 const avColor = t => AV[[...String(t)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 9973, 7) % AV.length];
 const initial = name => (String(name).replace(/^[【\[（(「『\s]+/, '') || '?').slice(0, 1);
-export const familiesBar = () => list ? { title: '契約', sub: `${list.filter(f => f.status !== 'stopped').length}件`, right: '' } : { title: '契約', sub: '', right: '' };
+export const familiesBar = () => list ? { title: '契約者', sub: `${list.filter(f => f.status !== 'stopped').length}件`, right: '' } : { title: '契約者', sub: '', right: '' };
 const match = (f, q) => !q || [f.name, f.guardianName, f.email, ...f.students.map(s => s.name + (s.familyKana || '') + (s.givenKana || ''))].join(' ').toLowerCase().includes(q.toLowerCase());
 
 export function familiesPage(ctx) {
@@ -73,28 +73,82 @@ function studentInputs(esc, s) {
 }
 
 export const familyBar = () => detail && detail.name ? { title: contractorOf(detail), sub: '契約者', right: '' } : { title: '契約者', sub: '', right: '' };
-export function familyDetailPage(ctx, id) {
+// 契約者のページのタブ（2026-11-04 本人「各契約者のページの中にタブを作って、その中に『契約』を設置」）
+const FAM_TABS = [['basic', '基本情報'], ['contracts', '契約']];
+export function familyDetailPage(ctx, id, tab = 'basic', kind = '') {
   const { esc } = ctx;
   if (!detail || detail.id !== id) { loadDetail(ctx, id); return '<p class="muted" style="margin-top:24px">読み込んでいます…</p>'; }
   const f = detail;
+  if (!FAM_TABS.some(t => t[0] === tab)) tab = 'basic';
   let h = `<p style="margin:12px 0 0">${tag(STATUS[f.status] || ['gray', f.status])}${f.testOnly ? '<span class="tag gray">テスト</span>' : ''}</p>${ctx.notice()}`;
   if (shown) h += `<div class="notice ok"><p>${esc(shown.text)}</p>${shown.url ? `<p class="copy">${esc(shown.url)}</p><button data-action="copy" data-text="${esc(shown.url)}">リンクをコピー</button>` : ''}</div>`;
+  h += '<div class="tabs2" role="tablist">' + FAM_TABS.map(([k, label]) => `<a role="tab" href="#family=${encodeURIComponent(f.id)}${k === 'basic' ? '' : '/' + k}" class="${k === tab ? 'on' : ''}"${k === tab ? ' aria-selected="true"' : ''}>${label}</a>`).join('') + '</div>';
+  if (tab === 'contracts') return h + contractsTab(ctx, f, kind) + familySheet(ctx, f);
   // 保護者の情報は生徒の基本情報と同じ罫線の表。操作はその行の中に置き、停止はページのいちばん下（2026-10-28 本人「ここがなんかごちゃごちゃしてます」）
   const row = (k, v) => v ? `<tr><th scope="row"><span>${k}</span></th><td>${v}</td></tr>` : '';
   const cell = (text, btns) => `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span style="flex:1 1 180px;min-width:0">${text}</span>${btns}</div>`;
-  const ct = detail.terms || { version: '' };
-  const terms = !ct.version ? '' : f.termsVersion === ct.version ? `${esc(ct.version)}：同意済み（${esc(String(f.termsAcceptedAt).slice(0, 10))}）` : `${esc(ct.version)}：<span class="tag warn">未同意</span>${f.termsVersion ? `（${esc(f.termsVersion)} には同意）` : ''}`;
   const invite = f.email && f.status !== 'stopped' && !f.hasPassword ? `<button class="small-btn" data-action="fam-invite"${ctx.dis()}>招待を送る</button>` : ''; // 登録済みの家族には出さない（パスワードを忘れたらログイン画面から。2026-11-04 本人）
   h += `<div class="sec-title">契約者</div><table class="grid-table"><tbody>${row('氏名', esc(f.guardianName || ''))}${row('メール', esc(f.email || ''))}${row('電話', esc(f.phone || ''))}${row('住所', esc(f.address || ''))}`
     + row('保護者ページ', cell(f.status === 'stopped' ? '止めています（メールも届きません）' : f.hasPassword ? '登録済み' : 'まだ登録していません', `<button class="small-btn" data-action="pv-open" data-kind="family" data-id="${esc(f.id)}">↗ プレビュー</button>${invite}`))
-    + row('共通規約', terms)
     + `${row('メモ', esc(f.note || ''))}</tbody></table><p style="margin-top:10px"><button data-action="fam-sheet" data-mode="family" data-id="${esc(f.id)}"${ctx.dis()}>契約者の情報を直す</button></p>`;
   h += `<div class="sec-title">契約している生徒 <span class="count gray">${f.students.length}</span></div><div class="group">` + f.students.map(s => rowButton(esc, 'fam-sheet', { mode: 'student', id: s.id }, `${esc(s.name)} ${tag(STUDENT_STATUS[s.status])}${s.testOnly ? '<span class="tag gray">テスト</span>' : ''}`,
     `${[s.grade, s.school, MODE[s.deliveryMode || '']].filter(Boolean).map(esc).join('・')}${s.grade || s.school || MODE[s.deliveryMode || ''] ? '・' : ''}${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}（90分）・${condStatus(s.condition)}`)).join('') + '</div>';
   h += `<p style="margin-top:10px"><button data-action="fam-sheet" data-mode="add"${ctx.dis()}>＋ 兄弟を足す</button></p>`;
-  h += renewalSection(ctx, f);
   h += `<p style="margin-top:28px">${f.status === 'stopped' ? `<button data-action="fam-status" data-status="${f.hasPassword ? 'active' : 'invited'}"${ctx.dis()}>保護者ページとメールを再開する</button>` : `<button class="danger" data-action="fam-status" data-status="stopped"${ctx.dis()}>保護者ページとメールを止める</button>`}</p>`;
   return h + familySheet(ctx, f);
+}
+// ---- 契約: 契約書の種類ごとの一覧。種類を選ぶと、同意した書面が新しい順に並ぶ（2026-11-04 本人「『個別指導条件書』を選択すると、過去に同意した個別指導条件書が表示される」） ----
+const CONTRACT_KINDS = [['terms', '共通規約', '規'], ['conditions', '個別受講条件書', '条'], ['specials', '特別単価合意書', '特'], ['plans', '受講計画書', '計']];
+const DOC_STATUS = { proposed: ['warn', '同意待ち'], agreed: ['ok', '同意済み'], approved: ['ok', '承認済み'], declined: ['gray', '見送り'], ended: ['gray', '終了'] };
+const dayOf = v => String(v || '').slice(0, 10).replace(/-/g, '/');
+const fileBtn = (esc, id) => id ? `<button class="small-btn" data-action="gr-open" data-id="${esc(id)}">開く</button>` : '';
+const agreedLine = (at, name) => at ? `同意 ${dayOf(at)}${name ? `・${name}` : ''}` : '';
+// 提案のまま置き換わった版は同意していないので並べない
+function contractRows(esc, d) {
+  const terms = (d.terms.history || []).map(r => ({ who: '共', title: `${r.title || '共通規約'}${r.version ? `（${r.version}）` : ''}`, note: [r.from ? `${dayOf(r.from)}から` : '', agreedLine(r.at, r.consenterName), r.via || ''], status: 'agreed',
+    open: /^https:\/\//.test(r.url || '') ? `<a class="btn small-btn" href="${esc(r.url)}" target="_blank" rel="noopener">開く</a>` : '' }));
+  const conditions = (d.conditions.items || []).flatMap(x => (x.history || []).map(c => ({ ...c, studentName: x.studentName }))).filter(c => c.status !== 'replaced')
+    .map(c => ({ who: c.studentName, title: `${c.studentName}・第${c.no}版`, note: [`${c.fromMonth}から・${c.minutes}分 ${yen(c.fee)}`, c.subjects, agreedLine(c.agreedAt, c.consenterName)], status: c.status, open: fileBtn(esc, c.docFileId) }));
+  const specials = [...(d.specials.items || []), ...(d.specials.past || [])].filter(c => c.status !== 'replaced')
+    .map(c => ({ who: c.studentName, title: `${c.studentName}・${c.title}${c.no > 1 ? ` 第${c.no}版` : ''}`, note: [`${dayOf(c.fromDate)}〜${dayOf(c.toDate)}・${c.minutes}分 ${yen(c.fee)}`, agreedLine(c.agreedAt, c.consenterName)], status: c.status, open: fileBtn(esc, c.docFileId) }));
+  // 計画の版は行ごとに残る。同じ行の同じ版は新しい記録だけ、書面と同じ「生徒・期間・状態」でまとめる
+  const seen = new Set(), groups = new Map();
+  for (const l of d.plans || []) {
+    const k = l.id + ':' + l.version; if (seen.has(k)) continue; seen.add(k);
+    const g = JSON.stringify([l.studentId, l.startDate, l.endDate, l.status]);
+    if (!groups.has(g)) groups.set(g, []); groups.get(g).push(l);
+  }
+  const plans = [...groups.values()].map(ls => { const l = ls[0]; return { who: l.studentName, title: `${l.studentName}・${dayOf(l.startDate)}〜${dayOf(l.endDate)}`, note: [ls.map(x => `${x.subject} ${x.kind} ${x.approvedCount ?? x.count}回`).join('、')], status: l.status,
+    open: `<button class="small-btn" data-action="agreement-doc" data-refs="${esc(JSON.stringify(ls.map(x => ({ id: x.id, version: x.version }))))}">開く</button>` }; });
+  return { terms, conditions, specials, plans };
+}
+async function loadContracts(ctx, id) {
+  contractData = { id, loading: true };
+  const r = await ctx.call('admin/families/contracts', { id });
+  contractData = r.ok ? { id, ...r } : { id, error: r.error.message };
+  if (!r.ok) ctx.handleAuth(r);
+  ctx.render();
+}
+function contractsTab(ctx, f, kind) {
+  const { esc } = ctx;
+  if (!contractData || contractData.id !== f.id) { loadContracts(ctx, f.id); return '<p class="muted" style="margin-top:24px">読み込んでいます…</p>'; }
+  if (contractData.loading) return '<p class="muted" style="margin-top:24px">読み込んでいます…</p>';
+  if (contractData.error) return `<p class="notice error">${esc(contractData.error)}</p>`;
+  const rows = contractRows(esc, contractData), base = `#family=${encodeURIComponent(f.id)}/contracts`;
+  const current = CONTRACT_KINDS.find(k => k[0] === kind);
+  if (current) {
+    const list = rows[current[0]];
+    return `<div class="sec-title">${current[1]} <span class="count gray">${list.length}</span></div>` + (list.length ? '<div class="group stu-list">' + list.map(r => `<div class="srow"><span class="av" style="background:${avColor(r.who)}" aria-hidden="true">${esc(initial(r.who))}</span>
+      <span class="b"><strong>${esc(r.title)}</strong>${r.note.filter(Boolean).map(n => `<small class="muted">${esc(n)}</small>`).join('')}${tag(DOC_STATUS[r.status] || ['gray', r.status])}</span>${r.open}</div>`).join('') + '</div>' : '<p class="muted small">まだありません。</p>');
+  }
+  const ct = detail.terms || { version: '' };
+  const summary = k => {
+    if (k === 'terms' && ct.version) return f.termsVersion === ct.version ? `最新の版に同意済み（${dayOf(f.termsAcceptedAt)}）` : `<span class="tag warn">最新の版に未同意</span>`;
+    const n = rows[k].filter(r => ['agreed', 'approved', 'ended'].includes(r.status)).length, wait = rows[k].filter(r => r.status === 'proposed').length;
+    return `同意 ${n}件${wait ? `・<span class="tag warn">同意待ち ${wait}件</span>` : ''}`;
+  };
+  return '<div class="group stu-list" style="margin-top:14px">' + CONTRACT_KINDS.map(([k, label, mark]) => `<a class="srow" href="${base}/${k}"><span class="av" style="background:${avColor(label)}" aria-hidden="true">${mark}</span>
+    <span class="b"><strong>${label}</strong><small class="muted">${summary(k)}</small></span><span class="go">›</span></a>`).join('') + '</div>' + renewalSection(ctx, f);
 }
 // ---- 契約の更新（2026-10-29 本人「新しい規約と契約書類に以前から利用している顧客に承認してもらう…入塾手続きを転用」） ----
 // 在籍している生徒ごとに個別受講条件書の案を作り、家族に 1 通で案内する。保護者は「契約の更新」の画面で情報を確かめて、生徒ごとに同意する
@@ -204,7 +258,7 @@ async function load(ctx) {
   ctx.render();
 }
 async function loadDetail(ctx, id) {
-  detail = { id, loading: true };
+  detail = { id, loading: true }; contractData = null;
   const r = await ctx.call('admin/families/get', { id });
   if (!r.ok) { detail = null; if (!ctx.handleAuth(r)) { ctx.say(r.error.message, 'error'); location.hash = '#families'; } }
   else { detail = { ...r.family, terms: r.terms }; if (!list) load(ctx); }
