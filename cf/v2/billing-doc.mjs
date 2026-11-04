@@ -15,6 +15,8 @@ const ymd = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? `${Number(v.slice
 const md = d => d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8))}` : '';
 const monthJa = m => `${Number(m.slice(0, 4))}年${Number(m.slice(5, 7))}月`;
 const KIND = { lesson: '授業', cancelFee: 'キャンセル料', legacy: '' };
+// 振込先の1行（invoiceBankText）を項目に分ける。形の違う行は1行のまま載せる（2026-11-04 本人「振り込み先が目立たない」「パッと見て分かりやすい書式に」）
+const bankRows = bank => { const m = /^(\S+) (\S+?)(（支店番号 \d{3}）)? (普通|当座) (\d{7}) 口座名義 (.+)$/.exec(bank); return m ? [['銀行名', m[1]], ['支店名', m[2] + (m[3] || '')], ['口座種別', m[4]], ['口座番号', m[5]], ['口座名義', m[6]]] : [['お振込先', bank || '別途ご案内します']]; };
 
 const STYLE = `
   @page { size: A4; margin: 15mm; }
@@ -38,8 +40,13 @@ const STYLE = `
   th { background: #f3f5f7; font-weight: 600; text-align: left; }
   td.num, th.num { text-align: right; white-space: nowrap; }
   tfoot td { font-weight: bold; }
-  .pay { margin-top: 6mm; border: 1px solid #b9c0c8; padding: 3mm 4mm; line-height: 1.9; }
+  .pay { margin-top: 6mm; break-inside: avoid; }
   .pay h2, .memo h2 { margin: 0 0 1mm; font-size: 13px; }
+  .pay table { margin-top: 0; border: 2px solid #1e2630; }
+  .pay th { width: 32mm; vertical-align: middle; }
+  .pay td { font-size: 14px; font-weight: bold; vertical-align: middle; }
+  .pay td small { font-size: 11px; font-weight: normal; }
+  .pay p { margin: 1.5mm 0 0; line-height: 1.7; }
   .memo { margin-top: 5mm; line-height: 1.7; }
   .stamp { display: inline-block; border: 2px solid #2e7d32; color: #2e7d32; padding: 2px 10px; border-radius: 4px; font-weight: bold; }
   @media print { body { background: #fff; } .bar { display: none !important; } .sheet { margin: 0; box-shadow: none; width: auto; min-height: auto; padding: 0; } }
@@ -55,14 +62,16 @@ const issuer = `<div class="issuer"><div class="name">ステップワイズ個�
 export function invoiceDocHtml({ inv, items, family, settings }) {
   const num = `${inv.month}-${String(inv.id).slice(-4).toUpperCase()}`;
   const rows = items.map(i => `<tr><td>${esc(md(i.date))}</td><td>${esc(i.studentName)}</td><td>${esc(i.kind === 'cancelFee' ? 'キャンセル料' : i.subject)}${i.lessonKind && i.lessonKind !== '通常' ? `（${esc(i.lessonKind)}）` : ''}${i.label ? ` <span style="color:#556;font-size:11px">${esc(i.label)}</span>` : ''}</td><td class="num">${i.minutes ? i.minutes + '分' : ''}</td><td class="num">${yen(i.amount)}</td></tr>`).join('');
+  const [, dueDay, dueNote] = /^(\d{4}-\d{2}-\d{2})(.*)$/.exec(invoiceDueText(inv));
+  const payRows = [['お支払期限', `${esc(ymd(dueDay))} <small>${esc(dueNote)}</small>`], ...bankRows(settings.bank).map(([k, v]) => [k, esc(v)])].map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
   const body = `
   <div class="head"><h1>請求書</h1><div class="meta">請求書番号 ${esc(num)}<br>発行日 ${esc(jst(inv.confirmedAt))}</div></div>
   <div class="to">${esc(family.name)}　様</div>
   <div class="grid"><div><p style="margin:4mm 0 0">下記のとおりご請求申し上げます。</p><p style="margin:1mm 0 0">対象：${esc(monthJa(inv.month))}分の授業料</p>
     <div class="total"><span>ご請求金額</span><span class="yen">¥${yen(inv.total)}－</span></div></div>${issuer}</div>
+  <div class="pay"><h2>お支払いについて</h2><table><tbody>${payRows}</tbody></table><p>振込手数料はご負担をお願いいたします。お振込みのあと、保護者ページか LINE でお知らせください。</p></div>
   <table><thead><tr><th style="width:14%">日付</th><th style="width:16%">生徒</th><th>内容</th><th class="num" style="width:12%">時間</th><th class="num" style="width:16%">金額（円）</th></tr></thead>
   <tbody>${rows}</tbody><tfoot><tr><td colspan="4" class="num">合計</td><td class="num">${yen(inv.total)}</td></tr></tfoot></table>
-  <div class="pay"><h2>お支払いについて</h2>お支払期日：${esc(invoiceDueText(inv))}<br>お振込先：${settings.bank ? esc(settings.bank) : '別途ご案内します'}<br>振込手数料：恐れ入りますが、ご負担をお願いいたします。<br>お振込みのあと、保護者ページか LINE でお知らせください。</div>
   <div class="memo"><h2>備考</h2>${settings.note ? esc(settings.note).replace(/\n/g, '<br>') : 'キャンセル料は、共通規約に基づき、ご連絡の時刻に応じて計算しています。'}<br><span style="color:#556;font-size:11px">この請求書は保護者ページ（お支払い）からいつでも開けます。免税事業者のため、登録番号と税率ごとの消費税額は記載していません。</span></div>`;
   return page(`請求書 ${monthJa(inv.month)}分 ${family.name}`, `請求書（${monthJa(inv.month)}分）。印刷（Ctrl+P）で PDF に保存できます。`, body);
 }
