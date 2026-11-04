@@ -84,10 +84,10 @@ export function familyDetailPage(ctx, id) {
   const cell = (text, btns) => `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span style="flex:1 1 180px;min-width:0">${text}</span>${btns}</div>`;
   const ct = detail.terms || { version: '' };
   const terms = !ct.version ? '' : f.termsVersion === ct.version ? `${esc(ct.version)}：同意済み（${esc(String(f.termsAcceptedAt).slice(0, 10))}）` : `${esc(ct.version)}：<span class="tag warn">未同意</span>${f.termsVersion ? `（${esc(f.termsVersion)} には同意）` : ''}`;
-  const invite = f.email && f.status !== 'stopped' ? `<button class="small-btn" data-action="fam-invite"${ctx.dis()}>${f.hasPassword ? '登録のやり直しを案内する' : '招待を送る'}</button>` : '';
+  const invite = f.email && f.status !== 'stopped' && !f.hasPassword ? `<button class="small-btn" data-action="fam-invite"${ctx.dis()}>招待を送る</button>` : ''; // 登録済みの家族には出さない（パスワードを忘れたらログイン画面から。2026-11-04 本人）
   h += `<div class="sec-title">契約者</div><table class="grid-table"><tbody>${row('氏名', esc(f.guardianName || ''))}${row('メール', esc(f.email || ''))}${row('電話', esc(f.phone || ''))}${row('住所', esc(f.address || ''))}`
-    + row('保護者ページ', cell(f.status === 'stopped' ? '止めています（メールも届きません）' : f.hasPassword ? '登録済み' : 'まだ登録していません', `<button class="small-btn" data-action="pv-open" data-kind="family" data-id="${esc(f.id)}">見る</button>${invite}`))
-    + row('共通規約', terms && cell(terms, `<button class="small-btn" data-action="fam-sheet" data-mode="terms"${ctx.dis()}>同意を記録</button>`))
+    + row('保護者ページ', cell(f.status === 'stopped' ? '止めています（メールも届きません）' : f.hasPassword ? '登録済み' : 'まだ登録していません', `<button class="small-btn" data-action="pv-open" data-kind="family" data-id="${esc(f.id)}">↗ プレビュー</button>${invite}`))
+    + row('共通規約', terms)
     + `${row('メモ', esc(f.note || ''))}</tbody></table><p style="margin-top:10px"><button data-action="fam-sheet" data-mode="family" data-id="${esc(f.id)}"${ctx.dis()}>契約者の情報を直す</button></p>`;
   h += `<div class="sec-title">契約している生徒 <span class="count gray">${f.students.length}</span></div><div class="group">` + f.students.map(s => rowButton(esc, 'fam-sheet', { mode: 'student', id: s.id }, `${esc(s.name)} ${tag(STUDENT_STATUS[s.status])}${s.testOnly ? '<span class="tag gray">テスト</span>' : ''}`,
     `${[s.grade, s.school, MODE[s.deliveryMode || '']].filter(Boolean).map(esc).join('・')}${s.grade || s.school || MODE[s.deliveryMode || ''] ? '・' : ''}${yen((Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3))}（90分）・${condStatus(s.condition)}`)).join('') + '</div>';
@@ -144,7 +144,6 @@ function renewalSheet(ctx, f) {
 function familySheet(ctx, f) {
   const { esc } = ctx, m = famSheet && famSheet.mode;
   if (!m || m === 'create') return '';
-  if (m === 'terms') { const ct = detail.terms || { version: '' }; return sheet(esc, '規約の同意を記録', `<form class="stack" data-form="fam-terms"><div class="row"><label style="flex:1">版<input name="version" maxlength="40" value="${esc(ct.version)}" required></label><label style="flex:1">同意をもらった日時（日本時間）<input type="datetime-local" name="consentedAt" required></label></div><label>方法<input name="via" maxlength="40" placeholder="書面・LINE・対面" required></label><label>承認・同意した保護者の氏名<input name="consenterName" maxlength="100" required></label><label>メモ（任意）<input name="note" maxlength="300"></label><button class="primary"${ctx.dis()}>記録する</button></form>`, 'fam-close'); }
   if (m === 'renewal') return renewalSheet(ctx, f);
   if (m === 'family') return sheet(esc, '契約者の情報を直す', `<form class="stack" data-form="fam-update">${familyInputs(esc, f)}<button class="primary"${ctx.dis()}>保存</button></form>`, 'fam-close');
   if (m === 'add') return sheet(esc, '兄弟を足す', `<form class="stack" data-form="stu-create">${studentInputs(esc, { status: 'enrolled' })}<button class="primary"${ctx.dis()}>兄弟を足す</button></form>`, 'fam-close');
@@ -224,9 +223,6 @@ export async function familiesSubmit(ctx, kind, el) {
   } else if (kind === 'fam-update') {
     r = await ctx.call('admin/families/update', { id: detail.id, version: detail.version, ...v });
     if (r.ok) { famSheet = null; detail = null; list = null; ctx.say('保存しました', 'ok'); return true; }
-  } else if (kind === 'fam-terms') {
-    r = await ctx.call('admin/families/terms', { id: detail.id, version: v.version, consentedAt: v.consentedAt + '+09:00', consenterName: v.consenterName, via: v.via, note: v.note });
-    if (r.ok) { famSheet = null; detail = null; ctx.say('規約の同意を記録しました', 'ok'); return true; }
   } else if (kind === 'renewal-offer') {
     const students = renewalTargets(detail).map((s, i) => ({ s, i })).filter(({ i }) => el.querySelector(`[name="pick_${i}"]`).checked)
       .map(({ s, i }) => ({ studentId: s.id, minutes: Number(v['minutes_' + i]), fee: Number(v['fee_' + i]), deliveryMode: v['mode_' + i], subjects: readSubjects(el, 'subjects_' + i) }));
