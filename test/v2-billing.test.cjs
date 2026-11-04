@@ -442,8 +442,8 @@ test('the invoice shows the due date and the bank as rows after the lesson list'
   const { invoiceDocHtml, invoiceBankText } = await import('../cf/v2/billing-doc.mjs');
   const doc = bank => invoiceDocHtml({ inv: { id: 'iv_0001', month: '2026-11', total: 4500, confirmedAt: '2026-12-02T15:10:00.000Z', dueDate: '2026-12-31', dueNote: '' }, items: [], family: { name: '架空家' }, settings: { bank, note: '' } });
   const html = doc(invoiceBankText({ bankName: '架空銀行', branchName: '架空支店', branchCode: '001', accountType: 'ordinary', accountNumber: '0000000', holderKana: 'カクウ タロウ', holderName: '架空 太郎' }));
-  for (const [k, v] of [['お支払期限', '2026年12月31日'], ['銀行名', '架空銀行'], ['支店名', '架空支店（支店番号 001）'], ['口座種別', '普通'], ['口座番号', '0000000'], ['口座名義', '架空 太郎（カクウ タロウ）']]) assert.match(html, new RegExp('<th>' + k + '</th><td>' + v.replace(/[()]/g, '\$&')));
+  for (const [k, v] of [['お支払期限', '2026年12月31日'], ['銀行名', '架空銀行'], ['支店名', '架空支店（支店番号 001）'], ['口座種別', '普通'], ['口座番号', '0000000'], ['口座名義', '架空 太郎（カクウ タロウ）']]) assert.match(html, new RegExp('<th>' + k + '</th><td[^>]*>' + v.replace(/[()]/g, '\$&')));
   assert.ok(html.indexOf('お支払いについて') > html.indexOf('<th style="width:14%">日付'), '内訳の後ろ');
-  assert.match(doc('架空銀行 架空支店 普通 0000000 ステップワイズ'), /<th>お振込先<\/th><td>架空銀行 架空支店 普通 0000000 ステップワイズ/, '形の違う行は1行のまま');
-  assert.match(doc(''), /<th>お振込先<\/th><td>別途ご案内します/);
+  assert.match(doc('架空銀行 架空支店 普通 0000000 ステップワイズ'), /<th>お振込先<\/th><td colspan="3">架空銀行 架空支店 普通 0000000 ステップワイズ/, '形の違う行は1行のまま');
+  assert.match(doc(''), /<th>お振込先<\/th><td colspan="3">別途ご案内します/);
 });

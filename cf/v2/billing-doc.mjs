@@ -16,7 +16,7 @@ const md = d => d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8))}` : '';
 const monthJa = m => `${Number(m.slice(0, 4))}年${Number(m.slice(5, 7))}月`;
 const KIND = { lesson: '授業', cancelFee: 'キャンセル料', legacy: '' };
 // 振込先の1行（invoiceBankText）を項目に分ける。形の違う行は1行のまま載せる（2026-11-04 本人「振り込み先が目立たない」「パッと見て分かりやすい書式に」）
-const bankRows = bank => { const m = /^(\S+) (\S+?)(（支店番号 \d{3}）)? (普通|当座) (\d{7}) 口座名義 (.+)$/.exec(bank); return m ? [['銀行名', m[1]], ['支店名', m[2] + (m[3] || '')], ['口座種別', m[4]], ['口座番号', m[5]], ['口座名義', m[6]]] : [['お振込先', bank || '別途ご案内します']]; };
+const bankRows = bank => { const m = /^(\S+) (\S+?)(（支店番号 \d{3}）)? (普通|当座) (\d{7}) 口座名義 (.+)$/.exec(bank); return m ? [[['銀行名', m[1]], ['支店名', m[2] + (m[3] || '')]], [['口座種別', m[4]], ['口座番号', m[5]]], [['口座名義', m[6]]]] : [[['お振込先', bank || '別途ご案内します']]]; };
 
 const STYLE = `
   @page { size: A4; margin: 15mm; }
@@ -43,8 +43,9 @@ const STYLE = `
   .pay { margin-top: 6mm; break-inside: avoid; }
   .pay h2, .memo h2 { margin: 0 0 1mm; font-size: 13px; }
   .pay table { margin-top: 0; border: 2px solid #1e2630; }
-  .pay th { width: 32mm; vertical-align: middle; }
-  .pay td { font-size: 14px; font-weight: bold; vertical-align: middle; }
+  .pay th, .pay td { padding: 1.5mm 2.5mm; vertical-align: middle; }
+  .pay th { width: 20mm; white-space: nowrap; }
+  .pay td { font-size: 14px; font-weight: bold; }
   .pay td small { font-size: 11px; font-weight: normal; }
   .pay p { margin: 1.5mm 0 0; line-height: 1.7; }
   .memo { margin-top: 5mm; line-height: 1.7; }
@@ -63,7 +64,8 @@ export function invoiceDocHtml({ inv, items, family, settings }) {
   const num = `${inv.month}-${String(inv.id).slice(-4).toUpperCase()}`;
   const rows = items.map(i => `<tr><td>${esc(md(i.date))}</td><td>${esc(i.studentName)}</td><td>${esc(i.kind === 'cancelFee' ? 'キャンセル料' : i.subject)}${i.lessonKind && i.lessonKind !== '通常' ? `（${esc(i.lessonKind)}）` : ''}${i.label ? ` <span style="color:#556;font-size:11px">${esc(i.label)}</span>` : ''}</td><td class="num">${i.minutes ? i.minutes + '分' : ''}</td><td class="num">${yen(i.amount)}</td></tr>`).join('');
   const [, dueDay, dueNote] = /^(\d{4}-\d{2}-\d{2})(.*)$/.exec(invoiceDueText(inv));
-  const payRows = [['お支払期限', `${esc(ymd(dueDay))} <small>${esc(dueNote)}</small>`], ...bankRows(settings.bank).map(([k, v]) => [k, esc(v)])].map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+  const cell = (k, v, wide) => `<th>${k}</th><td${wide ? ' colspan="3"' : ''}>${v}</td>`;
+  const payRows = `<tr>${cell('お支払期限', `${esc(ymd(dueDay))} <small>${esc(dueNote)}</small>`, true)}</tr>` + bankRows(settings.bank).map(r => `<tr>${r.map(([k, v]) => cell(k, esc(v), r.length === 1)).join('')}</tr>`).join('');
   const body = `
   <div class="head"><h1>請求書</h1><div class="meta">請求書番号 ${esc(num)}<br>発行日 ${esc(jst(inv.confirmedAt))}</div></div>
   <div class="to">${esc(family.name)}　様</div>
