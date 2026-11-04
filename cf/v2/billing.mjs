@@ -159,8 +159,7 @@ export async function monthPreview(c, familyId, month, { ignoreInvoiceId = '' } 
   const items = out.students.reduce((n, s) => n + s.items.length, 0);
   out.canConfirm = !out.issues.length && items > 0;
   out.auto = out.canConfirm && !out.pendingCount;
-  const fam = await c.db.prepare('select termsVersion from families where id = ?').bind(familyId).first();
-  out.normalDue = normalDueDate(month, today, fam && fam.termsVersion);
+  out.normalDue = normalDueDate(month);
   return out;
 }
 
