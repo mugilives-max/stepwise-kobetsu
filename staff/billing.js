@@ -307,12 +307,15 @@ export async function billingSubmit(ctx, kind, el) {
     r = await ctx.call('billing/plans/save', { id, version: id ? version : undefined, studentId: el.dataset.student, subject: v.subject, kind: v.kind, count: num(v.count), minutes: num(v.minutes), fee: num(v.fee), startDate: v.startDate, endDate: v.endDate, parentId: v.parentId, comment: v.comment, parts: partsFrom(v) });
     msg = '下書きにしました'; if (r.ok) { editing = addFor = lineOpen = ''; plans = null; }
   } else if (kind === 'pl-consent') {
+    if (!confirm('承認として記録すると、保護者に控えのメールが届きます。記録しますか？')) return true;
     r = await ctx.call('billing/plans/consent', { id, version, consentedAt: v.consentedAt + '+09:00', consenterName: v.consenterName, via: v.via, approvedCount: num(v.approvedCount), note: v.note });
     msg = '承認として記録しました'; if (r.ok) { consentFor = lineOpen = ''; plans = null; }
   } else if (kind === 'fee-decide') {
+    if (!confirm('この内容を決めると、保護者にお知らせのメールが届きます。決めますか？')) return true;
     r = await ctx.call('billing/fees/decide', { id, version, decision: v.decision, amount: num(v.amount), note: v.note });
     msg = 'キャンセル料を決めました'; if (r.ok) { fees = null; bill = null; feeOpen = ''; }
   } else if (kind === 'fee-relief') {
+    if (!confirm('この内容で回答すると、保護者にお知らせのメールが届きます。回答しますか？')) return true;
     r = await ctx.call('billing/fees/relief', { id, version, result: v.result, amount: num(v.amount), response: v.response });
     msg = '申請に回答しました'; if (r.ok) { fees = null; bill = null; feeOpen = ''; }
   } else if (kind === 'bl-settings') {
@@ -323,7 +326,7 @@ export async function billingSubmit(ctx, kind, el) {
   } else if (kind === 'bl-unpaid') {
     r = await ctx.call('billing/paid', { id, version, undo: true, reason: v.reason }); msg = '入金の記録を戻しました'; if (r.ok) { bill = null; detail = null; }
   } else if (kind === 'bl-void') {
-    if (!confirm('この請求を取り消しますか？ 授業とキャンセル料は請求前に戻ります。')) return true;
+    if (!confirm('この請求を取り消しますか？ 授業とキャンセル料は請求前に戻り、保護者にお知らせのメールが届きます。')) return true;
     r = await ctx.call('billing/void', { id, version, reason: v.reason }); msg = '請求を取り消しました。直してから、もう一度確定してください'; if (r.ok) { bill = null; detail = null; fees = null; }
   } else return false;
   if (r.ok) ctx.say(msg, 'ok'); else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');

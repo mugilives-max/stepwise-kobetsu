@@ -212,7 +212,7 @@ export async function payrollClick(ctx, a, b) {
   if (a === 'pr-close') { open = ''; detail = null; return true; }
   if (a === 'pr-print' || a === 'pr-print-mine') return false; // app.js で（新しい窓を先に開くため）
   if (a === 'pr-confirm') {
-    if (!confirm('この内容で確定しますか？ 講師に明細のお知らせが届きます。')) return true;
+    if (!confirm('この内容で確定しますか？ 講師に明細のお知らせのメールが届きます。')) return true;
     r = await ctx.call('payroll/confirm', { staffId: open, month, expectedNet: Number(b.dataset.net) }); msg = '確定しました'; if (r.ok) { detail = null; list = null; }
   } else if (a === 'pr-adj-del') { r = await ctx.call('payroll/adjust/delete', { id: b.dataset.id }); msg = '外しました'; if (r.ok) { detail = null; list = null; } }
   else return false;

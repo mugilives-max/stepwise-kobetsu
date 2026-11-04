@@ -191,6 +191,7 @@ export async function extrasSubmit(ctx, kind, el) {
     termsStep = 'request'; ctx.say(''); scrollTo(0, 0); return true;
   }
   if (kind === 'terms-request') {
+    if (v.mail && !confirm(`${termsPick.length}件の契約者に、同意のお願いのメールを送りますか？`)) return true;
     const r = await ctx.call('admin/terms/request', { familyIds: termsPick, note: String(v.note || '').trim(), mail: !!v.mail });
     if (r.ok) { terms = null; termsStep = ''; termsPick = []; scrollTo(0, 0); ctx.say(`${r.requested}契約者に同意をお願いしました${r.mailed ? `（メール ${r.mailed}通）` : ''}`, 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
     return true;
@@ -235,6 +236,7 @@ export async function extrasClick(ctx, a, b) {
   }
   if (a === 'eff-retry' || a === 'eff-retry-all') {
     const ids = a === 'eff-retry' ? [Number(b.dataset.id)] : effects.failed.filter(x => x.canRetry && (effTab === 'mail') === (x.kind === 'mail')).map(x => x.id); // 全部送り直すは、開いているタブの分だけ
+    if (!confirm(`${ids.length}件を送り直しますか？ メールは宛先にもう一度届きます。`)) return true;
     r = await ctx.call('admin/effects/retry', { ids });
     if (r.ok) { effects = null; effOpen = 0; ctx.say((r.failed||r.unknown) ? `${r.sent}件送信、${r.failed||0}件失敗、${r.unknown||0}件は結果不明です。${r.error}` : `${r.sent}件を送りました${r.dismissed ? '。変更・完了した対象は送信を取り下げました' : ''}`, (r.failed||r.unknown) ? 'error' : 'ok'); }
   } else if (a === 'eff-dismiss') {
