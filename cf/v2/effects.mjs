@@ -47,16 +47,21 @@ export async function deliverEffects(env,db,queued,fetcher=fetch,now=Date.now())
       payload=await res.json().catch(()=>null);
       if (!res.ok || !payload || payload.error) transport=payload?.error||'HTTP '+res.status;
     } catch(err) { transport=String(err?.message||err); }
-    const backs=payload?.writebacks||[];
+    const backs=payload?.writebacks||[], fs=payload?.failed||[], numbered=fs.length>0&&fs.every(f=>Number.isInteger(f.index));
     for (const table of ['lessons','meetings']) for (const w of backs) if (w.marker && w.eventId) await db.prepare('update '+table+" set calendarEventId = ?, meetUrl = case when ? <> '' then ? else meetUrl end where calendarEventId = ? or calendarEventId = ? || '@google.com'")
       .bind(String(w.eventId),String(w.meetUrl||''),String(w.meetUrl||''),String(w.marker),String(w.marker)).run();
-    for (const q of batch) {
+    for (const [pos,q] of batch.entries()) {
       const matches=(payload?.results||[]).filter(r=>r.id===q.key);
       let state='unknown',err=transport||'通知単位の送信結果を確認できません。再送前に送信先を確認してください';
       if (!transport && matches.length===1 && ['sent','failed','unknown'].includes(matches[0].status)) {state=matches[0].status;err=matches[0].error||'';}
+      // 項目ごとの結果が読めないときは、failed の番号（gas-effects。2026-10-14 本人）で、失敗した項目だけを失敗にする
+      else if (!transport && numbered) {
+        const f=fs.find(x=>x.index===pos);
+        if (f) {state=f.status==='unknown'?'unknown':'failed';err=f.error||'送信に失敗しました';}
+        else if (payload?.done===batch.length-fs.length) {state='sent';err='';}
+      }
       // Legacy relay: only an unambiguous complete success or a single identified failure is usable.
       else if (!transport && !Array.isArray(payload?.results)) {
-        const fs=payload?.failed||[];
         if (!fs.length && payload?.done===batch.length) {state='sent';err='';}
         else if (batch.length===1 && fs.length===1 && fs[0].kind===q.item.kind) {state=q.item.kind==='mail'?'unknown':'failed';err=fs[0].error||'送信に失敗しました';}
       }

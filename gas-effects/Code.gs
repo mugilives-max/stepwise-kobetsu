@@ -7,7 +7,8 @@
 // 公開は「ウェブアプリ」（実行するユーザー: 自分、アクセス: 全員）。その URL を Worker の GAS_URL に入れる。
 // 頼まれる形（cf/v2/effects.mjs の deliverEffects と同じ）:
 //   { action: 'effects', key, items: [{ kind: 'mail'|'calendarCreate'|'calendarPatch'|'calendarMeet'|'calendarDelete', ... }] }
-// 返す形: { ok: true, done, writebacks: [{ marker, eventId, meetUrl }], failed: [{ kind, error }] }
+// 返す形: { ok: true, done, writebacks: [{ marker, eventId, meetUrl }], failed: [{ index, kind, status, error, id }], results }
+// failed の index は items の何番目か（0 から）。status は failed（送っていない）か unknown（送れたか分からない）
 
 var KIND_HANDLERS_ = {
   mail: function (item) { sendMail_(item); return null; },
@@ -34,13 +35,13 @@ function doPost(e) {
       if (!handler) throw new Error('知らない種類: ' + item.kind);
       var outcome = deliverOnce_(item, handler);
       results.push(outcome);
-      if (outcome.status !== 'sent') { failed.push({kind: String(item.kind || ''), error: outcome.error, id: outcome.id}); continue; }
+      if (outcome.status !== 'sent') { failed.push({index: i, kind: String(item.kind || ''), status: outcome.status, error: outcome.error, id: outcome.id}); continue; }
       var w = outcome.writeback;
       if (w) writebacks.push(w);
       done++;
     } catch (err) {
       results.push({ id: String(item.deliveryId || ''), status: 'unknown', error: String(err.message || err) });
-      failed.push({ kind: String(item.kind || ''), error: String((err && err.message) || err).slice(0, 200) });
+      failed.push({ index: i, kind: String(item.kind || ''), status: 'unknown', error: String((err && err.message) || err).slice(0, 200) });
     }
   }
   return json_({ ok: true, done: done, writebacks: writebacks, failed: failed, results: results });
