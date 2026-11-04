@@ -110,7 +110,7 @@ function contractRows(esc, d) {
   const conditions = (d.conditions.items || []).flatMap(x => (x.history || []).map(c => ({ ...c, studentName: x.studentName }))).filter(c => c.status !== 'replaced')
     .map(c => ({ who: c.studentName, title: `${c.studentName}・第${c.no}版`, note: [`${c.fromMonth}から・${c.minutes}分 ${yen(c.fee)}`, c.subjects, agreedLine(c.agreedAt, c.consenterName)], status: c.status, open: fileBtn(esc, c.docFileId) }));
   const specials = [...(d.specials.items || []), ...(d.specials.past || [])].filter(c => c.status !== 'replaced')
-    .map(c => ({ who: c.studentName, title: `${c.studentName}・${c.title}${c.no > 1 ? ` 第${c.no}版` : ''}`, note: [`${dayOf(c.fromDate)}〜${dayOf(c.toDate)}・${c.minutes}分 ${yen(c.fee)}`, agreedLine(c.agreedAt, c.consenterName)], status: c.status, open: fileBtn(esc, c.docFileId) }));
+    .map(c => ({ who: c.studentName, title: `${c.title}${c.no > 1 ? ` 第${c.no}版` : ''}`, note: [c.studentName, `${dayOf(c.fromDate)}〜${dayOf(c.toDate)}・${c.minutes}分 ${yen(c.fee)}`, agreedLine(c.agreedAt, c.consenterName)], status: c.status, open: fileBtn(esc, c.docFileId) }));
   // 計画の版は行ごとに残る。同じ行の同じ版は新しい記録だけ、書面と同じ「生徒・期間・状態」でまとめる
   const seen = new Set(), groups = new Map();
   for (const l of d.plans || []) {
@@ -118,7 +118,7 @@ function contractRows(esc, d) {
     const g = JSON.stringify([l.studentId, l.startDate, l.endDate, l.status]);
     if (!groups.has(g)) groups.set(g, []); groups.get(g).push(l);
   }
-  const plans = [...groups.values()].map(ls => { const l = ls[0]; return { who: l.studentName, title: `${l.studentName}・${dayOf(l.startDate)}〜${dayOf(l.endDate)}`, note: [ls.map(x => `${x.subject} ${x.kind} ${x.approvedCount ?? x.count}回`).join('、')], status: l.status,
+  const plans = [...groups.values()].map(ls => { const l = ls[0]; return { who: l.studentName, title: l.studentName, note: [`${dayOf(l.startDate)}〜${dayOf(l.endDate)}`, ls.map(x => `${x.subject} ${x.kind} ${x.approvedCount ?? x.count}回`).join('、')], status: l.status,
     open: `<button class="small-btn" data-action="agreement-doc" data-refs="${esc(JSON.stringify(ls.map(x => ({ id: x.id, version: x.version }))))}">開く</button>` }; });
   return { terms, conditions, specials, plans };
 }
