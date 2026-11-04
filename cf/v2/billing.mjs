@@ -160,7 +160,7 @@ export async function monthPreview(c, familyId, month, { ignoreInvoiceId = '' } 
   out.canConfirm = !out.issues.length && items > 0;
   out.auto = out.canConfirm && !out.pendingCount;
   const fam = await c.db.prepare('select termsVersion from families where id = ?').bind(familyId).first();
-  out.normalDue = normalDueDate(today, fam && fam.termsVersion);
+  out.normalDue = normalDueDate(month, today, fam && fam.termsVersion);
   return out;
 }
 
@@ -550,8 +550,8 @@ export const billingRoutes = {
     for (const l of lines) plans.push(lineView(l, { studentName: names[l.studentId], minCount: l.status === 'proposed' ? await minCountFor(c, l) : 0 }));
     const fees = (await staffFees(c, `f.studentId in ${q} and f.decision <> 'pending' and (f.invoiceId = '' or l.date >= ?)`, ...ids, since)).map(f => ({ ...feeView(f), studentName: names[f.studentId] }));
     const invs = (await c.db.prepare("select * from invoices where familyId = ? order by month desc limit 48").bind(me.id).all()).results;
-    const invoices = [];
-    for (const v of invs) invoices.push({ ...invoiceView(v), bank:v.bankSnapshot || '', ...(await billingDocIds(c.db, v.id)), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
+    const invoices = [], bank = (await billingSettings(c.db)).bank;
+    for (const v of invs) invoices.push({ ...invoiceView(v), bank:v.bankSnapshot || bank, ...(await billingDocIds(c.db, v.id)), items: (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(v.id).all()).results.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) });
     return { plans, fees, invoices, terms, conditions, specials };
   },
   // 承認（回数を減らして承認・0回で見送り）

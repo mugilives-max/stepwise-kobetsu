@@ -110,7 +110,7 @@ test('migration preserves every existing column and row, including issued docume
  assert.deepEqual(snapshot(),before);assert.ok(before.termsConsents.length);assert.ok(before.planRevisions.length);assert.ok(before.conditions.length);assert.ok(before.specials.length);assert.ok(before.files.length);
 });
 
-test('families who agreed to terms r17 or later pay by the end of the confirming month, even after the 15th',async()=>{
+test('families who agreed to terms r17 or later pay by the end of the month after the lessons, even after the 15th',async()=>{
  const {h,auth,fam,kid,plan,approve}=await agreementFixture();
  h.clock=Date.parse('2026-09-01T12:00:00+09:00');
  await approve(await plan({startDate:'2026-09-01',endDate:'2026-09-30'}),{consentedAt:'2026-09-01T11:00:00+09:00'});

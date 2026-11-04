@@ -45,7 +45,7 @@ export async function sampleDocHtml(db, type, now) {
     const sp = { id: 'sp_sample', templateVersion: '20261020-r9', proposedAt: at, purpose: '英検準1級の合格に必要な技能を身につける', consenterName: '見本 花子', recordedAt: at, recordedByName: '見本 花子', no: 1, title: '英検準1級対策', content: '過去問の長文読解とライティングの添削。毎回、前回の答案を講師が採点して返し、次回の課題を決める。', reason: '毎回の答案の添削と、準1級の語彙・長文の準備に1回あたり2時間かかる。この準備はほかの生徒の指導には使えない。', prep: '過去問の解答作成、答案の添削', minutes: 90, fee: 7000, fromDate: '2026-11-01', toDate: '2027-01-31', note: '', termsVersion: terms.version, status: 'agreed', proposedAt: at, agreedAt: at, agreedVia: '保護者ページ', agreedBy: 'family:fam_sample', agreedNote: '' };
     return specialDocHtml({ sp, student, family, terms, proposer: '麦倉 優輔', now: at });
   }
-  const inv = { id: 'inv_sample01', month: '2026-11', total: 19000, confirmedAt: '2026-12-03T00:10:00.000Z', paidOn: '2026-12-10', paidMethod: '振込' };
+  const inv = { id: 'inv_sample01', month: '2026-11', total: 19000, confirmedAt: '2026-12-03T00:10:00.000Z', dueDate: '2026-12-31', paidOn: '2026-12-10', paidMethod: '振込' };
   if (type === 'invoice') {
     const items = [
       { date: '2026-11-04', studentName: '見本 太郎', kind: 'lesson', subject: '英語', lessonKind: '通常', minutes: 90, amount: 4500 },

@@ -107,7 +107,8 @@ async function familyAndItems(c, inv) {
 export async function storeInvoiceDoc(c, invoiceId) {
   const inv = await c.db.prepare('select * from invoices where id = ?').bind(invoiceId).first();
   const { family, items } = await familyAndItems(c, inv);
-  const html = invoiceDocHtml({ inv, items, family, settings: { ...(await billingSettings(c.db)), ...(inv.dueDate ? {bank:inv.bankSnapshot||''} : {}) } });
+  const settings = await billingSettings(c.db); // 確定のときの振込先を保つ。そのとき未登録だった請求は、今の振込先を載せる
+  const html = invoiceDocHtml({ inv, items, family, settings: { ...settings, bank: inv.bankSnapshot || settings.bank } });
   return putGenerated(c, { category: 'invoice', familyId: family.id, refType: 'invoice', refId: inv.id, name: `請求書_${inv.month}_${family.name}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: `${inv.month} 分` });
 }
 export async function storeReceiptDoc(c, invoiceId) {
