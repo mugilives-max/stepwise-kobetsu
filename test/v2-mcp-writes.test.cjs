@@ -320,3 +320,80 @@ test('two at once: the dry run judges a request like the real save; a third at t
   const third = (await wok('mcp/lessons/save', { requestId: 'req-pair-0009', items: [item('m3', a.id, '2026-10-24', '17:00')] })).lessons[0];
   assert.equal((await w('mcp/lessons/reschedule', { lessonId: third.id, version: third.version, date: '2026-10-23', start: '17:00', dryRun: true, force: true })).error.code, 'overlap');
 });
+
+test('more tools: sent lessons change subject, kind, mode and teacher; adjusting lessons go back to drafts; lessons rest without mail; teacher off, contacts and exam results', async () => {
+  const { h, auth, a, b, w, wok, count, familyMails } = await world();
+  await h.ok('admin/staff/invite', { auth, familyName: '架空', givenName: '講師', email: 'teacher@example.invalid', roles: ['teacher'] });
+  h.db2._sqlite.prepare("update staff set status = 'active' where email = 'teacher@example.invalid'").run();
+  const teacher = h.rows("select id, name from staff where email = 'teacher@example.invalid'")[0];
+  const save = async (rid, s, date, start = '17:00', extra = {}) => (await wok('mcp/lessons/save', { requestId: rid, items: [item('x1', s.id, date, start, extra)] })).lessons[0];
+  const show = (s, ids, rid) => wok('mcp/lessons/show', { requestId: rid, studentId: s.id, lessonIds: ids });
+
+  // 担当: 保存のときに選べる。いない講師は断る
+  assert.equal((await wok('mcp/lessons/save', { dryRun: true, items: [item('t1', a.id, '2026-10-20', '17:00', { staffId: 'st_none' })] })).items[0].status, 'invalid');
+  const taught = await save('req-more-0001', a, '2026-10-20', '17:00', { staffId: teacher.id });
+  assert.equal(taught.staffId, teacher.id);
+
+  // 調整中の授業の科目・種類・形式・担当を変える（日時はそのまま。メール・カレンダーは 0）
+  const l1 = await save('req-more-0002', a, '2026-10-21');
+  await show(a, [l1.id], 'req-more-0003');
+  const v1 = (await wok('mcp/lessons/get', { lessonIds: [l1.id] })).lessons[0];
+  const change = { lessonId: l1.id, version: v1.version, subject: '数学', kind: '演習', deliveryMode: 'online', staffId: teacher.id };
+  const dry = await wok('mcp/lessons/reschedule', { ...change, dryRun: true });
+  assert.deepEqual([dry.after.subject, dry.after.kind, dry.after.deliveryMode, dry.after.staffId, dry.after.date], ['数学', '演習', 'online', teacher.id, '2026-10-21']);
+  assert.deepEqual([dry.effects.mails, dry.effects.calendar], [0, 'none']);
+  const mailsBefore = h.mails().length;
+  const changed = await wok('mcp/lessons/reschedule', { ...change, requestId: 'req-more-0004', confirm: dry.confirm });
+  assert.deepEqual([changed.lesson.subject, changed.lesson.kind, changed.lesson.deliveryMode, changed.lesson.staffId], ['数学', '演習', 'online', teacher.id]);
+  assert.equal(h.mails().length, mailsBefore);
+
+  // 下書きに戻す: 調整中だけ。保護者のページから消える。下書きを選ぶと何も変えない
+  const l2 = await save('req-more-0005', b, '2026-10-22');
+  assert.equal((await w('mcp/lessons/unsend', { dryRun: true, studentId: b.id, lessonIds: [l2.id] })).error.code, 'badTargets');
+  await show(b, [l2.id], 'req-more-0006');
+  const undo = await wok('mcp/lessons/unsend', { dryRun: true, studentId: b.id, lessonIds: [l2.id] });
+  assert.deepEqual([undo.lessons.length, undo.mails], [1, 0]);
+  assert.equal((await wok('mcp/lessons/get', { lessonIds: [l2.id] })).lessons[0].status, 'proposed', 'dryRun は何も変えない');
+  const unsent = await wok('mcp/lessons/unsend', { requestId: 'req-more-0007', studentId: b.id, lessonIds: [l2.id] });
+  assert.deepEqual([unsent.unsent, unsent.lessons[0].status], [1, 'held']);
+  assert.equal((await wok('mcp/lessons/unsend', { requestId: 'req-more-0007', studentId: b.id, lessonIds: [l2.id] })).repeated, true);
+
+  // お休み: 確かめの値が要る。メールはない。下書きは断る
+  assert.equal((await w('mcp/lessons/rest', { lessonId: l2.id, version: unsent.lessons[0].version, dryRun: true })).error.code, 'badStatus');
+  const rest = await wok('mcp/lessons/rest', { lessonId: l1.id, version: changed.lesson.version, dryRun: true });
+  assert.deepEqual([rest.becomes, rest.effects.mails], ['rested', 0]);
+  assert.equal((await w('mcp/lessons/rest', { lessonId: l1.id, version: changed.lesson.version, requestId: 'req-more-0008' })).error.code, 'needConfirm');
+  const rested = await wok('mcp/lessons/rest', { lessonId: l1.id, version: changed.lesson.version, requestId: 'req-more-0009', confirm: rest.confirm });
+  assert.equal(rested.lesson.status, 'rested');
+  assert.equal(familyMails('aoki@example.invalid').length, 0);
+
+  // 先生の休み: 重なる授業を見せ、登録する。同じ時間は二重に入れない
+  const off = { staffId: teacher.id, date: '2026-10-20', dateTo: '2026-10-21', note: '私用' };
+  const offDry = await wok('mcp/teacherOff/add', { ...off, dryRun: true });
+  assert.deepEqual([offDry.teacher, offDry.dates.length, offDry.lessons.map(l => l.id), offDry.wouldSave], [teacher.name, 2, [taught.id], true]);
+  assert.equal(count('select count(*) n from staffUnavailability'), 0);
+  assert.equal((await wok('mcp/teacherOff/add', { ...off, requestId: 'req-more-0010' })).ids.length, 2);
+  assert.equal(count('select count(*) n from staffUnavailability'), 2);
+  assert.equal((await w('mcp/teacherOff/add', { ...off, requestId: 'req-more-0011' })).error.code, 'duplicate');
+  assert.equal((await wok('mcp/teacherOff/add', { staffId: '', date: '2026-10-24', dryRun: true })).teacher, '教室全体');
+
+  // 連絡を済みにする: 授業は変えない
+  h.db2._sqlite.prepare("insert into lessonRequests (id, lessonId, studentId, kind, note, fromKind, status, receivedAt, createdAt, updatedAt) values ('rq_test', ?, ?, 'move', '別の日に', 'family', 'open', '2026-10-02T03:00:00.000Z', '2026-10-02T03:00:00.000Z', '2026-10-02T03:00:00.000Z')").run(l2.id, b.id);
+  assert.equal((await wok('mcp/contacts/resolve', { contactId: 'rq_test', dryRun: true })).dryRun, true);
+  assert.equal(h.rows("select status from lessonRequests where id = 'rq_test'")[0].status, 'open');
+  assert.equal((await wok('mcp/contacts/resolve', { contactId: 'rq_test' })).resolved, true);
+  assert.equal(h.rows("select status from lessonRequests where id = 'rq_test'")[0].status, 'done');
+  assert.equal((await wok('mcp/contacts/resolve', { contactId: 'rq_test' })).resolved, false, 'もう済み');
+
+  // 試験の結果: 登録と更新。同じ試験は二重に作らない。保護者のページに出る
+  const exam = { studentId: a.id, series: '定期テスト', name: '2学期中間', date: '2026-10-01', scores: [{ subject: '英語', score: 80, max: 100 }, { subject: '数学', score: 70, max: 100 }] };
+  assert.equal((await wok('mcp/exams/save', { ...exam, dryRun: true })).scores.length, 2);
+  assert.equal(count('select count(*) n from exams'), 0);
+  assert.equal((await w('mcp/exams/save', { ...exam, dryRun: true, scores: [{ subject: '英語', score: 120, max: 100 }] })).error.code, 'badNumber');
+  const made = await wok('mcp/exams/save', { ...exam, requestId: 'req-more-0012' });
+  assert.equal(count('select count(*) n from examScores'), 2);
+  const dup = await w('mcp/exams/save', { ...exam, requestId: 'req-more-0013' });
+  assert.equal(dup.error.code, 'duplicate');
+  await wok('mcp/exams/save', { studentId: a.id, examId: made.exam.examId, version: dup.error.version, scores: [{ subject: '英語', score: 85, max: 100 }], requestId: 'req-more-0014' });
+  assert.equal(h.rows("select score from examScores where subject = '英語'")[0].score, 85);
+});

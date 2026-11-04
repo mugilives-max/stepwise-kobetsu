@@ -40,7 +40,7 @@ function num(v, { int = false, min = 0, max = 100000 } = {}) {
   if (!Number.isFinite(n) || n < min || n > max || (int && !Number.isInteger(n))) fail('badNumber', '数を確かめてください（点数・順位・偏差値など）');
   return Math.round(n * 10) / 10;
 }
-function scoreFields(s) {
+export function scoreFields(s) {
   const subject = String(s.subject || '').trim();
   if (!subject || subject.length > 20) fail('badSubject', '科目を20文字以内で入れてください');
   const out = { subject, score: num(s.score, { max: 10000 }), max: num(s.max, { max: 10000 }), average: num(s.average, { max: 10000 }), rank: num(s.rank, { int: true, min: 1 }), rankOf: num(s.rankOf, { int: true, min: 1 }), deviation: num(s.deviation, { min: 0, max: 150 }) };
