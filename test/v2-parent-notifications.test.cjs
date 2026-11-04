@@ -110,7 +110,7 @@ test('migration preserves every existing column and row, including issued docume
  assert.deepEqual(snapshot(),before);assert.ok(before.termsConsents.length);assert.ok(before.planRevisions.length);assert.ok(before.conditions.length);assert.ok(before.specials.length);assert.ok(before.files.length);
 });
 
-test('families who agreed to terms r17 or later pay by the end of the confirming month, even after the 15th',async()=>{
+test('new invoices are due at the end of the month after the lessons, even when confirmed after the 15th',async()=>{
  const {h,auth,fam,kid,plan,approve}=await agreementFixture();
  h.clock=Date.parse('2026-09-01T12:00:00+09:00');
  await approve(await plan({startDate:'2026-09-01',endDate:'2026-09-30'}),{consentedAt:'2026-09-01T11:00:00+09:00'});
@@ -124,11 +124,11 @@ test('delayed invoice requires an agreed date; void notice and original records 
  const {h,auth,fam,kid,parent,plan,approve}=await agreementFixture();
  h.clock=Date.parse('2026-09-01T12:00:00+09:00');
  await approve(await plan({startDate:'2026-09-01',endDate:'2026-09-30'}),{consentedAt:'2026-09-01T11:00:00+09:00'});
- h.clock=Date.parse('2026-10-16T12:00:00+09:00');
+ h.clock=Date.parse('2026-10-31T12:00:00+09:00');
  await h.ok('schedule/lessons/create',{auth,studentId:kid.id,date:'2026-09-10',start:'17:00',minutes:90,subject:'数学',deliveryMode:'in_person',done:true});
  assert.equal((await h.call('billing/confirm',{auth,familyId:fam.id,month:'2026-09',dueReviewed:true})).error.code,'needDueAgreement');
- const iv=(await h.ok('billing/confirm',{auth,familyId:fam.id,month:'2026-09',dueReviewed:true,dueDate:'2026-10-23',dueNote:'【テスト】10/16 LINEで保護者と合意'})).invoice;
- assert.equal(iv.dueDate,'2026-10-23');assert.match(h.mails().at(-1).body,/2026-10-23/);
+ const iv=(await h.ok('billing/confirm',{auth,familyId:fam.id,month:'2026-09',dueReviewed:true,dueDate:'2026-11-06',dueNote:'【テスト】10/31 LINEで保護者と合意'})).invoice;
+ assert.equal(iv.dueDate,'2026-11-06');assert.match(h.mails().at(-1).body,/2026-11-06/);
  const before=h.rows('select * from invoiceItems where invoiceId=?',iv.id);
  const doc=(await h.ok('family/money',{auth:parent})).invoices[0].invoiceDocId;
  await h.ok('billing/void',{auth,id:iv.id,version:iv.version,reason:'【テスト】内訳の訂正'});

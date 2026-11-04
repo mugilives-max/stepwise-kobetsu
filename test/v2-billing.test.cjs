@@ -411,3 +411,29 @@ test('no charge: a done lesson marked 請求しない leaves the bill but keeps 
   cur = h.rows('select * from lessons where id = ?', l1.id)[0];
   assert.equal((await h.call('schedule/lessons/charge', { auth, id: l1.id, version: cur.version, noCharge: true })).error.code, 'invoiced');
 });
+
+test('an invoice confirmed before the bank was set shows the bank set later; one confirmed after keeps the bank it was issued with', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
+  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
+  const parent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' })).auth;
+  const line = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-09-01', endDate: '2026-09-30', count: 2, minutes: 90, fee: 4500 })).line;
+  await h.ok('billing/plans/send', { auth, familyId: fam.id });
+  h.clock = at('2026-09-01T09:00:00');
+  await h.ok('family/plans/decide', { consenterName: '架空 保護者', auth: parent, id: line.id, version: line.version + 1, approvedCount: 2 });
+  h.clock = at('2026-10-02T12:00:00');
+  const doc = async id => (await (await h.raw('GET', (await h.ok('files/link', { auth: parent, id })).url)).text());
+  await h.ok('schedule/lessons/create', { auth, studentId: kid.id, date: '2026-09-10', start: '17:00', minutes: 90, subject: '数学', deliveryMode: 'in_person', done: true });
+  const before = (await h.ok('billing/confirm', { auth, dueReviewed: true, familyId: fam.id, month: '2026-09' })).invoice;
+  const first = (await h.ok('family/money', { auth: parent })).invoices[0];
+  assert.equal(first.bank, ''); assert.match(await doc(first.invoiceDocId), /別途ご案内します/);
+  await h.ok('admin/billing/settings/set', { auth, bank: '架空銀行 第一支店 普通 0000000', note: '' });
+  assert.equal((await h.ok('family/money', { auth: parent })).invoices[0].bank, '架空銀行 第一支店 普通 0000000', '保護者ページは今の振込先');
+  assert.match(await doc(first.invoiceDocId), /別途ご案内します/, '作り直すまで書面は発行のまま');
+  const rebuilt = (await h.ok('admin/billing/docs/rebuild', { auth, id: before.id })).docs;
+  assert.match(await doc(rebuilt.invoiceDocId), /架空銀行 第一支店/);
+  h.db2._sqlite.prepare('update invoices set bankSnapshot = ? where id = ?').run('架空銀行 第一支店 普通 0000000', before.id); // 振込先の登録のあとに確定した請求と同じ
+  await h.ok('admin/billing/settings/set', { auth, bank: '架空銀行 第二支店 普通 1111111', note: '' });
+  assert.equal((await h.ok('family/money', { auth: parent })).invoices[0].bank, '架空銀行 第一支店 普通 0000000', '確定のときの振込先のまま');
+  assert.match(await doc((await h.ok('admin/billing/docs/rebuild', { auth, id: before.id })).docs.invoiceDocId), /架空銀行 第一支店/);
+});
