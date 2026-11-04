@@ -6,7 +6,7 @@ import { call, esc, liveState } from '/assets/v2/api.js';
 import { gradesView, gradesClickShared, uploadFile, openFile } from '/assets/v2/grades-view.js?v=20261102-gtable2';
 import { monthCalendar, shortTestTitle, gridStart, gridEnd } from '/assets/v2/calendar.js?v=20261103-shortbars2';
 import { EVENT_KIND } from '/assets/v2/schedule-view.js?v=20261028-r16b';
-import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261101-docs2';
+import { lessonRows, dayRows, nextLessonHero, notOver, lessonSheet, homeworkRows, recordCards, eventRows, eventSheet, wireSheets, keepSheet, picon, md, daysText } from '/assets/v2/portal-ui.js?v=20261104-invoicedue';
 
 const app = document.getElementById('app'), nav = document.getElementById('nav');
 const KEY = 'sw2_student_k';
