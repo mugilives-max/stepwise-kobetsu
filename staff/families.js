@@ -232,15 +232,19 @@ export async function familiesSubmit(ctx, kind, el) {
     r = await ctx.call('admin/renewal/offer', { familyId: detail.id, fromMonth: v.fromMonth, students });
     if (r.ok) { famSheet = null; detail = null; if (renewalDone) renewalDone(); ctx.say(r.mailed ? '契約更新の手続きを案内しました' : '案内を作りました。メールはまだ送られていません', r.mailed ? 'ok' : 'error'); return true; }
   } else if (kind === 'cond-propose') {
+    if (!confirm(`${detail.email} に個別受講条件書のお知らせのメールを送りますか？`)) return true;
     r = await ctx.call('admin/conditions/propose', { studentId: el.dataset.id, minutes: Number(v.minutes), fee: Number(v.fee), deliveryMode: v.deliveryMode, groupSize: v.groupSize, subjects: readSubjects(el), note: v.note, fromMonth: v.fromMonth });
     if (r.ok) { famSheet = null; detail = null; list = null; ctx.say(`個別受講条件書（第${r.condition.no}版）を保護者にお知らせしました`, 'ok'); return true; }
   } else if (kind === 'special-propose') {
+    if (!confirm(`${detail.email} に特別単価の提案のメールを送りますか？`)) return true;
     r = await ctx.call('admin/specials/propose', { studentId: el.dataset.id, replaceId: el.dataset.replace || undefined, title: v.title, purpose: v.purpose, content: v.content, reason: v.reason, prep: v.prep, minutes: Number(v.minutes), fee: Number(v.fee), fromDate: v.fromDate, toDate: v.toDate, note: v.note });
     if (r.ok) { famSheet = null; detail = null; list = null; ctx.say(`特別単価「${r.special.title}」を保護者に提案しました`, 'ok'); return true; }
   } else if (kind === 'special-record') {
+    if (!confirm(`承諾を記録すると、${detail.email} に控えのメールが届きます。記録しますか？`)) return true;
     r = await ctx.call('admin/specials/record', { id: el.dataset.id, consentedAt: v.consentedAt + '+09:00', consenterName: v.consenterName, via: v.via, note: v.note });
     if (r.ok) { famSheet = null; detail = null; list = null; ctx.say('特別単価の承諾を記録しました', 'ok'); return true; }
   } else if (kind === 'cond-record') {
+    if (!confirm(`承諾を記録すると、${detail.email} に控えのメールが届きます。記録しますか？`)) return true;
     r = await ctx.call('admin/conditions/record', { id: el.dataset.id, consentedAt: v.consentedAt + '+09:00', consenterName: v.consenterName, via: v.via, note: v.note });
     if (r.ok) { famSheet = null; detail = null; list = null; ctx.say('条件の承諾を記録しました', 'ok'); return true; }
   } else if (kind === 'stu-create') {
@@ -276,6 +280,7 @@ export async function familiesClick(ctx, a, b) {
     if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error'); return true;
   }
   if (a === 'fam-invite') {
+    if (!confirm(`${detail.email} に保護者ページの招待メールを送りますか？`)) return true;
     r = await ctx.call('admin/families/invite', { id: detail.id });
     if (r.ok) { shown = { text: r.mailHeld ? '招待のリンクを作りました。切り替え前のため、メールは送っていません（7日有効・1回だけ）。' : '招待のメールを送りました。届かないときは、このリンクを LINE などで渡してください（7日有効・1回だけ）。', url: r.inviteUrl }; ctx.say(''); return true; }
   } else if (a === 'fam-status') {

@@ -355,7 +355,7 @@ function createForm(ctx, me) {
 }
 function editForm(ctx, l) {
   const after = Date.now() > Date.parse(l.date + 'T23:00:00+09:00') - 86400e3;
-  return `<form class="stack" data-form="sch-update" data-id="${ctx.esc(l.id)}" data-version="${l.version}" style="margin:8px 0 0">
+  return `<form class="stack" data-form="sch-update" data-id="${ctx.esc(l.id)}" data-version="${l.version}"${l.status === 'decided' ? ` data-mail-if-moved="${ctx.esc(l.date)}|${ctx.esc(l.start)}|${l.minutes}"` : ''} style="margin:8px 0 0">
     <div class="row"><label style="flex:1">日付<input type="date" name="date" value="${l.date}"></label><label style="flex:1">開始<input type="time" name="start" value="${l.start}" step="300"></label><label style="flex:1">長さ<select name="minutes">${minutesOptions(l.minutes)}</select></label></div>
     <div class="row"><label style="flex:1">科目<input name="subject" maxlength="30" value="${ctx.esc(l.subject)}"></label><label style="flex:1">種類<select name="kind">${kindOptions(ctx, l.kind)}</select></label>
       <label style="flex:1">形式<select name="deliveryMode"><option value="in_person"${l.deliveryMode === 'in_person' ? ' selected' : ''}>対面</option><option value="online"${l.deliveryMode === 'online' ? ' selected' : ''}>オンライン</option></select></label></div>
@@ -450,6 +450,8 @@ export async function scheduleSubmit(ctx, kind, el) {
   }
   if (kind === 'sch-update') {
     const body = { id: el.dataset.id, version: Number(el.dataset.version), date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, kind: v.kind, deliveryMode: v.deliveryMode, staffId: v.staffId, note: v.note, lateStart: v.lateStart === 'on', receivedAt: v.receivedAt || '' };
+    const was = (el.dataset.mailIfMoved || '').split('|'); // 確定した授業の日時が変わるときだけメールが届く
+    if (was.length === 3 && (v.date !== was[0] || v.start !== was[1] || Number(v.minutes) !== Number(was[2])) && !confirm('確定した授業の日時が変わるので、保護者にお知らせのメールが届きます。保存しますか？')) return true;
     let r = await ctx.call('schedule/lessons/update', body);
     const saved = x => x.ok && x.fee ? `保存しました（開始を遅らせた分の取消料 ${yen(x.fee.amount)}）` : x.ok && x.backToAdjusting ? '保存しました（調整中に戻しました）' : '保存しました';
     if ((await after(ctx, r, saved(r))) === 'force') { r = await ctx.call('schedule/lessons/update', { ...body, force: true }); await after(ctx, r, saved(r)); }
@@ -459,6 +461,7 @@ export async function scheduleSubmit(ctx, kind, el) {
   if (kind === 'sch-swap') {
     const body = { id: el.dataset.id, version: Number(el.dataset.version), date: v.date, start: v.start, minutes: Number(v.minutes), subject: v.subject, deliveryMode: v.deliveryMode, staffId: v.staffId };
     const ok = r => r.ok ? (sel = v.date, '代わりに実施した授業を入れました。保護者にお知らせしました') : '';
+    if (!confirm('実施済みで入れて、保護者にお知らせのメールを送りますか？')) return true;
     let r = await ctx.call('schedule/lessons/swap', body);
     if (await after(ctx, r, ok(r)) === 'force') { r = await ctx.call('schedule/lessons/swap', { ...body, force: true }); await after(ctx, r, ok(r)); }
     return true;
@@ -470,6 +473,7 @@ export async function scheduleSubmit(ctx, kind, el) {
     return true;
   }
   if (kind === 'sch-cancel') {
+    if (!confirm('キャンセルにして、保護者にお知らせのメールを送りますか？')) return true;
     const r = await ctx.call('schedule/lessons/cancel', { id: el.dataset.id, version: Number(el.dataset.version), receivedAt: v.receivedAt || '', noNotice: v.noNotice === 'on' });
     await after(ctx, r, r.ok && r.fee ? `キャンセルにしました（キャンセル料 ${yen(r.fee.amount)}）` : 'キャンセルにしました');
     return true;
@@ -520,6 +524,7 @@ export async function scheduleClick(ctx, a, b) {
   if(a==='sch-renotify'&&l) {
     const via=prompt('案内方法を入力してください：email / LINE / 電話 / 対面','email');
     if(!via)return true;
+    if(via==='email'&&!confirm('保護者に再案内のメールを送りますか？'))return true;
     let note='';
     if(via!=='email') {
       const preview=await ctx.call('schedule/lessons/renotify',{studentId:l.studentId,lessonIds:[l.id],via,preview:true});
@@ -536,7 +541,7 @@ export async function scheduleClick(ctx, a, b) {
   const simple = { 'sch-done': ['schedule/lessons/done', '実施済みにしました'], 'sch-rest': ['schedule/lessons/rest', 'お休みにしました'], 'sch-cancel': ['schedule/lessons/cancel', 'キャンセルにしました'], 'sch-delete': ['schedule/lessons/delete', '削除しました'] };
   if (simple[a] && l) {
     if (a === 'sch-delete' && !confirm('この授業を削除しますか？ 入力ミスのときだけ使ってください（記録は残りません）。お休み・キャンセルは別のボタンです。')) return true;
-    if (a === 'sch-cancel' && !confirm('この授業をキャンセル（キャンセル料の対象）にしますか？ 前日23時までの連絡なら「お休みにする」を使ってください。')) return true;
+    if (a === 'sch-cancel' && !confirm('この授業をキャンセル（キャンセル料の対象）にして、保護者にお知らせのメールを送りますか？ 前日23時までの連絡なら「お休みにする」を使ってください。')) return true;
     await after(ctx, await ctx.call(simple[a][0], { id: l.id, version: l.version }), simple[a][1]); return true;
   }
   if (a === 'sch-charge' && l) {

@@ -580,7 +580,7 @@ export async function employmentSubmit(ctx,kind,el){
    drafts.delete(formKey(el));cache=null;ctx.say('給与の設定を保存しました','ok');return true;
   }
   else if(kind==='em-email'){route='employment/email';msg='メールアドレスを保存しました。メールは送っていません。';}
-  else if(kind==='em-issue'){route='employment/contract/issue';msg=cache?.profile?.data?.deliveryMethod==='electronic'?'発行しました。本人が希望したメールアドレスへ契約書を送ります。':'発行しました。本人の画面に契約書が出ています。';}
+  else if(kind==='em-issue'){if(cache?.profile?.data?.deliveryMethod==='electronic'&&!confirm('発行すると、本人が希望したメールアドレスへ契約書の全文が届きます。発行しますか？'))return true;route='employment/contract/issue';msg=cache?.profile?.data?.deliveryMethod==='electronic'?'発行しました。本人が希望したメールアドレスへ契約書を送ります。':'発行しました。本人の画面に契約書が出ています。';}
   else if(kind==='em-withdraw')route='employment/contract/withdraw';
   else if(kind==='em-delivery'){route='employment/contract/delivery';body.deliveredAt=v.deliveredAt+':00+09:00';msg='記録しました。';}
   else if(kind==='em-paper'){route='employment/contract/paper';body.agreedAt=v.agreedAt+':00+09:00';}

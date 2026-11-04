@@ -1,23 +1,23 @@
 import { bankPage, bankSubmit, bankClick, captureBank, resetBank } from '/staff/bank.js?v=20261026-p4';
 import { rulesPage, rulesSubmit, resetRules } from '/staff/rules.js?v=20261025-layout';
-import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261026-p4';
+import { employmentPage, workPage, employmentSubmit, employmentClick, captureEmployment, restoreEmployment, resetEmployment } from '/staff/employment.js?v=20261104-mailconfirm';
 import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=20261027-r15';
 // スタッフの画面（作り直し v2、1段目）。ログイン・最初の設定・招待・再設定・アカウント・スタッフの管理。
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
-import { familiesPage, familyDetailPage, familyBar, familiesBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261104-famactions';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261103-nocharge';
+import { familiesPage, familyDetailPage, familyBar, familiesBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261104-mailconfirm';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261104-mailconfirm';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261028-r16b';
-import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261102-billtitle';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261104-famactions';
+import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261104-mailconfirm';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261104-mailconfirm';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261028-r16b';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda2';
-import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261026-p4';
+import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261104-mailconfirm';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
-import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261030-renewonce';
+import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261104-mailconfirm';
 import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261102-gtable2';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261102-gtable2';
-import { billingPick } from '/staff/billing.js?v=20261102-billtitle';
+import { billingPick } from '/staff/billing.js?v=20261104-mailconfirm';
 
 const store = session('sw2_staff');
 const ROLE_LABEL = { teacher: '講師', manager: '教室管理者', sysadmin: 'システム管理者' };
@@ -300,6 +300,7 @@ app.addEventListener('submit', ev => {
     else if (kind === 'reset') { r = await call('staff/reset/confirm', { token: route().token, password: v.password }); if (r.ok) return signedIn(r); }
     else if (kind === 'password') { r = await call('staff/password', { current: v.current, next: v.next }, store.get()); if (r.ok) { el.reset(); return say('パスワードを変えました', 'ok'); } }
     else if (kind === 'invite-staff') {
+      if (!confirm(`${v.email} に招待のメールを送りますか？`)) return;
       r = await call('admin/staff/invite', { familyName: v.familyName, givenName: v.givenName, email: v.email, roles: checked(el, 'roles') }, store.get());
       if (r.ok) { shownLink = { name: r.staff.name, url: r.inviteUrl }; staffList = null; staffOpen = ''; return say(''); }
     } else if (kind === 'roles') {
@@ -340,7 +341,7 @@ document.addEventListener('click', ev => {
       r = await call('staff/bootstrap', { legacyToken: legacyToken() });
       if (r.ok) { bootstrap = null; location.hash = '#invite=' + r.inviteUrl.split('#invite=')[1]; return; }
     } else if (a === 'logout') { await call('staff/logout', {}, store.get()); store.set(''); me = null; resetBank(); resetEmployment(); location.hash = ''; return say('ログアウトしました', 'ok'); }
-    else if (a === 'reinvite') { r = await call('admin/staff/reinvite', { id: b.dataset.id }, store.get()); if (r.ok) { shownLink = { name: b.dataset.name, url: r.inviteUrl }; staffOpen = ''; return say(''); } }
+    else if (a === 'reinvite') { if (!confirm(`${b.dataset.name}さんに招待のメールを送り直しますか？`)) return; r = await call('admin/staff/reinvite', { id: b.dataset.id }, store.get()); if (r.ok) { shownLink = { name: b.dataset.name, url: r.inviteUrl }; staffOpen = ''; return say(''); } }
     else if (a === 'status') {
       if (b.dataset.status === 'stopped' && !confirm('このスタッフを停止しますか？ ログイン中の端末もすぐに使えなくなります。')) return;
       r = await call('admin/staff/update', { id: b.dataset.id, version: Number(b.dataset.version), status: b.dataset.status }, store.get());
