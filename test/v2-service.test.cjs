@@ -14,6 +14,11 @@ test('the service key reads as the owner, refuses writes, and needs the exact ke
   assert.equal(list.manager, true, '代表として読む');
   const hub = await h.ok('students/hub', { serviceKey: KEY, studentId: kid.id });
   assert.equal(hub.basic.familyName, '架空家');
+  assert.equal(hub.basic.studentLink, '', '外のサービスには専用リンクを渡さない');
+  assert.match((await h.ok('students/hub', { auth, studentId: kid.id })).basic.studentLink, /student\/\?k=/, '管理画面には出す');
+  const month = await h.ok('monthly/overview', { serviceKey: KEY });
+  assert.equal(month.payroll.restricted, true, '月の仕事は読めるが、給与は見せない');
+  assert.equal((await h.call('payroll/month', { serviceKey: KEY, month: '2026-10' })).error.code, 'service');
   assert.equal((await h.call('students/list', { serviceKey: 'wrong' })).error.code, 'badKey');
   assert.equal((await h.call('students/list', { serviceKey: KEY + 'x' })).error.code, 'badKey');
   assert.equal((await h.call('schedule/lessons/create', { serviceKey: KEY, studentId: kid.id, date: '2026-10-20', start: '17:00', minutes: 60, subject: '数学' })).error.code, 'service', '書き込みは断る');
