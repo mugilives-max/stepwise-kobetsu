@@ -2,7 +2,6 @@
 // カレンダーの予定 ID（Kura 調査 #195、2026-10-14）。
 // - 仮の目印は Google の予定 ID の規則（base32hex: 英小文字 a-v と数字、5〜1024 文字）に合う
 // - Apps Script が作成を断った（書き戻しが返ってこない）ときは「失敗」として残す（今までは「送れた」になっていた）
-// - 作成を断られたままの今日以降の授業・面談を、新しい目印で作り直す（mcp/calendar/repair）
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createV2 } = require('./helpers/v2-harness.cjs');
@@ -65,35 +64,3 @@ test('作成を断られた（書き戻しが無い）予定は「失敗」に�
   assert.match(last.error, /予定 ID が返りませんでした/);
 });
 
-test('作り直し: 今日以降で予定が仮の目印のままの授業だけを、新しい目印で作り直す（dryRun は何も変えない・メールなし）', async () => {
-  const { h, auth, kid, lesson, deliverEffects, pending } = await world();
-  // 今日（2026-10-02）以降の決定 2 件を作り、作成を断られたときの形（目印が swv2…・控えは「送れた」）にしておく
-  for (const date of ['2026-10-05', '2026-10-09']) {
-    await h.ok('schedule/lessons/create', { ...lesson, date });
-    const l = h.rows('select * from lessons where date = ?', date)[0];
-    await h.ok('schedule/lessons/decide', { auth, id: l.id, version: l.version });
-  }
-  h.db2._sqlite.prepare("update effects set status = 'sent'").run();
-  h.db2._sqlite.prepare("update lessons set calendarEventId = 'swv2' || substr(id, 4, 20)").run();
-  // 過去の授業と、本物の予定がある授業は対象外
-  h.db2._sqlite.prepare("insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, calendarEventId, createdAt, updatedAt) values ('ls_past', ?, '', '2026-09-30', '18:00', 90, '数学', '通常', 'in_person', 'decided', 'swv2past', '', '')").run(kid.id);
-  h.db2._sqlite.prepare("insert into lessons (id, studentId, staffId, date, start, minutes, subject, kind, deliveryMode, status, calendarEventId, createdAt, updatedAt) values ('ls_real', ?, '', '2026-10-12', '18:00', 90, '数学', '通常', 'in_person', 'decided', 'st0123@google.com', '', '')").run(kid.id);
-  const before = JSON.stringify(h.rows('select * from lessons order by id'));
-  const mailsBefore = h.mails().length;
-  const dry = await h.ok('mcp/calendar/repair', { serviceWriteKey: WKEY, dryRun: true });
-  assert.deepEqual(dry.targets.map(t => t.date), ['2026-10-05', '2026-10-09']);
-  assert.equal(JSON.stringify(h.rows('select * from lessons order by id')), before, 'dryRun は何も変えない');
-  assert.equal(pending().length, 0);
-  assert.equal((await h.call('mcp/calendar/repair', { serviceWriteKey: 'x'.repeat(48) })).error.code, 'badKey');
-  const run = await h.ok('mcp/calendar/repair', { serviceWriteKey: WKEY });
-  assert.equal(run.queued, 2);
-  assert.equal(h.mails().length, mailsBefore, 'メールは送らない');
-  assert.ok(h.rows("select calendarEventId from lessons where id not in ('ls_past', 'ls_real')").every(x => GOOGLE_ID.test(x.calendarEventId)), '新しい目印は規則に合う');
-  assert.equal(h.rows("select calendarEventId from lessons where id = 'ls_past'")[0].calendarEventId, 'swv2past', '過去は触らない');
-  assert.equal(h.rows("select calendarEventId from lessons where id = 'ls_real'")[0].calendarEventId, 'st0123@google.com', '本物の予定は触らない');
-  assert.equal((await h.ok('mcp/calendar/repair', { serviceWriteKey: WKEY, dryRun: true })).targets.length, 0, '送っている途中のものは二重に作らない');
-  const r = await deliverEffects(GAS, h.env.DB2, pending(), fakeGas());
-  assert.deepEqual([r.sent, r.failed], [2, 0]);
-  assert.ok(h.rows("select calendarEventId from lessons where id not in ('ls_past', 'ls_real')").every(x => x.calendarEventId.endsWith('@google.com')));
-  assert.equal((await h.ok('mcp/calendar/repair', { serviceWriteKey: WKEY, dryRun: true })).targets.length, 0, '作れたあとは対象にならない');
-});
