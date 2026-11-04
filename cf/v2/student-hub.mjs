@@ -101,7 +101,7 @@ export const studentHubRoutes = {
       if (s.trial || await studentEnrollment(c.db, s.id)) out.enrollment = { offer: await studentEnrollment(c.db, s.id), termsReady: !!(await currentTerms(c.db)).version, email: s.familyEmail, familyActive: s.familyStatus === 'active' };
       out.basic = { familyId: s.familyId, familyName: s.familyLabel, guardianName: s.guardianName, email: s.familyEmail, phone: s.familyPhone, familyStatus: s.familyStatus, school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, note: s.note, enrolledOn: s.enrolledOn, subjects: s.subjects, condition: await studentConditions(c.db, s.id),
         // 生徒の専用リンク（2026-10-28 本人「ここに生徒の専用リンクが存在するべき」）。off. は使えない鍵（MCP で登録した体験生）
-        studentLink: s.linkCode && !String(s.linkCode).startsWith('off.') ? studentLink(s.linkCode) : '', studentVersion: s.version };
+        studentLink: !c.serviceStaff && s.linkCode && !String(s.linkCode).startsWith('off.') ? studentLink(s.linkCode) : '', studentVersion: s.version };
     }
     return out;
   },

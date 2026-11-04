@@ -11,6 +11,11 @@
 //  8. mcp/requests/get     … requestId の結果と、送ったメールの今の状態
 //  9. mcp/events/add      … 生徒のテスト・行事・授業ができない日を登録する（メール・カレンダーは 0）。同じ日の同じ予定があれば止める
 // 10. mcp/lessons/show    … 選んだ下書きを調整中にする（保護者・生徒のページに「調整中」で出る。メール・カレンダーは 0。体験生は除く）
+// 11. mcp/lessons/unsend  … 選んだ調整中・確認待ちを下書きに戻す（保護者・生徒のページから消える。メール・カレンダーは 0）
+// 12. mcp/lessons/rest    … お休みにする。確定した授業はカレンダーから消す。前日23時を過ぎた確定の授業は取消料の判断が要るので管理画面で
+// 13. mcp/teacherOff/add  … 先生の休みを登録する（1 人か教室全体。重なる授業は見せるだけで動かさない）
+// 14. mcp/contacts/resolve … 生徒・保護者からの連絡を済みにする（授業は変えない）
+// 15. mcp/exams/save      … 試験の結果（試験と科目ごとの点数）を登録・更新する（成績票の添付は管理画面）
 //
 // 入口は Worker の別の鍵（V2_SERVICE_WRITE_KEY。読み取りの V2_SERVICE_KEY とは別）で、mcp/ の道だけを通す（cf/v2/service.mjs）。
 // 対象は V2_SERVICE_WRITE_SCOPE が 'all' でなければ「テスト用の生徒」（testOnly か名字が【テスト】）だけ。
@@ -18,7 +23,8 @@
 import { fail, audit, newId, iso, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
-import { scheduleRoutes, pickedLessons, eventInput, addEvent, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, isCalMarker, stageOf, askText, FAMILY_URL } from './schedule.mjs';
+import { scheduleRoutes, pickedLessons, eventInput, addEvent, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, stageOf, askText, FAMILY_URL } from './schedule.mjs';
+import { gradesRoutes, scoreFields } from './grades.mjs';
 import { normGrade } from '../../assets/v2/grade-options.js';
 
 const MAX_ITEMS = 30;
@@ -46,6 +52,11 @@ function checkScope(c, s) {
   if (scopeOf(c) === 'test' && !isTestStudent(s, { testOnly: s.familyTestOnly })) fail('outOfScope', 'いまはテスト用の生徒（名字が【テスト】）だけ登録できます（V2_SERVICE_WRITE_SCOPE）', 403);
 }
 const studentLabel = s => ({ id: s.id, name: fullName(s), grade: normGrade(s.grade), trial: !!s.trial });
+async function activeStaff(c, id) {
+  const s = await c.db.prepare("select id, name from staff where id = ? and status = 'active'").bind(String(id)).first();
+  if (!s) fail('badStaff', '講師が見つかりません（在籍の講師だけ担当にできます）');
+  return s;
+}
 
 // ---- 冪等の記録 ----
 async function beginRequest(c, requestId, kind, input) {
@@ -81,6 +92,7 @@ async function judgeItem(c, item, accepted, today, dry) {
   try { s = await studentWithFamily(c, item.studentId); } catch (e) { return { status: 'invalid', error: '生徒が見つかりません' }; }
   try { checkScope(c, s); } catch (e) { return { status: 'invalid', error: e.message }; }
   if (s.status === 'left') return { status: 'invalid', error: '退会した生徒には登録できません' };
+  if (item.staffId) try { await activeStaff(c, item.staffId); } catch (e) { return { status: 'invalid', error: e.message }; }
   let n;
   try { n = lessonFields({ date: item.date, start: item.start, minutes: item.minutes, subject: item.subject, kind: s.trial ? '体験' : item.kind, deliveryMode: item.deliveryMode || s.deliveryMode || 'in_person', staffId: item.staffId || c.actor.id }); }
   catch (e) { return { status: 'invalid', error: e.message }; }
@@ -224,6 +236,7 @@ export const mcpWriteRoutes = {
     const before = await studentWithFamily(c, l.studentId); checkScope(c, before);
     const s = b.studentId ? await studentWithFamily(c, b.studentId) : before; checkScope(c, s);
     if (s.status === 'left') fail('left', '退会した生徒には付け替えられません');
+    if (b.staffId) await activeStaff(c, b.staffId);
     const n = lessonFields({ ...b, kind: s.trial ? '体験' : (b.kind ?? (before.trial && !s.trial ? '通常' : l.kind)) }, l);
     if (n.date < todayJst(c.now)) fail('past', '過去の日付にはできません');
     await checkConflicts(c, [{ ...n, studentId: s.id }], { force: b.force === true, exceptId: l.id });
@@ -299,28 +312,32 @@ export const mcpWriteRoutes = {
     if (Number(b.version) !== Number(l.version)) fail('conflict', 'ほかの操作で変わりました。lessons/get で読み直してください', 409);
     if (!['held', 'proposed', 'decided'].includes(l.status)) fail('badStatus', 'この授業は日程を変えられません');
     const s = await studentWithFamily(c, l.studentId); checkScope(c, s);
-    if (l.status === 'decided' && c.now > freeDeadline(l.date)) fail('late', '前日23時を過ぎた決定の授業の変更は、取消料の判断が要るので管理画面でしてください', 409);
-    const n = lessonFields({ date: b.date, start: b.start, minutes: b.minutes }, l);
-    if (n.date < todayJst(c.now)) fail('past', '過去の日付にはできません');
-    await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: b.force === true, exceptId: l.id }); // 2人同時・休みへの変更は force で（2026-11-04 本人。MCP から 1:2 に動かせなかった）
-    // メールは確定した授業だけ。調整中・確認待ちはページの表示が変わるだけ（確認待ちは日時を変えると調整中に戻る）
-    const mail = l.status === 'decided' && !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
+    if (s.trial && b.kind !== undefined && b.kind !== l.kind) fail('trial', '体験生の授業の種類は変えられません');
+    if (b.staffId) await activeStaff(c, b.staffId);
+    const n = lessonFields({ date: b.date, start: b.start, minutes: b.minutes, subject: b.subject, kind: b.kind, deliveryMode: b.deliveryMode, staffId: b.staffId }, l);
     const moved = n.date !== l.date || n.start !== l.start || n.minutes !== l.minutes;
-    const preview = { lessonId: l.id, student: studentLabel(s), before: { date: l.date, start: l.start, minutes: l.minutes }, after: { date: n.date, start: n.start, minutes: n.minutes }, status: l.status, stage: stageOf(l),
+    if (moved && l.status === 'decided' && c.now > freeDeadline(l.date)) fail('late', '前日23時を過ぎた決定の授業の変更は、取消料の判断が要るので管理画面でしてください', 409);
+    if (n.date < todayJst(c.now)) fail('past', '過去の日付にはできません');
+    if (moved || n.staffId !== l.staffId || n.deliveryMode !== l.deliveryMode) await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: b.force === true, exceptId: l.id }); // 2人同時・休みへの変更は force で（2026-11-04 本人。MCP から 1:2 に動かせなかった）
+    // メールは確定した授業の日時が変わるときだけ。調整中・確認待ちはページの表示が変わるだけ（確認待ちは日時を変えると調整中に戻る）
+    const mail = moved && l.status === 'decided' && !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
+    const fields = x => ({ date: x.date, start: x.start, minutes: x.minutes, subject: x.subject, kind: x.kind, deliveryMode: x.deliveryMode, staffId: x.staffId });
+    const calendar = l.status === 'decided' && (moved || n.subject !== l.subject || n.deliveryMode !== l.deliveryMode) ? 'patch' : 'none';
+    const preview = { lessonId: l.id, student: studentLabel(s), before: fields(l), after: fields(n), status: l.status, stage: stageOf(l),
       becomes: stageOf(l) === 'asking' && moved ? 'adjusting' : stageOf(l),
-      effects: { mails: mail ? 1 : 0, to: mail ? maskEmail(s.familyEmail) : '', calendar: l.status === 'decided' ? 'patch' : 'none', cancelFee: 'none' } };
+      effects: { mails: mail ? 1 : 0, to: mail ? maskEmail(s.familyEmail) : '', calendar, cancelFee: 'none' } };
     const confirm = hash({ ...preview, version: l.version }).slice(0, 32);
     if (b.dryRun === true) return { dryRun: true, ...preview, confirm, note: l.status === 'held' ? '下書き（未送信）の授業なので、メールもカレンダーも動きません'
-      : l.status === 'decided' ? '確定した授業なので、保護者に日時の変更のお知らせが届き、カレンダーも動きます。確かめてから confirm を付けて実行してください'
+      : l.status === 'decided' ? (moved ? '確定した授業なので、保護者に日時の変更のお知らせが届き、カレンダーも動きます。確かめてから confirm を付けて実行してください' : '確定した授業です。メールは送りません（日時が変わるときだけ）。確かめてから confirm を付けて実行してください')
       : stageOf(l) === 'asking' ? '確認待ちの授業です。日時を変えると調整中に戻り（締め切りを外す）、保護者ページの表示が変わります（メールなし）。もう一度確認をお願いするときは notices/send。confirm を付けて実行してください'
       : '調整中の授業です。保護者ページの表示が変わります（メールなし）。confirm を付けて実行してください' };
     if (l.status !== 'held' && String(b.confirm || '') !== confirm) fail('needConfirm', '送ったあとの授業の変更は、先に dryRun で確かめ、その confirm を付けて実行してください（何も変えていません）', 409);
-    const req = await beginRequest(c, b.requestId, 'reschedule', { lessonId: l.id, version: l.version, date: n.date, start: n.start, minutes: n.minutes });
+    const req = await beginRequest(c, b.requestId, 'reschedule', { lessonId: l.id, version: l.version, ...fields(n) });
     if (req.status === 'done') return { ...parse(req.result), repeated: true };
-    const r = await scheduleRoutes['schedule/lessons/update'](c, { id: l.id, version: l.version, date: n.date, start: n.start, minutes: n.minutes, force: b.force === true });
+    const r = await scheduleRoutes['schedule/lessons/update'](c, { id: l.id, version: l.version, ...fields(n), force: b.force === true });
     const ids = await takeMails(c);
     if (ids.length) await c.db.prepare('insert into lessonNotices (id, requestId, lessonId, studentId, action, effectId, toMasked, createdAt) values (?, ?, ?, ?, ?, ?, ?, ?)').bind(newId('ln'), b.requestId, l.id, l.studentId, 'reschedule', ids[0], maskEmail(s.familyEmail), iso(c.now)).run();
-    const result = { requestId: b.requestId, lesson: r.lesson, mails: ids.map(id => ({ effectId: id, to: maskEmail(s.familyEmail), status: 'queued' })), calendar: preview.effects.calendar };
+    const result = { requestId: b.requestId, lesson: r.lesson, mails: ids.map(id => ({ effectId: id, to: maskEmail(s.familyEmail), status: 'queued' })), calendar };
     await finishRequest(c, b.requestId, 'done', result);
     return result;
   },
@@ -354,34 +371,6 @@ export const mcpWriteRoutes = {
 
   // カレンダーの作り直し（2026-10-14、Kura 調査 #195）。今日以降の決定の授業と予定の面談のうち、予定がまだ仮の目印（作成を断られたまま）か空のもの。
   // 送っている途中（pending）の頼みがある行は除く。メールは送らない。dryRun で対象だけ返す。範囲（V2_SERVICE_WRITE_SCOPE）がテスト用なら、テスト用の生徒の授業だけ
-  'mcp/calendar/repair': async (c, b) => {
-    await requireStaff(c, b, 'manager');
-    const today = todayJst(c.now);
-    const pending = (await c.db.prepare("select payload from effects where status = 'pending' and kind = 'calendarCreate'").all()).results.map(r => parse(r.payload).marker).filter(Boolean);
-    const stale = id => (!id || isCalMarker(id)) && !pending.includes(id);
-    const lessons = [];
-    for (const l of (await c.db.prepare("select * from lessons where status = 'decided' and date >= ? order by date, start").bind(today).all()).results) {
-      if (!stale(l.calendarEventId)) continue;
-      const s = await studentWithFamily(c, l.studentId);
-      if (scopeOf(c) === 'test' && !isTestStudent(s, { testOnly: s.familyTestOnly })) continue;
-      lessons.push({ l, s });
-    }
-    const meetings = scopeOf(c) === 'all' ? (await c.db.prepare("select m.*, f.name familyLabel from meetings m left join families f on f.id = m.familyId where m.status = 'scheduled' and m.date >= ? order by m.date, m.start").bind(today).all()).results.filter(m => stale(m.calendarEventId)) : [];
-    const targets = lessons.map(({ l, s }) => ({ kind: 'lesson', id: l.id, student: studentLabel(s), date: l.date, start: l.start, subject: l.subject, was: l.calendarEventId ? 'まだ仮の目印' : '空' }))
-      .concat(meetings.map(m => ({ kind: 'meeting', id: m.id, date: m.date, start: m.start, title: m.title, was: m.calendarEventId ? 'まだ仮の目印' : '空' })));
-    if (b.dryRun === true) return { dryRun: true, targets, mails: 0 };
-    for (const { l, s } of lessons) {
-      const marker = await calendarEffect(c, 'create', { ...l, calendarEventId: '' }, fullName(s));
-      await c.db.prepare('update lessons set calendarEventId = ? where id = ? and calendarEventId = ?').bind(marker, l.id, l.calendarEventId).run();
-    }
-    for (const m of meetings) {
-      const marker = await calendarEffect(c, 'create', { ...m, subject: m.title, calendarEventId: '' }, String(m.withName || m.familyLabel || '').replace(/さん$/, ''));
-      await c.db.prepare('update meetings set calendarEventId = ? where id = ? and calendarEventId = ?').bind(marker, m.id, m.calendarEventId).run();
-    }
-    await audit(c, 'calendarRepair', '', { lessons: lessons.length, meetings: meetings.length });
-    return { targets, queued: targets.length, mails: 0, note: '予定を作る頼みを送りました。届いたかは授業の calendarEventId が「…@google.com」に変わるか、送信の記録で確かめてください' };
-  },
-
   // テスト・行事の登録（2026-11-01 本人「MCP の機能を拡張しましょう」。AI が「テストの日程は書き込めない」と答えたため）。
   // 管理画面の「予定」と同じ行（sharedEvents、登録者はスタッフ）。メール・カレンダー・保護者への知らせは 0。直すのは管理画面
   'mcp/events/add': async (c, b) => {
@@ -417,6 +406,117 @@ export const mcpWriteRoutes = {
     try { await pick(); } catch (e) { await finishRequest(c, b.requestId, 'failed', { error: e.code || 'error' }); throw e; }
     const r = await scheduleRoutes['schedule/lessons/show'](c, { studentId: s.id, lessonIds });
     const result = { requestId: b.requestId, student: studentLabel(s), shown: r.shown, draftsLeft: r.left, lessons: await readLessons(c, lessonIds), mails: 0 };
+    await finishRequest(c, b.requestId, 'done', result);
+    return result;
+  },
+
+  // 調整中・確認待ち → 下書き（2026-11-04 本人。授業を減らすときに MCP から引っ込められなかった）。管理画面の「下書きに戻す」と同じ
+  'mcp/lessons/unsend': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const s = await studentWithFamily(c, b.studentId); checkScope(c, s);
+    const lessonIds = Array.isArray(b.lessonIds) ? [...new Set(b.lessonIds.map(String))].sort() : [];
+    const pick = () => pickedLessons(c, { studentId: s.id, lessonIds }, ['adjusting', 'asking']); // 1 つでも調整中・確認待ちでない・ほかの生徒・過去なら何もしない
+    if (b.dryRun === true) { const { rows } = await pick(); return { dryRun: true, student: studentLabel(s), lessons: rows.map(l => ({ id: l.id, date: l.date, start: l.start, end: endOf(l.start, l.minutes), subject: l.subject, kind: l.kind, stage: stageOf(l) })), to: '下書き（保護者・生徒のページから消える）', mails: 0, calendar: 0,
+      note: '保護者には知らせません。確認待ちの授業は、メールでお願いした授業が黙って消えるので、先生から連絡してください' }; }
+    const req = await beginRequest(c, b.requestId, 'lessonsUnsend', { studentId: s.id, lessonIds });
+    if (req.status === 'done') return { ...parse(req.result), repeated: true };
+    let rows;
+    try { ({ rows } = await pick()); } catch (e) { await finishRequest(c, b.requestId, 'failed', { error: e.code || 'error' }); throw e; }
+    for (const l of rows) await scheduleRoutes['schedule/lessons/unsend'](c, { id: l.id, version: l.version });
+    const result = { requestId: b.requestId, student: studentLabel(s), unsent: rows.length, lessons: await readLessons(c, lessonIds), mails: 0 };
+    await finishRequest(c, b.requestId, 'done', result);
+    return result;
+  },
+
+  // お休み（2026-11-04 本人）。管理画面の「お休み」と同じ。保護者へのメールはない。前日23時を過ぎた確定の授業は取消料の判断が要るので断る
+  'mcp/lessons/rest': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const l = await c.db.prepare('select * from lessons where id = ?').bind(String(b.lessonId || '')).first();
+    if (!l) fail('notFound', '授業が見つかりません', 404);
+    if (Number(b.version) !== Number(l.version)) fail('conflict', 'ほかの操作で変わりました。lessons/get で読み直してください', 409);
+    if (!['proposed', 'decided'].includes(l.status)) fail('badStatus', 'お休みにできるのは調整中・確認待ち・確定した授業です（実施済みは管理画面で）');
+    const s = await studentWithFamily(c, l.studentId); checkScope(c, s);
+    if (l.status === 'decided' && c.now > freeDeadline(l.date)) fail('late', '前日23時を過ぎた決定の授業は、取消料の判断が要るので管理画面でしてください', 409);
+    const preview = { lessonId: l.id, student: studentLabel(s), date: l.date, start: l.start, end: endOf(l.start, l.minutes), subject: l.subject, kind: l.kind, status: l.status, stage: stageOf(l), becomes: 'rested',
+      effects: { mails: 0, calendar: l.status === 'decided' ? 'delete' : 'none', cancelFee: 'none' } };
+    const confirm = hash({ ...preview, version: l.version }).slice(0, 32);
+    if (b.dryRun === true) return { dryRun: true, ...preview, confirm, note: 'お休みにすると請求に入りません。保護者へのメールはありません。この授業への連絡は済みになります。確かめてから confirm を付けて実行してください' };
+    if (String(b.confirm || '') !== confirm) fail('needConfirm', '先に dryRun で確かめ、その confirm を付けて実行してください（何も変えていません）', 409);
+    const req = await beginRequest(c, b.requestId, 'lessonRest', { lessonId: l.id, version: l.version });
+    if (req.status === 'done') return { ...parse(req.result), repeated: true };
+    const r = await scheduleRoutes['schedule/lessons/rest'](c, { id: l.id, version: l.version });
+    const result = { requestId: b.requestId, lesson: r.lesson, mails: 0, calendar: preview.effects.calendar };
+    await finishRequest(c, b.requestId, 'done', result);
+    return result;
+  },
+
+  // 先生の休み（2026-11-04 本人。前の仕組みの MCP にはあった）。staffId が空なら教室全体。重なる授業は見せるだけで動かさない
+  'mcp/teacherOff/add': async (c, b) => {
+    const me = await requireStaff(c, b, 'manager');
+    const staffId = b.staffId === undefined ? me.id : String(b.staffId);
+    const staff = staffId ? await activeStaff(c, staffId) : null;
+    const date = String(b.date || ''), dateTo = String(b.dateTo || date), start = b.start ? String(b.start) : '', end = b.end ? String(b.end) : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{4}-\d{2}-\d{2}$/.test(dateTo) || dateTo < date) fail('badDate', '日付を確かめてください');
+    if ((start || end) && (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end) || end <= start)) fail('badTime', '時間帯を確かめてください（開始 < 終了）。終日なら空のまま');
+    const dates = [];
+    for (let t = Date.parse(date + 'T00:00:00Z'), last = Date.parse(dateTo + 'T00:00:00Z'); t <= last; t += 86400e3) dates.push(new Date(t).toISOString().slice(0, 10));
+    if (dates.length > 31) fail('tooLong', '一度に登録できるのは31日までです');
+    const q = dates.map(() => '?').join(', ');
+    const had = (await c.db.prepare(`select * from staffUnavailability where staffId = ? and date in (${q})`).bind(staffId, ...dates).all()).results.filter(o => !start || !o.start || (o.start < end && start < o.end));
+    const rows = (await c.db.prepare(`select l.*, s.familyName, s.givenName from lessons l join students s on s.id = l.studentId where l.date in (${q}) and l.status in ('held', 'proposed', 'decided')${staffId ? ' and l.staffId = ?' : ''} order by l.date, l.start`).bind(...dates, ...(staffId ? [staffId] : [])).all()).results
+      .filter(l => !start || overlap(l, { date: l.date, start, minutes: toMin(end) - toMin(start) }));
+    const preview = { teacher: staff ? staff.name : '教室全体', dates, start, end, note: String(b.note || '').slice(0, 100), already: had.map(o => ({ date: o.date, start: o.start, end: o.end })),
+      lessons: rows.map(l => ({ id: l.id, student: fullName(l), date: l.date, start: l.start, end: endOf(l.start, l.minutes), subject: l.subject, status: l.status })), mails: 0 };
+    if (had.length) { if (b.dryRun === true) return { dryRun: true, ...preview, wouldSave: false, reason: '同じ時間の休みがもうあります' }; fail('duplicate', '同じ時間の休みがもうあります（何も登録していません）', 409, { already: preview.already }); }
+    if (b.dryRun === true) return { dryRun: true, ...preview, wouldSave: true };
+    const req = await beginRequest(c, b.requestId, 'teacherOffAdd', { staffId, dates, start, end, note: preview.note });
+    if (req.status === 'done') return { ...parse(req.result), repeated: true };
+    const ids = [];
+    for (const d of dates) ids.push((await scheduleRoutes['schedule/unavailability/add'](c, { staffId, date: d, start, end, note: preview.note })).id);
+    const result = { requestId: b.requestId, ...preview, ids };
+    await finishRequest(c, b.requestId, 'done', result);
+    return result;
+  },
+
+  // 生徒・保護者からの連絡を済みにする（2026-11-04 本人）。管理画面の「済み」と同じ。授業は変えない
+  'mcp/contacts/resolve': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const r = await c.db.prepare('select r.*, l.date, l.start, l.subject, l.studentId lessonStudentId from lessonRequests r join lessons l on l.id = r.lessonId where r.id = ?').bind(String(b.contactId || '')).first();
+    if (!r) fail('notFound', '連絡が見つかりません', 404);
+    const s = await studentWithFamily(c, r.lessonStudentId); checkScope(c, s);
+    const view = { contactId: r.id, student: studentLabel(s), kind: r.kind, note: r.note, receivedAt: r.receivedAt, lesson: { id: r.lessonId, date: r.date, start: r.start, subject: r.subject } };
+    if (r.status !== 'open') return { ...view, resolved: false, note: 'もう済みの連絡です' };
+    if (b.dryRun === true) return { dryRun: true, ...view, note: '済みにするだけで、授業は変わりません。日時の変更やお休みは、先にそれぞれのツールで' };
+    await scheduleRoutes['schedule/requests/resolve'](c, { id: r.id });
+    return { ...view, resolved: true };
+  },
+
+  // 試験の結果（2026-11-04 本人。実祈さんの中間テストをブラウザから入れた）。管理画面の成績と同じ。保護者・生徒のページに出る。メールはない
+  'mcp/exams/save': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const s = await studentWithFamily(c, b.studentId); checkScope(c, s);
+    const scores = Array.isArray(b.scores) ? b.scores : [];
+    if (scores.length > 15) fail('badScores', '科目は15までにしてください');
+    const rows = scores.map(scoreFields);
+    if (new Set(rows.map(r => r.subject)).size !== rows.length) fail('badScores', '同じ科目が2つあります');
+    const series = String(b.series || '').trim(), name = String(b.name || '').trim(), date = String(b.date || '');
+    const old = b.examId ? await c.db.prepare("select * from exams where id = ? and studentId = ? and status = 'recorded'").bind(String(b.examId), s.id).first() : null;
+    if (b.examId && !old) fail('notFound', '試験が見つかりません', 404);
+    if (old && Number(b.version) !== Number(old.version)) fail('conflict', 'ほかの操作で変わりました。読み直してください', 409);
+    if (!old) {
+      if (!series || !name || !date) fail('badExam', '何の試験か（series）・回の名前（name）・実施日（date）を入れてください');
+      if (date > todayJst(c.now)) fail('badDate', '実施日は今日までにしてください');
+      const same = await c.db.prepare("select id, version, date from exams where studentId = ? and series = ? and name = ? and status = 'recorded'").bind(s.id, series, name).first();
+      if (same) fail('duplicate', `同じ試験がもうあります（${same.date}）。直すなら examId と version を付けてください（何も登録していません）`, 409, { examId: same.id, version: same.version });
+    }
+    const exam = { id: old ? old.id : undefined, version: old ? old.version : undefined, studentId: s.id, series: b.series, name: b.name, date: b.date, grade: b.grade, eventId: b.eventId, totalScore: b.totalScore, totalMax: b.totalMax, totalRank: b.totalRank, totalRankOf: b.totalRankOf, totalDeviation: b.totalDeviation };
+    const view = { student: studentLabel(s), exam: { examId: old ? old.id : '', series: series || old?.series, name: name || old?.name, date: date || old?.date }, scores: rows, mails: 0 };
+    if (b.dryRun === true) return { dryRun: true, ...view, note: '保存すると保護者・生徒のページに出ます。メールはありません' };
+    const req = await beginRequest(c, b.requestId, 'examSave', { exam, rows });
+    if (req.status === 'done') return { ...parse(req.result), repeated: true };
+    const { examId } = await gradesRoutes['grades/exams/save'](c, exam);
+    if (rows.length) await gradesRoutes['grades/scores/save'](c, { examId, scores: rows });
+    const result = { requestId: b.requestId, ...view, exam: { ...view.exam, examId } };
     await finishRequest(c, b.requestId, 'done', result);
     return result;
   },

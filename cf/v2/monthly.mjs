@@ -17,7 +17,7 @@ export const monthlyRoutes = {
       billingRoutes['billing/month'](c, { ...b, month: prev }),
       billingRoutes['billing/fees/list'](c, b),
       billingRoutes['billing/plans/list'](c, { ...b, month: next }),
-      me.contractType==='owner'?payrollRoutes['payroll/month'](c, { ...b, month: prev }):Promise.resolve({payOn:'',staff:[],unassigned:0,restricted:true}),
+      me.contractType==='owner'&&!c.serviceStaff?payrollRoutes['payroll/month'](c, { ...b, month: prev }):Promise.resolve({payOn:'',staff:[],unassigned:0,restricted:true}),
     ]);
     // 1. 前月分の請求
     const inv = bill.families.filter(f => f.invoice), pre = bill.families.filter(f => f.preview);
