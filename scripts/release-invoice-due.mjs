@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {ensure as check,runWrangler,compareModule,activeDeployment,assertPrivateBucket,assertRecordsPreserved} from './release-contract-system.mjs';
 const repo='mugilives-max/stepwise-kobetsu',base='5a2fa06be1bc8358948c0ee0b987d3eb3234c0f8'; // base: source of the Worker published on 2026-11-04 (PR #317, release 2026-11-04-mcp-more-tools)
-const sourceSha='bbe6eb0bbc8af411b8a758ce3692bfe2978dd43a',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
+const sourceSha='26e8404e1e4f3dfcba83e3ab495c47ca1fb634bc',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
 const mainBeforePublish='23b6cc3551d0b6f39c5dcc78201658ffb511e0ee',pullNumber=316,releaseLabel='2026-11-04-invoice-due',branch='claude/invoice-due-release-20261104',backupRoot='release-backups/invoice-due-20261104/';
 const source=resolve('release-source'),baseline=resolve('baseline'),request=JSON.parse(await readFile('release-control/scripts/invoice-due-release-request.json','utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex'),q=s=>'"'+s.replaceAll('"','""')+'"';
