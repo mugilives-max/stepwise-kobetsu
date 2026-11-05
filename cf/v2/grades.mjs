@@ -273,7 +273,7 @@ export const gradesRoutes = {
 
 };
 
-// 毎日0時10分（切り替えたあと）: 前日に終わったテストについて、担当の講師と教室管理者に結果の入力を頼む
+// 毎日8時10分（切り替えたあと）: 前日に終わったテストについて、担当の講師と教室管理者に結果の入力を頼む
 export async function remindTestResults(c) {
   if (!(await isLive(c))) return { skipped: 'notLive' };
   const yesterday = addDays(todayJst(c.now), -1);

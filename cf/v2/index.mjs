@@ -48,7 +48,7 @@ import { contractRoutes } from './contracts.mjs';
 const ROUTES = { ...withdrawalRoutes, ...staffRegistrationRoutes, ...staffBankRoutes, ...staffRulesRoutes, ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...lessonPlanRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...enrollmentRoutes, ...mcpWriteRoutes };
 const MAX_BODY = 200000;
 
-// 毎日0時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、終わった授業を実施済みにする。切り替えたあとは、3日以降に前月分の請求を確定する。
+// 毎日8時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、終わった授業を実施済みにする。切り替えたあとは、3日以降に前月分の請求を確定する。
 // 締め切りを過ぎた仮予定を自動で確定することはしない（2026-10-27 本人「システム側で自動締切で授業を登録するなどは行わない」）
 export async function runV2Scheduled(env, now = Date.now()) {
   if (!env.DB2) return null;

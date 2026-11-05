@@ -4,7 +4,7 @@ import { invoiceDueText, normalDueDate } from '../../assets/v2/invoice-due.js';
 // - 教室管理者: 計画を作る・お知らせする・LINE などの承諾を記録する・先月と同じ内容で下書き、授業の種類と標準料金、
 //              キャンセル料の判断・減額や免除の申請への回答、月ごとの請求（確かめる・確定・取消・入金）
 // - 保護者: 計画の承認（回数を減らす・見送るも）・先生が記録した承諾の確認、請求の確認・振込の連絡、キャンセル料の減額・免除の申請
-// - 毎日0時10分: 3日以降、前月分の請求を家族ごとに確定する（確かめることがある家族は止める）。切り替え（settings.live）まで動かさない
+// - 毎日8時10分: 3日以降、前月分の請求を家族ごとに確定する（確かめることがある家族は止める）。切り替え（settings.live）まで動かさない
 // 料金は承認した計画の行で決まる。計画の承認がない授業は請求しない（承認されたら、その月か次の月の請求に入る）。
 import { consentEvidence, evidenceView, consentLine, copyMail } from './consent-evidence.mjs';
 import { planDocument } from './agreement-documents.mjs';
@@ -194,7 +194,7 @@ export async function confirmInvoice(c, familyId, month, by, expectedTotal, due 
   return { invoice: invoiceView(await db.prepare('select * from invoices where id = ?').bind(id).first()) };
 }
 
-// 毎日0時10分: 通常の自動確定は3日。残った請求は期限の余裕を管理者が確認する。
+// 毎日8時10分: 通常の自動確定は3日。残った請求は期限の余裕を管理者が確認する。
 export async function autoCloseInvoices(c) {
   if (!(await isLive(c))) return { skipped: 'notLive' };
   const today = todayJst(c.now); if (Number(today.slice(8)) < 3) return { skipped: 'beforeClose' };

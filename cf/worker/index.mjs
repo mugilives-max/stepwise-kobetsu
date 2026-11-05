@@ -32,7 +32,7 @@ function cors(env, request) {
 const reply = (data, status, extra) => new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, ...extra } });
 
 export default {
-  // 毎日 0:10 JST。月の請求の確定（翌月3日から）と、締め切りを過ぎた仮予定の決定（2026-10-01）。
+  // 毎日 8:10 JST（夜中に保護者へメールを送らない。2026-11-06 本人）。月の請求の確定（翌月3日から）と、締め切りを過ぎた仮予定の決定（2026-10-01）。
   // 片方が失敗してももう片方は行い、最後にまとめて失敗を知らせる。
   async scheduled(event, env) {
     if (env.WRITE_MODE !== "worker") return;
