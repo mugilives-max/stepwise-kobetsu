@@ -2,7 +2,7 @@ import { DOCUMENT_ACTIONS, handleDocuments } from './documents.mjs';
 // ステップワイズ API Worker（段階 A: 骨組みのみ）。
 // 役割: 画面(GitHub Pages)と MCP から来る {action:...} の JSON を受け、D1 から答える。
 // 段階 A では読み取り action をまだ実装していない。未実装の action は notImplemented を返し、
-// 呼び出し側（assets/portal.js / kanri/index.html）が GAS へ回せるようにする。
+// 呼び出し側が GAS へ回せるようにする。
 // 本番の GAS と同じ入出力の形（{action,...} -> {ok|error,...}）を保つことが移行の安全弁。
 import { health } from "./health.mjs";
 import { handleRead, isReadAction } from "./read.mjs";
@@ -11,7 +11,7 @@ import { runWrite, runNaturalSchedule, recordEffects, deliverEffects, backfillMe
 import { handleV2, runV2Scheduled } from "../v2/index.mjs";
 import { handlePush, deliverNotice, pushEnabled, PUSH_ACTIONS } from "./push.mjs";
 import { EFFECT_ADMIN_OPS, handleEffectsAdmin } from "./effects-admin.mjs";
-import { frozenAt, allowedWhenFrozen, MOVED } from "./cutover.mjs";
+import { frozenAt, MOVED } from "./cutover.mjs";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 
@@ -65,6 +65,9 @@ export default {
     const url = new URL(request.url);
     // 作り直し（v2）の API。今の仕組みとは別のデータベース（DB2）を使う。docs/REBUILD_DESIGN.md
     if (url.pathname.startsWith("/v2/")) return handleV2(request, env, ctx, head);
+    // 切り替えたあとは、前の仕組みの道をぜんぶ閉じる（読み取りも）。前の画面は転送だけになった。疎通確認（GET）だけ残す
+    const oldRead = request.method === "GET" && url.searchParams.get("action") === "state";
+    if ((request.method === "POST" || oldRead) && await frozenAt(env)) return reply(MOVED, 200, head);
     // 生徒マイページは GET で読む（GAS の doGet と同じ）
     if (request.method === "GET" && url.searchParams.get("action") === "state") {
       try {
@@ -109,7 +112,6 @@ export default {
       try {
         const readOnly = await handleRead(inner, scoped);
         if (readOnly !== null) return reply(readOnly, 200, head);
-        if (await frozenAt(env)) return reply(MOVED, 200, head);
         const done = await runWrite(inner, scoped);
         if (done.effects.length) {
           const ids = await recordEffects(env.DB, done.effects);
@@ -170,8 +172,6 @@ export default {
     // 書き込み。WRITE_MODE=worker のときだけ受ける（それまでは Apps Script が正本）。
     // 台帳を書いたら応答を返し、そのあとでメール・カレンダーを Apps Script に頼む。
     if (env.WRITE_MODE === "worker" && !isReadAction(body)) {
-      // 切り替えたあとは書き込みを断る（ログイン・ログアウトだけ通す）
-      if (!allowedWhenFrozen(body) && await frozenAt(env)) return reply(MOVED, 200, head);
       try {
         const done = await runWrite(body, scope);
         const after = async () => {

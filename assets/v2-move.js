@@ -1,30 +1,15 @@
-// 今の画面（/hogosha/・/yoyaku/・/kanri/）から、新しい画面への案内（作り直し v2 の9段目）。
-// API の疎通確認（health）の cutover.live を見て、切り替えたあとだけ動く。切り替える前は何もしない。
+// 前の画面の URL を新しい画面へ転送する。前の画面の中身はもう無く、これだけが残っている（2026-11-05）。
+// 昔のリンクやホーム画面のアイコンから来る人がいるので、URL は消さない。
 // - 保護者ページ（/hogosha/、/yoyaku/#family）→ /family/
 // - 生徒のマイページ（/yoyaku/?k=…）→ /student/?k=…（鍵はそのまま。端末に覚えている鍵も使う）
-// - 管理画面（/kanri/）→ /staff/。ただし /kanri/?stay=1 で開いたときは移さず（1か月ほど読むだけで見返すため）、上に案内を出す
+// - 管理画面（/kanri/）→ /staff/
 (function () {
-  var API = 'https://stepwise-api.stepwise-edu.workers.dev/';
-  function ls(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
-  fetch(API, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (h) {
-    if (!h || !h.cutover || !h.cutover.live) return;
-    var p = location.pathname;
-    if (p.indexOf('/hogosha') === 0) { location.replace('/family/'); return; }
-    if (p.indexOf('/yoyaku') === 0) {
-      if (location.hash.indexOf('#family') === 0) { location.replace('/family/'); return; }
-      var k = new URLSearchParams(location.search).get('k') || ls('sw_k');
-      location.replace('/student/' + (k ? '?k=' + encodeURIComponent(k) : ''));
-      return;
-    }
-    if (p.indexOf('/kanri') === 0) {
-      var stay = new URLSearchParams(location.search).get('stay') === '1';
-      try { if (stay) sessionStorage.setItem('sw_kanri_stay', '1'); else stay = sessionStorage.getItem('sw_kanri_stay') === '1'; } catch (e) {}
-      if (!stay) { location.replace('/staff/'); return; }
-      var bar = document.createElement('div');
-      bar.setAttribute('role', 'status');
-      bar.style.cssText = 'position:sticky;top:0;z-index:9999;background:#fff3c4;color:#5a4300;padding:10px 14px;font-size:14px;text-align:center;border-bottom:1px solid #e8d48a';
-      bar.innerHTML = '新しい管理画面に切り替えました。この画面は<strong>読むだけ</strong>です（変更はできません）。 <a href="/staff/" style="color:#0717a8;font-weight:700">新しい管理画面へ</a>';
-      document.body.insertBefore(bar, document.body.firstChild);
-    }
-  }).catch(function () {});
+  function saved() { try { return localStorage.getItem('sw_k') || ''; } catch (e) { return ''; } }
+  var p = location.pathname, to = '/staff/';
+  if (p.indexOf('/hogosha') === 0 || (p.indexOf('/yoyaku') === 0 && location.hash.indexOf('#family') === 0)) to = '/family/';
+  else if (p.indexOf('/yoyaku') === 0) {
+    var k = new URLSearchParams(location.search).get('k') || saved();
+    to = '/student/' + (k ? '?k=' + encodeURIComponent(k) : '');
+  }
+  location.replace(to);
 })();

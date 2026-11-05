@@ -39,7 +39,6 @@ export function todayPage(ctx, me) {
         <span class="tags">${statusTag(l)}${l.deliveryMode === 'online' ? '<small class="muted">オンライン</small>' : ''}${ctx.isManager ? `<small class="muted">${esc(l.staffName || '担当未定')}</small>` : ''}</span></a>${act}</div>`;
     }).join('') + '</div>';
   }
-  if (ctx.isManager && !t.live) h += '<p class="small muted" style="margin-top:14px">切り替えまでは<a href="/kanri/?stay=1">今の管理画面</a>が本番です。</p>';
   return h;
 }
 

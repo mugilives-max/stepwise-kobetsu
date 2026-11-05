@@ -1,6 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {createSchedulingHarness}=require('./helpers/scheduling-harness.cjs');
-const {createUI,flush}=require('./helpers/operations-ui-harness.cjs');
 test('student state retains own blocked history and day detail is read only',async()=>{
  const h=createSchedulingHarness(), c=h.context(), today=c.todayStr_(), past=c.addDays_(today,-7), old=c.addDays_(today,-367);
  const sheet=h.spreadsheet.getSheetByName('blocked');

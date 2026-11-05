@@ -1,6 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {createSchedulingHarness,failWriteOnce}=require('./helpers/scheduling-harness.cjs');
-const {adminReady,flush}=require('./helpers/operations-ui-harness.cjs');
 const lessons=[{start:'16:00',min:90,subject:'英語',kind:'通常',deliveryMode:'in_person'},{start:'17:30',min:90,subject:'数学',kind:'通常',deliveryMode:'in_person'}];
 function approve(h){h.approve({subject:'英語'});h.approve({subject:'数学'});}
 test('consecutive offers repeat as a whole and retry does not duplicate saved lessons',()=>{
@@ -24,13 +23,4 @@ test('retry recognizes a durable write even when the original request failed aft
  failWriteOnce(h.spreadsheet.getSheetByName('slots'),()=>true,true);
  assert.ok(h.offer(args).error);assert.equal(h.rows('slots').length,2);
  assert.equal(h.offer(args).replayed,true);assert.equal(h.rows('slots').length,2);
-});
-test('composer inherits end time and fields, preserves edits after failure and sends once',async()=>{
- const ui=await adminReady();ui.click('calday',{'data-date':'2026-09-10'});ui.click('sdayadd');
- ui.input('f-subject','英語');ui.input('f-start','16:00');ui.change('f-min','90');ui.click('offer-add');assert.match(ui.html(),/共通項目/);assert.match(ui.html(),/offer-title-2/);assert.doesNotMatch(ui.html(),/<fieldset/);assert.equal(ui.el('f-extra-0-start').value,'17:30');assert.equal(ui.el('f-extra-0-deliveryMode').value,'online');
- ui.change('f-extra-0-subject','数学');ui.input('f-extra-0-start','17:45');ui.click('offer-add');assert.equal(ui.el('f-extra-1-start').value,'19:15');assert.equal(ui.el('f-extra-1-subject').value,'数学');
- ui.click('offer-remove',{'data-index':'1'});assert.equal(ui.el('f-extra-0-start').value,'17:45');
- ui.change('f-rep','2');ui.click('offerslot');const r=ui.requests.at(-1),count=ui.requests.length;assert.equal(r.body.lessons.length,2);assert.equal(r.body.repeat,2);assert.equal(r.body.lessons[1].subject,'数学');
- if(ui.html().includes('data-action="offerslot"'))ui.click('offerslot');assert.equal(ui.requests.length,count);r.fail();await flush();assert.equal(ui.el('f-extra-0-start').value,'17:45');assert.match(ui.html(),/4件まとめて案内する/);
- ui.click('offerslot');assert.deepEqual(ui.requests.at(-1).body,r.body);
 });
