@@ -15,7 +15,7 @@ import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=202610
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261104-famtabs';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
 import { termsPage, docsPage, effectsPage, extrasSubmit, extrasClick, resetExtras, leaveExtras } from '/staff/extras.js?v=20261104-famtabs';
-import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261105-glatest';
+import { gradesOverviewPage, gradesStudentPage, gradesBar, gradesSubmit, gradesClick, resetGrades, leaveGrades, openGradeFile } from '/staff/grades.js?v=20261105-undo';
 import { gradesClickShared } from '/assets/v2/grades-view.js?v=20261105-glatest';
 import { billingPick } from '/staff/billing.js?v=20261104-famtabs';
 

@@ -72,7 +72,7 @@ export function gradesStudentPage(ctx, studentId) {
       <button class="primary" data-action="gr-from-file" data-id="${esc(f.id)}" data-name="${esc(f.name)}"${ctx.dis()}>この成績票の結果を入れる</button>
       ${st.exams.length ? `<label>できている試験にひもづける<select data-resolve-exam="${esc(f.id)}"><option value="">（選ぶ）</option>${st.exams.slice().reverse().map(e => `<option value="${esc(e.id)}">${esc(e.name)}（${esc(md(e.date))}）</option>`).join('')}</select></label>
       <div class="row"><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="imported"${ctx.dis()}>ひもづける</button><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="dismissed"${ctx.dis()}>取り込まない</button></div>` : `<div class="row"><button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="dismissed"${ctx.dis()}>取り込まない</button></div>`}</div>`, 'gr-unpick');
-    if (dismissed.length) h += `<details class="small muted" style="margin:8px 0"><summary>取り込まない成績票 ${dismissed.length}件</summary>${fileList(dismissed, 'gr-open')}</details>`;
+    if (dismissed.length) h += `<details class="small muted" style="margin:8px 0"><summary>取り込まない成績票 ${dismissed.length}件</summary>${fileList(dismissed, 'gr-open', f => `<button data-action="gr-resolve" data-id="${esc(f.id)}" data-status="new"${ctx.dis()}>取り込む側に戻す</button>`)}</details>`;
     h += `<details class="gupload"><summary>成績票だけを残す</summary>${uploadForm(ctx.dis())}</details>`;
   }
   h += testSheet(ctx, st.pendingTests);
@@ -181,7 +181,7 @@ export async function gradesClick(ctx, a, b) {
   } else if (a === 'gr-resolve') {
     // 選んだ試験は app.js で描き直す前に読んである
     r = await ctx.call('grades/files/resolve', { id: b.dataset.id, status: b.dataset.status, examId: b.dataset.exam || '' });
-    msg = b.dataset.status === 'imported' ? '取り込み済みにしました' : '取り込まないことにしました'; if (r.ok) { pick = null; student = null; studentFor = ''; overview = null; }
+    msg = { imported: '取り込み済みにしました', new: '取り込む側に戻しました' }[b.dataset.status] || '取り込まないことにしました'; if (r.ok) { pick = null; student = null; studentFor = ''; overview = null; }
   } else return false;
   if (r.ok) ctx.say(msg, 'ok'); else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
   return true;

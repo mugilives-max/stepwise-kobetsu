@@ -59,3 +59,11 @@ test('staff can open the latest exam to fix it and open its sheet from the card'
   assert.match(h, /data-action="gr-open" data-id="f1"/);
   assert.match(h, /<b>add<\/b>/);
 });
+
+test('a dismissed sheet can be brought back from the list', async () => {
+  const { fileList } = await load();
+  const h = fileList([{ id: 'f1', name: 'a.pdf', status: 'dismissed', createdAt: '2026-11-05T03:35:13.872Z', note: '' }], 'gr-open', f => `<button data-status="new" data-id="${f.id}">戻す</button>`);
+  assert.match(h, /data-action="gr-open" data-id="f1"/);
+  assert.match(h, /data-status="new" data-id="f1"/);
+  assert.doesNotMatch(fileList([{ id: 'f1', name: 'a.pdf', status: 'new', createdAt: '2026-11-05T03:35:13.872Z', note: '' }], 'gr-open'), /data-status/);
+});
