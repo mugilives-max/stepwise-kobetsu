@@ -3,6 +3,7 @@
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { trendBox, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261105-glatest';
+import { weekBox } from '/staff/student-week.js?v=20261105-week';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
@@ -96,7 +97,7 @@ function summary(ctx, x) {
   // 記録待ちは「対応すること」に出さない（授業記録は努力義務。2026-10-27）
   if (x.grades.pendingTests.length) todo.push(`<a class="todo" href="#grades=${sid}"><span class="b"><strong>結果待ちのテスト</strong><small class="muted">${x.grades.pendingTests.map(t => esc(t.title)).join('・')}</small></span><span class="go">›</span></a>`);
   if (todo.length) h += `<h2>対応すること</h2><div class="rows">${todo.join('')}</div>`;
-  h += '<h2>次の授業</h2>' + (x.upcoming.length ? '<div class="rows">' + x.upcoming.slice(0, 2).map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">ありません。</p>');
+  h += weekBox(esc, x);
   const last = x.records.find(r => r.status === 'published') || x.records[0];
   h += '<h2>前回の記録</h2>' + (last ? `<div class="rows"><a class="todo" href="#record=${encodeURIComponent(last.lessonId)}"><span class="b"><strong>${md(last.date)} ${esc(last.subject)}：${esc(last.range || '（範囲なし）')}</strong><small class="muted">${esc(noteText(last.staffNotes) || last.comment.slice(0, 60))}</small></span><span class="go">›</span></a></div>` : '<p class="muted small">まだ記録はありません。</p>');
   if (x.handover.length) h += '<h2>引き継ぎメモ</h2><div class="rows">' + x.handover.slice(0, 3).map(n => `<div class="ev"><span class="t">${esc(n.createdAt.slice(5, 10).replace('-', '/'))}</span><span class="b" style="white-space:pre-wrap;color:var(--ink)">${esc(n.body)}<small class="muted"> ${esc(n.authorName)}</small></span><span></span></div>`).join('') + '</div>';
