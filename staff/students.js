@@ -1,5 +1,5 @@
 // スタッフの「生徒」（docs/UX_STRUCTURE.md 3）。#students（家族ごとの一覧）と #student=<id>/<タブ>（1人の生徒の画面）。
-// タブ: 概要・予定・記録と宿題・資料（テスト結果と学校の書類）・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
+// タブ: 概要・予定・資料（テスト結果と学校の書類）・計画と請求・基本情報。講師は担当の生徒だけで、計画と請求・基本情報は出ない。
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { trendBox, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261105-glatest';
@@ -15,7 +15,7 @@ let ctr = null; // 契約のタブ（students/contracts の答え。for = 生徒
 export function resetStudents() { list = null; hub = null; hubFor = ''; wd = null; ctr = null; }
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
-const TABS = [['summary', '概要'], ['schedule', '予定'], ['records', '記録と宿題'], ['grades', '資料'], ['money', '計画と請求', true], ['contracts', '契約', true], ['basic', '基本情報', true]];
+const TABS = [['summary', '概要'], ['schedule', '予定'], ['grades', '資料'], ['money', '計画と請求', true], ['contracts', '契約', true], ['basic', '基本情報', true]];
 const INV = { confirmed: ['お支払い待ち', 'warn'], reported: ['振込の連絡あり', 'warn'], paid: ['入金済み', 'ok'] };
 const PLAN = { draft: ['下書き', 'gray'], proposed: ['承認待ち', 'warn'], approved: ['承認', 'ok'], declined: ['見送り', 'gray'] };
 
@@ -78,7 +78,7 @@ export function studentPage(ctx, id, tab, sub = '') {
   if (!tabs.some(t => t[0] === tab)) tab = 'summary';
   h += ctx.notice();
   h += '<div class="tabs2" role="tablist">' + tabs.map(([k, label]) => `<a role="tab" href="#student=${encodeURIComponent(s.id)}/${k}" class="${k === tab ? 'on' : ''}"${k === tab ? ' aria-selected="true"' : ''}>${label}</a>`).join('') + '</div>';
-  return h + ({ summary, schedule, records, grades, money, contracts, basic }[tab])(ctx, hub, sub);
+  return h + ({ summary, schedule, grades, money, contracts, basic }[tab])(ctx, hub, sub);
 }
 
 const lessonRow = (esc, l, href = '') => `<div class="lesson-row"><span class="t">${md(l.date)}<small>${l.start}・${l.minutes}分</small></span>
@@ -100,7 +100,7 @@ function summary(ctx, x) {
   const last = x.records.find(r => r.status === 'published') || x.records[0];
   h += '<h2>前回の記録</h2>' + (last ? `<div class="rows"><a class="todo" href="#record=${encodeURIComponent(last.lessonId)}"><span class="b"><strong>${md(last.date)} ${esc(last.subject)}：${esc(last.range || '（範囲なし）')}</strong><small class="muted">${esc(noteText(last.staffNotes) || last.comment.slice(0, 60))}</small></span><span class="go">›</span></a></div>` : '<p class="muted small">まだ記録はありません。</p>');
   if (x.handover.length) h += '<h2>引き継ぎメモ</h2><div class="rows">' + x.handover.slice(0, 3).map(n => `<div class="ev"><span class="t">${esc(n.createdAt.slice(5, 10).replace('-', '/'))}</span><span class="b" style="white-space:pre-wrap;color:var(--ink)">${esc(n.body)}<small class="muted"> ${esc(n.authorName)}</small></span><span></span></div>`).join('') + '</div>';
-  h += '<h2>宿題</h2>' + homeworkList(esc, x.homework.slice(0, 5));
+  h += '<h2>宿題</h2>' + homeworkList(esc, x.homework);
   const nt = x.grades.nextTest;
   h += '<h2>テスト</h2>' + (nt ? `<p>${esc(nt.title || 'テスト')} ${md(nt.date)}・あと <strong>${nt.days}日</strong></p>` : '<p class="muted small">ありません。</p>');
   if (x.plans) h += '<h2>今月・来月の計画</h2>' + planList(esc, x.plans);
@@ -116,7 +116,7 @@ function planList(esc, plans) {
   return '<div class="rows">' + plans.map(p => `<div class="ev"><span class="t">${md(p.startDate)}〜</span><span class="b" style="color:var(--ink)">${esc(p.subject)}${p.kind !== '通常' ? '（' + esc(p.kind) + '）' : ''}${p.parentId ? ' <small class="muted">追加</small>' : ''}
     <small class="muted">${p.used} / ${p.cap}回・1回 ${p.minutes}分 ${yen(p.fee)}</small></span><span><span class="tag ${PLAN[p.status][1]}">${PLAN[p.status][0]}</span></span></div>`).join('') + '</div>';
 }
-// 予定: 予定表と同じ月のカレンダーを、この生徒の分だけで（2026-11-03 本人「普通に生徒のカレンダーを表示したい」）。授業の記録は「記録と宿題」タブ
+// 予定: 予定表と同じ月のカレンダーを、この生徒の分だけで（2026-11-03 本人「普通に生徒のカレンダーを表示したい」）。授業の記録はカレンダーの授業から開く
 function schedule(ctx, x) {
   const { esc } = ctx;
   if (ctx.me) return schedulePage(ctx, ctx.me, { student: x.student.id });
@@ -124,15 +124,6 @@ function schedule(ctx, x) {
     + (x.events.length ? '<h2>テスト・行事・授業ができない日</h2><div class="rows">' + x.events.map(e => `<div class="ev ${e.kind}"><span class="t">${md(e.date)}${e.dateTo !== e.date ? '〜' : ''}</span><span class="b">${esc(e.title || (e.kind === 'unavailable' ? '授業ができない日' : ''))}</span><span></span></div>`).join('') + '</div>' : '')
     + '<h2>これまでの授業</h2>' + (x.past.length ? '<div class="rows">' + x.past.map(l => lessonRow(esc, l, ['decided', 'done'].includes(l.status) ? '#record=' + encodeURIComponent(l.id) : '')).join('') + '</div>' : '<p class="muted small">まだありません。</p>')
     + '<p class="small" style="margin-top:12px"><a href="#schedule">月の予定表を開く</a></p>';
-}
-function records(ctx, x) {
-  const { esc } = ctx;
-  let h = '';
-  if (x.pendingRecords.length) h += `<h2>記録を書ける授業</h2><div class="rows">` + x.pendingRecords.map(l => lessonRow(esc, l, '#record=' + encodeURIComponent(l.id))).join('') + '</div>';
-  h += '<h2>宿題</h2>' + homeworkList(esc, x.homework);
-  h += '<h2>記録</h2>' + (x.records.length ? '<div class="rows">' + x.records.map(r => `<a class="todo" href="#record=${encodeURIComponent(r.lessonId)}"><span class="b"><strong>${md(r.date)} ${esc(r.subject)}：${esc(r.range || '（範囲なし）')}</strong>
-    <small class="muted">${r.status === 'draft' ? '下書き・' : ''}${esc(noteText(r.staffNotes) || r.comment.slice(0, 60))}</small></span><span class="go">›</span></a>`).join('') + '</div>' : '<p class="muted small">まだ記録はありません。</p>');
-  return h;
 }
 // 資料: テスト結果と、学校の書類（年間行事予定など。教室管理者だけ。2026-10-31 本人）。
 // まず入口の一覧を出し、押すとそれぞれの画面（#student=<id>/grades/tests・/docs）。2026-11-02 本人「いきなりテストの結果がバーンって表示されて、下の方に行くと行事予定があって…構造がいびつ。入り口を作っておく」
