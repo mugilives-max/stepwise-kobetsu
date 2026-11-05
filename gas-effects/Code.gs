@@ -4,6 +4,7 @@
 // v2 が使う部分（gas/Sync.gs の effectsOp_ とその下）だけを取り出した。シートは使わない。設定は Script Properties だけ。
 //   WORKER_SYNC_KEY : Worker の SYNC_KEY と同じ文字列（24 文字以上）。これが合うときだけ動く
 //   CALENDAR_SYNC   : 'off' にするとカレンダーには触らない（メールだけ送る）。無ければ on
+// 週 1 回の控え: 関数 setupBackup を 1 回実行すると、毎週日曜の朝に weeklyBackup が動く（ドライブ Kura/塾/バックアップ へ）
 // 公開は「ウェブアプリ」（実行するユーザー: 自分、アクセス: 全員）。その URL を Worker の GAS_URL に入れる。
 // 頼まれる形（cf/v2/effects.mjs の deliverEffects と同じ）:
 //   { action: 'effects', key, items: [{ kind: 'mail'|'calendarCreate'|'calendarPatch'|'calendarMeet'|'calendarDelete', ... }] }
@@ -132,6 +133,52 @@ function authorize() {
   return 'ok: ' + Session.getEffectiveUser().getEmail();
 }
 
+
+// ---- 週 1 回、v2 の控えをドライブへ置く（2026-11-05 本人）----
+// 台帳/<日付>.json と、ファイル/<id>_<名前>（まだ置いていないものだけ）。Worker が口座番号やログインの値を外して渡す（cf/v2/backup.mjs の forDrive）
+var WORKER_V2_ = 'https://stepwise-api.stepwise-edu.workers.dev/v2/';
+var BACKUP_PATH_ = ['Kura', '塾', 'バックアップ'];
+var BACKUP_BUDGET_MS_ = 300000; // Apps Script は 6 分で止まる。残りのファイルは次の回に回す
+
+function setupBackup() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'weeklyBackup') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('weeklyBackup').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(4).create();
+  return weeklyBackup();
+}
+
+function weeklyBackup() {
+  var started = Date.now();
+  var key = String(PropertiesService.getScriptProperties().getProperty('WORKER_SYNC_KEY') || '').trim();
+  var snap = worker_('backup/drive', { key: key });
+  var root = BACKUP_PATH_.reduce(function (dir, name) { return child_(dir, name); }, DriveApp.getRootFolder());
+  var ledger = child_(root, '台帳'), filesDir = child_(root, 'ファイル');
+  var day = Utilities.formatDate(new Date(snap.takenAt), 'Asia/Tokyo', 'yyyy-MM-dd'), name = day + '.json';
+  var same = ledger.getFilesByName(name);
+  while (same.hasNext()) same.next().setTrashed(true);
+  ledger.createFile(Utilities.newBlob(JSON.stringify({ takenAt: snap.takenAt, tables: snap.tables }), 'application/json', name));
+  var have = {}, list = filesDir.getFiles();
+  while (list.hasNext()) have[list.next().getName().split('_').slice(0, 2).join('_')] = true;
+  var put = 0, left = 0;
+  (snap.files || []).forEach(function (f) {
+    if (have[f.id]) return;
+    if (Date.now() - started > BACKUP_BUDGET_MS_) { left++; return; }
+    var bytes = Utilities.base64Decode(worker_('backup/drive/file', { key: key, id: f.id }).base64);
+    if (f.sha256 && hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes)) !== f.sha256) throw new Error('ファイルが壊れています: ' + f.id);
+    filesDir.createFile(Utilities.newBlob(bytes, f.mime, f.id + '_' + f.name));
+    put++;
+  });
+  worker_('backup/drive/done', { key: key, files: put, left: left });
+  return 'ok: ' + name + ' ファイル ' + put + ' 件' + (left ? '（残り ' + left + ' 件は次の回）' : '');
+}
+
+function worker_(route, body) {
+  var res = UrlFetchApp.fetch(WORKER_V2_ + route, { method: 'post', contentType: 'application/json', payload: JSON.stringify(body), muteHttpExceptions: true });
+  var data = JSON.parse(res.getContentText());
+  if (!data.ok) throw new Error(route + ': ' + ((data.error && data.error.message) || res.getResponseCode()));
+  return data;
+}
+function child_(dir, name) { var it = dir.getFoldersByName(name); return it.hasNext() ? it.next() : dir.createFolder(name); }
+function hex_(bytes) { return bytes.map(function (b) { return ('0' + ((b + 256) % 256).toString(16)).slice(-2); }).join(''); }
 
 // Record before dispatch. A crash after dispatch remains unknown, never silently sent twice.
 // Entries contain opaque IDs/results only (no recipients/body/credentials).

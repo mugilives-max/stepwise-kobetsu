@@ -6,6 +6,59 @@ const { createV2 } = require('./helpers/v2-harness.cjs');
 
 const at = s => Date.parse(s + '+09:00');
 const stored = (h, key) => JSON.parse(Buffer.from(h.env.FILES._m.get(key).b).toString('utf8'));
+const KEY = 's'.repeat(32);
+
+test('backup: the Drive copy leaves out what could impersonate someone and the bank number, and needs the key', async () => {
+  const { forDrive } = await import('../cf/v2/backup.mjs');
+  const out = forDrive({
+    sessions: [{ tokenHash: 'x' }], authChallenges: [{ tokenHash: 'x' }], fileTokens: [{ tokenHash: 'x' }], previewSessions: [{ tokenHash: 'x' }],
+    staff: [{ id: 'st', name: '先生', passHash: 'h', passSalt: 's' }], families: [{ id: 'f', passHash: 'h', passSalt: 's' }],
+    students: [{ id: 'su', linkCode: 'secret-link' }], effects: [{ id: 1, kind: 'mail', payload: '{"body":"?k=secret"}', status: 'sent' }],
+    staffBankRequests: [{ id: 'b', contentHash: 'c', account: JSON.stringify({ bankName: '架空銀行', accountNumber: '1234567' }) }, { id: 'b2', account: 'broken' }],
+    lessons: [{ id: 'l', subject: '英語' }],
+  });
+  assert.deepEqual(Object.keys(out).sort(), ['effects', 'families', 'lessons', 'staff', 'staffBankRequests', 'students']);
+  const text = JSON.stringify(out);
+  for (const secret of ['secret-link', '?k=secret', '1234567', 'passHash":"h', 'passSalt":"s', 'contentHash":"c', 'broken']) assert.ok(!text.includes(secret), secret);
+  assert.match(text, /架空銀行/); assert.equal(out.lessons[0].subject, '英語');
+
+  const h = await createV2(); const auth = await h.owner(); h.env.SYNC_KEY = KEY;
+  for (const route of ['backup/drive', 'backup/drive/file', 'backup/drive/done']) {
+    assert.equal((await h.call(route, { key: 'wrong' })).error.code, 'badKey', route);
+    assert.equal((await h.call(route, { auth })).error.code, 'badKey', 'ログインでは取れない');
+  }
+  const got = await h.ok('backup/drive', { key: KEY });
+  assert.equal(got.tables.sessions, undefined);
+  assert.ok(got.tables.staff[0].id); assert.equal(got.tables.staff[0].passHash, '');
+  assert.ok(Array.isArray(got.files));
+});
+
+test('backup: a file comes back whole, and finishing is shown on the settings page', async () => {
+  const h = await createV2(); const auth = await h.owner(); h.env.SYNC_KEY = KEY;
+  const bytes = Buffer.alloc(70000, 0).map((_, i) => i % 251);
+  await h.env.FILES.put('f/fl_1', bytes, {});
+  assert.equal(Buffer.from((await h.ok('backup/drive/file', { key: KEY, id: 'fl_1' })).base64, 'base64').equals(bytes), true);
+  assert.equal((await h.call('backup/drive/file', { key: KEY, id: 'none' })).error.code, 'notFound');
+  assert.deepEqual((await h.ok('admin/backup/list', { auth })).drive, { date: '', stale: true });
+  await h.ok('backup/drive/done', { key: KEY, files: 3, left: 0 });
+  const d = (await h.ok('admin/backup/list', { auth })).drive;
+  assert.ok(d.date); assert.equal(d.stale, false);
+});
+
+test('backup: the owner hears when a backup stops, and only then', async () => {
+  const { backupAlerts } = await import('../cf/v2/backup.mjs');
+  const h = await createV2(); await h.owner(); h.env.SYNC_KEY = KEY;
+  const run = async (backup, now = h.clock) => { const c = { db: h.env.DB2, now, effects: [] }; await backupAlerts(c, backup); return c.effects; };
+  assert.equal((await run({ key: 'k' })).length, 0, '動いていれば知らせない。ドライブがまだ一度も無いときも');
+  const bad = await run({ error: 'R2 down' });
+  assert.equal(bad.length, 1); assert.equal(bad[0].to, 'TEACHER'); assert.match(bad[0].body, /毎日の台帳の控え/);
+  await h.ok('backup/drive/done', { key: KEY });
+  const day = 86400e3;
+  assert.equal((await run({ key: 'k' }, h.clock + 8 * day)).length, 0);
+  assert.match((await run({ key: 'k' }, h.clock + 9 * day))[0].body, /9 日止まって/);
+  assert.equal((await run({ key: 'k' }, h.clock + 10 * day)).length, 0, '毎日は送らない');
+  assert.equal((await run({ key: 'k' }, h.clock + 12 * day)).length, 1);
+});
 
 test('backup: the manager takes a snapshot of every table into R2, lists it, and old ones are pruned', async () => {
   const h = await createV2(); const auth = await h.owner();
