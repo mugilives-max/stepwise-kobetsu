@@ -7,8 +7,8 @@ import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {ensure as check,runWrangler,compareModule,activeDeployment,assertPrivateBucket,assertRecordsPreserved} from './release-contract-system.mjs';
-const repo='mugilives-max/stepwise-kobetsu',base='2c1e5282ac42339affd4b827c813ce3f8a6fe4ee'; // base: source of the Worker published on 2026-11-05 (PR #335, release 2026-11-05-backup-drive)
-const sourceSha='11a5ebe5f0ccc87aecda700a591f7d29cf4a4016',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
+const repo='mugilives-max/stepwise-kobetsu',base='11a5ebe5f0ccc87aecda700a591f7d29cf4a4016'; // base: source of the Worker active after the first publish of PR #337 on 2026-11-06
+const sourceSha='e14d96871796cea7cb4f99d3777f037bcdb390bb',worker='stepwise-api',db='91ea045c-94a4-413f-91c1-1e29ebe6eb24',bucket='stepwise-files';
 const mainBeforePublish='fb536353451fe5242846917818bedeec1b0328fb',pullNumber=337,releaseLabel='2026-11-06-morning-job',branch='claude/morning-job-release-20261106',backupRoot='release-backups/morning-job-20261106/';
 const source=resolve('release-source'),baseline=resolve('baseline'),request=JSON.parse(await readFile('release-control/scripts/morning-job-release-request.json','utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex'),q=s=>'"'+s.replaceAll('"','""')+'"';

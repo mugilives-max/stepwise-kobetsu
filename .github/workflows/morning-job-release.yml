@@ -20,12 +20,12 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 11a5ebe5f0ccc87aecda700a591f7d29cf4a4016
+          ref: e14d96871796cea7cb4f99d3777f037bcdb390bb
           path: release-source
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 2c1e5282ac42339affd4b827c813ce3f8a6fe4ee
+          ref: 11a5ebe5f0ccc87aecda700a591f7d29cf4a4016
           path: baseline
           persist-credentials: false
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
