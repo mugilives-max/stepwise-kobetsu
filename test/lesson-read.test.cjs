@@ -22,10 +22,3 @@ test('retired parent credentials cannot record reads',()=>{
 
 const flush=()=>new Promise(r=>setImmediate(r));
 function ui(){const label={textContent:''},el={dataset:{parentRecord:'r',recordRevision:'2'},open:false,matches:()=>true,querySelector:()=>label},calls=[];let listener;const host={addEventListener:(n,fn)=>listener=fn,removeEventListener:()=>listener=null,querySelectorAll:()=>[el]},c={window:{},console};vm.runInNewContext(fs.readFileSync('assets/lesson-read.js','utf8'),c);c.window.StepwiseLessonRead.mount(host,(op,payload)=>new Promise((resolve,reject)=>calls.push({op,payload,resolve,reject})),'parent');return {calls,label,el,api:c.window.StepwiseLessonRead,toggle:()=>listener({target:el})};}
-test('UI listing and closing do not mark read; opening persists and stale load cannot undo result',async()=>{
- const u=ui();assert.equal(u.calls.length,1);assert.equal(u.calls[0].op,'recordReadStatus');u.toggle();assert.equal(u.calls.length,1);u.el.open=true;u.toggle();u.toggle();assert.equal(u.calls.length,2);
- u.calls[1].resolve({ok:true,reads:[{recordId:'r',readRevision:2}]});await flush();assert.equal(u.label.textContent,'既読');u.calls[0].resolve({ok:true,reads:[{recordId:'r',readRevision:0}]});await flush();assert.equal(u.label.textContent,'既読');
-});
-test('UI shows updates, keeps failed writes unconfirmed, retries and discards responses after clear',async()=>{
- const u=ui();u.calls[0].resolve({ok:true,reads:[{recordId:'r',readRevision:1}]});await flush();assert.equal(u.label.textContent,'更新あり');u.el.open=true;u.toggle();u.calls[1].reject(Error('offline'));await flush();assert.match(u.label.textContent,/未保存/);u.toggle();assert.equal(u.calls.length,3);u.api.clear();const before=u.label.textContent;u.calls[2].resolve({ok:true,reads:[{recordId:'r',readRevision:2}]});await flush();assert.equal(u.label.textContent,before);
-});

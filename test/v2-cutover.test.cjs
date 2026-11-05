@@ -47,7 +47,7 @@ test('when the check finds a real difference, nothing is switched and the curren
   assert.equal(h.db._sqlite.prepare("select count(*) n from config where key = 'v2CutoverAt'").get().n, 0, '今の仕組みは元のまま');
 });
 
-test('the current system refuses writes after the switch but keeps reading, admin login and the health flag', async () => {
+test('the current system refuses reads, writes and login after the switch and keeps only the health flag', async () => {
   const { h, auth } = await legacyWorld();
   const worker = (await import('../cf/worker/index.mjs')).default;
   const env = { ...h.env, WRITE_MODE: 'worker', ALLOW_ORIGIN: 'https://www.stepwise-education.jp' };
@@ -62,5 +62,9 @@ test('the current system refuses writes after the switch but keeps reading, admi
   const after = await post({ action: 'admin', op: 'setFee', token: 'x', studentId: 's1', rate30: 1600 });
   assert.equal(after.errorCode, 'movedToV2', '書き込みは断る');
   const login = await post({ action: 'admin', op: 'login', password: 'wrong' });
-  assert.notEqual(login.errorCode, 'movedToV2', '管理画面のログインは通す（読むだけで使うため）');
+  assert.equal(login.errorCode, 'movedToV2', '前の管理画面のログインも閉じる');
+  const read = await post({ action: 'admin', op: 'kanriDashboard', token: 'x' });
+  assert.equal(read.errorCode, 'movedToV2', '読み取りも断る');
+  const state = await (await worker.fetch(new Request('https://api.invalid/?action=state&k=x'), env, { waitUntil() {} })).json();
+  assert.equal(state.errorCode, 'movedToV2', '生徒の前のリンクの読み取りも断る');
 });
