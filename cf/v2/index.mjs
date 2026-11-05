@@ -33,7 +33,7 @@ import { recordEffects, deliverEffects } from './effects.mjs';
 import { effectsAdminRoutes, retryFailedEffects, sweepStaleEffects } from './effects-admin.mjs';
 import { termsRoutes } from './terms.mjs';
 import { serviceActor, serviceWriteActor, SERVICE_READS } from './service.mjs';
-import { backupRoutes, backupToR2 } from './backup.mjs';
+import { backupRoutes, backupToR2, backupAlerts } from './backup.mjs';
 import { trialRoutes } from './trial.mjs';
 import { enrollmentRoutes } from './enrollment.mjs';
 import { mcpWriteRoutes, SERVICE_WRITES } from './mcp-writes.mjs';
@@ -55,6 +55,7 @@ export async function runV2Scheduled(env, now = Date.now()) {
   const c = { env, db: env.DB2, now, effects: [], actor: null, userAgent: 'scheduled' };
   let backup; try { backup = await backupToR2(env, c.db, now); } catch (e) { backup = { error: String((e && e.message) || e).slice(0, 200) }; } // 控えが取れなくても、ほかの処理は止めない（画面に「古い」と出る）
   const result = { confirmed: 0, backup };
+  try { result.backupAlerts = await backupAlerts(c, backup); } catch (e) { result.backupAlerts = { error: String((e && e.message) || e).slice(0, 200) }; }
   try { result.settled = await settlePastLessons(c); } catch (e) { result.settled = { error: String((e && e.message) || e).slice(0, 200) }; }
   result.invoices = await autoCloseInvoices(c);
   result.tests = await remindTestResults(c);

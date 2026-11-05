@@ -177,7 +177,9 @@ function backupHtml(ctx) {
   if (backups.loading) return h + '<p class="muted small">読み込んでいます…</p>';
   if (backups.error) return h + `<p class="notice error small">${esc(backups.error)}</p>`;
   const l = backups.latest;
-  h += '<div class="group"><div class="irow" style="cursor:default"><span class="b"><b>' + (l ? `最新 ${esc(l.date)}${backups.stale ? ' <span class="tag danger">古い</span>' : ''}` : '<span class="tag danger">まだありません</span>') + `</b><small>${l ? `${l.rows}行・${Math.round(l.size / 1024)}KB・` : ''}${backups.count}日分（${backups.keepDays}日まで残す）</small></span><button class="small-btn" data-action="bk-run"${ctx.dis()}>今すぐ取る</button></div></div>`;
+  h += '<div class="group"><div class="irow" style="cursor:default"><span class="b"><b>' + (l ? `最新 ${esc(l.date)}${backups.stale ? ' <span class="tag danger">古い</span>' : ''}` : '<span class="tag danger">まだありません</span>') + `</b><small>${l ? `${l.rows}行・${Math.round(l.size / 1024)}KB・` : ''}${backups.count}日分（${backups.keepDays}日まで残す）</small></span><button class="small-btn" data-action="bk-run"${ctx.dis()}>今すぐ取る</button></div>`;
+  const d = backups.drive || {};
+  h += `<div class="irow" style="cursor:default"><span class="b"><b>ドライブ ${d.date ? esc(d.date) : 'まだありません'}${d.date && d.stale ? ' <span class="tag danger">古い</span>' : ''}</b><small>週 1 回・Kura/塾/バックアップ</small></span></div></div>`;
   return h;
 }
 
