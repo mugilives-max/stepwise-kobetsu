@@ -7,7 +7,7 @@ import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
 // - 講師: 自分の担当の授業を見る・実施済みにする・自分の休みを登録する
 // - 保護者: 予定を見る、確認待ちの授業に「この日程で大丈夫」（確定）、「変更・お休みの連絡」、予定の共有（テスト・行事・授業ができない日）
 // - 生徒: 予定を見る、「変更・お休みの連絡」（許されていれば）、予定の共有
-// - 毎日0時10分: 締め切りを過ぎた確認待ちを確定する（autoConfirm。締め切りを付けていた前からの授業だけ）
+// - 毎日8時10分: 締め切りを過ぎた確認待ちを確定する（autoConfirm。締め切りを付けていた前からの授業だけ）
 // 2通り（2026-10-27 本人「大雑把に言えば２通りでいい…LINEとかで日程の調整をしたら、両者の合意が取れたらそれを塾側がシステムに反映する。あるいは、既に合意されている日程をシステムからリンクを送って…承認お願いします…スムーズであるというのが何よりも大事」）:
 //   ① LINE・対面で合意した日時を、塾が「確定」で入れる（send: 'decide'）
 //   ② 塾が日程を送り、保護者が保護者ページで「承認する」（send: 'ask'。締め切り・自動確定なし）
@@ -240,7 +240,7 @@ async function teacherStudentIds(c, staffId) {
   return (await c.db.prepare('select distinct studentId from lessons where staffId = ? and date between ? and ?').bind(staffId, addDays(today, -90), addDays(today, 90)).all()).results.map(r => r.studentId);
 }
 
-// ---- 毎日0時10分（Worker の定期実行）: 締め切りを過ぎた確認待ちを確定する（調整中は締め切りがないので確定しない） ----
+// ---- 毎日8時10分（Worker の定期実行）: 締め切りを過ぎた確認待ちを確定する（調整中は締め切りがないので確定しない） ----
 export async function autoConfirm(c) {
   const today = todayJst(c.now);
   const due = (await c.db.prepare(`select l.*, s.familyName, s.givenName from lessons l join students s on s.id = l.studentId
