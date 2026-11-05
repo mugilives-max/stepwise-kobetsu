@@ -22,7 +22,7 @@ function fitTicks(values, step, pad, floor, ceil, minSteps) {
 // 画面の中の選択（生徒ごと）: グラフの種類と科目、開いている試験。スタッフ・保護者・生徒の画面で共通。
 // 1 画面に全科目の線を重ねず、科目の帯で切り替えて 1 本を大きく見せる（本人 2026-10-11「グラフが小さすぎて見えない。バーで表示科目を変えられるとか」）
 const SEL = {};
-export function gradeSel(studentId) { return SEL[studentId] || (SEL[studentId] = { series: '', subject: '合計', exam: '' }); }
+export function gradeSel(studentId) { return SEL[studentId] || (SEL[studentId] = { series: '', subject: '合計', exam: '', past: false }); }
 // 試験の階層: 何の試験か（定期テスト・北辰テスト・東部地区テスト・英検 …）→ その中の回。定期テストを先に、あとは新しい順
 export const SERIES_FIRST = ['定期テスト', '北辰テスト', '東部地区テスト', '英検'];
 export function seriesOf(exams) {
@@ -38,10 +38,11 @@ export function seriesPick(exams, studentId) {
   return { bar, list, series: sel.series };
 }
 export function gradesClickShared(a, b) {
-  if (a !== 'gv-subject' && a !== 'gv-series') return false;
+  if (a !== 'gv-subject' && a !== 'gv-series' && a !== 'gv-past') return false;
   const sel = gradeSel(b.dataset.sid);
   if (a === 'gv-subject') sel.subject = b.dataset.s;
-  else if (a === 'gv-series') { sel.series = b.dataset.s; sel.subject = '合計'; }
+  else if (a === 'gv-past') sel.past = !sel.past;
+  else if (a === 'gv-series') { sel.series = b.dataset.s; sel.subject = '合計'; sel.past = false; }
   return true;
 }
 const chip = (action, sid, attrs, label, on) => `<button type="button" class="gchip${on ? ' on' : ''}" data-action="${action}" data-sid="${esc(sid)}" ${attrs}${on ? ' aria-pressed="true"' : ''}>${esc(label)}</button>`;
@@ -96,16 +97,43 @@ function oneSummary(list, useDev, caption, opts = {}) {
   const rows = list.slice().reverse().map(e => `<tr><th>${name(e)}<small>${esc(md(e.date))}${sheetLinks(opts.sheets ? opts.sheets(e) : [])}</small></th>${subjects.map(s => `<td${agg(s)}>${val(e, s)}</td>`).join('')}${hasTot ? `<td class="tot">${tot(e)}</td>` : ''}</tr>`).join('');
   return `<figure class="gsum"><figcaption class="small muted">${caption}</figcaption><div class="gwrap"><table class="gtable gsum-t"><thead><tr><th></th>${subjects.map(s => `<th${agg(s)}>${esc(s)}</th>`).join('')}${hasTot ? '<th class="tot">合計</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div></figure>`;
 }
-// 推移の箱: 一覧とグラフ（グラフは試験が 2 つ以上のとき）。right は見出しの右に置くもの（スタッフの「＋ 結果を入れる」）。opts は oneSummary へ
-export function trendBox(exams, studentId, right = '', opts = {}) {
-  const inner = summaryTable(exams, opts) + gradeCharts(exams, studentId);
-  if (!inner) return '';
-  return `<div class="sec-title">推移${right ? `<span style="margin-left:auto">${right}</span>` : ''}</div><div class="sheet gtrend">${inner}</div>`;
+// 最新の回を大きく見せる。模試は偏差値、定期テストは点数。▲▼ は前回との差（満点が違う回とは比べない）
+const num = v => v === null || v === undefined || v === '' ? null : Number(v);
+function gtile(label, cur, prev, useDev) {
+  const v = num(useDev ? cur.deviation : cur.score);
+  if (v === null) return '';
+  const pv = prev ? num(useDev ? prev.deviation : prev.score) : null;
+  const d = pv !== null && (useDev || num(prev.max) === num(cur.max)) ? Math.round((v - pv) * 10) / 10 : null;
+  const delta = d === null ? '' : `<span class="d${d > 0 ? ' up' : d < 0 ? ' down' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '±'}${n1(Math.abs(d))}</span>`;
+  const score = num(cur.score) !== null && !cur.fromSubjects ? `${n1(cur.score)}${num(cur.max) !== null ? '/' + n1(cur.max) : ''}点` : '';
+  const rank = num(cur.rank) !== null ? `${n1(cur.rank)}位${num(cur.rankOf) !== null ? '/' + n1(cur.rankOf) : ''}` : '';
+  const note = useDev ? [score, rank] : [num(cur.max) !== null ? `満点 ${n1(cur.max)}` : '', num(cur.average) !== null ? `平均 ${n1(cur.average)}` : '', rank];
+  return `<div class="gtile"><span class="lb">${esc(label)}</span><span class="v">${n1(v)}</span>${delta}${note.filter(Boolean).map(t => `<small>${esc(t)}</small>`).join('')}</div>`;
 }
-export function summaryTable(exams, opts = {}) {
-  const list = exams.filter(e => e.scores.length).slice().sort((a, b) => a.date.localeCompare(b.date));
+function latestCard(list, useDev, opts = {}) {
+  const e = list[list.length - 1], p = list[list.length - 2] || null;
+  const old = s => p && p.scores.find(r => r.subject === s);
+  const row = s => gtile(s, e.scores.find(r => r.subject === s), old(s), useDev);
+  const names = subjectsOf([e]), isAgg = s => /教科$/.test(s);
+  const main = gtile('合計', e.total, p && p.total, useDev) + names.filter(isAgg).map(row).join('');
+  const name = opts.edit ? `<button type="button" class="linkish nm" data-action="gr-edit" data-id="${esc(e.id)}">${esc(e.name)}</button>` : `<span class="nm">${esc(e.name)}</span>`;
+  return `<div class="glatest"><div class="glatest-head">${name}<small>${esc(md(e.date))}${sheetLinks(opts.sheets ? opts.sheets(e) : [])}</small>${p ? `<small class="vs">前回 ${esc(p.name)} との差</small>` : ''}</div>${main ? `<div class="gtiles main">${main}</div>` : ''}<div class="gtiles">${names.filter(s => !isAgg(s)).map(row).join('')}</div></div>`;
+}
+// 成績の箱: ふだんは最新の回だけ。過去の一覧とグラフは開いたときに出す（2026-11-05 本人「常時は最新の結果がしっかりと分かるように、必要に応じて過去の結果も」）。
+// right は見出しの右に置くもの（スタッフの「＋ 結果を入れる」）。opts は oneSummary へ
+export function trendBox(exams, studentId, right = '', opts = {}) {
+  const list = scored(exams);
   if (!list.length) return '';
-  const useDev = list.some(e => e.kind === 'mock') && list.some(e => e.scores.some(s => s.deviation !== null && s.deviation !== undefined));
+  const past = gradeSel(studentId).past, n = list.length - 1;
+  const more = n ? `<button type="button" class="gpast" data-action="gv-past" data-sid="${esc(studentId)}" aria-expanded="${past}"><span>過去の結果</span><small>${n}回</small><span class="ch" aria-hidden="true">${past ? '▲' : '▼'}</span></button>${past ? summaryTable(exams, opts) + gradeCharts(exams, studentId) : ''}` : '';
+  return `<div class="sec-title">最新の結果${right ? `<span style="margin-left:auto">${right}</span>` : ''}</div><div class="sheet gtrend">${latestCard(list, usesDeviation(list), opts)}${more}</div>`;
+}
+const scored = exams => exams.filter(e => e.scores.length).slice().sort((a, b) => a.date.localeCompare(b.date));
+const usesDeviation = list => list.some(e => e.kind === 'mock') && list.some(e => e.scores.some(s => s.deviation !== null && s.deviation !== undefined));
+export function summaryTable(exams, opts = {}) {
+  const list = scored(exams);
+  if (!list.length) return '';
+  const useDev = usesDeviation(list);
   return oneSummary(list, useDev, `${esc(list[0].series)}の${useDev ? '偏差値' : '点数'}`, opts);
 }
 const STATUS = { new: ['確かめ待ち', 'warn'], imported: ['取り込み済み', 'ok'], dismissed: ['確認済み', 'gray'] };
@@ -116,7 +144,7 @@ export function fileList(files, action) {
 export const uploadForm = (dis, extra = '') => `<form class="stack" data-form="gr-upload">${extra}<label>成績票の写真か PDF<input type="file" name="file" accept="image/*,application/pdf" required></label>
   <label>一言（任意）<input name="note" maxlength="200" placeholder="例: 2学期中間テストの個票"></label><button class="primary"${dis}>送る</button></form>`;
 
-// 保護者・生徒の画面: 次のテスト・推移・試験のカード・成績票
+// 保護者・生徒の画面: 次のテスト・最新の結果（過去は開いて見る）・成績票
 export function gradesView(st, { who, dis = '' }) {
   let h = '';
   if (st.nextTest) h += `<p class="notice">${esc(st.nextTest.title || 'テスト')}まで あと <strong>${st.nextTest.days}日</strong>（${esc(md(st.nextTest.date))}）</p>`;

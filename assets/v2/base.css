@@ -696,6 +696,28 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 .gchart svg { width: 100%; height: auto; display: block; background: var(--white); border: 1px solid var(--line); border-radius: 12px; }
 /* 成績の収まり（2026-10-11）: 推移は 1 つの箱、試験ごとは ‹ › の帯とカードを 1 つの箱に。成績票は大きなボタンで開く */
 .gtrend { padding: 10px 12px 6px; margin: 8px 0 0; }
+/* 最新の回を大きく（2026-11-05）。過去の一覧とグラフは「過去の結果」を開いたときだけ */
+.glatest { padding: 4px 2px 10px; }
+.glatest-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 10px; }
+.glatest-head .nm { font-size: 17px; font-weight: 700; }
+.glatest-head button.nm { font-size: 17px; }
+.glatest-head small { color: var(--muted); font-size: 12px; }
+.glatest-head .vs { margin-left: auto; }
+.gtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); gap: 6px; }
+.gtiles.main { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.gtile { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 8px 2px; border: 1px solid var(--line); border-radius: 10px; font-variant-numeric: tabular-nums; }
+.gtile .lb { font-size: 12.5px; color: var(--muted); }
+.gtile .v { font-size: 24px; font-weight: 700; line-height: 1.25; }
+.gtile .d { font-size: 12.5px; color: var(--muted); }
+.gtile .d.up { color: var(--ok); } .gtile .d.down { color: var(--danger); }
+.gtile small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.gtiles.main .gtile { padding: 10px 4px; border: 0; background: var(--soft); }
+.gtiles.main .lb { font-size: 13.5px; color: var(--ink); font-weight: 700; }
+.gtiles.main .v { font-size: 38px; color: var(--primary); }
+.gtiles.main .d { font-size: 14px; font-weight: 700; }
+.gpast { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
+.gpast small { color: var(--muted); font-weight: 400; }
+.gpast .ch { margin-left: auto; color: var(--muted); font-size: 11px; }
 .gtrend .gsum { margin: 0 0 6px; }
 .gtrend .gchart { margin: 10px 0 4px; }
 .gtrend .gchart svg { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
