@@ -696,6 +696,47 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 .gchart svg { width: 100%; height: auto; display: block; background: var(--white); border: 1px solid var(--line); border-radius: 12px; }
 /* 成績の収まり（2026-10-11）: 推移は 1 つの箱、試験ごとは ‹ › の帯とカードを 1 つの箱に。成績票は大きなボタンで開く */
 .gtrend { padding: 10px 12px 6px; margin: 8px 0 0; }
+/* 生徒の概要の今週の授業（2026-11-05）: 7 日分のカレンダーと、合計・科目ごとのコマ数 */
+.wk { padding: 12px; margin: 8px 0 0; }
+.wk-sum { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
+.wk-n { font-size: 14px; } .wk-n strong { font-size: 30px; color: var(--primary); margin-right: 2px; font-variant-numeric: tabular-nums; }
+.wk-s { font-size: 14px; color: var(--muted); } .wk-s b { color: var(--ink); font-size: 17px; }
+.wk-sum .tag { align-self: center; }
+.wk-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.wk-d { min-width: 0; min-height: 92px; padding: 0 2px 4px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; }
+.wk-d:first-child { border-left: 0; }
+.wk-h { margin: 0 -2px 2px; padding: 4px 0; text-align: center; font-size: 11.5px; color: var(--muted); border-bottom: 1px solid var(--line); line-height: 1.25; font-variant-numeric: tabular-nums; }
+.wk-h span { display: block; font-size: 12px; }
+.wk-d.sun .wk-h span { color: var(--danger); } .wk-d.sat .wk-h span { color: var(--primary); }
+.wk-d.today { background: var(--soft); } .wk-d.today .wk-h { color: var(--primary); font-weight: 700; }
+.wk-l { display: block; padding: 3px 2px; border-radius: 6px; background: var(--primary); color: var(--white); font-size: 12px; line-height: 1.25; text-align: center; text-decoration: none; overflow-wrap: anywhere; }
+.wk-l b { display: block; font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.wk-l small { display: block; font-size: 10px; }
+.wk-l.done { background: #e7ebef; color: var(--muted); }
+.wk-l.tent { background: var(--white); color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.wk-next { margin: 8px 2px 0; }
+/* 最新の回を大きく（2026-11-05）。過去の一覧とグラフは「過去の結果」を開いたときだけ */
+.glatest { padding: 4px 2px 10px; }
+.glatest-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 10px; }
+.glatest-head .nm { font-size: 17px; font-weight: 700; }
+.glatest-head button.nm { font-size: 17px; }
+.glatest-head small { color: var(--muted); font-size: 12px; }
+.glatest-head .vs { margin-left: auto; }
+.gtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); gap: 6px; }
+.gtiles.main { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.gtile { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 8px 2px; border: 1px solid var(--line); border-radius: 10px; font-variant-numeric: tabular-nums; }
+.gtile .lb { font-size: 12.5px; color: var(--muted); }
+.gtile .v { font-size: 24px; font-weight: 700; line-height: 1.25; }
+.gtile .d { font-size: 12.5px; color: var(--muted); }
+.gtile .d.up { color: var(--ok); } .gtile .d.down { color: var(--danger); }
+.gtile small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.gtiles.main .gtile { padding: 10px 4px; border: 0; background: var(--soft); }
+.gtiles.main .lb { font-size: 13.5px; color: var(--ink); font-weight: 700; }
+.gtiles.main .v { font-size: 38px; color: var(--primary); }
+.gtiles.main .d { font-size: 14px; font-weight: 700; }
+.gpast { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
+.gpast small { color: var(--muted); font-weight: 400; }
+.gpast .ch { margin-left: auto; color: var(--muted); font-size: 11px; }
 .gtrend .gsum { margin: 0 0 6px; }
 .gtrend .gchart { margin: 10px 0 4px; }
 .gtrend .gchart svg { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
