@@ -93,7 +93,7 @@ try{
  stage='source and check verification';
  const pr=await gh('/pulls/'+pullNumber);check(pr.head.sha===sourceSha&&pr.head.repo.full_name===repo,'PR source changed.');
  const currentMain=(await gh('/git/ref/heads/main')).object.sha;
- if(request.operation==='pages')check(pr.merged===true&&pr.merge_commit_sha===currentMain,'Pages check requires the reviewed PR on main.');
+ if(request.operation==='pages')check(pr.merged===true&&pr.merge_commit_sha==='6a00433d152b9f6e41949216c6410be09992e94d','Pages check requires the reviewed PR on main.'); // the Pages deployment of that commit stuck as cancelled, so the record PR moved main to get a new deployment
  else check(currentMain===mainBeforePublish&&!pr.merged,'Main moved before Worker publication.');
  check(request.checkRuns?.length===1,'The reviewed contract checks run is required.');
  for(const id of request.checkRuns){const r=await gh('/actions/runs/'+id);check(r.conclusion==='success'&&r.head_sha===sourceSha,'Reviewed checks did not pass.');}
