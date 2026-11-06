@@ -318,7 +318,7 @@ export const mcpWriteRoutes = {
     const moved = n.date !== l.date || n.start !== l.start || n.minutes !== l.minutes;
     if (moved && l.status === 'decided' && c.now > freeDeadline(l.date)) fail('late', '前日23時を過ぎた決定の授業の変更は、取消料の判断が要るので管理画面でしてください', 409);
     if (n.date < todayJst(c.now)) fail('past', '過去の日付にはできません');
-    if (moved || n.staffId !== l.staffId || n.deliveryMode !== l.deliveryMode) await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: b.force === true, exceptId: l.id }); // 2人同時・休みへの変更は force で（2026-11-04 本人。MCP から 1:2 に動かせなかった）
+    if (moved || n.staffId !== l.staffId || n.deliveryMode !== l.deliveryMode) await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: b.force === true, exceptId: l.id }); // 休みなどへの変更は force で（2026-11-04 本人。MCP から 1:2 に動かせなかった）
     // メールは確定した授業の日時が変わるときだけ。調整中・確認待ちはページの表示が変わるだけ（確認待ちは日時を変えると調整中に戻る）
     const mail = moved && l.status === 'decided' && !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
     const fields = x => ({ date: x.date, start: x.start, minutes: x.minutes, subject: x.subject, kind: x.kind, deliveryMode: x.deliveryMode, staffId: x.staffId });
