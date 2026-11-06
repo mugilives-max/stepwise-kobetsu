@@ -699,16 +699,18 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 /* 生徒の概要の今週の授業（2026-11-05）: 7 日分のカレンダーと、合計・科目ごとのコマ数 */
 .wk { padding: 12px; margin: 8px 0 0; }
 /* 週の移動（2026-11-06）: 見出しの右に ‹ ›。今週以外では「今週」で戻れる */
-.wk-head { display: flex; align-items: center; gap: 4px; margin-top: 14px; }
-.wk-head h2 { margin: 0 2px; }
-.wk-head button.icon { width: 40px; height: 36px; padding: 0; }
-.wk-head .grow { flex: 1; }
 .wk-sum p { margin: 0; }
 .wk-sum { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
 .wk-n { font-size: 14px; } .wk-n strong { font-size: 30px; color: var(--primary); margin-right: 2px; font-variant-numeric: tabular-nums; }
 .wk-s { font-size: 14px; color: var(--muted); } .wk-s b { color: var(--ink); font-size: 17px; }
 .wk-sum .tag { align-self: center; }
-.wk-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.wk-cal { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.wk-bar { display: flex; align-items: center; gap: 6px; padding: 6px; border-bottom: 1px solid var(--line); }
+button.wk-go { flex: none; width: 56px; height: 38px; padding: 0; border: 0; border-radius: 8px; background: var(--soft); color: var(--primary); font-size: 24px; font-weight: 700; line-height: 1; }
+button.wk-go:hover { background: #dce8f6; }
+.wk-range { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.wk-range b { font-size: 16px; }
+.wk-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .wk-d { min-width: 0; min-height: 92px; padding: 0 2px 4px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; }
 .wk-d:first-child { border-left: 0; }
 .wk-h { margin: 0 -2px 2px; padding: 4px 0; text-align: center; font-size: 11.5px; color: var(--muted); border-bottom: 1px solid var(--line); line-height: 1.25; font-variant-numeric: tabular-nums; }

@@ -56,11 +56,15 @@ test('another week shows its own lessons and name, and offers the way back to th
   assert.doesNotMatch(next, /wk-d today/);
   assert.match(next, /data-action="wk-move" data-n="0">今週</);
   assert.match(weekBox(esc, x, { off: -1, lessons: [] }), /<h2>先週の授業<\/h2>/);
-  assert.match(weekBox(esc, x, { off: 3, lessons: [] }), /<h2>11\/22〜11\/28の授業<\/h2>/);
+  const far = weekBox(esc, x, { off: 3, lessons: [] });
+  assert.match(far, /<h2>3週間後の授業<\/h2>/);
+  assert.match(far, /<b>11\/22〜11\/28<\/b>/);
+  assert.match(weekBox(esc, x, { off: -2, lessons: [] }), /<h2>2週間前の授業<\/h2>/);
   const now = weekBox(esc, x);
   assert.match(now, /<h2>今週の授業<\/h2>/);
   assert.match(now, /data-n="-1" aria-label="1週間前"/);
   assert.match(now, /data-n="1" aria-label="1週間後"/);
+  assert.match(now, /<div class="wk-cal"><div class="wk-bar"><button[^>]*data-n="-1"[^>]*>‹<\/button><div class="wk-range"><b>11\/1〜11\/7<\/b><\/div><button[^>]*data-n="1"[^>]*>›<\/button><\/div><div class="wk-days">/, '‹ › は予定表の頭で週の日付を挟む');
   assert.doesNotMatch(now, /data-n="0"/);
 });
 
