@@ -228,6 +228,46 @@ async function sendPlanCopy(c, id) {
   const m = await copyMail(c.db, fileId);
   await familyNotice(c, s.id, '受講計画書の控え', `${fullName(s)}さんの受講計画書（${l.subject}${l.kind && l.kind !== '通常' ? '・' + l.kind : ''}・${mdn(l.startDate)}〜${mdn(l.endDate)}）を承認いただきました。\n承認：${consentLine(l.consentedAt || l.approvedAt, l.approvedVia, l.consenterName)}\n内容：${l.approvedCount}回・1回${l.minutes}分 ${Number(l.fee).toLocaleString('ja-JP')}円（税込）\n${m.place.replace('同意した', '承認した')}`, 'contracts', null, m.extra);
 }
+// 同じ月に一緒に承諾をもらった行は、1 つの書面と 1 通の控えにする（2026-11-06 本人。合意した合計が書面に出るように）
+async function sendPlanCopyGroup(c, ids) {
+  const lines = []; for (const id of ids) lines.push(await getLine(c, id));
+  const l = lines[0], s = await getStudent(c, l.studentId);
+  let fileId = '';
+  try { const d = await planDocument(c, { refs: lines.map(x => ({ id: x.id, version: x.version })) }); fileId = await putGenerated(c, { category: 'contract', familyId: s.familyId, studentId: s.id, refType: 'plan', refId: lines.map(x => x.id + ':' + x.version).join(','), name: `受講計画書_${l.startDate.slice(0, 7)}_${fullName(s)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(d.html), note: '承認の控え' }); } catch { fileId = ''; }
+  const m = await copyMail(c.db, fileId), total = lines.reduce((n, x) => n + Number(x.approvedCount) * Number(x.fee), 0);
+  const rows = lines.map(x => `・${x.subject}${x.kind && x.kind !== '通常' ? '（' + x.kind + '）' : ''} ${x.approvedCount}回・1回${x.minutes}分 ${Number(x.fee).toLocaleString('ja-JP')}円（税込）`).join('\n');
+  await familyNotice(c, s.id, '受講計画書の控え', `${fullName(s)}さんの受講計画書（${mdn(l.startDate)}〜${mdn(l.endDate)}）を承認いただきました。\n承認：${consentLine(l.consentedAt || l.approvedAt, l.approvedVia, l.consenterName)}\n内容：\n${rows}\n予定総額：${total.toLocaleString('ja-JP')}円（税込）\n${m.place.replace('同意した', '承認した')}`, 'contracts', null, m.extra);
+}
+// LINE・電話・対面での承諾の記録。確かめる（checkConsent）と書く（saveConsent）を分ける（複数の行は、全部確かめてから書く）
+async function checkConsent(c, me, l, b) {
+  if (l.status === 'approved') fail('already', 'もう承認されています', 409);
+  const consentDate = String(b.consentedAt || b.consentDate || '').slice(0, 10), via = String(b.via || '').trim(), note = String(b.note || '').trim();
+  if (!validDate(consentDate) || consentDate > todayJst(c.now)) fail('badDate', '承諾をもらった日（今日まで）を入れてください');
+  if (!via || via.length > 40) fail('needVia', '承諾の方法（LINE・電話など）を入れてください');
+  if (note.length > 300) fail('tooLong', 'メモは300文字以内にしてください');
+  const count = b.approvedCount === undefined || b.approvedCount === '' ? l.count : Number(b.approvedCount);
+  if (!Number.isInteger(count) || count < 1 || count > l.count) fail('badCount', `承認の回数は1〜${l.count}回にしてください`);
+  const evidence = consentEvidence(c, b, me);
+  await assertPriorConsent(c, l, evidence.consentedAt);
+  // 実際に提案した日（画面の外で提案して、記録があとになったとき。書面の提示日が承認日より後にならないように）
+  const proposedAt = b.proposedAt === undefined ? '' : String(b.proposedAt);
+  if (proposedAt && (!validDate(proposedAt) || proposedAt > todayJst(Date.parse(evidence.consentedAt)))) fail('badProposed', '提案した日は、承諾をもらった日までにしてください');
+  const student = await getStudent(c, l.studentId);
+  const family = await c.db.prepare('select * from families where id = ?').bind(student.familyId).first();
+  const consents = (await c.db.prepare('select version,acceptedAt from termsConsents where familyId = ? order by id desc').bind(family.id).all()).results;
+  const knownBy = r => Date.parse(r.acceptedAt.length === 10 ? r.acceptedAt + 'T23:59:59+09:00' : r.acceptedAt) <= Date.parse(evidence.consentedAt);
+  const prior = consents.filter(knownBy).sort((a,b) => Date.parse(b.acceptedAt) - Date.parse(a.acceptedAt))[0];
+  const termsVersion = prior?.version || (family.termsAcceptedAt && knownBy({acceptedAt:family.termsAcceptedAt}) ? family.termsVersion : '') || '';
+  return { via, note, count, evidence, proposedAt, termsVersion, consentDate };
+}
+async function saveConsent(c, me, l, v) {
+  const now = iso(c.now), { via, note, count, evidence, proposedAt, termsVersion, consentDate } = v;
+  const saved = await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when ? <> '' then ? when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
+    .bind(count, now, 'staff:' + me.id, via, todayJst(Date.parse(evidence.consentedAt)), note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, proposedAt, proposedAt, now, now, l.id, l.version).run();
+  // 本番の D1 は、planLines の履歴を書くトリガーの行も changes に数える（2026-10-29 検証環境で、承認は保存されたのに 409 になった）。id と版で 1 行に絞っているので、1 行以上なら書けている
+  if (!(saved.meta.changes >= 1)) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
+  await audit(c, 'planConsent', l.id, { via, consentDate, count });
+}
 export const billingRoutes = {
   // ---- 計画（教室管理者） ----
   // 月の計画の一覧: 在籍・休会の生徒ごとに、その月にかかる計画の行と、授業の入り具合
@@ -352,29 +392,23 @@ export const billingRoutes = {
   'billing/plans/consent': async (c, b) => {
     const me = await requireStaff(c, b, 'manager');
     const l = await getLine(c, b.id); sameVersion(l, b);
-    if (l.status === 'approved') fail('already', 'もう承認されています', 409);
-    const consentDate = String(b.consentedAt || b.consentDate || '').slice(0, 10), via = String(b.via || '').trim(), note = String(b.note || '').trim();
-    if (!validDate(consentDate) || consentDate > todayJst(c.now)) fail('badDate', '承諾をもらった日（今日まで）を入れてください');
-    if (!via || via.length > 40) fail('needVia', '承諾の方法（LINE・電話など）を入れてください');
-    if (note.length > 300) fail('tooLong', 'メモは300文字以内にしてください');
-    const count = b.approvedCount === undefined || b.approvedCount === '' ? l.count : Number(b.approvedCount);
-    if (!Number.isInteger(count) || count < 1 || count > l.count) fail('badCount', `承認の回数は1〜${l.count}回にしてください`);
-    const evidence = consentEvidence(c, b, me);
-    await assertPriorConsent(c, l, evidence.consentedAt);
-    const now = iso(c.now);
-    const student = await getStudent(c, l.studentId);
-    const family = await c.db.prepare('select * from families where id = ?').bind(student.familyId).first();
-    const consents = (await c.db.prepare('select version,acceptedAt from termsConsents where familyId = ? order by id desc').bind(family.id).all()).results;
-    const knownBy = r => Date.parse(r.acceptedAt.length === 10 ? r.acceptedAt + 'T23:59:59+09:00' : r.acceptedAt) <= Date.parse(evidence.consentedAt);
-    const prior = consents.filter(knownBy).sort((a,b) => Date.parse(b.acceptedAt) - Date.parse(a.acceptedAt))[0];
-    const termsVersion = prior?.version || (family.termsAcceptedAt && knownBy({acceptedAt:family.termsAcceptedAt}) ? family.termsVersion : '') || '';
-    const saved = await c.db.prepare("update planLines set status = 'approved', approvedCount = ?, approvedAt = ?, approvedBy = ?, approvedVia = ?, consentDate = ?, approvalNote = ?, termsVersion = ?, consenterName = ?, consentedAt = ?, recordedAt = ?, recordedByName = ?, familyAck = '', familyAckAt = '', familyAckNote = '', proposedAt = case when proposedAt = '' then ? else proposedAt end, updatedAt = ?, version = version + 1 where id = ? and version = ?")
-      .bind(count, now, 'staff:' + me.id, via, todayJst(Date.parse(evidence.consentedAt)), note, termsVersion, evidence.consenterName, evidence.consentedAt, evidence.recordedAt, evidence.recordedByName, now, now, l.id, l.version).run();
-    // 本番の D1 は、planLines の履歴を書くトリガーの行も changes に数える（2026-10-29 検証環境で、承認は保存されたのに 409 になった）。id と版で 1 行に絞っているので、1 行以上なら書けている
-    if (!(saved.meta.changes >= 1)) fail('conflict', 'ほかの操作で内容が変わりました。画面を更新して確認してください', 409);
+    await saveConsent(c, me, l, await checkConsent(c, me, l, b));
     await sendPlanCopy(c, l.id);
-    await audit(c, 'planConsent', l.id, { via, consentDate, count });
     return { line: lineView(await getLine(c, l.id)) };
+  },
+  // 同じ生徒・同じ期間の行を、まとめて承諾の記録にする。控えは 1 通（b.lines = [{ id, version }]。1 行でも確かめてだめなら、どの行も書かない）
+  'billing/plans/consentGroup': async (c, b) => {
+    const me = await requireStaff(c, b, 'manager');
+    if (!Array.isArray(b.lines) || b.lines.length < 2 || b.lines.length > 20 || new Set(b.lines.map(x => x && x.id)).size !== b.lines.length) fail('badLines', 'まとめる行を2〜20件選んでください');
+    const rows = [];
+    for (const ref of b.lines) { const l = await getLine(c, ref.id); sameVersion(l, ref); rows.push(l); }
+    if (rows.some(l => l.studentId !== rows[0].studentId || l.startDate !== rows[0].startDate || l.endDate !== rows[0].endDate)) fail('mixedLines', '同じ生徒・同じ期間の行だけをまとめられます');
+    const { lines, id, version, approvedCount, ...shared } = b; // 回数は提案のまま（行ごとに変えるときは 1 行ずつ記録する）
+    const checked = []; for (const l of rows) checked.push(await checkConsent(c, me, l, shared));
+    for (let i = 0; i < rows.length; i++) await saveConsent(c, me, rows[i], checked[i]);
+    await sendPlanCopyGroup(c, rows.map(l => l.id));
+    const out = []; for (const l of rows) out.push(lineView(await getLine(c, l.id)));
+    return { lines: out };
   },
   // 先月と同じ内容で、その月の下書きを作る（月いっぱいの元の計画だけ。同じ科目・種類の計画がもうあれば作らない）
   'billing/plans/copyMonth': async (c, b) => {
