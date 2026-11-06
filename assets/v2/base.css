@@ -699,6 +699,9 @@ table.gform th { font-weight: 500; color: var(--muted); font-size: 12px; text-al
 /* 生徒の概要の今週の授業（2026-11-05）: 7 日分のカレンダーと、合計・科目ごとのコマ数 */
 .wk { padding: 12px; margin: 8px 0 0; }
 /* 週の移動（2026-11-06）: 見出しの右に ‹ ›。今週以外では「今週」で戻れる */
+.sn-head { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.sn-head h2 { flex: 1; margin: 0 2px; }
+.sn-text { margin: 6px 2px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .wk-sum p { margin: 0; }
 .wk-sum { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; }
 .wk-n { font-size: 14px; } .wk-n strong { font-size: 30px; color: var(--primary); margin-right: 2px; font-variant-numeric: tabular-nums; }

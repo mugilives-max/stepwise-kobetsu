@@ -8,7 +8,7 @@ import { familyTerms } from './terms.mjs';
 import { lineView } from './billing.mjs';
 import { studentEnrollment, enrollmentStates } from './enrollment.mjs';
 import { currentTerms } from './terms.mjs';
-import { fail } from './util.mjs';
+import { fail, iso, audit } from './util.mjs';
 import { studentLink } from './people.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { todayJst, nowHmJst, addDays } from './schedule.mjs';
@@ -25,6 +25,17 @@ async function teacherStudents(c, staffId) {
 }
 
 export const studentHubRoutes = {
+  // 日程の条件（教室管理者）。曜日の都合や一緒に入れる生徒など、くり返しの条件を自由に書く。日付のある都合は「授業できない時間」へ（2026-11-07 本人）
+  'students/scheduleNote/save': async (c, b) => {
+    await requireStaff(c, b, 'manager');
+    const s = await c.db.prepare('select id from students where id = ?').bind(String(b.studentId || '')).first();
+    if (!s) fail('notFound', '生徒が見つかりません', 404);
+    const note = String(b.note || '').trim();
+    if (note.length > 1000) fail('tooLong', '日程の条件は1000文字以内にしてください');
+    await c.db.prepare('update students set scheduleNote = ?, updatedAt = ? where id = ?').bind(note, iso(c.now), s.id).run();
+    await audit(c, 'studentScheduleNote', s.id);
+    return { scheduleNote: note };
+  },
   // 学校の書類を置く（教室管理者）。2026-10-31 本人「成績ではなくて資料に…年間行事とかのやつをアップロードできるように」。塾だけが上げて塾だけが見る
   'students/docs/upload': async (c, b) => {
     const me = await requireStaff(c, b, 'manager');
@@ -91,6 +102,7 @@ export const studentHubRoutes = {
       grades: { exams: grades.exams, nextTest: grades.nextTest, pendingTests: grades.pendingTests, subjects: grades.subjects, files: grades.files },
     };
     if (manager) {
+      out.scheduleNote = s.scheduleNote || '';
       // 学校の書類（年間行事予定など）。種類は other・つながる先 schoolDoc なので、保護者・生徒・講師には開けない（files.mjs の canRead）
       out.docs = (await c.db.prepare("select id, name, note, mime, createdAt from files where studentId = ? and category = 'other' and refType = 'schoolDoc' and status = 'ready' order by createdAt desc").bind(s.id).all()).results;
       // 計画: 今月と来月にかかる行と、入り具合
