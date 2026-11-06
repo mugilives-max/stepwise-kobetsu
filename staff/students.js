@@ -3,7 +3,7 @@
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { trendBox, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261105-glatest';
-import { weekBox, weekDates } from '/staff/student-week.js?v=20261106-weeknav';
+import { weekBox, weekDates } from '/staff/student-week.js?v=20261107-wkbar';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
