@@ -47,3 +47,18 @@ test('the contracts tab lists the terms consent and every condition version with
   const tAuth = await h.staffWith(auth, ['teacher'], 't@example.invalid');
   assert.equal((await h.call('students/contracts', { auth: tAuth, studentId: kid.id })).error.code, 'forbidden', '講師には出さない');
 });
+
+test('the schedule note is kept per student for managers only; teachers neither see nor change it', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
+  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', grade: '中2', baseRate30: 1500 })).student;
+  assert.equal((await h.ok('students/hub', { auth, studentId: kid.id })).scheduleNote, '');
+  assert.equal((await h.ok('students/scheduleNote/save', { auth, studentId: kid.id, note: '  月曜は17時まで\n18:00開始を希望  ' })).scheduleNote, '月曜は17時まで\n18:00開始を希望');
+  assert.equal((await h.ok('students/hub', { auth, studentId: kid.id })).scheduleNote, '月曜は17時まで\n18:00開始を希望');
+  assert.equal((await h.call('students/scheduleNote/save', { auth, studentId: kid.id, note: 'あ'.repeat(1001) })).error.code, 'tooLong');
+  assert.equal((await h.call('students/scheduleNote/save', { auth, studentId: 'su_none', note: 'x' })).error.code, 'notFound');
+  const tAuth = await h.staffWith(auth, ['teacher'], 't@example.invalid'), t = (await h.ok('staff/me', { auth: tAuth })).me;
+  assert.equal((await h.call('students/scheduleNote/save', { auth: tAuth, studentId: kid.id, note: 'x' })).error.code, 'forbidden');
+  await h.ok('schedule/lessons/create', { auth, studentId: kid.id, date: '2026-10-09', start: '17:00', minutes: 60, subject: '数学', deliveryMode: 'in_person', staffId: t.id });
+  assert.equal('scheduleNote' in (await h.ok('students/hub', { auth: tAuth, studentId: kid.id })), false);
+});

@@ -3,14 +3,14 @@
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { trendBox, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261105-glatest';
-import { weekBox, weekDates } from '/staff/student-week.js?v=20261107-wkbar';
+import { weekBox, weekDates } from '/staff/student-week.js?v=20261107-schednote';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 import { renewalBox } from '/staff/families.js?v=20261104-famtabs';
 import { schedulePage } from '/staff/schedule.js?v=20261104-famtabs'; // app.js と同じ URL（同じ部品の状態を使う）
 
-let list = null, query = '', hub = null, hubFor = '';
+let list = null, query = '', hub = null, hubFor = '', noteEdit = false;
 let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）
 let ctr = null; // 契約のタブ（students/contracts の答え。for = 生徒の id）
 let wkFor = '', wkOff = 0, wkWeeks = {}; // 概要の週の移動（wkOff = 今週から何週ずれているか。wkWeeks = 読んだ週の授業。週の日曜の日付ごと）
@@ -72,7 +72,7 @@ export function studentsInput(ctx, name, el) {
 export const studentHubBar = () => hub && hub.student ? { title: hub.student.name, sub: [hub.student.grade || '', hub.student.status === 'paused' ? '休会' : hub.student.status === 'left' ? '退会' : ''].filter(Boolean).join('・'), right: '' } : { title: '生徒', sub: '', right: '' };
 export function studentPage(ctx, id, tab, sub = '') {
   const { esc } = ctx;
-  if (hubFor !== id) { hubFor = id; hub = null; ctr = null; ctx.call('students/hub', { studentId: id }).then(r => { if (hubFor !== id) return; hub = r.ok ? r : { error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
+  if (hubFor !== id) { hubFor = id; hub = null; ctr = null; noteEdit = false; ctx.call('students/hub', { studentId: id }).then(r => { if (hubFor !== id) return; hub = r.ok ? r : { error: r.error.message }; if (!r.ok) ctx.handleAuth(r); ctx.render(); }); }
   let h = '';
   if (!hub) return h + '<p class="muted">読み込んでいます…</p>';
   if (hub.error) return h + `<p class="notice error">${esc(hub.error)}</p>`;
@@ -136,9 +136,17 @@ function planList(esc, plans) {
     <small class="muted">${p.used} / ${p.cap}回・1回 ${p.minutes}分 ${yen(p.fee)}</small></span><span><span class="tag ${PLAN[p.status][1]}">${PLAN[p.status][0]}</span></span></div>`).join('') + '</div>';
 }
 // 予定: 予定表と同じ月のカレンダーを、この生徒の分だけで（2026-11-03 本人「普通に生徒のカレンダーを表示したい」）。授業の記録はカレンダーの授業から開く
+// 日程の条件（2026-11-07 本人）: くり返しの条件を自由に書く欄。予定を組むこの画面の上に置く
+function scheduleNote(ctx, x) {
+  const { esc } = ctx;
+  if (!x.manager) return '';
+  if (noteEdit) return `<h2>日程の条件</h2><form class="stack" data-form="hub-schedule-note" data-id="${esc(x.student.id)}"><textarea name="note" rows="4" maxlength="1000">${esc(x.scheduleNote || '')}</textarea>
+    <div class="row"><button class="primary"${ctx.dis()}>保存</button><button type="button" data-action="hub-note-edit">やめる</button></div></form>`;
+  return `<div class="sn-head"><h2>日程の条件</h2><button type="button" class="small-btn" data-action="hub-note-edit">${x.scheduleNote ? '直す' : '書く'}</button></div>${x.scheduleNote ? `<p class="sn-text">${esc(x.scheduleNote)}</p>` : ''}`;
+}
 function schedule(ctx, x) {
   const { esc } = ctx;
-  if (ctx.me) return schedulePage(ctx, ctx.me, { student: x.student.id });
+  if (ctx.me) return scheduleNote(ctx, x) + schedulePage(ctx, ctx.me, { student: x.student.id });
   return `<h2>これからの授業 <span class="count">${x.upcoming.length}</span></h2>` + (x.upcoming.length ? '<div class="rows">' + x.upcoming.map(l => lessonRow(esc, l)).join('') + '</div>' : '<p class="muted small">ありません。</p>')
     + (x.events.length ? '<h2>テスト・行事・授業ができない日</h2><div class="rows">' + x.events.map(e => `<div class="ev ${e.kind}"><span class="t">${md(e.date)}${e.dateTo !== e.date ? '〜' : ''}</span><span class="b">${esc(e.title || (e.kind === 'unavailable' ? '授業ができない日' : ''))}</span><span></span></div>`).join('') + '</div>' : '')
     + '<h2>これまでの授業</h2>' + (x.past.length ? '<div class="rows">' + x.past.map(l => lessonRow(esc, l, ['decided', 'done'].includes(l.status) ? '#record=' + encodeURIComponent(l.id) : '')).join('') + '</div>' : '<p class="muted small">まだありません。</p>')
@@ -384,6 +392,11 @@ async function leaveClick(ctx, a, b) {
 
 // ---------- 体験生 ----------
 export async function studentsSubmit(ctx, kind, el) {
+  if (kind === 'hub-schedule-note') {
+    const r = await ctx.call('students/scheduleNote/save', { studentId: el.dataset.id, note: new FormData(el).get('note') || '' });
+    if (r.ok) { noteEdit = false; if (hub) hub.scheduleNote = r.scheduleNote; ctx.say('日程の条件を保存しました', 'ok'); } else if (!ctx.handleAuth(r)) ctx.say(r.error.message, 'error');
+    return true;
+  }
   if (kind === 'hub-doc-upload') {
     const file = el.querySelector('input[type=file]').files[0], note = new FormData(el).get('note') || '', studentId = el.dataset.id; if (!file) return true;
     const r = await uploadFile(file, note, meta => ctx.call('students/docs/upload', { ...meta, studentId }));
@@ -422,6 +435,7 @@ export async function studentsClick(ctx, a, b) {
     return true;
   }
   if (a === 'sp-month') { spMonth = ymAdd(spMonth, Number(b.dataset.n)); return true; }
+  if (a === 'hub-note-edit') { noteEdit = !noteEdit; return true; }
   if (a === 'wk-move') { const n = Number(b.dataset.n); wkOff = n ? wkOff + n : 0; return true; }
   if (a === 'sp-ask') {
     const ids = String(b.dataset.ids || '').split(',').filter(Boolean); if (!ids.length || !hub) return true;

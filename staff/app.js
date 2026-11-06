@@ -9,7 +9,7 @@ import { familiesPage, familyDetailPage, familyBar, familiesBar, familiesSubmit,
 import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261104-famtabs';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261028-r16b';
 import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261104-famtabs';
-import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261107-wkbar';
+import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261107-schednote';
 import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261028-r16b';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda2';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261104-famtabs';
