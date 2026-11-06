@@ -3,7 +3,7 @@
 import { hwSubject } from '/assets/v2/learning-view.js?v=20261028-r16b';
 import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { trendBox, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261105-glatest';
-import { weekBox } from '/staff/student-week.js?v=20261105-week';
+import { weekBox, weekDates } from '/staff/student-week.js?v=20261106-weeknav';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
@@ -13,7 +13,8 @@ import { schedulePage } from '/staff/schedule.js?v=20261104-famtabs'; // app.js 
 let list = null, query = '', hub = null, hubFor = '';
 let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）
 let ctr = null; // 契約のタブ（students/contracts の答え。for = 生徒の id）
-export function resetStudents() { list = null; hub = null; hubFor = ''; wd = null; ctr = null; }
+let wkFor = '', wkOff = 0, wkWeeks = {}; // 概要の週の移動（wkOff = 今週から何週ずれているか。wkWeeks = 読んだ週の授業。週の日曜の日付ごと）
+export function resetStudents() { list = null; hub = null; hubFor = ''; wd = null; ctr = null; wkWeeks = {}; }
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
 const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
 const TABS = [['summary', '概要'], ['schedule', '予定'], ['grades', '資料'], ['money', '計画と請求', true], ['contracts', '契約', true], ['basic', '基本情報', true]];
@@ -77,6 +78,7 @@ export function studentPage(ctx, id, tab, sub = '') {
   if (hub.error) return h + `<p class="notice error">${esc(hub.error)}</p>`;
   const s = hub.student, tabs = TABS.filter(t => !t[2] || hub.manager);
   if (!tabs.some(t => t[0] === tab)) tab = 'summary';
+  if (tab !== 'summary') wkWeeks = {}; // 予定のタブで授業を直して戻ったら読み直す
   h += ctx.notice();
   h += '<div class="tabs2" role="tablist">' + tabs.map(([k, label]) => `<a role="tab" href="#student=${encodeURIComponent(s.id)}/${k}" class="${k === tab ? 'on' : ''}"${k === tab ? ' aria-selected="true"' : ''}>${label}</a>`).join('') + '</div>';
   return h + ({ summary, schedule, grades, money, contracts, basic }[tab])(ctx, hub, sub);
@@ -87,6 +89,22 @@ const lessonRow = (esc, l, href = '') => `<div class="lesson-row"><span class="t
   <span class="tags">${statusTag(l)}<small class="muted">${esc(l.staffName || '担当未定')}</small></span></${href ? 'a' : 'span'}><span class="act"></span></div>`;
 const noteText = n => [n.nextFocus ? '次回: ' + n.nextFocus : '', n.understanding ? '理解度 ' + n.understanding : ''].filter(Boolean).join('・');
 
+// いま見ている週（今週は生徒の画面の答えで足りる）。ほかの週は開いたときに読み、前後の週も先に読んでおく
+function weekView(ctx, x) {
+  if (wkFor !== x.student.id) { wkFor = x.student.id; wkOff = 0; wkWeeks = {}; }
+  for (const off of wkOff ? [wkOff, wkOff - 1, wkOff + 1] : []) {
+    const days = weekDates(x.today, off), from = days[0], mine = wkWeeks;
+    if (!off || mine[from]) continue;
+    mine[from] = {};
+    ctx.call('schedule/staff/range', { from, to: days[6], studentId: x.student.id }).then(r => {
+      if (wkWeeks !== mine) return;
+      mine[from] = r.ok ? { lessons: r.lessons } : { error: r.error.message };
+      if (!r.ok) ctx.handleAuth(r);
+      if (off === wkOff) ctx.render();
+    });
+  }
+  return { off: wkOff, ...wkWeeks[weekDates(x.today, wkOff)[0]] };
+}
 function summary(ctx, x) {
   const { esc } = ctx, sid = encodeURIComponent(x.student.id);
   let h = x.enrollment ? enrollCard(ctx, x) : '';
@@ -97,7 +115,7 @@ function summary(ctx, x) {
   // 記録待ちは「対応すること」に出さない（授業記録は努力義務。2026-10-27）
   if (x.grades.pendingTests.length) todo.push(`<a class="todo" href="#grades=${sid}"><span class="b"><strong>結果待ちのテスト</strong><small class="muted">${x.grades.pendingTests.map(t => esc(t.title)).join('・')}</small></span><span class="go">›</span></a>`);
   if (todo.length) h += `<h2>対応すること</h2><div class="rows">${todo.join('')}</div>`;
-  h += weekBox(esc, x);
+  h += weekBox(esc, x, weekView(ctx, x));
   const last = x.records.find(r => r.status === 'published') || x.records[0];
   h += '<h2>前回の記録</h2>' + (last ? `<div class="rows"><a class="todo" href="#record=${encodeURIComponent(last.lessonId)}"><span class="b"><strong>${md(last.date)} ${esc(last.subject)}：${esc(last.range || '（範囲なし）')}</strong><small class="muted">${esc(noteText(last.staffNotes) || last.comment.slice(0, 60))}</small></span><span class="go">›</span></a></div>` : '<p class="muted small">まだ記録はありません。</p>');
   if (x.handover.length) h += '<h2>引き継ぎメモ</h2><div class="rows">' + x.handover.slice(0, 3).map(n => `<div class="ev"><span class="t">${esc(n.createdAt.slice(5, 10).replace('-', '/'))}</span><span class="b" style="white-space:pre-wrap;color:var(--ink)">${esc(n.body)}<small class="muted"> ${esc(n.authorName)}</small></span><span></span></div>`).join('') + '</div>';
@@ -404,6 +422,7 @@ export async function studentsClick(ctx, a, b) {
     return true;
   }
   if (a === 'sp-month') { spMonth = ymAdd(spMonth, Number(b.dataset.n)); return true; }
+  if (a === 'wk-move') { const n = Number(b.dataset.n); wkOff = n ? wkOff + n : 0; return true; }
   if (a === 'sp-ask') {
     const ids = String(b.dataset.ids || '').split(',').filter(Boolean); if (!ids.length || !hub) return true;
     if (!confirm(`${ids.length}件の授業の承認を、保護者にメールでお願いしますか？`)) return true;
