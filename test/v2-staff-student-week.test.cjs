@@ -38,3 +38,37 @@ test('a lesson in both lists counts once, and an empty week points to the next l
   assert.match(h, /<strong>0<\/strong>コマ/);
   assert.match(h, /次の授業 11\/12 10:00 数学/);
 });
+
+test('moving by a week shifts the dates across a month end, and today stays this week', async () => {
+  const { weekDates } = await load();
+  assert.equal(weekDates('2026-11-05', 1)[0], '2026-11-08');
+  assert.equal(weekDates('2026-11-05', -1)[6], '2026-10-31');
+  assert.deepEqual(weekDates('2026-11-05', 0), weekDates('2026-11-05'));
+});
+
+test('another week shows its own lessons and name, and offers the way back to this week', async () => {
+  const { weekBox } = await load();
+  const x = world([], [l('e', '2026-11-05', '16:20', '英語', 'decided')]);
+  const next = weekBox(esc, x, { off: 1, lessons: [l('g', '2026-11-08', '10:00', '数学', 'decided'), l('h', '2026-11-09', '10:00', '英語', 'cancelled')] });
+  assert.match(next, /<h2>来週の授業<\/h2>/);
+  assert.match(next, /<strong>1<\/strong>コマ/);
+  assert.match(next, /数学 <b>1<\/b>/);
+  assert.doesNotMatch(next, /wk-d today/);
+  assert.match(next, /data-action="wk-move" data-n="0">今週</);
+  assert.match(weekBox(esc, x, { off: -1, lessons: [] }), /<h2>先週の授業<\/h2>/);
+  assert.match(weekBox(esc, x, { off: 3, lessons: [] }), /<h2>11\/22〜11\/28の授業<\/h2>/);
+  const now = weekBox(esc, x);
+  assert.match(now, /<h2>今週の授業<\/h2>/);
+  assert.match(now, /data-n="-1" aria-label="1週間前"/);
+  assert.match(now, /data-n="1" aria-label="1週間後"/);
+  assert.doesNotMatch(now, /data-n="0"/);
+});
+
+test('a week still loading does not claim zero lessons, and a failed read says so', async () => {
+  const { weekBox } = await load();
+  const x = world([], []);
+  const loading = weekBox(esc, x, { off: 2 });
+  assert.match(loading, /読み込んでいます/);
+  assert.doesNotMatch(loading, /コマ/);
+  assert.match(weekBox(esc, x, { off: 2, error: '読めませんでした' }), /notice error">読めませんでした/);
+});
