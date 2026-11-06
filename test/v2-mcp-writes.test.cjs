@@ -278,7 +278,7 @@ test('show: chosen drafts become 調整中 on the family page with zero mail; dr
   assert.equal((await w('mcp/lessons/show', { studentId: trialId, lessonIds: [t1], requestId: 'req-show-0004' })).error.code, 'trial');
 });
 
-test('two at once: the dry run judges a request like the real save; a third at the same time is refused; drafts and sent lessons can move into a pair only with force', async () => {
+test('two at once: the dry run judges a request like the real save; a third at the same time is refused; drafts and sent lessons can move into a pair without a check', async () => {
   const { h, auth, A, a, b, w, wok, count } = await world();
   const c = (await h.ok('admin/students/create', { auth, familyId: A.fam.id, familyName: '【テスト】青木', givenName: '二郎', grade: '中1', baseRate30: 1500 })).student;
   const at = (key, s, extra) => item(key, s.id, '2026-10-20', '17:00', extra);
@@ -286,8 +286,8 @@ test('two at once: the dry run judges a request like the real save; a third at t
 
   // 同じ依頼の中の授業どうしも、試し実行と本当の保存で同じに判定する
   const plain = [at('p1', a), at('p2', b), at('p3', c)];
-  assert.deepEqual(statuses(await wok('mcp/lessons/save', { dryRun: true, items: plain })), ['wouldCreate', 'needsConfirm', 'needsConfirm']);
-  const forced = [at('f1', a), at('f2', b, { force: true }), at('f3', c, { force: true })];
+  assert.deepEqual(statuses(await wok('mcp/lessons/save', { dryRun: true, items: plain })), ['wouldCreate', 'wouldCreate', 'conflict']);
+  const forced = [at('f1', a), at('f2', b), at('f3', c, { force: true })];
   const dry = await wok('mcp/lessons/save', { dryRun: true, items: forced });
   assert.deepEqual(statuses(dry), ['wouldCreate', 'wouldCreate', 'conflict']);
   assert.match(dry.items[2].error, /同時の授業は2人まで/);
@@ -296,13 +296,12 @@ test('two at once: the dry run judges a request like the real save; a third at t
   assert.deepEqual(statuses(saved), ['created', 'created', 'conflict']);
   assert.equal(count('select count(*) n from lessons'), 2);
 
-  // 下書きの直し: 確かめ（force）があるときだけ 2 人同時にできる
+  // 下書きの直し: 確かめなしで 2 人同時にできる（2026-11-07 本人）
   const drafted = (await wok('mcp/lessons/save', { requestId: 'req-pair-0002', items: [item('d1', c.id, '2026-10-21', '17:00')] })).lessons[0];
   const fix = { lessonId: drafted.id, version: drafted.version, date: '2026-10-20', start: '19:00' };
   await wok('mcp/lessons/save', { requestId: 'req-pair-0003', items: [item('d2', a.id, '2026-10-20', '19:00')] });
-  assert.equal((await w('mcp/lessons/fix', { ...fix, dryRun: true })).error.code, 'needForce');
-  assert.equal((await wok('mcp/lessons/fix', { ...fix, dryRun: true, force: true })).dryRun, true);
-  const fixed = (await wok('mcp/lessons/fix', { ...fix, force: true })).lesson;
+  assert.equal((await wok('mcp/lessons/fix', { ...fix, dryRun: true })).dryRun, true);
+  const fixed = (await wok('mcp/lessons/fix', fix)).lesson;
   assert.equal(fixed.start, '19:00');
 
   // 日程の変更も同じ。下書きも、送ったあとの授業も。3 人目は force でも通らない
@@ -312,10 +311,8 @@ test('two at once: the dry run judges a request like the real save; a third at t
   const now = (await wok('mcp/lessons/get', { lessonIds: [moving.id] })).lessons[0];
   await wok('mcp/lessons/save', { requestId: 'req-pair-0006', items: [item('m2', c.id, '2026-10-23', '17:00')] });
   const move = { lessonId: moving.id, version: now.version, date: '2026-10-23', start: '17:00' };
-  assert.equal((await w('mcp/lessons/reschedule', { ...move, dryRun: true })).error.code, 'needForce');
-  const preview = await wok('mcp/lessons/reschedule', { ...move, dryRun: true, force: true });
-  assert.equal((await w('mcp/lessons/reschedule', { ...move, requestId: 'req-pair-0007', confirm: preview.confirm })).error.code, 'needForce', '確かめなしでは動かない');
-  const moved = await wok('mcp/lessons/reschedule', { ...move, requestId: 'req-pair-0008', confirm: preview.confirm, force: true });
+  const preview = await wok('mcp/lessons/reschedule', { ...move, dryRun: true });
+  const moved = await wok('mcp/lessons/reschedule', { ...move, requestId: 'req-pair-0008', confirm: preview.confirm });
   assert.equal(moved.lesson.date, '2026-10-23');
   const third = (await wok('mcp/lessons/save', { requestId: 'req-pair-0009', items: [item('m3', a.id, '2026-10-24', '17:00')] })).lessons[0];
   assert.equal((await w('mcp/lessons/reschedule', { lessonId: third.id, version: third.version, date: '2026-10-23', start: '17:00', dryRun: true, force: true })).error.code, 'overlap');

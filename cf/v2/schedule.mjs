@@ -220,12 +220,9 @@ export async function checkConflicts(c, candidates, { force, exceptId = '', more
   candidates.forEach((x, i) => {
     const others = lessons.concat(alongside, candidates.filter((_, j) => j !== i));
     if (others.some(o => o.studentId === x.studentId && overlap(o, x))) errors.push(`${x.date} ${x.start} は同じ生徒の授業と重なっています`);
-    // 同じ講師の授業の重なり: 2人まで（2人同時の授業。確かめてから）。オンラインも同じ（2026-10-27 本人「オンラインも例外なく1:2まで行える」）。給与は講師が働いた時間で数える（重なりは1回。cf/v2/payroll.mjs）
+    // 同じ講師の授業の重なり: 2人まで（2人同時は確かめずに通す。2026-11-07 本人「その確認は不要」）。オンラインも同じ（2026-10-27 本人「オンラインも例外なく1:2まで行える」）。給与は講師が働いた時間で数える（重なりは1回。cf/v2/payroll.mjs）
     const same = x.staffId ? others.filter(o => o.staffId === x.staffId && overlap(o, x)) : [];
-    if (same.length) {
-      if (same.some((o, k) => same.some((p, m) => m > k && overlap(o, p)))) errors.push(`${x.date} ${x.start} は同じ講師の授業が3つ重なります（同時の授業は2人まで）`);
-      else warnings.push(`${x.date} ${x.start} は同じ講師のほかの授業と同時（2人同時）になります`);
-    }
+    if (same.some((o, k) => same.some((p, m) => m > k && overlap(o, p)))) errors.push(`${x.date} ${x.start} は同じ講師の授業が3つ重なります（同時の授業は2人まで）`);
     const span = o => o.start ? { date: o.date, start: o.start, minutes: toMin(o.end) - toMin(o.start) } : { date: o.date, start: '00:00', minutes: 1440 };
     if (offs.some(o => (!o.staffId || o.staffId === x.staffId) && overlap(span(o), x))) warnings.push(`${x.date} ${x.start} は講師の休みに入っています`);
     if (events.some(e => e.studentId === x.studentId && e.date <= x.date && x.date <= e.dateTo && (!e.start || overlap({ date: x.date, start: e.start, minutes: toMin(e.end) - toMin(e.start) }, x)))) warnings.push(`${x.date} ${x.start} は生徒が「授業ができない」と共有した日です`);
