@@ -102,3 +102,46 @@ test('the copy mail carries the agreed document; the relay receives its content;
   assert.deepEqual([m.attachFiles, pf.refId], [[pf.id], line.id + ':' + h.rows('select version from planLines where id = ?', line.id)[0].version]);
   assert.match(pf.name, /^受講計画書_2026-11_架空 一郎_数学\.html$/);
 });
+
+// 一緒に承諾をもらった行は 1 つの書面・1 通の控え（2026-11-06 本人）。提案した日は、提示日が承認日より後にならないよう、実際の日で残す
+test('lines agreed together become one document and one copy mail with the total, and keep the real proposal date', async () => {
+  const { h, kid, toParent } = await world();
+  h.clock = Date.parse('2026-10-27T09:00:00+09:00'); // 今の様式の書面になる時期
+  const auth = (await h.ok('staff/login', { email: 'owner@example.invalid', password: 'correct horse battery' })).auth;
+  const save = async (subject, kind, count, fee) => (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject, kind, startDate: '2026-11-01', endDate: '2026-11-30', count, minutes: 90, fee })).line;
+  const a = await save('英語', '通常', 17, 4500), b = await save('数学', '通常', 5, 4500), d = await save('数学', '演習', 6, 2500);
+  const ref = l => ({ id: l.id, version: h.rows('select version from planLines where id = ?', l.id)[0].version });
+  const n = h.mails().length;
+  const body = { auth, lines: [a, b, d].map(ref), consenterName: '架空 保護者', consentedAt: '2026-10-19T23:59:00+09:00', via: 'LINE', proposedAt: '2026-10-17' };
+  const r = await h.ok('billing/plans/consentGroup', body);
+  assert.equal(r.lines.length, 3);
+  assert.ok(r.lines.every(l => l.status === 'approved'));
+  const m = toParent(n);
+  assert.equal(m.length, 1, '控えは 1 通');
+  assert.match(m[0].body, /受講計画書（11\/1〜11\/30）を承認いただきました。\n承認：10月19日・LINE・架空 保護者\n内容：\n・英語 17回・1回90分 4,500円（税込）\n・数学 5回・1回90分 4,500円（税込）\n・数学（演習） 6回・1回90分 2,500円（税込）\n予定総額：114,000円（税込）/);
+  assert.equal(m[0].attachFiles.length, 1, '書面も 1 つ');
+  const file = h.rows("select name from files where id = ?", m[0].attachFiles[0])[0];
+  assert.doesNotMatch(file.name, /数学|英語/);
+  const rows = h.rows('select proposedAt, approvalNote from planLines where id = ?', a.id)[0];
+  assert.equal(rows.proposedAt, '2026-10-17');
+  assert.equal(rows.approvalNote, '');
+  const doc = await h.ok('billing/plans/document', { auth, refs: [a, b, d].map(ref) });
+  assert.match(doc.html, /提示日 2026年10月17日<br>承認日 2026年10月19日/);
+  assert.match(doc.html, /114,000円/);
+  assert.doesNotMatch(doc.html, /承認のメモ/);
+});
+
+test('a group is all or nothing, and only joins one student and one period', async () => {
+  const { h, auth, kid, toParent } = await world();
+  const save = async (subject, startDate, endDate) => (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject, kind: '通常', startDate, endDate, count: 4, minutes: 90, fee: 4500 })).line;
+  const a = await save('英語', '2026-11-01', '2026-11-30'), b = await save('数学', '2026-11-01', '2026-11-30'), d = await save('国語', '2026-12-01', '2026-12-31');
+  const ref = l => ({ id: l.id, version: h.rows('select version from planLines where id = ?', l.id)[0].version });
+  const base = { auth, consenterName: '架空 保護者', consentedAt: '2026-10-19T23:59:00+09:00', via: 'LINE' };
+  const n = h.mails().length;
+  assert.equal((await h.call('billing/plans/consentGroup', { ...base, lines: [ref(a), ref(d)] })).error.code, 'mixedLines');
+  assert.equal((await h.call('billing/plans/consentGroup', { ...base, lines: [ref(a)] })).error.code, 'badLines');
+  assert.equal((await h.call('billing/plans/consentGroup', { ...base, lines: [ref(a), ref(b)], proposedAt: '2026-10-20' })).error.code, 'badProposed');
+  assert.equal((await h.call('billing/plans/consentGroup', { ...base, lines: [ref(a), { id: b.id, version: 99 }] })).ok, false);
+  assert.equal(h.rows("select count(*) n from planLines where id in (?, ?) and status = 'approved'", a.id, b.id)[0].n, 0, 'どの行も書かない');
+  assert.equal(toParent(n).length, 0, '控えも送らない');
+});
