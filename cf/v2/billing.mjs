@@ -98,13 +98,14 @@ async function getLine(c, id) { const l = await c.db.prepare('select * from plan
 async function getStudent(c, id) { const s = await c.db.prepare('select * from students where id = ?').bind(String(id || '')).first(); if (!s) fail('notFound', '生徒が見つかりません', 404); return s; }
 
 // Do not turn first-time approval after a lesson into prior authorization.
+// 授業ごとの合意の記録がある授業は、その合意が根拠なので止めない（2026-11-07 本人「その案でok」。受講計画書は補助で、授業ごとの合意があれば授業はできる）
 async function assertPriorConsent(c, line, at) {
   const cutoff = Date.parse(line.endDate + 'T23:59:59+09:00');
   if (Date.parse(at) > cutoff) fail('afterLessonConsent', '対象期間の終了後に初めて承認することはできません。授業前に承認済みの場合は、その日時と承認者を塾が記録してください', 409);
-  const rows = (await c.db.prepare("select id,date,start from lessons where studentId = ? and subject = ? and coalesce(nullif(kind,''),'通常') = ? and date between ? and ? and status in ('decided','done','cancelled')").bind(line.studentId,line.subject,line.kind,line.startDate,line.endDate).all()).results;
+  const rows = (await c.db.prepare("select id,date,start,decidedBy,agreement from lessons where studentId = ? and subject = ? and coalesce(nullif(kind,''),'通常') = ? and date between ? and ? and status in ('decided','done','cancelled')").bind(line.studentId,line.subject,line.kind,line.startDate,line.endDate).all()).results;
   const sb = await studentBilling(c.db, line.studentId);
   const rest = assignLines(sb.lines.filter(x => x.id !== line.id), sb.lessons, Object.fromEntries(Object.entries(sb.invoicedLine).filter(([, id]) => id !== line.id)));
-  if (rows.filter(ls => !rest.line[ls.id]).some(ls => Date.parse(ls.date + 'T' + ls.start.slice(0,5) + ':00+09:00') <= Date.parse(at)))
+  if (rows.filter(ls => !rest.line[ls.id] && !agreedByLesson(ls)).some(ls => Date.parse(ls.date + 'T' + ls.start.slice(0,5) + ':00+09:00') <= Date.parse(at)))
     fail('afterLessonConsent', '授業開始後の承認は、授業前の承認として登録できません。授業前に承認済みで入力だけが後になった場合は、実際の承認日時を記録してください', 409);
 }
 
