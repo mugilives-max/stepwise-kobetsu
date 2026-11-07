@@ -11,6 +11,7 @@ test('withdrawal: keep or stop each lesson, fees follow the usual rule, one mail
   const h = await createV2(); const auth = await h.owner(); h.clock = at('2026-10-20T09:00:00');
   const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
   const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
+  h.agreeRule(kid.id);
   await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' });
   const lesson = async (date, decide = true) => {
     await h.ok('schedule/lessons/create', { auth, studentId: kid.id, date, start: '18:00', minutes: 90, subject: '数学', deliveryMode: 'in_person', force: true });

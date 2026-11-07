@@ -17,7 +17,7 @@ import { fail, newId, iso, audit, sha256Hex, selectIn } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
-import { createCancelFee, dropCancelFee, usesRate, setRateFee, lessonFee, parseParts, cancelRuleFrom } from './plan-calc.mjs';
+import { createCancelFee, dropCancelFee, usesRate, setRateFee, lessonFee, parseParts, cancelRuleFrom, rateMonths } from './plan-calc.mjs';
 import { ratePct } from '../../assets/v2/cancel-rate.js';
 import { isPreviewToken, previewSubject } from './preview.mjs';
 import { extrasFor } from './plan-extra.mjs';
@@ -508,14 +508,14 @@ export const scheduleRoutes = {
       heldAll: heldAll.map(l => lessonView(l, { studentName: nameOf[l.studentId] || '（不明）', note: l.note })),
       adjustingAll: adjustingAll.map(l => lessonView(l, { studentName: nameOf[l.studentId] || '（不明）', note: l.note })),
       lessons: lessons.map(l => lessonView(l, { studentName: nameOf[l.studentId] || '（不明）', note: l.note, agreement: l.agreement || '', decidedBy: l.decidedBy || '', requests: requests.filter(r => r.lessonId === l.id).map(requestView) })),
-      openRequests: openRequests.map(r => ({ ...requestView(r), studentName: nameOf[r.studentId] || '', date: r.date, start: r.start, subject: r.subject, lessonStatus: r.lessonStatus })),
+      openRequests: openRequests.map(r => ({ ...requestView(r), studentId: r.studentId, studentName: nameOf[r.studentId] || '', date: r.date, start: r.start, subject: r.subject, lessonStatus: r.lessonStatus })),
       events: events.map(e => ({ ...eventView(e), studentName: nameOf[e.studentId] || '' })),
       unavailability: offs.map(o => ({ id: o.id, staffId: o.staffId, date: o.date, start: o.start, end: o.end, note: o.note })),
       // 誰との面談か（2026-10-27 本人「カレンダーで、誰の面談か書かれていない」）: 書いた相手 → 生徒 → 保護者の氏名 → 家族の表示名
       meetings: meetings.map(m => ({ id: m.id, familyId: m.familyId, withName: m.withName || '', withLabel: m.withName || (m.studentId && nameOf[m.studentId]) || m.guardianName || m.familyName || '', studentId: m.studentId, staffId: m.staffId, date: m.date, start: m.start, minutes: m.minutes, deliveryMode: m.deliveryMode, title: m.title, meetUrl: m.meetUrl, status: m.status, version: m.version })),
       students: students.filter(s => s.status !== 'left').map(s => ({ id: s.id, name: fullName(s), familyId: s.familyId, deliveryMode: s.deliveryMode, trial: !!s.trial })),
       staff: staff.map(s => ({ id: s.id, name: s.name, teacher: rolesOf(s).includes('teacher') })),
-      kinds: kinds.length ? kinds : ['通常'], live: await isLive(c), cancelRuleFrom: await cancelRuleFrom(c.db),
+      kinds: kinds.length ? kinds : ['通常'], live: await isLive(c), cancelRuleFrom: await cancelRuleFrom(c.db), rateMonths: await rateMonths(c.db),
     };
   },
   // 仮予定を作る。hold=true は予定表にまとめてあとで送る（生徒・保護者に見せない）

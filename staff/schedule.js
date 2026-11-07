@@ -12,8 +12,8 @@ let wantTodo = false; // 「今日」から来たとき、読み込みのあと�
 // スマホ（ライフベアの形）: はじめは月全体。日付を押すと、その週が一番上まで滑り上がり、下から一覧が出る（2週分）。同じ日をもう一度押すか取っ手で月全体に戻る
 let calOpen = true, wasOpen = true, calH = null, calTop = null, shownSel = '';
 const phone = () => matchMedia('(max-width: 719px)').matches;
-// 新しい決まりの取消料（規約案 第4〜7条）の授業か。授業の日が cancelRuleFrom 以降
-const rateRule = l => !!(data && data.cancelRuleFrom && l.date >= data.cancelRuleFrom);
+// 新しい決まりの取消料（規約案 第4〜7条）の授業か。授業の日が cancelRuleFrom 以降で、その生徒の適用の月に入っている（家族ごと。cf/v2/plan-calc.mjs usesRate と同じ）
+const rateRule = l => { const m = data && data.rateMonths && data.rateMonths[l.studentId]; return !!(data && data.cancelRuleFrom && m && l.date >= data.cancelRuleFrom && l.date.slice(0, 7) >= m); };
 // sheet: 下から出る画面。{ kind: 'lesson', id, edit, cancel, tardy, decide } / { kind: 'create' } / { kind: 'off' } / { kind: 'meeting' } / { kind: 'todo' } / { kind: 'line', title, text }（LINE に貼る文）
 const ymOf = d => d.slice(0, 7);
 const addMonths = (ym, n) => { const [y, m] = ym.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1)); return t.toISOString().slice(0, 7); };

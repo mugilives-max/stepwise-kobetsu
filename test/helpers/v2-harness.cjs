@@ -41,6 +41,12 @@ async function createV2({ legacyConfig = true } = {}) {
   };
   h.ok = async (route, body) => { const r = await h.call(route, body); assert.equal(r.ok, true, route + ' ' + JSON.stringify(r)); return r; };
   h.rows = (sql, ...a) => db2._sqlite.prepare(sql).all(...a);
+  // 規約と個別受講条件書に同意した生徒にする（新しい決まりの取消料は、同意した家族の適用の月からだけ当たる）
+  h.agreeRule = (studentId, fromMonth = '2026-11') => {
+    const t = '2026-10-01T00:00:00.000Z';
+    db2._sqlite.prepare("update families set termsVersion = 'test-terms', termsAcceptedAt = ? where id = (select familyId from students where id = ?)").run(t, studentId);
+    db2._sqlite.prepare("insert into conditions (id, studentId, no, minutes, fee, fromMonth, status, proposedAt, agreedAt, createdAt, updatedAt) values (?, ?, 9000, 90, 4500, ?, 'agreed', ?, ?, ?, ?)").run('cd_rule_' + studentId, studentId, fromMonth, t, t, t, t);
+  };
   h.mails = () => h.rows("select payload, status, error from effects where kind = 'mail' order by id").map(r => ({ ...JSON.parse(r.payload), status: r.status, error: r.error }));
   h.linkFrom = mail => decodeURIComponent(mail.body.match(/#(?:invite|reset)=([^\s]+)/)[1]);
   // 代表（3つの役割）でログインしたトークン

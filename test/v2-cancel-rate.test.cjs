@@ -11,11 +11,12 @@ const at = s => Date.parse(s + '+09:00');
 const rateLib = () => import(pathToFileURL(path.join(__dirname, '..', 'assets', 'v2', 'cancel-rate.js')).href);
 
 // 11月（新しい決まり）の 18:00〜19:30、90分・4,500円の授業
-async function world() {
+async function world({ agreed = '2026-11' } = {}) {
   const h = await createV2(); const auth = await h.owner(); h.clock = at('2026-10-20T09:00:00');
   const fam = (await h.ok('admin/families/create', { auth, name: '架空家', email: 'parent@example.invalid' })).family;
   const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
   const parent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' })).auth;
+  if (agreed) h.agreeRule(kid.id, agreed);
   const line = (await h.ok('billing/plans/save', { auth, studentId: kid.id, subject: '数学', kind: '通常', startDate: '2026-11-01', endDate: '2026-11-30', count: 8, minutes: 90, fee: 4500 })).line;
   const cur = h.rows('select * from planLines where id = ?', line.id)[0];
   await h.ok('billing/plans/consent', { auth, id: line.id, version: cur.version, consentDate: '2026-10-20', consenterName: '架空 保護者', consentedAt: '2026-10-20T09:00:00+09:00', via: '保護者ページ' });
@@ -133,4 +134,30 @@ test('lessons before the start date of the new rule keep the old fees, and teach
   assert.equal((await h.call('schedule/lessons/tardy', { auth: teacherAuth, id: other.id, version: get(other.id).version, lateMinutes: 10 })).error.code, 'forbidden');
   await h.ok('schedule/lessons/tardy', { auth: teacherAuth, id: mine.id, version: get(mine.id).version, lateMinutes: 10, noNotice: true });
   assert.equal(fee(mine.id).amount, 500);
+});
+
+test('the new rule follows each family: no consent or a later month keeps the old fee and the old screen; the month of the conditions starts the rate', async () => {
+  const none = await world({ agreed: '' });
+  const n1 = await none.lesson('2026-11-10');
+  none.h.clock = at('2026-11-10T17:00:00');
+  assert.equal((await none.h.ok('schedule/staff/range', { auth: none.auth, from: '2026-11-01', to: '2026-11-30' })).rateMonths[none.kid.id], undefined);
+  const seen = (await none.h.ok('family/schedule', { auth: none.parent, from: '2026-11-01', to: '2026-11-30' })).lessons.find(l => l.id === n1.id);
+  assert.equal('feeBase' in seen, false, '金額の見積もりを出さない');
+  await none.h.ok('family/lessons/request', { auth: none.parent, lessonId: n1.id, kind: 'cancel', note: '熱が出ました' });
+  assert.deepEqual([none.fee(n1.id).rule, none.fee(n1.id).standardAmount, none.fee(n1.id).decision], ['', 1000, 'pending'], '同意のない家族は今までどおり、代表が判断');
+  const n2 = await none.lesson('2026-11-11');
+  none.h.clock = at('2026-11-11T18:30:00');
+  assert.equal((await none.h.call('schedule/lessons/tardy', { auth: none.auth, id: n2.id, version: none.get(n2.id).version, lateMinutes: 10 })).error.code, 'oldRule');
+
+  const later = await world({ agreed: '2026-12' });
+  const nov = await later.lesson('2026-11-30'), dec = await later.lesson('2026-12-01');
+  assert.equal((await later.h.ok('schedule/staff/range', { auth: later.auth, from: '2026-11-01', to: '2026-12-31' })).rateMonths[later.kid.id], '2026-12');
+  later.h.clock = at('2026-11-30T17:00:00');
+  const parent = (await later.h.ok('family/login', { email: 'parent@example.invalid', password: 'family password 1' })).auth;
+  await later.h.ok('family/lessons/request', { auth: parent, lessonId: nov.id, kind: 'cancel', note: '熱が出ました' });
+  assert.deepEqual([later.fee(nov.id).rule, later.fee(nov.id).decision], ['', 'pending'], '適用の月より前は今までどおり');
+  later.h.clock = at('2026-12-01T17:00:00');
+  const parent2 = (await later.h.ok('family/login', { email: 'parent@example.invalid', password: 'family password 1' })).auth;
+  await later.h.ok('family/lessons/request', { auth: parent2, lessonId: dec.id, kind: 'cancel', note: '熱が出ました' });
+  assert.deepEqual([later.fee(dec.id).rule, later.fee(dec.id).decision], ['rate', 'charge'], '適用の月からは新しい決まり');
 });
