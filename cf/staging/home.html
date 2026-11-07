@@ -47,7 +47,7 @@
       if (r.links && r.links.taro) document.getElementById('taro').href = r.links.taro;
       if (r.links && r.links.trial) { const t = document.getElementById('trial-student'); t.href = r.links.trial; t.hidden = false; }
       if (r.trial) { document.getElementById('trial').dataset.to = '/staff/#student=' + r.trial; document.getElementById('trial-parent').dataset.trial = r.trial; document.getElementById('enroll-row').hidden = false; }
-      // 契約更新の手続き: 塾は山本さんの契約者の画面から案内を送り、保護者は山本さんとして受け取る
+      // 契約更新の手続き: 塾は山田さんの契約者の画面から案内を送り、保護者は山田さんとして受け取る
       if (r.renewal) { document.getElementById('renewal-staff').dataset.to = '/staff/#family=' + r.renewal; document.getElementById('renewal-row').hidden = false; }
     });
     // 押したしるし（一覧の › か、ボタンの文字を … に）
