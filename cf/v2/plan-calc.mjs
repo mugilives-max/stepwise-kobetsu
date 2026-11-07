@@ -3,7 +3,7 @@
 // - 1回の授業料（lessonAmount）。授業の長さが計画の1回の時間と違うときは、計画の1回の授業料 ×（授業の時間 ÷ 計画の1回の時間）。1円未満は切り捨て
 // - キャンセル料の行を作る・消す（createCancelFee / dropCancelFee）
 // - 新しい決まりの取消料（規約案 第4〜7条）: キャンセル・開始を遅らせる・遅刻を、連絡を受けた時刻の率で自動に計算する（setRateFee）。
-//   授業の日が settings の cancelRuleFrom 以降の授業だけ。式は assets/v2/cancel-rate.js（画面と同じもの）
+//   授業の日が settings の cancelRuleFrom 以降で、その生徒の家族が規約に同意し、個別受講条件書の適用の月に入った授業だけ。式は assets/v2/cancel-rate.js（画面と同じもの）
 import { newId, iso, fail } from './util.mjs';
 import { cancelRate, cancelAmount, RATE_FULL } from '../../assets/v2/cancel-rate.js';
 
@@ -72,7 +72,16 @@ export async function standardCancelFee(db, lesson, type) {
 
 // ---- 新しい決まりの取消料 ----
 export async function cancelRuleFrom(db) { const r = await db.prepare("select value from settings where key = 'cancelRuleFrom'").first(); return r ? String(r.value || '') : ''; }
-export async function usesRate(db, lesson) { const from = await cancelRuleFrom(db); return /^\d{4}-\d{2}-\d{2}$/.test(from) && lesson.date >= from; }
+// 生徒ごとの新しい決まりの適用の月 { 生徒ID: 'YYYY-MM' }。同意した個別受講条件書のいちばん早い適用の月で、規約に同意していない家族の生徒は入らない。
+// 同意のない家族に新しい取消料を当てない（2026-11-07 本人「家族ごとの判定に直し」。岡野さんは規約の同意が 12 月以降、春貴くんは 12 月から）
+const RATE_MONTHS = "select c.studentId, min(c.fromMonth) month from conditions c join students s on s.id = c.studentId join families f on f.id = s.familyId where c.agreedAt <> '' and c.fromMonth <> '' and f.termsVersion <> ''";
+export async function rateMonths(db) { return Object.fromEntries((await db.prepare(RATE_MONTHS + ' group by c.studentId').all()).results.map(r => [r.studentId, r.month])); }
+export async function usesRate(db, lesson) {
+  const from = await cancelRuleFrom(db);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || lesson.date < from) return false;
+  const r = await db.prepare(RATE_MONTHS + ' and c.studentId = ?').bind(lesson.studentId).first();
+  return !!(r && r.month) && lesson.date.slice(0, 7) >= r.month;
+}
 export const PART_LABEL = { cancel: 'キャンセル', delay: '開始を遅らせた分', tardy: '遅刻' };
 export const parseParts = f => { try { const v = JSON.parse(f.parts || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } };
 // 取消の内訳を1つ作る。lesson は予定どおりの授業（開始を遅らせたときは、遅らせる前の開始時刻と長さ）
