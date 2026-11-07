@@ -38,7 +38,8 @@ test('consent: actual approval and entry are separate, including a same-day earl
   await h.ok('billing/plans/send',{auth,familyId:kid.familyId});
   await h.ok('schedule/lessons/create',{auth,studentId:kid.id,date:'2026-10-02',start:'08:00',minutes:90,subject:'数学',kind:'通常',deliveryMode:'in_person',force:true});
   const ls=h.rows('select * from lessons where studentId=?',kid.id)[0];
-  await h.ok('schedule/lessons/decide',{auth,id:ls.id,version:ls.version});
+  // 授業ごとの合意の記録がない実施済みの授業より後の承認は、止める
+  h.db2._sqlite.prepare("update lessons set status='done' where id=?").run(ls.id);
   assert.equal((await approve(p,'2026-10-02T09:00:00+09:00')).error.code,'afterLessonConsent');
   assert.equal((await h.call('family/plans/decide',{ consenterName:'架空 保護者',auth:parent,id:p.id,version:row(p.id).version,approvedCount:4,consenterName:'架空 保護者'})).error.code,'afterLessonConsent');
   assert.equal((await h.call('billing/plans/consent',{auth,id:p.id,version:row(p.id).version,consentDate:'2026-10-02',via:'LINE'})).error.code,'needConsenter');
@@ -160,4 +161,17 @@ test('plan history keeps purpose breakdowns with the exact saved version', async
  assert.equal(archived().at(-1).parts,JSON.stringify([{label:'変更後',count:4}]));
  const history=(await h.ok('family/contracts',{auth:parent})).plans;
  assert.deepEqual(history.find(x=>x.status==='approved').parts,parts);
+});
+
+test('consent after a lesson passes when that lesson has its own agreement; the plan keeps the real approval time and the lesson is billed on the plan', async () => {
+  const {h,auth,kid,plan,row,approve} = await world();
+  const p=await plan({startDate:'2026-10-01',endDate:'2026-10-31'});
+  await h.ok('schedule/lessons/create',{auth,studentId:kid.id,date:'2026-10-02',start:'08:00',minutes:90,subject:'数学',kind:'通常',deliveryMode:'in_person',force:true});
+  const ls=h.rows('select * from lessons where studentId=?',kid.id)[0];
+  h.db2._sqlite.prepare("update lessons set status='done' where id=?").run(ls.id);
+  assert.equal((await approve(p,'2026-10-02T09:00:00+09:00')).error.code,'afterLessonConsent');
+  const cur=h.rows('select * from lessons where id=?',ls.id)[0];
+  await h.ok('schedule/lessons/agreement',{auth,id:ls.id,version:cur.version,agreement:'LINE で合意（塾が登録）'});
+  await h.ok('billing/plans/consent',{auth,id:p.id,version:row(p.id).version,consentedAt:'2026-10-02T09:00:00+09:00',consentDate:'2026-10-02',consenterName:'架空 保護者',via:'LINE'});
+  assert.deepEqual([row(p.id).status,row(p.id).consentedAt],['approved','2026-10-02T00:00:00.000Z']);
 });
