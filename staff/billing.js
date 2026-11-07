@@ -121,20 +121,30 @@ function planSetBlock(ctx, s, set) {
   const { esc } = ctx, t = planTotals(set.lines), cls = (LINE_STATUS[set.status] || [])[1] || 'gray';
   return `<div class="pl-set"><div class="pl-set-head"><b>${esc(periodText(set.startDate, set.endDate))}</b><span class="tag ${cls}">${esc(STATUS_LABEL[set.status] || set.status)}</span><span class="grow"></span><span class="pl-amt">${esc(amountText(t))}</span>
     <button type="button" class="text-btn" data-action="pl-preview" data-key="${esc(set.key)}" aria-label="${esc(s.name)} ${esc(periodText(set.startDate, set.endDate))} ${esc(STATUS_LABEL[set.status] || '')}の受講計画書を見る">書面を見る</button></div>
-    <div class="pl-lines">${set.lines.map(l => lineRow(ctx, s, l)).join('')}</div></div>`;
+    <div class="pl-lines"><div class="pl-r pl-hd" aria-hidden="true">${set.status === 'draft' ? '<span class="pl-pick"></span>' : ''}<span class="pl-line"><span>科目</span><span class="pl-n">回数</span><span class="pl-fee">1回</span><span class="pl-amt">金額</span><span></span></span></div>${set.lines.map(l => lineRow(ctx, s, l)).join('')}</div></div>`;
 }
 const lineCount = l => l.status === 'approved' && l.approvedCount !== l.count ? `${l.approvedCount}回（お知らせ ${l.count}回）` : `${l.count}回`;
+// 決定・実施と調整中の回数。下書き・承認待ちの行には授業が割り当たらないので、当たる授業の数から調整中を引く
+// （2026-11-08 本人「ここも見ずらい」。下書きの行で、済んだ授業があっても「実施 0回」と出ていた）
+const usedOf = l => {
+  const tent = Number(l.tentative || 0);
+  if (l.status === 'approved') return { fixed: Number(l.assigned || 0), tent };
+  return { fixed: Math.max(0, Number(l.planned || 0) + Number(l.over || 0) - tent), tent };
+};
 function lineRow(ctx, s, l) {
   const { esc } = ctx, parts = partsOf(l), amount = l.status === 'declined' ? 0 : (l.status === 'approved' ? l.approvedCount : l.count) * Number(l.fee || 0);
   // 下書きにはチェック。外した行は「お知らせ」に入れない（あとで送る）
   const pick = l.status === 'draft' ? `<input type="checkbox" class="pl-pick" data-pick="${esc(l.id)}"${unpicked.has(l.id) ? '' : ' checked'} aria-label="${esc(l.subject)}をお知らせに入れる">` : '';
-  const note = [l.assigned || l.tentative ? `実施 ${l.done || 0}回${(l.assigned || 0) - (l.done || 0) ? `・決定 ${(l.assigned || 0) - (l.done || 0)}回` : ''}${l.tentative ? `・調整中 ${l.tentative}回` : ''}${l.status === 'approved' ? `・あと ${Math.max(0, (l.approvedCount || 0) - (l.done || 0))}回` : ''}` : '', parts.length ? parts.map(p => `${esc(p.label)} ${p.count}回`).join('・') : ''].filter(Boolean).join('　');
-  // 行の状態: 超過（赤）・ちょうど・あと n回（調整中・承認待ちも数える）
-  const cap = l.status === 'approved' ? Number(l.approvedCount) : Number(l.count), left = cap - Number(l.planned || 0);
-  const state = l.status === 'declined' ? '' : l.over ? `<span class="tag gray">計画より ${l.over}回多い</span>` : left <= 0 ? '<span class="tag gray">ちょうど</span>' : `<span class="tag ok">あと ${left}回</span>`;
+  // 2 行目: 日程の進み具合と、回数との差（超過・日時がまだ）。ちょうどなら差は出さない（2026-11-08 本人「ここも見ずらい」）
+  const u = usedOf(l), cap = l.status === 'approved' ? Number(l.approvedCount) : Number(l.count), left = cap - Number(l.planned || 0);
+  const progress = l.status === 'approved'
+    ? (l.assigned || l.tentative ? `実施 ${l.done || 0}回${(l.assigned || 0) - (l.done || 0) ? `・決定 ${(l.assigned || 0) - (l.done || 0)}回` : ''}${l.tentative ? `・調整中 ${l.tentative}回` : ''}` : '')
+    : [u.fixed ? `決定・実施 ${u.fixed}回` : '', u.tent ? `調整中 ${u.tent}回` : ''].filter(Boolean).join('・');
+  const gap = l.status === 'declined' ? '' : l.over ? `<b class="over">計画より ${l.over}回多い</b>` : left > 0 ? `<b class="left">日時がまだ ${left}回</b>` : '';
+  const note = [[progress, gap].filter(Boolean).join('・'), parts.length ? parts.map(p => `${esc(p.label)} ${p.count}回`).join('・') : ''].filter(Boolean).join('　');
   return `<div class="pl-r">${pick}<button type="button" class="pl-line" data-action="pl-line" data-id="${esc(l.id)}">
-    <span class="pl-ln-subj"><strong>${esc(l.subject)}</strong>${l.kind && l.kind !== '通常' ? `<span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? '<span class="tag">追加</span>' : ''}${l.familyAck === 'inquiry' ? '<span class="tag danger">問い合わせ</span>' : ''}</span>
-    <span class="pl-n">${lineCount(l)}${state}</span><span class="pl-fee">${l.minutes}分 ${yen(l.fee)}</span><span class="pl-amt">${yen(amount)}</span><span class="go" aria-hidden="true">›</span>
+    <span class="pl-ln-subj"><strong>${esc(l.subject)}</strong>${l.kind && l.kind !== '通常' ? `<span class="pl-kind">${esc(l.kind)}</span>` : ''}${l.parentId ? '<span class="tag">追加</span>' : ''}${l.familyAck === 'inquiry' ? '<span class="tag danger">問い合わせ</span>' : ''}</span>
+    <span class="pl-n">${lineCount(l)}</span><span class="pl-fee">${l.minutes}分 ${yen(l.fee)}</span><span class="pl-amt">${yen(amount)}</span><span class="go" aria-hidden="true">›</span>
     ${note ? `<span class="pl-note">${note}</span>` : ''}</button></div>`;
 }
 // 受講計画書の行を押したとき・直す・承諾を記録・足す（下から出る画面）
@@ -154,7 +164,7 @@ function planSheet(ctx) {
     for (const st of plans.students) {
       const sets = planSets(st.lines), set = sets.find(x => x.key === previewKey); if (!set) continue;
       const others = sets.filter(x => x !== set).map(x => `${periodText(x.startDate, x.endDate)} ${STATUS_LABEL[x.status] || x.status}`).join('・');
-      const body = planPreviewHtml(set, esc, { others, schedule: set.lines.map(l => ({ lineId: l.id, assigned: l.assigned, tentative: l.tentative })) })
+      const body = planPreviewHtml(set, esc, { others, schedule: set.lines.map(l => ({ lineId: l.id, assigned: usedOf(l).fixed, tentative: usedOf(l).tent })) })
         + agreementDocumentButtons(set.lines.map(l=>({...l,studentName:st.name})))
         + '<div class="row"><button type="button" data-action="pl-close">閉じる</button></div>';
       return sheet(esc, `${st.name} の受講計画書全体`, body, 'pl-close', { wide: true });
@@ -165,7 +175,7 @@ function planSheet(ctx) {
   const [s, l] = find(lineOpen); if (!l) return '';
   const [label, cls] = LINE_STATUS[l.status];
   let body = `<p style="margin-top:0"><span class="tag ${cls}">${label}</span>${l.kind !== '通常' ? ` <span class="tag gray">${esc(l.kind)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''}</p>
-    <div class="small">${md(l.startDate)}〜${md(l.endDate)}・${lineCount(l)}・1回 ${l.minutes}分 ${yen(l.fee)}</div><div class="small muted">決定・実施 ${l.assigned}回${l.tentative ? `・調整中 ${l.tentative}回` : ''}</div>`;
+    <div class="small">${md(l.startDate)}〜${md(l.endDate)}・${lineCount(l)}・1回 ${l.minutes}分 ${yen(l.fee)}</div><div class="small muted">決定・実施 ${usedOf(l).fixed}回${usedOf(l).tent ? `・調整中 ${usedOf(l).tent}回` : ''}</div>`;
   if (l.comment) body += `<div class="small" style="margin-top:6px">保護者への説明: ${esc(l.comment)}</div>`;
   { const parts = partsOf(l), sum = parts.reduce((n, p) => n + p.count, 0);
     if (parts.length) body += `<div class="small" style="margin-top:6px">目的・教材: ${esc(parts.map(p => `${p.label} ${p.count}回`).join('・'))}${sum < l.count ? `・内訳なし ${l.count - sum}回` : ''}</div>`; }
