@@ -856,10 +856,9 @@ button.pl-stu-row:focus-visible { outline: 2px solid var(--primary); outline-off
 .pl-set-head small { color: var(--muted); }
 .pl-set-head .grow { flex: 1; }
 .pl-subj { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; }
-.pl-subj-head, .pv-sub-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 0 0 2px; font-size: 15px; }
-.pl-subj-head small, .pv-sub-head small { color: var(--muted); font-weight: 400; font-size: 13px; }
-.pl-subj-head .amt, .pv-sub-head b { margin-left: auto; white-space: nowrap; }
-.pv-sub-head span { font-weight: 700; overflow-wrap: anywhere; }
+.pl-subj-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 0 0 2px; font-size: 15px; }
+.pl-subj-head small { color: var(--muted); font-weight: 400; font-size: 13px; }
+.pl-subj-head .amt { margin-left: auto; white-space: nowrap; }
 .pv-notes { display: grid; gap: 4px; margin: 4px 0; }
 .pv-note { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .pv-purposes { display: grid; gap: 2px; margin: 4px 0; padding: 6px 8px; background: var(--soft); border-radius: 8px; }
@@ -868,16 +867,19 @@ button.pl-stu-row:focus-visible { outline: 2px solid var(--primary); outline-off
 .pv-purpose b { white-space: nowrap; }
 .pv-purpose.muted { color: var(--muted); }
 .pv-warn { color: var(--danger); margin: 2px 0; }
-.pv-lines { display: grid; }
-.pv-line { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 14px; }
-.pv-line .b { display: block; min-width: 0; overflow-wrap: anywhere; }
-.pv-line .b small { display: block; font-size: 12px; margin-top: 1px; }
-.pv-line .amt { font-weight: 700; text-align: right; white-space: nowrap; }
 .pv-head { margin: 0; }
-.pv-subject { padding: 8px 0; border-top: 1px solid var(--line); }
-.pv-total { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; border-top: 2px solid var(--ink); padding-top: 8px; margin-top: 4px; }
-.pv-total b { font-size: 18px; white-space: nowrap; }
-.pv-schedule { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.pv-tbl { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.pv-tbl thead th { padding: 0 0 4px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 500; text-align: right; white-space: nowrap; }
+.pv-tbl thead th:first-child { padding-left: 0; text-align: left; }
+.pv-tbl tbody th { padding: 10px 0 2px; font-weight: 700; text-align: left; overflow-wrap: anywhere; }
+.pv-tbl tbody td { padding: 10px 0 2px 12px; text-align: right; white-space: nowrap; }
+.pv-tbl td small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.pv-tbl .amt { font-weight: 700; }
+.pv-item { border-bottom: 1px solid var(--line); }
+.pv-tbl .pv-more td { padding: 0 0 10px; font-size: 13px; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.pv-tbl tfoot th, .pv-tbl tfoot td { padding: 10px 0 0 12px; font-size: 14px; text-align: right; white-space: nowrap; }
+.pv-tbl tfoot th { padding-left: 0; text-align: left; }
+.pv-tbl tfoot .amt { font-size: 18px; }
 .parts-in { display: grid; grid-template-columns: minmax(0, 1fr) 6em; gap: 4px 8px; }
 /* 講師の本人情報: ほかに雇われている勤務先が「ある」のときだけ、曜日と時間の欄を出す（:has が使えない端末では常に出る） */
 form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="yes"]:checked)) .ow-hours { display: none; }

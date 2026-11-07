@@ -102,10 +102,8 @@ export const periodText = (from, to) => `${mdText(from)}〜${mdText(to)}`;
 
 // 科目のまとまりの中身（目的・教材ごとの回数、説明、行ごとの根拠）。管理画面のプレビューと保護者画面で同じものを出す
 // esc は呼ぶ側の HTML エスケープ。opts.lineExtra(l) は行の末尾に足す HTML（保護者の回数の選択など）
-export function subjectInfoHtml(g, esc) {
+function purposesHtml(g, esc) {
   let h = '';
-  const notes = g.lines.filter(l => String(l.comment || '').trim());
-  if (notes.length) h += `<div class="pv-notes">${notes.map(l => `<p class="pv-note"><span class="tag gray">${esc(formOf(l.kind).form)}</span> ${esc(l.comment)}</p>`).join('')}</div>`;
   if (g.purposes.length || g.over.length) {
     h += `<div class="pv-purposes" role="list" aria-label="目的・教材ごとの回数">${g.purposes.map(p => `<div class="pv-purpose" role="listitem"><span>${esc(p.label)}</span><b>${esc(formsText(p.forms))}</b></div>`).join('')}`;
     // 内訳の無い回数（内訳を持たない行・内訳が回数に足りない行）。形ごとに 1 行
@@ -117,28 +115,38 @@ export function subjectInfoHtml(g, esc) {
   }
   return h;
 }
-export function subjectBodyHtml(g, esc, opts = {}) {
-  let h = subjectInfoHtml(g, esc);
-  h += `<div class="pv-lines">${g.lines.map(l => {
-    const f = formOf(l.kind), n = plannedCount(l), a = lineAmount(l);
-    const changed = l.status === 'approved' && n !== Number(l.count) ? `（お知らせ ${l.count}回）` : l.status === 'declined' ? '（見送り）' : '';
-    return `<div class="pv-line"><span class="b"><span class="tag">${esc(f.form)}</span>${f.detail ? ` <span class="tag gray">${esc(f.detail)}</span>` : ''}${l.parentId ? ' <span class="tag">追加</span>' : ''} ${n}回${changed}<small class="muted">1回 ${esc(l.minutes)}分・${validFee(l.fee) ? yenText(l.fee) : '授業料が未設定'}${opts.period ? '・' + periodText(l.startDate, l.endDate) : ''}</small></span>${opts.lineExtra ? opts.lineExtra(l) : ''}<span class="amt">${a === null ? '算出できません' : yenText(a)}</span></div>`;
-  }).join('')}</div>`;
-  return h;
+export function subjectInfoHtml(g, esc) {
+  let h = '';
+  const notes = g.lines.filter(l => String(l.comment || '').trim());
+  if (notes.length) h += `<div class="pv-notes">${notes.map(l => `<p class="pv-note"><span class="tag gray">${esc(formOf(l.kind).form)}</span> ${esc(l.comment)}</p>`).join('')}</div>`;
+  return h + purposesHtml(g, esc);
 }
 // 受講計画書全体のプレビュー（読むだけ。保存・送信・承認は起こさない）
-// set: { startDate, endDate, status, lines }。opts.schedule: [{ lineId, assigned, tentative }]（日程の区画。管理画面だけ）
+// 1 行 1 科目の表で読む（2026-11-07 本人「ここの画面がめっちゃ見ずらい」。回数と金額を 2 度出さず、説明と日程はその行の下に置く）
+// set: { startDate, endDate, status, lines }。opts.schedule: [{ lineId, assigned, tentative }]（日程。管理画面だけ）
 export function planPreviewHtml(set, esc, opts = {}) {
   const groups = subjectGroups(set.lines), t = planTotals(set.lines);
+  const total = set.lines.reduce((n, l) => n + plannedCount(l), 0);
   let h = `<div class="pv"><p class="pv-head"><b>${esc(periodText(set.startDate, set.endDate))}</b> <span class="tag">${esc(STATUS_LABEL[set.status] || set.status)}</span>${opts.student ? ` ${esc(opts.student)}` : ''}</p>`;
   if (opts.others) h += `<p class="small muted" style="margin:2px 0 10px">同じ月のほかの受講計画書（${esc(opts.others)}）は含めていません。</p>`;
+  h += '<table class="pv-tbl"><thead><tr><th scope="col">科目</th><th scope="col">回数</th><th scope="col">1回</th><th scope="col">金額</th></tr></thead>';
   for (const g of groups) {
-    h += `<section class="pv-subject" aria-label="${esc(g.subject)}"><h3 class="pv-sub-head"><span>${esc(g.subject)}</span><small>${esc(formsText(g.forms))}</small><b>${esc(amountText(g))}</b></h3>${subjectBodyHtml(g, esc)}</section>`;
+    for (const l of g.lines) {
+      const f = formOf(l.kind), n = plannedCount(l), a = lineAmount(l), note = String(l.comment || '').trim();
+      const changed = l.status === 'approved' && n !== Number(l.count) ? `<small>お知らせ ${esc(l.count)}回</small>` : l.status === 'declined' ? '<small>見送り</small>' : '';
+      const label = [l.subject, f.form === '授業' ? '' : f.form, f.detail].filter(Boolean).join(' ');
+      let plan = '';
+      if (opts.schedule) {
+        const x = opts.schedule.find(y => y.lineId === l.id) || {}, rest = n - Number(x.assigned || 0) - Number(x.tentative || 0);
+        plan = `<small>決定・実施 ${Number(x.assigned || 0)}回・調整中 ${Number(x.tentative || 0)}回${rest > 0 ? `・日時がまだの回数 ${rest}回` : rest < 0 ? `・受講計画書より ${-rest}回多い` : ''}</small>`;
+      }
+      h += `<tbody class="pv-item"><tr><th scope="row">${esc(label)}${l.parentId ? ' <span class="tag">追加</span>' : ''}</th><td>${n}回${changed}</td><td>${esc(l.minutes)}分・${validFee(l.fee) ? yenText(l.fee) : '未設定'}</td><td class="amt">${a === null ? '算出できません' : yenText(a)}</td></tr>`;
+      if (note || plan) h += `<tr class="pv-more"><td colspan="4">${esc(note)}${plan}</td></tr>`;
+      h += '</tbody>';
+    }
+    const extra = purposesHtml(g, esc);
+    if (extra) h += `<tbody class="pv-item"><tr class="pv-more"><td colspan="4">${extra}</td></tr></tbody>`;
   }
-  h += `<div class="pv-total"><span>期間全体（${esc(formsText(t.forms))}）</span><b>${esc(amountText(t))}</b></div>`;
-  if (opts.schedule) {
-    const rows = set.lines.map(l => { const s = opts.schedule.find(x => x.lineId === l.id) || {}; const n = plannedCount(l), placed = Number(s.assigned || 0) + Number(s.tentative || 0); return { l, s, rest: n - placed }; });
-    h += `<section class="pv-schedule" aria-label="日程"><h3 class="pv-sub-head"><span>日程（受講計画書とは別）</span></h3><div class="pv-lines">${rows.map(({ l, s, rest }) => `<div class="pv-line"><span class="b">${esc(l.subject)} <span class="tag">${esc(formOf(l.kind).form)}</span><small class="muted">決定・実施 ${Number(s.assigned || 0)}回・調整中 ${Number(s.tentative || 0)}回${rest > 0 ? `・日時がまだの回数 ${rest}回` : rest < 0 ? `・受講計画書より ${-rest}回多い` : ''}</small></span></div>`).join('')}</div></section>`;
-  }
+  h += `<tfoot><tr><th scope="row">合計</th><td>${total}回</td><td></td><td class="amt">${esc(amountText(t))}</td></tr></tfoot></table>`;
   return h + '</div>';
 }

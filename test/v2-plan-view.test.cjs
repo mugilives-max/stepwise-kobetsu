@@ -41,9 +41,9 @@ test('引継ぎの例: 科目ごとに授業・演習の回数、目的ごとの
   assert.equal(sets.length, 1);
   assert.deepEqual(sets[0].lines.map(l => l.id), lines.map(l => l.id), '元の行の ID と件数はそのまま');
   const html = planPreviewHtml(sets[0], esc, { schedule: lines.map(l => ({ lineId: l.id, assigned: 1, tentative: 0 })) });
-  assert.match(html, /授業 3回／演習 7回/);
+  assert.match(html, /<th scope="row">合計<\/th><td>10回<\/td>/);
   assert.match(html, /31,000円/);
-  assert.match(html, /日程（受講計画書とは別）/);
+  assert.equal((html.match(/31,000円/g) || []).length, 1, '合計は 1 度だけ');
   assert.match(html, /日時がまだの回数 1回/);
   assert.equal(JSON.stringify(lines), before, 'まとめても元の行は変わらない');
 });
