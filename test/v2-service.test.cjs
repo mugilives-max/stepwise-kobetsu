@@ -13,7 +13,7 @@ test('the service key reads as the owner, refuses writes, and needs the exact ke
   assert.deepEqual(list.families.flatMap(f => f.students.map(s => s.name)), ['架空 一郎']);
   assert.equal(list.manager, true, '代表として読む');
   const hub = await h.ok('students/hub', { serviceKey: KEY, studentId: kid.id });
-  assert.equal(hub.basic.familyName, '架空家');
+  assert.equal(hub.basic.familyName, '架空 一郎さんの保護者', '保護者の氏名がまだないときは生徒名から');
   assert.equal(hub.basic.studentLink, '', '外のサービスには専用リンクを渡さない');
   assert.match((await h.ok('students/hub', { auth, studentId: kid.id })).basic.studentLink, /student\/\?k=/, '管理画面には出す');
   const month = await h.ok('monthly/overview', { serviceKey: KEY });

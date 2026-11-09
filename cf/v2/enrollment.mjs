@@ -135,8 +135,8 @@ function applyStatements(c, me, { r, cond, s }, app, terms, evidence) {
       .bind(at, via, 'family:' + me.id, '', evidence.consenterName, evidence.recordedAt, evidence.recordedByName, now, cond.id),
   ] };
 }
-const familyUpdate = (c, me, app, label, now) => c.db.prepare('update families set name = ?, guardianName = ?, guardianKana = ?, guardianFamilyName = ?, guardianGivenName = ?, guardianFamilyKana = ?, guardianGivenKana = ?, phone = ?, address = ?, updatedAt = ?, version = version + 1 where id = ?')
-  .bind(label, app.guardian.name, app.guardian.kana, app.guardian.familyName, app.guardian.givenName, app.guardian.familyKana, app.guardian.givenKana, app.guardian.phone, app.guardian.address, now, me.id);
+const familyUpdate = (c, me, app, now) => c.db.prepare('update families set guardianName = ?, guardianKana = ?, guardianFamilyName = ?, guardianGivenName = ?, guardianFamilyKana = ?, guardianGivenKana = ?, phone = ?, address = ?, updatedAt = ?, version = version + 1 where id = ?')
+  .bind(app.guardian.name, app.guardian.kana, app.guardian.familyName, app.guardian.givenName, app.guardian.familyKana, app.guardian.givenKana, app.guardian.phone, app.guardian.address, now, me.id);
 // 契約更新の受付: 保護者に 1 通、代表に 1 通（兄弟をまとめて）
 async function renewalMails(c, guardianName, list) {
   const nm = ({ app }) => app.student.familyName + ' ' + app.student.givenName + 'さん';
@@ -283,10 +283,8 @@ export const enrollmentRoutes = {
     const terms = await applyTerms(c, b), x = await applyTarget(c, me, b.offerId, b.conditionId);
     const app = applicationFields(b), renewal = x.r.kind === 'renewal', now = iso(c.now);
     const evidence = consentEvidence(c, { consenterName: app.guardian.name }, me, me);
-    // 体験のときの「◯◯さん」の表示名は、保護者の名字の「◯◯家」にする（代表が付けた名前は変えない）
-    const surname = app.guardian.familyName, familyLabel = !renewal && me.name === x.s.familyName + 'さん' && surname ? surname + '家' : me.name;
     const one = applyStatements(c, me, x, app, terms, evidence);
-    await c.db.batch([...one.stmts, familyUpdate(c, me, app, familyLabel, now), ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at: evidence.consentedAt, via: one.via, actorKind: 'family', actorId: me.id, note: '', evidence }))]);
+    await c.db.batch([...one.stmts, familyUpdate(c, me, app, now), ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at: evidence.consentedAt, via: one.via, actorKind: 'family', actorId: me.id, note: '', evidence }))]);
     await storeDoc(c, x.cond.id); // 同意済みの個別受講条件書
     // 保護者にも受付のメール（2026-10-29 本人「入塾の手続きが完了した後に、保護者に通知が行ってない」）。控えは保護者ページの「契約・同意の控え」
     const sname = app.student.familyName + ' ' + app.student.givenName, enrolledOn = one.enrolledOn;
@@ -315,7 +313,7 @@ ${monthText(x.r.fromMonth)}からの授業の日程は、LINE などでご相談
     const apps = items.map(it => applicationFields({ ...b, student: it.student })), now = iso(c.now);
     const evidence = consentEvidence(c, { consenterName: apps[0].guardian.name }, me, me);
     const all = xs.map((x, i) => applyStatements(c, me, x, apps[i], terms, evidence));
-    await c.db.batch([...all.flatMap(o => o.stmts), familyUpdate(c, me, apps[0], me.name, now), ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at: evidence.consentedAt, via: all[0].via, actorKind: 'family', actorId: me.id, note: '', evidence }))]);
+    await c.db.batch([...all.flatMap(o => o.stmts), familyUpdate(c, me, apps[0], now), ...(me.termsVersion === terms.version ? [] : await termsConsentStatements(c, me.id, terms.version, { at: evidence.consentedAt, via: all[0].via, actorKind: 'family', actorId: me.id, note: '', evidence }))]);
     for (const x of xs) await storeDoc(c, x.cond.id);
     await renewalMails(c, apps[0].guardian.name, xs.map((x, i) => ({ x, app: apps[i] })));
     for (const x of xs) await audit(c, 'renewalApplied', x.r.id, { studentId: x.s.id, conditionId: x.cond.id, termsVersion: terms.version, together: xs.length });

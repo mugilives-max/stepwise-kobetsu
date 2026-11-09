@@ -8,7 +8,7 @@ import { familyTerms } from './terms.mjs';
 import { lineView } from './billing.mjs';
 import { studentEnrollment, enrollmentStates } from './enrollment.mjs';
 import { currentTerms } from './terms.mjs';
-import { fail, iso, audit } from './util.mjs';
+import { fail, iso, audit, CONTRACTOR } from './util.mjs';
 import { studentLink } from './people.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { todayJst, nowHmJst, addDays } from './schedule.mjs';
@@ -44,7 +44,7 @@ export const studentHubRoutes = {
   },
   'students/list': async (c, b) => {
     const me = await requireStaff(c, b, 'manager', 'teacher'), manager = rolesOf(me).includes('manager'), today = todayJst(c.now);
-    let students = (await c.db.prepare("select s.*, f.name familyLabel from students s join families f on f.id = s.familyId order by s.status = 'left', f.testOnly, f.name, s.familyKana, s.givenKana").all()).results;
+    let students = (await c.db.prepare(`select s.*, ${CONTRACTOR('f')} familyLabel from students s join families f on f.id = s.familyId order by s.status = 'left', f.testOnly, familyLabel, s.familyKana, s.givenKana`).all()).results;
     if (!manager) { const mine = await teacherStudents(c, me.id); students = students.filter(s => mine.has(s.id)); }
     const next = Object.fromEntries((await c.db.prepare("select studentId, min(date || ' ' || start) n from lessons where status in ('proposed', 'decided') and date >= ? group by studentId").bind(today).all()).results.map(r => [r.studentId, r.n]));
     const requests = Object.fromEntries((await c.db.prepare("select studentId, count(*) n from lessonRequests where status = 'open' group by studentId").all()).results.map(r => [r.studentId, r.n]));
@@ -75,7 +75,7 @@ export const studentHubRoutes = {
 
   'students/hub': async (c, b) => {
     const me = await requireStaff(c, b, 'manager', 'teacher'), manager = rolesOf(me).includes('manager'), today = todayJst(c.now);
-    const s = await c.db.prepare('select s.*, f.name familyLabel, f.guardianName, f.email familyEmail, f.phone familyPhone, f.status familyStatus from students s join families f on f.id = s.familyId where s.id = ?').bind(String(b.studentId || '')).first();
+    const s = await c.db.prepare(`select s.*, ${CONTRACTOR('f')} familyLabel, f.guardianName, f.email familyEmail, f.phone familyPhone, f.status familyStatus from students s join families f on f.id = s.familyId where s.id = ?`).bind(String(b.studentId || '')).first();
     if (!s) fail('notFound', '生徒が見つかりません', 404);
     if (!manager && !(await teacherStudents(c, me.id)).has(s.id)) fail('forbidden', '担当の生徒だけ見られます', 403);
     const staff = Object.fromEntries((await c.db.prepare('select id, name from staff').all()).results.map(x => [x.id, x.name]));

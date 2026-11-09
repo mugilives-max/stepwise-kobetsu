@@ -20,7 +20,7 @@
 // 入口は Worker の別の鍵（V2_SERVICE_WRITE_KEY。読み取りの V2_SERVICE_KEY とは別）で、mcp/ の道だけを通す（cf/v2/service.mjs）。
 // 対象は V2_SERVICE_WRITE_SCOPE が 'all' でなければ「テスト用の生徒」（testOnly か名字が【テスト】）だけ。
 // 請求・料金・契約・同意の代行・支払い・削除・汎用の管理 API の直通は無い。既定のお知らせはしない（送るのは notices/send だけ）。
-import { fail, audit, newId, iso, sha256Hex, selectIn } from './util.mjs';
+import { fail, audit, newId, iso, sha256Hex, selectIn, CONTRACTOR } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { recordEffects } from './effects.mjs';
 import { scheduleRoutes, pickedLessons, eventInput, addEvent, checkConflicts, lessonFields, lessonView, familyNotice, notifySchedule, calendarEffect, confirmByFor, todayJst, freeDeadline, stageOf, askText, FAMILY_URL } from './schedule.mjs';
@@ -43,7 +43,7 @@ export const maskEmail = e => { const [u, d] = String(e || '').split('@'); retur
 const scopeOf = c => (String(c.env.V2_SERVICE_WRITE_SCOPE || '') === 'all' ? 'all' : 'test');
 const isTestStudent = (s, fam) => !!s.testOnly || !!(fam && fam.testOnly) || /^【テスト】/.test(String(s.familyName || ''));
 async function studentWithFamily(c, id) {
-  const s = await c.db.prepare('select s.*, f.name familyLabel, f.email familyEmail, f.status familyStatus, f.testOnly familyTestOnly from students s join families f on f.id = s.familyId where s.id = ?').bind(String(id || '')).first();
+  const s = await c.db.prepare(`select s.*, ${CONTRACTOR('f')} familyLabel, f.email familyEmail, f.status familyStatus, f.testOnly familyTestOnly from students s join families f on f.id = s.familyId where s.id = ?`).bind(String(id || '')).first();
   if (!s) fail('notFound', '生徒が見つかりません', 404);
   return s;
 }
@@ -360,7 +360,7 @@ export const mcpWriteRoutes = {
     const off = 'off.' + sha256Hex(sid + ':' + now + ':' + Math.random()).slice(0, 32);
     const test = c.serviceWrite && scopeOf(c) === 'test' ? 1 : 0;
     await c.db.batch([
-      c.db.prepare("insert into families (id, name, guardianName, email, phone, note, status, testOnly, createdAt, updatedAt) values (?, ?, '', '', '', ?, 'invited', ?, ?, ?)").bind(fid, familyName + 'さん', '体験の問い合わせ（MCP で登録）', test, now, now),
+      c.db.prepare("insert into families (id, guardianName, email, phone, note, status, testOnly, createdAt, updatedAt) values (?, '', '', '', ?, 'invited', ?, ?, ?)").bind(fid, '体験の問い合わせ（MCP で登録）', test, now, now),
       c.db.prepare("insert into students (id, familyId, familyName, givenName, grade, note, status, linkCode, trial, testOnly, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, 'enrolled', ?, 1, ?, ?, ?)").bind(sid, fid, familyName, givenName, grade, note, off, test, now, now),
     ]);
     const result = { requestId: b.requestId, studentId: sid, familyId: fid, student: { id: sid, name: fullName({ familyName, givenName }), grade, trial: true }, studentPage: 'none' };

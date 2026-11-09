@@ -13,7 +13,7 @@ import { familyTarget, targetRefs } from '../../assets/v2/family-target.js';
 //   ② 塾が日程を送り、保護者が保護者ページで「承認する」（send: 'ask'。締め切り・自動確定なし）
 //   受講計画書に入らない授業も、その授業への合意があれば請求する（cf/v2/lesson-plan.mjs。受講計画書には足さない。2026-10-27 本人「自動で受講計画に足すのはやめましょう」）
 // カレンダー・Meet と保護者へのメールは、切り替え（settings.live）まで実際には行わない（effects に held で残る）。
-import { fail, newId, iso, audit, sha256Hex, selectIn } from './util.mjs';
+import { fail, newId, iso, audit, sha256Hex, selectIn, CONTRACTOR } from './util.mjs';
 import { requireStaff, rolesOf } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
@@ -436,7 +436,7 @@ async function agreeLessons(c, me, b) {
     if ((await c.db.prepare("select 1 from lessonRequests where lessonId = ? and status = 'open'").bind(l.id).first())) fail('hasRequest', '連絡を出している授業が入っています。先生の返事をお待ちください', 409);
     rows.push(l);
   }
-  const who = String(me.guardianName || me.name || '').slice(0, 60);
+  const who = String(me.guardianName || '').slice(0, 60);
   if(new Set(rows.map(l=>l.id)).size!==rows.length) fail('duplicate','同じ授業が重複しています');
   const cases=rows.map(()=>'(id = ? and version = ?)').join(' or ');
   const params=rows.flatMap(l=>[l.id,l.version]);
@@ -497,7 +497,7 @@ export const scheduleRoutes = {
     const nameOf = Object.fromEntries(students.map(s => [s.id, fullName(s)]));
     const events = (await c.db.prepare('select * from sharedEvents where dateTo >= ? and date <= ? order by date').bind(from, to).all()).results.filter(e => !allowed || allowed.includes(e.studentId));
     const offs = (await c.db.prepare('select * from staffUnavailability where date between ? and ? order by date, start').bind(from, to).all()).results.filter(o => manager || !o.staffId || o.staffId === me.id);
-    const meetings = manager ? (await c.db.prepare("select m.*, f.name familyName, f.guardianName from meetings m left join families f on f.id = m.familyId where m.date between ? and ? and m.status <> 'cancelled' order by m.date, m.start").bind(from, to).all()).results : [];
+    const meetings = manager ? (await c.db.prepare(`select m.*, ${CONTRACTOR('f')} familyName, f.guardianName from meetings m left join families f on f.id = m.familyId where m.date between ? and ? and m.status <> 'cancelled' order by m.date, m.start`).bind(from, to).all()).results : [];
     // 種類: 「通常」と、特別単価合意書の名称（2026-10-26 本人「このページってもはや不要」→ 種類は「通常」と特別単価合意書の名称だけ。授業料の上限は個別受講条件書・特別単価合意書で決まる）
     const kinds = ['通常', ...new Set((await c.db.prepare("select title from specials where status in ('proposed', 'agreed') order by title").all()).results.map(r => r.title).filter(t => t && t !== '通常'))];
     // 下書きと調整中（今日以降）は、表示している月に限らず全部（「対応すること」で選んで、見せる・確認をお願いする）
@@ -796,7 +796,7 @@ export const scheduleRoutes = {
   'schedule/meetings/create': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const familyId = String(b.familyId || ''), withName = String(b.withName || '').trim().slice(0, 60);
-    const fam = familyId ? await c.db.prepare('select * from families where id = ?').bind(familyId).first() : null;
+    const fam = familyId ? await c.db.prepare(`select *, ${CONTRACTOR('families')} contractor from families where id = ?`).bind(familyId).first() : null;
     if (familyId && !fam) fail('notFound', '家族が見つかりません', 404);
     if (!fam && !withName) fail('needWho', '相手を選ぶか、登録していない人の名前を入れてください');
     const date = String(b.date || ''), start = String(b.start || ''), minutes = Number(b.minutes || 30);
@@ -806,7 +806,7 @@ export const scheduleRoutes = {
     await c.db.prepare('insert into meetings (id, familyId, withName, studentId, staffId, date, start, minutes, deliveryMode, title, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .bind(id, fam ? fam.id : '', fam ? '' : withName, fam ? String(b.studentId || '') : '', String(b.staffId || c.actor.id), date, start, minutes, mode, String(b.title || '面談').slice(0, 60), iso(c.now), iso(c.now)).run();
     const m = await c.db.prepare('select * from meetings where id = ?').bind(id).first();
-    const marker = await calendarEffect(c, 'create', { ...m, id, subject: m.title, calendarEventId: '' }, fam ? fam.name.replace(/さん$/, '') : withName);
+    const marker = await calendarEffect(c, 'create', { ...m, id, subject: m.title, calendarEventId: '' }, fam ? fam.contractor : withName);
     await c.db.prepare('update meetings set calendarEventId = ? where id = ?').bind(marker, id).run();
     await audit(c, 'meetingCreate', id);
     return { id };

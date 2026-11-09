@@ -1,5 +1,5 @@
 // 家族・生徒の管理（教室管理者）と、保護者・生徒から見た自分の情報。家族が根っこ（生徒は必ず家族に属する）。
-import { fail, newId, normEmail, validEmail, iso, audit } from './util.mjs';
+import { fail, newId, normEmail, validEmail, iso, audit, CONTRACTOR } from './util.mjs';
 import { isPreviewToken, previewSubject } from './preview.mjs';
 import { studentConditions } from './conditions.mjs';
 import { studentSpecials } from './specials.mjs';
@@ -18,8 +18,9 @@ function newLinkCode() {
 export const studentLink = code => SITE + '/student/?k=' + encodeURIComponent(code);
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
 
+// 名前は契約者（保護者本人）。家族の呼び名は使わない（CONTRACTOR、2026-11-09）
 export function familyAdminView(f) {
-  return { id: f.id, name: f.name, guardianName: f.guardianName, guardianFamilyName: f.guardianFamilyName || '', guardianGivenName: f.guardianGivenName || '', guardianFamilyKana: f.guardianFamilyKana || '', guardianGivenKana: f.guardianGivenKana || '', guardianKana: f.guardianKana || '', address: f.address || '', email: f.email, phone: f.phone, note: f.note, status: f.status, hasPassword: !!f.passHash, testOnly: !!f.testOnly, legacyId: f.legacyId, termsVersion: f.termsVersion || '', termsAcceptedAt: f.termsAcceptedAt || '', version: f.version };
+  return { id: f.id, name: f.contractor ?? f.guardianName ?? '', guardianName: f.guardianName, guardianFamilyName: f.guardianFamilyName || '', guardianGivenName: f.guardianGivenName || '', guardianFamilyKana: f.guardianFamilyKana || '', guardianGivenKana: f.guardianGivenKana || '', guardianKana: f.guardianKana || '', address: f.address || '', email: f.email, phone: f.phone, note: f.note, status: f.status, hasPassword: !!f.passHash, testOnly: !!f.testOnly, legacyId: f.legacyId, termsVersion: f.termsVersion || '', termsAcceptedAt: f.termsAcceptedAt || '', version: f.version };
 }
 export function studentAdminView(s) {
   return { id: s.id, familyId: s.familyId, name: fullName(s), familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana,
@@ -47,20 +48,19 @@ function studentFields(b, base = {}) {
 }
 function familyFields(b, base = {}) {
   const out = { ...base };
-  for (const [k, max] of Object.entries({ name: 60, guardianName: 60, guardianFamilyName: 30, guardianGivenName: 30, guardianFamilyKana: 30, guardianGivenKana: 30, phone: 30, note: 1000 })) if (b[k] !== undefined) {
+  for (const [k, max] of Object.entries({ guardianName: 60, guardianFamilyName: 30, guardianGivenName: 30, guardianFamilyKana: 30, guardianGivenKana: 30, phone: 30, note: 1000 })) if (b[k] !== undefined) {
     const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = v;
   }
   // 保護者の氏名は姓・名で受け取り、「姓 名」の 1 つの文も合わせて持つ（書面・同意の氏名に使う。2026-10-19）
   if (b.guardianFamilyName !== undefined || b.guardianGivenName !== undefined) out.guardianName = [out.guardianFamilyName, out.guardianGivenName].filter(Boolean).join(' ');
   if (b.guardianFamilyKana !== undefined || b.guardianGivenKana !== undefined) out.guardianKana = [out.guardianFamilyKana, out.guardianGivenKana].filter(Boolean).join(' ');
   if (b.email !== undefined) { const e = normEmail(b.email); if (e && !validEmail(e)) fail('badEmail', 'メールアドレスを確かめてください'); out.email = e; }
-  if (!out.name) fail('needName', '家族の表示名を入れてください（例: 山田家）');
   return out;
 }
 async function emailFree(c, email, exceptId = '') {
   if (email && await c.db.prepare('select 1 from families where email = ? and id <> ?').bind(email, exceptId).first()) fail('duplicate', 'このメールアドレスはほかの家族で使われています', 409);
 }
-async function getFamily(c, id) { const f = await c.db.prepare('select * from families where id = ?').bind(String(id || '')).first(); if (!f) fail('notFound', '家族が見つかりません', 404); return f; }
+async function getFamily(c, id) { const f = await c.db.prepare(`select *, ${CONTRACTOR('families')} contractor from families where id = ?`).bind(String(id || '')).first(); if (!f) fail('notFound', '家族が見つかりません', 404); return f; }
 async function getStudent(c, id) { const s = await c.db.prepare('select * from students where id = ?').bind(String(id || '')).first(); if (!s) fail('notFound', '生徒が見つかりません', 404); return s; }
 const sameVersion = (row, b) => { if (Number(b.version) !== Number(row.version)) fail('conflict', 'ほかの操作で変わりました。画面を更新してください', 409); };
 
@@ -69,7 +69,7 @@ const INVITE_MAIL = { subject: '【ステップワイズ】保護者ページの
 export const peopleRoutes = {
   'admin/families/list': async (c, b) => {
     await requireStaff(c, b, 'manager');
-    const fams = (await c.db.prepare('select * from families order by testOnly, name').all()).results;
+    const fams = (await c.db.prepare(`select *, ${CONTRACTOR('families')} contractor from families order by testOnly, contractor`).all()).results;
     const studs = (await c.db.prepare('select * from students order by familyKana, givenKana, familyName, givenName').all()).results;
     return { families: fams.map(f => ({ ...familyAdminView(f), students: studs.filter(s => s.familyId === f.id).map(studentAdminView) })) };
   },
@@ -83,11 +83,11 @@ export const peopleRoutes = {
   },
   'admin/families/create': async (c, b) => {
     await requireStaff(c, b, 'manager');
-    const f = familyFields(b, { name: '', guardianName: '', guardianFamilyName: '', guardianGivenName: '', guardianFamilyKana: '', guardianGivenKana: '', guardianKana: '', email: '', phone: '', note: '' });
+    const f = familyFields(b, { guardianName: '', guardianFamilyName: '', guardianGivenName: '', guardianFamilyKana: '', guardianGivenKana: '', guardianKana: '', email: '', phone: '', note: '' });
     await emailFree(c, f.email);
     const id = newId('fa'), test = b.testOnly ? 1 : 0;
-    await c.db.prepare('insert into families (id, name, guardianName, guardianFamilyName, guardianGivenName, guardianFamilyKana, guardianGivenKana, guardianKana, email, phone, note, status, testOnly, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, f.name, f.guardianName, f.guardianFamilyName, f.guardianGivenName, f.guardianFamilyKana, f.guardianGivenKana, f.guardianKana, f.email, f.phone, f.note, 'invited', test, iso(c.now), iso(c.now)).run();
+    await c.db.prepare('insert into families (id, guardianName, guardianFamilyName, guardianGivenName, guardianFamilyKana, guardianGivenKana, guardianKana, email, phone, note, status, testOnly, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, f.guardianName, f.guardianFamilyName, f.guardianGivenName, f.guardianFamilyKana, f.guardianGivenKana, f.guardianKana, f.email, f.phone, f.note, 'invited', test, iso(c.now), iso(c.now)).run();
     await audit(c, 'familyCreate', id);
     return { family: familyAdminView(await getFamily(c, id)) };
   },
@@ -103,8 +103,8 @@ export const peopleRoutes = {
       else if (b.status === 'invited' && f.status === 'stopped' && !f.passHash) status = 'invited';
       else fail('badStatus', '状態を確かめてください');
     }
-    await c.db.prepare('update families set name = ?, guardianName = ?, guardianFamilyName = ?, guardianGivenName = ?, guardianFamilyKana = ?, guardianGivenKana = ?, guardianKana = ?, email = ?, phone = ?, note = ?, status = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?')
-      .bind(next.name, next.guardianName, next.guardianFamilyName || '', next.guardianGivenName || '', next.guardianFamilyKana || '', next.guardianGivenKana || '', next.guardianKana || '', next.email, next.phone, next.note, status, iso(c.now), f.id, f.version).run();
+    await c.db.prepare('update families set guardianName = ?, guardianFamilyName = ?, guardianGivenName = ?, guardianFamilyKana = ?, guardianGivenKana = ?, guardianKana = ?, email = ?, phone = ?, note = ?, status = ?, updatedAt = ?, version = version + 1 where id = ? and version = ?')
+      .bind(next.guardianName, next.guardianFamilyName || '', next.guardianGivenName || '', next.guardianFamilyKana || '', next.guardianGivenKana || '', next.guardianKana || '', next.email, next.phone, next.note, status, iso(c.now), f.id, f.version).run();
     // 停止・ログインのメールの変更では、今のログインを切る
     if (status === 'stopped' || next.email !== f.email) await revokeSessions(c, 'family', f.id);
     await audit(c, 'familyUpdate', f.id, { status, emailChanged: next.email !== f.email });

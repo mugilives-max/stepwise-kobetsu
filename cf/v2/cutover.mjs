@@ -7,7 +7,7 @@
 //   5. 今日以降の決定の授業・面談で、カレンダーの予定がないものを作る
 //   6. （選んだとき）保護者ページに登録していない家族に、登録の案内を送る
 // 「元に戻す」: live を戻し、今の仕組みの読むだけを外す。新しい仕組みで受けたことは手で今の仕組みに入れ直す。
-import { fail, iso, audit } from './util.mjs';
+import { fail, iso, audit, CONTRACTOR } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { isLive } from './accounts.mjs';
 import { todayJst, calendarEffect, isCalMarker } from './schedule.mjs';
@@ -50,7 +50,7 @@ export const cutoverRoutes = {
       const marker = await calendarEffect(c, 'create', { ...l, calendarEventId: '' }, fullName(l));
       await c.db.prepare('update lessons set calendarEventId = ? where id = ?').bind(marker, l.id).run(); events++;
     }
-    for (const m of (await c.db.prepare("select m.*, f.name familyLabel from meetings m join families f on f.id = m.familyId where m.status = 'scheduled' and m.date >= ?").bind(today).all()).results) {
+    for (const m of (await c.db.prepare(`select m.*, ${CONTRACTOR('f')} familyLabel from meetings m join families f on f.id = m.familyId where m.status = 'scheduled' and m.date >= ?`).bind(today).all()).results) {
       if (!needsEvent(m.calendarEventId)) continue;
       const marker = await calendarEffect(c, 'create', { ...m, subject: m.title, calendarEventId: '' }, String(m.familyLabel || '').replace(/さん$/, ''));
       await c.db.prepare('update meetings set calendarEventId = ? where id = ?').bind(marker, m.id).run(); events++;
@@ -59,10 +59,10 @@ export const cutoverRoutes = {
     let invited = 0;
     const inviteFailed = [];
     if (b.sendInvites === true) {
-      const fams = (await c.db.prepare("select f.* from families f where f.status = 'invited' and f.email <> '' and f.testOnly = 0 and exists (select 1 from students s where s.familyId = f.id and s.status <> 'left')").all()).results;
+      const fams = (await c.db.prepare(`select f.*, ${CONTRACTOR('f')} contractor from families f where f.status = 'invited' and f.email <> '' and f.testOnly = 0 and exists (select 1 from students s where s.familyId = f.id and s.status <> 'left')`).all()).results;
       for (const f of fams) {
         try { await peopleRoutes['admin/families/invite'](c, { ...b, id: f.id }); invited++; }
-        catch (e) { inviteFailed.push(f.name); }
+        catch (e) { inviteFailed.push(f.contractor); }
       }
     }
     await audit(c, 'cutover', '', { events, invited, families: copied.identity.families, lessons: copied.schedule.lessons });

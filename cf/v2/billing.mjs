@@ -9,7 +9,7 @@ import { invoiceDueText, normalDueDate } from '../../assets/v2/invoice-due.js';
 import { consentEvidence, evidenceView, consentLine, copyMail } from './consent-evidence.mjs';
 import { planDocument } from './agreement-documents.mjs';
 import { putGenerated } from './files.mjs';
-import { fail, newId, iso, audit } from './util.mjs';
+import { fail, newId, iso, audit, CONTRACTOR } from './util.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
@@ -202,7 +202,7 @@ export async function autoCloseInvoices(c) {
   const month = shiftMonth(today.slice(0, 7), -1), held = [];
   let confirmed = 0;
   c.actor = { kind: 'system', id: 'autoClose' };
-  for (const f of (await c.db.prepare("select id, name from families where status <> 'stopped'").all()).results) {
+  for (const f of (await c.db.prepare(`select id, ${CONTRACTOR('families')} name from families where status <> 'stopped'`).all()).results) {
     if (await activeInvoice(c, f.id, month)) continue;
     const p = await monthPreview(c, f.id, month);
     if (p.auto && Number(today.slice(8)) === 3) { await confirmInvoice(c, f.id, month, 'system:auto'); confirmed++; }
@@ -275,7 +275,7 @@ export const billingRoutes = {
   'billing/plans/list': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const month = validMonth(b.month) ? b.month : todayJst(c.now).slice(0, 7), from = month + '-01', to = monthEnd(month);
-    const students = (await c.db.prepare("select s.*, coalesce(nullif(f.guardianName, ''), f.name) familyLabel from students s join families f on f.id = s.familyId where s.status <> 'left' order by s.familyKana, s.familyName, s.givenName").all()).results;
+    const students = (await c.db.prepare(`select s.*, ${CONTRACTOR('f')} familyLabel from students s join families f on f.id = s.familyId where s.status <> 'left' order by s.familyKana, s.familyName, s.givenName`).all()).results;
     const kinds = (await c.db.prepare('select * from lessonKinds order by sortOrder, name').all()).results;
     const rows = [];
     for (const s of students) {
@@ -499,29 +499,29 @@ export const billingRoutes = {
   'billing/month': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const month = validMonth(b.month) ? b.month : shiftMonth(todayJst(c.now).slice(0, 7), -1);
-    const families = (await c.db.prepare('select * from families order by name').all()).results, rows = [];
+    const families = (await c.db.prepare(`select *, ${CONTRACTOR('families')} contractor from families order by contractor`).all()).results, rows = [];
     for (const f of families) {
       const inv = await activeInvoice(c, f.id, month);
-      if (inv) { rows.push({ familyId: f.id, name: f.guardianName || f.name, invoice: invoiceView(inv) }); continue; }
+      if (inv) { rows.push({ familyId: f.id, name: f.contractor, invoice: invoiceView(inv) }); continue; }
       const p = await monthPreview(c, f.id, month);
       const asks = (await c.db.prepare("select count(*) n, max(remindedAt) last from planLines where status = 'proposed' and studentId in (select id from students where familyId = ?)").bind(f.id).first());
-      if (p.students.length || p.issues.length) rows.push({ familyId: f.id, name: f.guardianName || f.name, preview: { total: p.total, issues: p.issues, pendingCount: p.pendingCount, canConfirm: p.canConfirm, auto: p.auto, cancelFees: p.students.reduce((n, s) => n + s.items.filter(i => i.kind === 'cancelFee').length, 0) }, proposedPlans: asks.n, remindedAt: asks.last || '' });
+      if (p.students.length || p.issues.length) rows.push({ familyId: f.id, name: f.contractor, preview: { total: p.total, issues: p.issues, pendingCount: p.pendingCount, canConfirm: p.canConfirm, auto: p.auto, cancelFees: p.students.reduce((n, s) => n + s.items.filter(i => i.kind === 'cancelFee').length, 0) }, proposedPlans: asks.n, remindedAt: asks.last || '' });
     }
-    const voided = (await c.db.prepare("select v.*, f.name from invoices v join families f on f.id = v.familyId where v.month = ? and v.status = 'void' order by v.voidedAt").bind(month).all()).results;
+    const voided = (await c.db.prepare(`select v.*, ${CONTRACTOR('f')} name from invoices v join families f on f.id = v.familyId where v.month = ? and v.status = 'void' order by v.voidedAt`).bind(month).all()).results;
     return { month, closeOn: shiftMonth(month, 1) + '-03', families: rows, voided: voided.map(v => ({ ...invoiceView(v), name: v.name })) };
   },
   // 家族の1か月: 確定した請求の内訳か、確定前の見込み
   'billing/family': async (c, b) => {
     await requireStaff(c, b, 'manager');
     if (!validMonth(b.month)) fail('badMonth', '月を選んでください');
-    const f = await c.db.prepare('select * from families where id = ?').bind(String(b.familyId || '')).first(); if (!f) fail('notFound', '家族が見つかりません', 404);
+    const f = await c.db.prepare(`select *, ${CONTRACTOR('families')} contractor from families where id = ?`).bind(String(b.familyId || '')).first(); if (!f) fail('notFound', '家族が見つかりません', 404);
     const inv = await activeInvoice(c, f.id, b.month);
     const names = Object.fromEntries((await c.db.prepare('select * from students where familyId = ?').bind(f.id).all()).results.map(s => [s.id, fullName(s)]));
     if (inv) {
       const items = (await c.db.prepare('select * from invoiceItems where invoiceId = ? order by sortOrder').bind(inv.id).all()).results;
-      return { family: { id: f.id, name: f.guardianName || f.name }, invoice: { ...invoiceView(inv), ...(await billingDocIds(c.db, inv.id)) }, items: items.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) };
+      return { family: { id: f.id, name: f.contractor }, invoice: { ...invoiceView(inv), ...(await billingDocIds(c.db, inv.id)) }, items: items.map(i => ({ ...itemView(i), studentName: names[i.studentId] || '' })) };
     }
-    return { family: { id: f.id, name: f.guardianName || f.name }, preview: await monthPreview(c, f.id, b.month) };
+    return { family: { id: f.id, name: f.contractor }, preview: await monthPreview(c, f.id, b.month) };
   },
   'billing/confirm': async (c, b) => {
     const me = await requireStaff(c, b, 'manager');
@@ -637,7 +637,7 @@ export const billingRoutes = {
     sameVersion(v, b);
     if (v.status !== 'confirmed') fail('badStatus', v.status === 'paid' ? '入金を確認済みです' : 'もう連絡をいただいています', 409);
     await c.db.prepare("update invoices set status = 'reported', reportedAt = ?, updatedAt = ?, version = version + 1 where id = ?").bind(iso(c.now), iso(c.now), v.id).run();
-    const f = await c.db.prepare('select name from families where id = ?').bind(me.id).first();
+    const f = await c.db.prepare(`select ${CONTRACTOR('families')} name from families where id = ?`).bind(me.id).first();
     await staffNotice(c, `【振込の連絡】${f.name}`, `${f.name}から ${Number(v.month.slice(5))}月分（${yen(v.total)}）の振込の連絡がありました。入金を確かめてください。`);
     await audit(c, 'invoiceReported', v.id);
     return {};

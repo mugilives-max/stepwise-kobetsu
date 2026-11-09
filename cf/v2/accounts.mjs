@@ -3,7 +3,7 @@ import { safeFamilyTarget } from '../../assets/v2/family-target.js';
 // - パスワードは PBKDF2（util.mjs）。端末ごとにログインを保つ（sessions）。
 // - 5 回続けて間違えると 15 分ロック。メールアドレスがあるかどうかは答え方で分からないようにする。
 // - 再設定・招待はメールのリンク。リンクのトークンそのものは保存しない（SHA-256 だけ）。
-import { fail, newToken, sha256Hex, hashPassword, verifyPassword, passwordProblem, newSalt, normEmail, validEmail, iso, audit } from './util.mjs';
+import { fail, newToken, sha256Hex, hashPassword, verifyPassword, passwordProblem, newSalt, normEmail, validEmail, iso, audit, CONTRACTOR } from './util.mjs';
 
 export const SITE = 'https://www.stepwise-education.jp';
 export async function isLive(c) { const r = await c.db.prepare("select value from settings where key = 'live'").first(); return !!r && r.value === '1'; }
@@ -143,7 +143,7 @@ export const confirmReset = (c, kind, body) => acceptWithPassword(c, kind, KINDS
 export const acceptInvite = (c, kind, body) => acceptWithPassword(c, kind, KINDS[kind].invite, body);
 export async function inviteInfo(c, kind, { token }) {
   const ch = await readChallenge(c, KINDS[kind].invite, token);
-  const who = await c.db.prepare(`select name, email, status from ${KINDS[kind].table} where id = ?`).bind(ch.subjectId).first();
+  const who = await c.db.prepare(`select ${kind === 'family' ? CONTRACTOR('families') : 'name'} name, email, status from ${KINDS[kind].table} where id = ?`).bind(ch.subjectId).first();
   if (!who || who.status === 'stopped') fail('expiredLink', 'リンクの期限が切れているか、すでに使われています。もう一度やり直してください', 400);
   return { name: who.name, email: who.email };
 }

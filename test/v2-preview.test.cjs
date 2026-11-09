@@ -18,7 +18,7 @@ test('a manager previews the family page: every read works, every write is refus
   const start = await h.ok('admin/preview/start', { auth, kind: 'family', id: fam.id });
   assert.match(start.url, /^\/family\/#preview=pv2\./);
   const pv = tokenOf(start.url);
-  assert.equal((await h.ok('family/me', { auth: pv })).me.name, '架空家');
+  assert.equal((await h.ok('family/me', { auth: pv })).me.name, '', '保護者の氏名がまだない');
   for (const r of ['family/schedule', 'family/learning', 'family/money', 'family/grades', 'family/students']) await h.ok(r, { auth: pv });
   const lesson = (await h.ok('family/schedule', { auth: pv })).lessons[0];
   const before = h.rows('select count(*) n from lessonRequests')[0].n;

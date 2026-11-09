@@ -49,7 +49,7 @@ test('renewal: one mail for the siblings, the parent confirms details and agrees
   const sa = h.rows('select * from students where id = ?', a.id)[0];
   assert.deepEqual([sa.trial, sa.enrolledOn, sa.grade], [0, '2025-04-01', '中3'], '入塾日は変えない。学年は入れた値');
   const f1 = h.rows('select * from families where id = ?', fam.id)[0];
-  assert.deepEqual([f1.name, f1.termsVersion, f1.address], ['【テスト】岡野家', TERMS.version, '〒343-0002 【テスト】越谷市1-2-3'], '家族の表示名は変えず、規約の同意と住所が入る');
+  assert.deepEqual([f1.name, f1.termsVersion, f1.address], ['', TERMS.version, '〒343-0002 【テスト】越谷市1-2-3'], '家族の呼び名は書かず、規約の同意と住所が入る');
   const c1 = h.rows("select * from conditions where studentId = ? and status = 'agreed'", a.id)[0];
   assert.deepEqual([c1.agreedVia, c1.consenterName, c1.fromMonth], ['保護者ページ（契約更新の手続き）', '【テスト】岡野 花子', '2026-11']);
   assert.equal(h.rows("select via from termsConsents where familyId = ?", fam.id)[0].via, '保護者ページ（契約更新の手続き）');

@@ -72,3 +72,7 @@ export async function audit(c, action, target = '', detail = {}) {
   await c.db.prepare('insert into auditLog (at, actorKind, actorId, action, target, detail) values (?, ?, ?, ?, ?, ?)')
     .bind(iso(c.now), c.actor ? c.actor.kind : 'system', c.actor ? c.actor.id : '', action, String(target), JSON.stringify(detail)).run();
 }
+
+// 契約者（保護者本人）の名前。家族の呼び名（families.name）は読まない・書かない（2026-11-09 本人「古い家族の呼び名はシステム内から完全に廃止してよい」）。
+// 保護者の氏名がまだない家族（体験の問い合わせだけの家族）は「生徒名さんの保護者」。a は families の表の別名
+export const CONTRACTOR = a => `coalesce(nullif(${a}.guardianName, ''), (select x.familyName || ' ' || x.givenName || 'さんの保護者' from students x where x.familyId = ${a}.id order by x.createdAt limit 1), '')`;
