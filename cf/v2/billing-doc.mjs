@@ -15,6 +15,8 @@ const ymd = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? `${Number(v.slice
 const md = d => d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8))}` : '';
 const monthJa = m => `${Number(m.slice(0, 4))}年${Number(m.slice(5, 7))}月`;
 const KIND = { lesson: '授業', cancelFee: 'キャンセル料', legacy: '' };
+// 宛名は契約者（保護者本人）の氏名。家族の呼び名（families.name）は使わない（2026-11-09 本人「請求書の宛名がやばい」）
+const payer = family => family.guardianName || family.name;
 // 振込先の1行（invoiceBankText）を項目に分ける。形の違う行は1行のまま載せる（2026-11-04 本人「振り込み先が目立たない」「パッと見て分かりやすい書式に」）
 const bankRows = bank => { const m = /^(\S+) (\S+?)(（支店番号 \d{3}）)? (普通|当座) (\d{7}) 口座名義 (.+)$/.exec(bank); return m ? [[['銀行名', m[1]], ['支店名', m[2] + (m[3] || '')]], [['口座種別', m[4]], ['口座番号', m[5]]], [['口座名義', m[6]]]] : [[['お振込先', bank || '別途ご案内します']]]; };
 
@@ -68,14 +70,14 @@ export function invoiceDocHtml({ inv, items, family, settings }) {
   const payRows = `<tr>${cell('お支払期限', `${esc(ymd(dueDay))} <small>${esc(dueNote)}</small>`, true)}</tr>` + bankRows(settings.bank).map(r => `<tr>${r.map(([k, v]) => cell(k, esc(v), r.length === 1)).join('')}</tr>`).join('');
   const body = `
   <div class="head"><h1>請求書</h1><div class="meta">請求書番号 ${esc(num)}<br>発行日 ${esc(jst(inv.confirmedAt))}</div></div>
-  <div class="to">${esc(family.name)}　様</div>
+  <div class="to">${esc(payer(family))}　様</div>
   <div class="grid"><div><p style="margin:4mm 0 0">下記のとおりご請求申し上げます。</p><p style="margin:1mm 0 0">対象：${esc(monthJa(inv.month))}分の授業料</p>
     <div class="total"><span>ご請求金額</span><span class="yen">¥${yen(inv.total)}－</span></div></div>${issuer}</div>
   <table><thead><tr><th style="width:14%">日付</th><th style="width:16%">生徒</th><th>内容</th><th class="num" style="width:12%">時間</th><th class="num" style="width:16%">金額（円）</th></tr></thead>
   <tbody>${rows}</tbody><tfoot><tr><td colspan="4" class="num">合計</td><td class="num">${yen(inv.total)}</td></tr></tfoot></table>
   <div class="pay"><h2>お支払いについて</h2><table><tbody>${payRows}</tbody></table><p>振込手数料はご負担をお願いいたします。お振込みのあと、保護者ページか LINE でお知らせください。</p></div>
   <div class="memo"><h2>備考</h2>${settings.note ? esc(settings.note).replace(/\n/g, '<br>') : 'キャンセル料は、共通規約に基づき、ご連絡の時刻に応じて計算しています。'}<br><span style="color:#556;font-size:11px">この請求書は保護者ページ（お支払い）からいつでも開けます。<br>免税事業者のため、登録番号と税率ごとの消費税額は記載していません。</span></div>`;
-  return page(`請求書 ${monthJa(inv.month)}分 ${family.name}`, `請求書（${monthJa(inv.month)}分）。印刷（Ctrl+P）で PDF に保存できます。`, body);
+  return page(`請求書 ${monthJa(inv.month)}分 ${payer(family)}`, `請求書（${monthJa(inv.month)}分）。印刷（Ctrl+P）で PDF に保存できます。`, body);
 }
 
 // 領収書。入金を記録したときに作る
@@ -83,12 +85,12 @@ export function receiptDocHtml({ inv, family }) {
   const num = `R-${inv.month}-${String(inv.id).slice(-4).toUpperCase()}`;
   const body = `
   <div class="head"><h1>領収書</h1><div class="meta">領収書番号 ${esc(num)}<br>発行日 ${esc(ymd(inv.paidOn))}</div></div>
-  <div class="to">${esc(family.name)}　様</div>
+  <div class="to">${esc(payer(family))}　様</div>
   <div class="grid"><div><div class="total"><span>領収金額</span><span class="yen">¥${yen(inv.total)}－</span></div>
     <p style="margin:4mm 0 0">但し　${esc(monthJa(inv.month))}分の授業料として</p><p style="margin:1mm 0 0">上記のとおり正に領収いたしました。</p>
     <p style="margin:3mm 0 0"><span class="stamp">${esc(inv.paidMethod || '振込')}にて受領</span>　${esc(ymd(inv.paidOn))}</p></div>${issuer}</div>
   <div class="memo"><h2>備考</h2>この領収書は保護者ページ（お支払い）からいつでも開けます。銀行振込の場合、振込の控えも領収の証拠になります。免税事業者のため、登録番号と税率ごとの消費税額は記載していません。</div>`;
-  return page(`領収書 ${monthJa(inv.month)}分 ${family.name}`, `領収書（${monthJa(inv.month)}分）。印刷（Ctrl+P）で PDF に保存できます。`, body);
+  return page(`領収書 ${monthJa(inv.month)}分 ${payer(family)}`, `領収書（${monthJa(inv.month)}分）。印刷（Ctrl+P）で PDF に保存できます。`, body);
 }
 
 export async function billingSettings(db) {
@@ -120,13 +122,13 @@ export async function storeInvoiceDoc(c, invoiceId) {
   const { family, items } = await familyAndItems(c, inv);
   const settings = await billingSettings(c.db); // 確定のときの振込先を保つ。そのとき未登録だった請求は、今の振込先を載せる
   const html = invoiceDocHtml({ inv, items, family, settings: { ...settings, bank: inv.bankSnapshot || settings.bank } });
-  return putGenerated(c, { category: 'invoice', familyId: family.id, refType: 'invoice', refId: inv.id, name: `請求書_${inv.month}_${family.name}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: `${inv.month} 分` });
+  return putGenerated(c, { category: 'invoice', familyId: family.id, refType: 'invoice', refId: inv.id, name: `請求書_${inv.month}_${payer(family)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: `${inv.month} 分` });
 }
 export async function storeReceiptDoc(c, invoiceId) {
   const inv = await c.db.prepare('select * from invoices where id = ?').bind(invoiceId).first();
   const { family } = await familyAndItems(c, inv);
   const html = receiptDocHtml({ inv, family });
-  return putGenerated(c, { category: 'receipt', familyId: family.id, refType: 'invoice', refId: inv.id, name: `領収書_${inv.month}_${family.name}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: `${inv.month} 分・${inv.paidOn}` });
+  return putGenerated(c, { category: 'receipt', familyId: family.id, refType: 'invoice', refId: inv.id, name: `領収書_${inv.month}_${payer(family)}.html`, mime: 'text/html; charset=utf-8', bytes: new TextEncoder().encode(html), note: `${inv.month} 分・${inv.paidOn}` });
 }
 
 export const billingDocRoutes = {

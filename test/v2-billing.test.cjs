@@ -447,3 +447,14 @@ test('the invoice shows the due date and the bank as rows after the lesson list'
   assert.match(doc('架空銀行 架空支店 普通 0000000 ステップワイズ'), /<th>お振込先<\/th><td colspan="3">架空銀行 架空支店 普通 0000000 ステップワイズ/, '形の違う行は1行のまま');
   assert.match(doc(''), /<th>お振込先<\/th><td colspan="3">別途ご案内します/);
 });
+
+test('invoices and receipts are addressed to the guardian, not to the family label', async () => {
+  const { invoiceDocHtml, receiptDocHtml } = await import('../cf/v2/billing-doc.mjs');
+  const inv = { id: 'iv_0001', month: '2026-10', total: 4500, confirmedAt: '2026-11-02T15:10:00.000Z', dueDate: '2026-11-30', dueNote: '', paidOn: '2026-11-04', paidMethod: '振込' };
+  const family = { name: '架空さん', guardianName: '架空 花子' };
+  for (const html of [invoiceDocHtml({ inv, items: [], family, settings: { bank: '', note: '' } }), receiptDocHtml({ inv, family })]) {
+    assert.match(html, /<div class="to">架空 花子　様<\/div>/);
+    assert.doesNotMatch(html, /架空さん/);
+  }
+  assert.match(invoiceDocHtml({ inv, items: [], family: { name: '架空家', guardianName: '' }, settings: { bank: '', note: '' } }), /<div class="to">架空家　様<\/div>/, '保護者の氏名がないときだけ');
+});
