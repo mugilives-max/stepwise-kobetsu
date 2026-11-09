@@ -73,7 +73,7 @@ test('enrollment: offer → password → one application with consents → enrol
   const s = h.rows('select * from students where id = ?', sid)[0], f = h.rows('select * from families where id = ?', fid)[0];
   assert.deepEqual([s.trial, s.enrolledOn, s.familyKana, s.givenKana, s.school], [0, '2026-11-01', 'たかはし', 'かほ', '【テスト】第一中学校']);
   assert.ok(!s.linkCode.startsWith('off.') && s.linkCode.length > 20, '入塾したら生徒の専用リンクが使えるように');
-  assert.deepEqual([f.name, f.guardianName, f.guardianKana, f.phone, f.address, f.termsVersion], ['【テスト】高橋家', '【テスト】高橋 花子', 'たかはし はなこ', '090-1234-5678', '〒343-0002 【テスト】越谷市1-2-3', TERMS.version]);
+  assert.deepEqual([f.name, f.guardianName, f.guardianKana, f.phone, f.address, f.termsVersion], ['', '【テスト】高橋 花子', 'たかはし はなこ', '090-1234-5678', '〒343-0002 【テスト】越谷市1-2-3', TERMS.version]);
   assert.deepEqual([f.guardianFamilyName, f.guardianGivenName, f.guardianFamilyKana, f.guardianGivenKana], ['【テスト】高橋', '花子', 'たかはし', 'はなこ'], '保護者の氏名は姓・名に分けても持つ');
   const tc = h.rows('select * from termsConsents where familyId = ?', fid);
   assert.deepEqual([tc.length, tc[0].consenterName, tc[0].via], [1, '【テスト】高橋 花子', '保護者ページ（入塾の申込み）']);

@@ -18,14 +18,14 @@ export function resetFamilies() { list = null; detail = null; shown = null; famS
 
 const tag = ([cls, label]) => `<span class="tag ${cls}">${label}</span>`;
 const yen = n => Number(n || 0).toLocaleString('ja-JP') + '円';
-// 契約者（保護者）の名前で出す。保護者の氏名がまだなければ登録の名前（例: 山田家）
-export const contractorOf = f => f.guardianName || f.name || '';
+// 契約者（保護者）の名前。サーバーが保護者の氏名（まだなければ「生徒名さんの保護者」）を name で返す。家族の呼び名は廃止（2026-11-09）
+export const contractorOf = f => f.name || '';
 // 一覧の丸（生徒の一覧と同じ色の決め方）
 const AV = ['#2f6fde', '#2e9b5f', '#7b4fd6', '#d0533c', '#138a8a', '#c98a00', '#5b6672'];
 const avColor = t => AV[[...String(t)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 9973, 7) % AV.length];
 const initial = name => (String(name).replace(/^[【\[（(「『\s]+/, '') || '?').slice(0, 1);
 export const familiesBar = () => list ? { title: '契約者', sub: `${list.filter(f => f.status !== 'stopped').length}件`, right: '' } : { title: '契約者', sub: '', right: '' };
-const match = (f, q) => !q || [f.name, f.guardianName, f.email, ...f.students.map(s => s.name + (s.familyKana || '') + (s.givenKana || ''))].join(' ').toLowerCase().includes(q.toLowerCase());
+const match = (f, q) => !q || [f.name, f.email, ...f.students.map(s => s.name + (s.familyKana || '') + (s.givenKana || ''))].join(' ').toLowerCase().includes(q.toLowerCase());
 
 export function familiesPage(ctx) {
   const { esc } = ctx;
@@ -54,8 +54,7 @@ function guardianInputs(esc, f) {
     <div class="row"><label style="flex:1 1 140px">ふりがな（姓）<input name="guardianFamilyKana" maxlength="30" value="${esc(kf || '')}"></label><label style="flex:1 1 140px">ふりがな（名）<input name="guardianGivenKana" maxlength="30" value="${esc(kg || '')}"></label></div>`;
 }
 function familyInputs(esc, f) {
-  return `<label>まとめの名前（教室だけが見る）<input name="name" maxlength="60" placeholder="例: 山田家" required value="${esc(f.name || '')}"></label>
-    ${guardianInputs(esc, f)}
+  return `${guardianInputs(esc, f)}
     <label>保護者のメールアドレス<input type="email" name="email" value="${esc(f.email || '')}"></label>
     <label>電話<input name="phone" maxlength="30" value="${esc(f.phone || '')}"></label>
     <label>メモ（教室だけが見る）<input name="note" maxlength="1000" value="${esc(f.note || '')}"></label>`;

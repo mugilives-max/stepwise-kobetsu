@@ -6,7 +6,7 @@
 // - 保護者は保護者ページで全文を読んで同意する（family/terms/accept）
 // - 書面や LINE でもらった同意は、教室管理者が記録する（admin/families/terms）
 // - 計画の行には、承認したときの規約の版を残す（billing.mjs）
-import { fail, iso, audit, newId } from './util.mjs';
+import { fail, iso, audit, newId, CONTRACTOR } from './util.mjs';
 import { isLive } from './accounts.mjs';
 import { FAMILY_URL } from './schedule.mjs';
 import { requireStaff } from './staff.mjs';
@@ -71,7 +71,7 @@ export const termsRoutes = {
     const terms = await currentTerms(c.db);
     const fam = (await c.db.prepare("select termsVersion, count(*) n from families where status <> 'stopped' and testOnly = 0 group by termsVersion").all()).results;
     const total = fam.reduce((n, r) => n + r.n, 0), agreed = terms.version ? fam.filter(r => r.termsVersion === terms.version).reduce((n, r) => n + r.n, 0) : 0;
-    const history = (await c.db.prepare('select t.*, f.name familyName from termsConsents t join families f on f.id = t.familyId order by t.id desc limit 50').all()).results;
+    const history = (await c.db.prepare(`select t.*, ${CONTRACTOR('f')} familyName from termsConsents t join families f on f.id = t.familyId order by t.id desc limit 50`).all()).results;
     const requests = terms.version ? (await c.db.prepare("select familyId, requestedAt, requestedByName, note, mailed from termsRequests where version = ? and status = 'open' order by requestedAt").bind(terms.version).all()).results : [];
     // 契約の更新（規約と個別受講条件書をまとめて案内）を案内中の家族。家族ごとの一覧で「ご案内中」に数える
     const renewals = (await c.db.prepare("select familyId, min(offeredAt) offeredAt from enrollmentOffers where kind = 'renewal' and status = 'offered' group by familyId").all()).results;
@@ -110,7 +110,7 @@ export const termsRoutes = {
     for (const id of ids) {
       const f = await c.db.prepare('select * from families where id = ?').bind(id).first();
       if (!f) fail('notFound', '家族が見つかりません', 404);
-      if (f.status === 'stopped') fail('stopped', `${f.name}は利用を止めています`);
+      if (f.status === 'stopped') fail('stopped', `${f.guardianName || '保護者'}さんは利用を止めています`);
       if (f.termsVersion === terms.version || await openRequest(c.db, f.id, terms.version)) continue; // 同意済み・お願い中
       const mailed = b.mail === true && !!f.passHash && f.status === 'active' && !!f.email;
       stmts.push(c.db.prepare('insert into termsRequests (id, familyId, version, note, requestedAt, requestedBy, requestedByName, mailed) values (?, ?, ?, ?, ?, ?, ?, ?)').bind(newId('treq'), f.id, terms.version, note, now, me.id, String(me.name || ''), mailed ? 1 : 0));

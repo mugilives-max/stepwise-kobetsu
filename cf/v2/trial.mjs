@@ -26,8 +26,8 @@ export const trialRoutes = {
     const now = iso(c.now), fid = newId('fa'), sid = newId('su');
     const link = newLinkCode();
     await c.db.batch([
-      c.db.prepare("insert into families (id, name, guardianName, email, phone, note, status, testOnly, createdAt, updatedAt) values (?, ?, '', '', '', ?, 'invited', 0, ?, ?)")
-        .bind(fid, familyName + 'さん', '体験の問い合わせ', now, now),
+      c.db.prepare("insert into families (id, guardianName, email, phone, note, status, testOnly, createdAt, updatedAt) values (?, '', '', '', ?, 'invited', 0, ?, ?)")
+        .bind(fid, '体験の問い合わせ', now, now),
       c.db.prepare("insert into students (id, familyId, familyName, givenName, grade, school, note, status, linkCode, trial, createdAt, updatedAt) values (?, ?, ?, ?, ?, ?, ?, 'enrolled', ?, 1, ?, ?)")
         .bind(sid, fid, familyName, givenName, grade, school, note, link, now, now),
     ]);

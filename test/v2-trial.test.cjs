@@ -8,7 +8,7 @@ test('trial students: registered without email, their lessons are decided as 体
   const h = await createV2(); const auth = await h.owner();
   const r = await h.ok('admin/trials/create', { auth, familyName: '高橋', givenName: '香帆', grade: '中3', note: '紹介' });
   const s = h.rows('select * from students where id = ?', r.studentId)[0], f = h.rows('select * from families where id = ?', r.familyId)[0];
-  assert.deepEqual([s.trial, s.status, f.name, f.email], [1, 'enrolled', '高橋さん', '']);
+  assert.deepEqual([s.trial, s.status, f.name, f.email], [1, 'enrolled', '', '']);
   const mails = h.mails().length;
   // 1 日に 2 コマ（休憩をはさむ）: extra で同じ日にもう 1 つ
   const made = await h.ok('schedule/lessons/create', { auth, studentId: r.studentId, date: '2026-10-23', start: '18:00', minutes: 100, subject: '英語', deliveryMode: 'in_person', extra: [{ start: '19:50', minutes: 100, subject: '数学', deliveryMode: 'in_person' }] });

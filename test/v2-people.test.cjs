@@ -82,7 +82,7 @@ test('the copy from the current ledger keeps families, children, links and paren
   const pre = await h.ok('admin/migrate/identity/preview', { auth });
   assert.equal(h.rows('select count(*) n from families')[0].n, 0, '見るだけでは書かない');
   const kaku = pre.families.find(f => f.legacyId === 'A');
-  assert.deepEqual([kaku.name, kaku.guardianName, kaku.phone, kaku.status, kaku.hasPassword], ['架空家', '架空 花子', '090-0000-0000', 'active', true]);
+  assert.deepEqual([kaku.name, kaku.guardianName, kaku.phone, kaku.status, kaku.hasPassword], ['架空 花子', '架空 花子', '090-0000-0000', 'active', true]);
   assert.deepEqual(kaku.students.map(s => [s.name, s.status, s.baseRate30]), [['架空 一郎', 'enrolled', 1500], ['架空 二郎', 'paused', 0]]);
   assert.equal(kaku.students[0].enrolledOn, '2025-04-01'); assert.equal(kaku.students[0].familyKana, 'かくう');
   assert.ok(pre.problems.some(p => p.includes('ひとり 三郎') && p.includes('新しい家族')));
