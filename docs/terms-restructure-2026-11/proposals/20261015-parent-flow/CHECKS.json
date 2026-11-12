@@ -1,0 +1,185 @@
+{
+  "status": "unpublished_draft",
+  "date": "2026-10-15",
+  "baseline_commit": "15bc4f88bb46217678cb511c4769c75d7a3e6bf9",
+  "baseline_terms_blob": "753f3f1c8bf2435c661bb4d1009c3c017e397932",
+  "prior_proposal_commit": "0b00710e165ffedfe97de6667d5a5021803f46df",
+  "proposal_directory": "docs/terms-restructure-2026-11/proposals/20261015-parent-flow",
+  "source_paragraphs": 151,
+  "mapped_source_paragraphs": 151,
+  "draft_paragraphs": 153,
+  "chapters": 8,
+  "articles": 33,
+  "copied_paragraphs_checked": 133,
+  "copied_paragraph_failures": [],
+  "rewritten_paragraphs": [
+    {
+      "draft": "2.1",
+      "source": [
+        "2.2"
+      ]
+    },
+    {
+      "draft": "2.2",
+      "source": [
+        "2.3"
+      ]
+    },
+    {
+      "draft": "2.3",
+      "source": [
+        "2.1"
+      ]
+    },
+    {
+      "draft": "3.1",
+      "source": [
+        "3.1"
+      ]
+    },
+    {
+      "draft": "5.1",
+      "source": [
+        "6.1",
+        "6.2",
+        "7.1"
+      ]
+    },
+    {
+      "draft": "5.2",
+      "source": [
+        "6.2"
+      ]
+    },
+    {
+      "draft": "5.3",
+      "source": [
+        "5.1"
+      ]
+    },
+    {
+      "draft": "7.4",
+      "source": [
+        "9.4"
+      ]
+    },
+    {
+      "draft": "8.4",
+      "source": [
+        "7.1",
+        "6.1",
+        "9.4"
+      ]
+    },
+    {
+      "draft": "9.1",
+      "source": [
+        "5.3",
+        "5.4"
+      ]
+    },
+    {
+      "draft": "9.3",
+      "source": [
+        "5.3"
+      ]
+    },
+    {
+      "draft": "9.4",
+      "source": [
+        "6.3",
+        "6.4",
+        "9.4"
+      ]
+    },
+    {
+      "draft": "9.5",
+      "source": [
+        "6.4",
+        "6.5"
+      ]
+    },
+    {
+      "draft": "9.6",
+      "source": [
+        "6.4",
+        "6.5"
+      ]
+    },
+    {
+      "draft": "11.1",
+      "source": [
+        "12.1"
+      ]
+    },
+    {
+      "draft": "11.3",
+      "source": [
+        "12.3"
+      ]
+    },
+    {
+      "draft": "22.1",
+      "source": [
+        "7.2"
+      ]
+    },
+    {
+      "draft": "22.2",
+      "source": [
+        "7.2"
+      ]
+    },
+    {
+      "draft": "22.3",
+      "source": [
+        "7.2"
+      ]
+    },
+    {
+      "draft": "26.6",
+      "source": [
+        "26.6"
+      ]
+    }
+  ],
+  "anchors": 198,
+  "duplicate_anchors": [],
+  "missing_internal_targets": [],
+  "financial_tables": 4,
+  "financial_tables_equal": true,
+  "appendices_equal_except_article_reference": true,
+  "pending_A_preserved": true,
+  "pending_B_scope_preserved": true,
+  "old_vocabulary_in_terms": false,
+  "preexisting_blobs_to_preserve": 665,
+  "only_new_proposal_files": true,
+  "not_performed": [
+    "merge",
+    "web_or_pdf_generation",
+    "deployment",
+    "system_change",
+    "existing_contract_or_consent_change",
+    "family_notification"
+  ],
+  "limitations": [
+    "Semantic review is recorded in MAPPING.md; mechanical checks alone do not establish legal equivalence.",
+    "No web/PDF layout validation because this proposal was not rendered or published.",
+    "Remote readback and preservation checks are performed after saving and reported in the PR and Kura."
+  ],
+  "relative_link_errors": [],
+  "waiver_substantive_text_unchanged": true,
+  "publicity_text_unchanged_except_banner": true,
+  "added_files": [
+    "TERMS.md",
+    "TEACHING_CONDITIONS_REGULAR.md",
+    "TUITION_AGREEMENT.md",
+    "WAIVER_GUIDE.md",
+    "PUBLICITY_CONSENT.md",
+    "STUDENT_GUIDE.md",
+    "OPEN_QUESTIONS.md",
+    "README.md",
+    "MAPPING.md",
+    "CHECKS.json"
+  ]
+}
