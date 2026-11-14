@@ -8,7 +8,7 @@ import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
 import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 import { renewalBox } from '/staff/families.js?v=20261109-contractor';
-import { schedulePage } from '/staff/schedule.js?v=20261104-famtabs'; // app.js と同じ URL（同じ部品の状態を使う）
+import { schedulePage } from '/staff/schedule.js?v=20261114-alerts'; // app.js と同じ URL（同じ部品の状態を使う）
 
 let list = null, query = '', hub = null, hubFor = '', noteEdit = false;
 let wd = null; // 退塾の手続きの画面（admin/withdrawal/show の答え）

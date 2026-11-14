@@ -6,6 +6,7 @@ import { recordRoutes } from './records.mjs';
 import { gradesRoutes } from './grades.mjs';
 import { billingRoutes } from './billing.mjs';
 import { failedEffectsCount } from './effects-admin.mjs';
+import { lessonAlerts } from './alerts.mjs';
 
 export const homeRoutes = {
   'home/today': async (c, b) => {
@@ -22,6 +23,8 @@ export const homeRoutes = {
       manager ? c.db.prepare("select count(*) n from lessons where status = 'proposed' and askedAt = '' and date between ? and ?").bind(today, addDays(today, 5)).first() : null,
     ]);
     const failedEffects = manager ? await failedEffectsCount(c.db, c.now) : 0;
+    // アラート（未公開・重複。cf/v2/alerts.mjs）: 対応することより上に出す。教室管理者だけ
+    const alerts = manager ? await lessonAlerts(c) : [];
     const todo = [];
     const add = (key, label, count, link, note = '') => { if (count) todo.push({ key, label, count, link, note }); };
     // 予定の画面の「対応すること」を開いた状態で（2026-10-30 本人「押しても、カレンダーに飛ぶだけ…どんな連絡が来ているのか分からない」）
@@ -44,6 +47,6 @@ export const homeRoutes = {
     const lessons = range.lessons.filter(l => ['held', 'proposed', 'decided', 'done'].includes(l.status)).sort((x, y) => (x.date + x.start).localeCompare(y.date + y.start))
       .map(l => ({ id: l.id, date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, status: l.status, asked: l.asked, confirmBy: l.confirmBy, deliveryMode: l.deliveryMode, meetUrl: l.meetUrl, version: l.version,
         studentId: l.studentId, studentName: name[l.studentId] || '', staffName: staff[l.staffId] || '', needsRecord: pendingIds.has(l.id) }));
-    return { today, tomorrow, nowMs: c.now, todo, lessons, live: range.live };
+    return { today, tomorrow, nowMs: c.now, alerts, todo, lessons, live: range.live };
   },
 };
