@@ -1,7 +1,8 @@
 // 授業のアラート（2026-11-14 本人「アラート機能が欲しい…今日の授業は、岡野さんに表示されていなかった（下書きのままだった）…
 // そらくんの授業も、直前だったのに春貴君と重なってしまっている状態でした」）。先生（教室管理者）だけに出す。保護者・生徒には何も増やさない。
 // 出す場所: 管理画面の「今日」のいちばん上（staff/home.js）と、MCP の get_pending_actions（home/today の alerts をそのまま返す）。
-//   未公開: 近い日（今日〜UNPUBLISHED_DAYS 日後）の授業が下書き（held）のまま。保護者・生徒に見えていない
+//   未公開: 今日〜UNPUBLISHED_DAYS 日後の授業が下書き（held）のまま。保護者・生徒に見えていない（2026-11-14 本人「２週間前には予定は公開しておきたい」で 3 日 → 14 日）。
+//           生徒ごとに 1 件（下書きの一覧と同じまとまり。14 日だと日ごとでは十数件になるため）
 //   重複:   これから（今日〜OVERLAP_DAYS 日後）の授業が同じ時間に重なり、同時には持てない
 //     - 同一生徒: 同じ生徒の授業が重なる
 //     - 3名以上: 同じ講師の授業が同時に 3 つ以上（同時の授業は 2 人まで。共通規約 r15 第4条）
@@ -10,7 +11,7 @@
 // 保存のとき（schedule.mjs の checkConflicts）は同一生徒と 3 名以上を断るが、形式の違う重なりは通す。お休みの取り消し・移行などで後から重なることもあるので、ここで毎回見直す。
 import { todayJst, addDays } from './schedule.mjs';
 
-export const UNPUBLISHED_DAYS = 3;
+export const UNPUBLISHED_DAYS = 14;
 export const OVERLAP_DAYS = 14;
 const toMin = hm => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + m; };
 const endMs = l => Date.parse(l.date + 'T' + l.start + ':00+09:00') + Number(l.minutes || 0) * 60000;
@@ -59,13 +60,12 @@ export async function lessonAlerts(c) {
   const students = (await c.db.prepare(`select id, familyName, givenName from students where id in (${ids.map(() => '?').join(', ')})`).bind(...ids).all()).results;
   const name = Object.fromEntries(students.map(s => [s.id, nameOf(s)]));
   const alerts = [];
-  // 未公開: 生徒と日ごとに 1 件
+  // 未公開: 生徒ごとに 1 件。いちばん早い授業の日時を見出しに、2 件以上なら件数と期間を添える
   const held = new Map();
-  for (const l of rows.filter(l => l.status === 'held' && l.date <= addDays(today, UNPUBLISHED_DAYS))) {
-    const k = l.studentId + '|' + l.date, g = held.get(k) || []; g.push(l); held.set(k, g);
-  }
+  for (const l of rows.filter(l => l.status === 'held' && l.date <= addDays(today, UNPUBLISHED_DAYS))) { const g = held.get(l.studentId) || []; g.push(l); held.set(l.studentId, g); }
+  const md = d => Number(d.slice(5, 7)) + '/' + Number(d.slice(8));
   for (const ls of held.values()) alerts.push({ key: 'unpublished', label: '未公開', date: ls[0].date, start: ls[0].start, lessonIds: ls.map(l => l.id), studentNames: [name[ls[0].studentId] || ''],
-    detail: ls.length === 1 ? (ls[0].subject || '授業') : ls.map(l => l.start + ' ' + (l.subject || '授業')).join('・'), link: '#schedule/todo' });
+    detail: ls.length === 1 ? (ls[0].subject || '授業') : `${ls.length}件（${md(ls[0].date)}${ls.at(-1).date !== ls[0].date ? '〜' + md(ls.at(-1).date) : ''}）`, link: '#schedule/todo' });
   // 重複: 下書き・調整中・確認待ち・確定のすべて（下書きどうしでも、公開する前に直す）
   for (const g of findOverlaps(rows.filter(l => l.date <= addDays(today, OVERLAP_DAYS)))) alerts.push({ key: 'overlap', label: '重複', date: g.date, start: g.lessons[0].start, lessonIds: g.lessons.map(l => l.id),
     studentNames: [...new Set(g.lessons.map(l => name[l.studentId] || ''))], detail: g.reasons.join('・'), link: '#schedule/day=' + g.date });

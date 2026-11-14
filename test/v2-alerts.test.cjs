@@ -14,14 +14,15 @@ test('alerts: unpublished drafts near today and overlaps that cannot be taught t
     return h.rows('select * from lessons where studentId = ? and date = ? and start = ?', s.id, date, start)[0]; };
   // 今日は 2026-10-02（金）12:00
   const draft = await make(a, '2026-10-03', '14:30', 'in_person', 'hold');        // 明日の下書き → 未公開
-  await make(a, '2026-10-20', '14:30', 'in_person', 'hold');                       // 遠い下書き → 出さない
+  const draft2 = await make(a, '2026-10-16', '14:30', 'in_person', 'hold');      // 14 日後の下書き → 同じ生徒の未公開にまとめる
+  await make(a, '2026-10-17', '14:30', 'in_person', 'hold');                       // 15 日後 → 出さない
   const inPerson = await make(c, '2026-10-04', '11:20', 'in_person', 'show');
   const online = await make(b, '2026-10-04', '10:00', 'online', 'show');          // 対面とオンラインが重なる → 重複
   await make(a, '2026-10-05', '13:00', 'in_person', 'show'); await make(c, '2026-10-05', '13:00', 'in_person', 'show'); // 対面の 1 対 2 → 正常
 
   let r = await h.ok('home/today', { auth });
   assert.deepEqual(r.alerts.map(x => [x.key, x.label, x.date, x.start, x.detail]), [
-    ['unpublished', '未公開', '2026-10-03', '14:30', '英語'],
+    ['unpublished', '未公開', '2026-10-03', '14:30', '2件（10/3〜10/16）'],
     ['overlap', '重複', '2026-10-04', '10:00', '対面・オンライン混在'],
   ]);
   assert.deepEqual(r.alerts[1].studentNames.sort(), ['【テスト】 オンライン', '【テスト】 相方'].sort());
@@ -38,6 +39,8 @@ test('alerts: unpublished drafts near today and overlaps that cannot be taught t
 
   // 直す: 下書きを調整中として見せる、オンラインの授業を消す、3 人目を消す
   await h.ok('schedule/lessons/show', { auth, studentId: a.id, lessonIds: [draft.id] });
+  assert.deepEqual((await h.ok('home/today', { auth })).alerts.filter(x => x.key === 'unpublished').map(x => [x.date, x.detail]), [['2026-10-16', '英語']], '1 件だけ残れば科目');
+  await h.ok('schedule/lessons/show', { auth, studentId: a.id, lessonIds: [draft2.id] });
   for (const l of [online, dup, third]) { const row = h.rows('select * from lessons where id = ?', l.id)[0]; await h.ok('schedule/lessons/delete', { auth, id: row.id, version: row.version }); }
   r = await h.ok('home/today', { auth });
   assert.deepEqual(r.alerts, []);
