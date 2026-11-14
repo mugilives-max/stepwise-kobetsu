@@ -14,7 +14,7 @@ ChatGPT / Codex ─OAuth(パスフレーズ)─► Workers "stepwise-mcp"(/mcp) 
 
 - **鍵**：`stepwise-api` の Secret `V2_SERVICE_KEY` と、`stepwise-mcp` の Secret `STEPWISE_V2_KEY` に同じ値（36 バイトの乱数）。鍵が合えば、代表のスタッフとして **読むだけの操作**（`cf/v2/service.mjs` の `SERVICE_READS`）を通す。登録・変更は `service` のエラーで断る。鍵は Secret にだけ置く（文書・Git・チャットに書かない）。替えるときは乱数を作って両方の Secret に入れ直し、両 Worker を出し直す。
 - **MCP 側**：`STEPWISE_V2_KEY` と `STEPWISE_API_URL` が要る。閲覧のツールは 5 つ。前の仕組み（GAS）向けのツールとコードは 2026-11-04 に除いた。
-- **ツール**：`find_student`（students/list）、`get_schedule`（schedule/staff/range。授業・連絡・共有予定・先生の休み・面談。`version` と連絡の `id` も返す）、`get_student`（students/hub）、`get_pending_actions`（home/today と monthly/overview。給与は見せない）、`get_billing_summary`（billing/month と billing/fees/list）。
+- **ツール**：`find_student`（students/list）、`get_schedule`（schedule/staff/range。授業・連絡・共有予定・先生の休み・面談。`version` と連絡の `id` も返す）、`get_student`（students/hub）、`get_pending_actions`（home/today と monthly/overview。給与は見せない。最初の `alerts` はアラート＝未公開・重複、2026-11-14〜）、`get_billing_summary`（billing/month と billing/fees/list）。
 - **返さないもの**：メール・電話・専用リンク（名前が Link で終わる項目すべて）・Meet の URL・鍵（`scrub`）。Worker も `students/hub` の専用リンクを外のサービスに渡さない。
 - **確かめ方**：`stepwise-kobetsu` で `V2_SERVICE_KEY=<仮の鍵> node scripts/dev-v2-preview.mjs` を起動し、`stepwise-mcp` で `STEPWISE_API_URL=http://localhost:8790 STEPWISE_V2_KEY=<同じ鍵> node test/v2-client.mjs`。本番には触れない。
 - **登録・変更**は管理画面（/staff/）か、下の「書き込み」のツールで行う。

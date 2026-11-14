@@ -6,11 +6,11 @@ import { openAgreementDocument } from '/assets/v2/agreement-document.js?v=202610
 // 2段目: 家族と生徒・移行の準備。3段目: 予定。4段目: 記録。5段目: 計画・請求（staff/billing.js）。6段目: 成績（staff/grades.js）。7段目: 給与（staff/payroll.js）。切り替えまでは今の管理画面（/kanri/）を使う。
 import { call, session, esc } from '/assets/v2/api.js';
 import { familiesPage, familyDetailPage, familyBar, familiesBar, familiesSubmit, familiesClick, familiesInput, resetFamilies, leaveFamilies } from '/staff/families.js?v=20261109-contractor';
-import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261104-famtabs';
+import { schedulePage, scheduleSubmit, scheduleClick, resetSchedule, schedulePick } from '/staff/schedule.js?v=20261114-alerts';
 import { recordsPage, recordPage, recordBar, recordsSubmit, recordsClick, resetRecords, leaveRecords, captureRecordInputs, autosaveRecord, autosaveOnLeave } from '/staff/records.js?v=20261028-r16b';
 import { plansPage, billingPage, billingSubmit, billingClick, resetBilling, leaveBilling } from '/staff/billing.js?v=20261108-planrows';
 import { studentsPage, studentsBar, studentHubBar, studentPage, studentsInput, resetStudents, studentsSubmit, studentsClick } from '/staff/students.js?v=20261109-contractor';
-import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261028-r16b';
+import { todayPage, todayBar, todayClick, resetToday } from '/staff/home.js?v=20261114-alerts';
 import { monthlyPage, settingsPage, resetMonthly } from '/staff/hubs.js?v=20261030-agenda2';
 import { payrollPage, ratesPage, payrollSubmit, payrollClick, payrollPrint, resetPayroll, leavePayroll, sampleStatementHtml } from '/staff/payroll.js?v=20261104-famtabs';
 import { sheet, rowButton, sliderInput } from '/staff/ui.js?v=20261025-layout';
@@ -40,6 +40,7 @@ function route() {
   if (h.startsWith('#family=')) { const [id, tab, kind] = h.slice(8).split('/'); return { page: 'family', id: decodeURIComponent(id), tab: tab || 'basic', kind: kind || '' }; }
   if (h.startsWith('#record=')) return { page: 'record', id: decodeURIComponent(h.slice(8)) };
   if (h.startsWith('#grades=')) return { page: 'gradesOf', id: decodeURIComponent(h.slice(8)) };
+  if (h.startsWith('#schedule/day=')) return { page: 'schedule', day: h.slice(14, 24) }; // アラート（重複）から: その日を開く
   if (h === '#schedule/todo') return { page: 'schedule', open: 'todo' }; // 「今日」の対応することから: 予定の画面で一覧を開く
   if (h.startsWith('#student=')) { const [id, tab, sub] = h.slice(9).split('/'); return { page: 'student', id: decodeURIComponent(id), tab: tab || 'summary', sub: sub || '' }; }
   return { page: h.slice(1) || 'home' };

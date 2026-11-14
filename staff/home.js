@@ -8,6 +8,7 @@ export function resetToday() { today = null; }
 export const todayBar = () => today && today.today ? { title: '今日', sub: mdw(today.today), right: '' } : null;
 // 対応することのアイコン（種類ごと）
 const TODO_ICON = { requests: ['mail', '#d0533c'], records: ['comment', '#2f6fde'], handover: ['memo', '#138a8a'], homework: ['homework', '#7b4fd6'], sheets: ['file', '#2e9b5f'], tests: ['accuracy', '#e0a100'], fees: ['yen', '#c0392b'], plans: ['plan', '#5b6672'], effects: ['mail', '#c0392b'] };
+const ALERT_ICON = '<path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 17.2v.3"/>';
 const roundIcon = (k, label, cls = '') => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg><span class="sr">${label}</span>`;
 
 export function todayPage(ctx, me) {
@@ -17,6 +18,10 @@ export function todayPage(ctx, me) {
   if (today.error) return `<h1>今日</h1><p class="notice error">${esc(today.error)}</p>`;
   const t = today;
   let h = ctx.notice();
+  // アラート（未公開・重複。cf/v2/alerts.mjs）: 授業が保護者に見えていない・同時に持てない重なり。対応することより上に、赤で
+  const alerts = t.alerts || [];
+  if (alerts.length) h += `<div class="sec-title">アラート <span class="count" style="background:var(--danger-soft);color:var(--danger)">${alerts.length}</span></div><div class="group">` + alerts.map(x =>
+    `<a class="rec-row" href="${esc(x.link)}"><span class="ibox" style="background:var(--danger)" aria-hidden="true"><svg viewBox="0 0 24 24">${ALERT_ICON}</svg></span><span class="v" style="white-space:normal"><span class="lbl"><strong style="color:var(--danger)">${esc(x.label)}</strong> ${mdw(x.date)} ${esc(x.start)} ${esc(x.studentNames.join('・'))}</span><small class="muted" style="display:block">${esc(x.detail)}</small></span><span class="cnt"></span></a>`).join('') + '</div>';
   // 対応すること
   const total = t.todo.reduce((n, x) => n + x.count, 0);
   // 何もなければ枠ごと出さない（空の見出しと「ありません」を置かない）

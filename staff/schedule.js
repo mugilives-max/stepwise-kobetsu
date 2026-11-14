@@ -67,6 +67,8 @@ function monthPage(ctx, me, r) {
   const { esc } = ctx, manager = me.roles.includes('manager');
   // 「今日」の対応すること（連絡・調整中）から来たら、対応することの一覧を開く。閉じたあとまた開かないよう、アドレスは #schedule に戻す
   if (r.open === 'todo') { wantTodo = true; history.replaceState(null, '', '#schedule'); }
+  // 「今日」のアラート（重複）から来たら、その日を選んで開く。アドレスは #schedule に戻す
+  if (/^\d{4}-\d{2}-\d{2}$/.test(r.day || '')) { sel = r.day; month = r.day.slice(0, 7); sheet = null; history.replaceState(null, '', '#schedule'); }
   if (!month) month = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 7);
   if ((!data || loadedFor !== month) && cache[month]) { data = cache[month]; loadedFor = month; prefetchNear(ctx); } // 先に読んであった月はすぐ出す
   if (!data || loadedFor !== month) { if (loadedFor !== month) load(ctx); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
