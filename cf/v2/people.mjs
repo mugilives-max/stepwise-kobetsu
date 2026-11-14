@@ -8,7 +8,7 @@ import { familyRenewals } from './enrollment.mjs';
 import { requireStaff } from './staff.mjs';
 import { requireFamily } from './family.mjs';
 import { issueChallenge, revokeSessions, SITE } from './accounts.mjs';
-import { normGrade } from '../../assets/v2/grade-options.js';
+import { validGrade, GRADE_HINT } from '../../assets/v2/grade-options.js';
 
 // 生徒の専用リンクの鍵。推測できない長さにする（今の鍵もそのまま使える）
 function newLinkCode() {
@@ -24,19 +24,20 @@ export function familyAdminView(f) {
 }
 export function studentAdminView(s) {
   return { id: s.id, familyId: s.familyId, name: fullName(s), familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana,
-    grade: normGrade(s.grade), school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, status: s.status, enrolledOn: s.enrolledOn, subjects: s.subjects, note: s.note,
+    grade: s.grade, school: s.school, baseFee90: Number(s.baseFee90 || 0) || Number(s.baseRate30 || 0) * 3, baseRate30: s.baseRate30, deliveryMode: s.deliveryMode, status: s.status, enrolledOn: s.enrolledOn, subjects: s.subjects, note: s.note,
     testOnly: !!s.testOnly, trial: !!s.trial, link: String(s.linkCode || '').startsWith('off.') ? '' : studentLink(s.linkCode), // off. は使えない鍵（MCP で登録した体験生）。「専用リンクを作り直す」で使えるようになる
     legacyId: s.legacyId, version: s.version };
 }
 // 保護者・生徒に見せる形（料金・先生用の備考・専用リンクは出さない）
-const studentPublicView = s => ({ id: s.id, name: fullName(s), familyName: s.familyName, givenName: s.givenName, grade: normGrade(s.grade), school: s.school, status: s.status });
+const studentPublicView = s => ({ id: s.id, name: fullName(s), familyName: s.familyName, givenName: s.givenName, grade: s.grade, school: s.school, status: s.status });
 
 const TEXT_LIMITS = { familyName: 40, givenName: 40, familyKana: 40, givenKana: 40, grade: 20, school: 60, subjects: 100, note: 1000 };
 function studentFields(b, base = {}) {
   const out = { ...base };
   for (const [k, max] of Object.entries(TEXT_LIMITS)) if (b[k] !== undefined) {
-    const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = k === 'grade' ? normGrade(v) : v;
+    const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = v;
   }
+  if (b.grade !== undefined && !validGrade(out.grade)) fail('badGrade', GRADE_HINT);
   // 個別受講条件書の授業料は 90 分の授業料（baseFee90）。baseRate30（30 分）は互換のために一緒に書く。baseRate30 だけ送られたら × 3
   if (b.baseFee90 !== undefined) { const n = Number(b.baseFee90); if (!Number.isInteger(n) || n < 0 || n > 300000) fail('badRate', '授業料（90分）は0〜300,000円の整数で入れてください'); out.baseFee90 = n; out.baseRate30 = Math.round(n / 3); }
   else if (b.baseRate30 !== undefined) { const n = Number(b.baseRate30); if (!Number.isInteger(n) || n < 0 || n > 100000) fail('badRate', '基本単価（30分）は0〜100,000円の整数で入れてください'); out.baseRate30 = n; out.baseFee90 = n * 3; }
@@ -48,12 +49,14 @@ function studentFields(b, base = {}) {
 }
 function familyFields(b, base = {}) {
   const out = { ...base };
-  for (const [k, max] of Object.entries({ guardianName: 60, guardianFamilyName: 30, guardianGivenName: 30, guardianFamilyKana: 30, guardianGivenKana: 30, phone: 30, note: 1000 })) if (b[k] !== undefined) {
+  // 保護者の氏名は姓・名・ふりがなで受け取る（2026-10-19）。「姓 名」の 1 つの文（guardianName・guardianKana）は、ここで姓・名から作るだけ。
+  // 1 つの文で直接入れる道は廃止した（2026-11-14 本人「以前のデータ形式を廃止して、新方式に統一」）
+  if (b.guardianName !== undefined || b.guardianKana !== undefined) fail('splitName', '保護者の氏名は姓と名に分けて入れてください');
+  for (const [k, max] of Object.entries({ guardianFamilyName: 30, guardianGivenName: 30, guardianFamilyKana: 30, guardianGivenKana: 30, phone: 30, note: 1000 })) if (b[k] !== undefined) {
     const v = String(b[k]).trim(); if (v.length > max) fail('tooLong', `${max}文字以内で入れてください（${k}）`); out[k] = v;
   }
-  // 保護者の氏名は姓・名で受け取り、「姓 名」の 1 つの文も合わせて持つ（書面・同意の氏名に使う。2026-10-19）
-  if (b.guardianFamilyName !== undefined || b.guardianGivenName !== undefined) out.guardianName = [out.guardianFamilyName, out.guardianGivenName].filter(Boolean).join(' ');
-  if (b.guardianFamilyKana !== undefined || b.guardianGivenKana !== undefined) out.guardianKana = [out.guardianFamilyKana, out.guardianGivenKana].filter(Boolean).join(' ');
+  out.guardianName = [out.guardianFamilyName, out.guardianGivenName].filter(Boolean).join(' ');
+  out.guardianKana = [out.guardianFamilyKana, out.guardianGivenKana].filter(Boolean).join(' ');
   if (b.email !== undefined) { const e = normEmail(b.email); if (e && !validEmail(e)) fail('badEmail', 'メールアドレスを確かめてください'); out.email = e; }
   return out;
 }

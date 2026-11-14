@@ -1,15 +1,11 @@
-// 学年の選択肢（2026-10-19 本人「学年ってプルダウンではないんですね」）。保護者の申込み・代表の体験生の登録・生徒の情報で同じものを使う。
-// 前に手で入れた値（「中３」など全角の数字）は半角にそろえて扱う。選択肢にない前の値は、消さずに選択肢の頭に残す。
+// 学年の選択肢（2026-10-19 本人「学年ってプルダウンではないんですね」）。保護者の申込み・代表の体験生の登録・生徒の情報・成績で同じものを使う。
+// 台帳の学年はこの選択肢の値だけ（2026-11-14 本人「以前のデータ形式を廃止して、新方式に統一」）。「中学３年生」のような前の書き方を読み替える normGrade は廃止した
 export const GRADES = ['小1', '小2', '小3', '小4', '小5', '小6', '中1', '中2', '中3', '高1', '高2', '高3', '既卒', 'その他'];
-// 「中学３年生」「高校1年」のような前の書き方も、選択肢と同じ短い形（中3・高1）にそろえる（2026-10-29 本人「学年の表示スタイルが統一されていない」）
-export const normGrade = v => {
-  const s = String(v ?? '').trim().replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0));
-  const m = /^(小学校?|中学校?|高校|高等学校)\s*([1-6])\s*年生?$/.exec(s);
-  return m ? m[1][0] + m[2] : s;
-};
+export const GRADE_HINT = '学年は ' + GRADES.join('・') + ' のどれかにしてください';
+// 書き込む前の確かめ（空は「まだ決めていない」）。選択肢にない値は受け付けない
+export const validGrade = v => v === '' || GRADES.includes(v);
 export function gradeOptions(esc, value, placeholder = '選んでください') {
-  const v = normGrade(value);
+  const v = String(value ?? '');
   return `<option value=""${v ? '' : ' selected'}>${esc(placeholder)}</option>`
-    + (v && !GRADES.includes(v) ? `<option value="${esc(v)}" selected>${esc(v)}</option>` : '')
     + GRADES.map(g => `<option value="${g}"${g === v ? ' selected' : ''}>${g}</option>`).join('');
 }

@@ -3,7 +3,7 @@
 // 入力 → 確認 → 完了 の 3 画面（一般的な申込みの形）。同意者名は入れた保護者の氏名。申し込むとそのまま入塾。
 // 以前からの家族の「契約更新の手続き」（kind = renewal。2026-10-29 本人）も同じ画面。兄弟はまとめて 1 回で確かめて同意する
 // （2026-10-30 本人「兄弟が複数人いるときに、２回同じ手順をやることに違和感」）。保護者の情報と共通規約は 1 回、生徒の情報と個別受講条件書は生徒ごと
-import { GRADES, normGrade } from '/assets/v2/grade-options.js?v=20261029-efftabs';
+import { GRADES } from '/assets/v2/grade-options.js?v=20261114-newformat';
 let data = null, step = 'input', draft = null, agree = false, missing = [], opened = new Set(), doneIds = [];
 export function resetEnroll() { data = null; step = 'input'; draft = null; agree = false; missing = []; opened = new Set(); doneIds = []; }
 const jaMonth = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
@@ -52,7 +52,7 @@ const sk = (k, i) => k + '_' + i; // 生徒の項目の名前（兄弟の i 人�
 function initDraft(list) {
   const g = data.guardian || {};
   draft = { offerIds: list.map(o => o.id), guardianFamilyName: g.familyName || '', guardianGivenName: g.givenName || '', guardianFamilyKana: g.familyKana || '', guardianGivenKana: g.givenKana || '', phone: g.phone || '', zip: g.zip || '', address: g.address || '' };
-  list.forEach((o, i) => { const s = o.student, grade = normGrade(s.grade);
+  list.forEach((o, i) => { const s = o.student, grade = s.grade || '';
     Object.assign(draft, { [sk('familyName', i)]: s.familyName || '', [sk('givenName', i)]: s.givenName || '', [sk('familyKana', i)]: s.familyKana || '', [sk('givenKana', i)]: s.givenKana || '', [sk('grade', i)]: grade, [sk('school', i)]: s.school || '', [sk('stage', i)]: stageOf(grade) }); });
 }
 const GFIELDS = ['guardianFamilyName', 'guardianGivenName', 'guardianFamilyKana', 'guardianGivenKana', 'phone', 'zip', 'address'];

@@ -10,7 +10,7 @@ import { requireFamily } from './family.mjs';
 import { isLive } from './accounts.mjs';
 import { todayJst, addDays, staffNotice, studentByLink } from './schedule.mjs';
 import { startUpload, whenReady } from './files.mjs';
-import { normGrade } from '../../assets/v2/grade-options.js';
+import { validGrade, GRADE_HINT } from '../../assets/v2/grade-options.js';
 
 const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(Date.parse(d + 'T00:00:00Z'));
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
@@ -62,7 +62,7 @@ async function examsOf(c, studentId, who, subjects = null) {
   return exams.map(e => {
     const all = scores.filter(s => s.examId === e.id), r = reviews[e.id];
     const total = { score: e.totalScore ?? sum(all, 'score'), max: e.totalMax ?? sum(all, 'max'), rank: e.totalRank, rankOf: e.totalRankOf, deviation: e.totalDeviation, fromSubjects: e.totalScore === null && all.length > 0 };
-    const out = { id: e.id, kind: e.kind, series: e.series || (e.kind === 'regular' ? '定期テスト' : '模試'), name: e.name, date: e.date, grade: normGrade(e.grade), total, scores: all.map(scoreView), version: e.version };
+    const out = { id: e.id, kind: e.kind, series: e.series || (e.kind === 'regular' ? '定期テスト' : '模試'), name: e.name, date: e.date, grade: e.grade, total, scores: all.map(scoreView), version: e.version };
     if (who === 'teacher') { out.scores = all.filter(s => subjects.includes(s.subject)).map(scoreView); out.otherSubjects = all.filter(s => !subjects.includes(s.subject)).map(s => s.subject); }
     if (r) out.review = who === 'student' ? { nextSteps: r.nextSteps } : who === 'teacher' ? { issues: r.issues, nextSteps: r.nextSteps, version: r.version } : { good: r.good, issues: r.issues, nextSteps: r.nextSteps, version: r.version };
     return out;
@@ -127,6 +127,7 @@ async function saveExam(c, me, b) {
   const kindRaw = String(b.kind ?? old?.kind ?? '');
   const series = String(b.series ?? old?.series ?? '').trim().slice(0, 20) || (kindRaw === 'regular' ? '定期テスト' : kindRaw === 'mock' ? '模試' : ''); // 種類だけ来たら（前の画面・道具）そこから
   const kind = kindRaw || (series === '定期テスト' ? 'regular' : 'mock'), name = String(b.name ?? old?.name ?? '').trim(), date = String(b.date ?? old?.date ?? ''), grade = String(b.grade ?? old?.grade ?? s.grade ?? '').trim().slice(0, 20);
+  if (!validGrade(grade)) fail('badGrade', GRADE_HINT);
   if (!['regular', 'mock'].includes(kind)) fail('badKind', '定期テストか模試かを選んでください');
   if (!series) fail('badSeries', '何の試験かを選んでください（定期テスト・北辰テスト など）');
   if (!name || name.length > 40) fail('badName', '回の名前を40文字以内で入れてください（例: 2学期中間、3年4回）');
@@ -158,7 +159,7 @@ export const gradesRoutes = {
     const latest = {};
     if (ids.length) for (const e of (await c.db.prepare(`select studentId, max(date) d, count(*) n from exams where status = 'recorded' and studentId in (${ids.map(() => '?').join(', ')}) group by studentId`).bind(...ids).all()).results) latest[e.studentId] = { date: e.d, count: e.n };
     const files = manager ? (await c.db.prepare(`select v.*, s.familyName, s.givenName from (${SHEETS}) v join students s on s.id = v.studentId where v.reviewStatus = 'new' order by v.createdAt`).all()).results.map(f => ({ ...fileView(f), studentName: fullName(f) })) : [];
-    return { students: students.map(s => ({ id: s.id, name: fullName(s), grade: normGrade(s.grade), latest: latest[s.id] || null, subjects: scope ? scope[s.id] : null })), pendingTests: await pendingTests(c, ids), files };
+    return { students: students.map(s => ({ id: s.id, name: fullName(s), grade: s.grade, latest: latest[s.id] || null, subjects: scope ? scope[s.id] : null })), pendingTests: await pendingTests(c, ids), files };
   },
   'grades/student': async (c, b) => {
     const me = await requireStaff(c, b, 'manager', 'teacher'), manager = isManager(me);
@@ -167,7 +168,7 @@ export const gradesRoutes = {
     const exams = await examsOf(c, s.id, manager ? 'manager' : 'teacher', subjects);
     const files = manager ? (await c.db.prepare(`${SHEETS} and x.studentId = ? order by f.createdAt desc`).bind(s.id).all()).results.map(fileView) : [];
     const lessonSubjects = (await c.db.prepare('select distinct subject from lessons where studentId = ? order by subject').bind(s.id).all()).results.map(r => r.subject);
-    return { student: { id: s.id, name: fullName(s), grade: normGrade(s.grade) }, manager, subjects, lessonSubjects, exams, files, pendingTests: await pendingTests(c, [s.id]), nextTest: await nextTest(c, s.id) };
+    return { student: { id: s.id, name: fullName(s), grade: s.grade }, manager, subjects, lessonSubjects, exams, files, pendingTests: await pendingTests(c, [s.id]), nextTest: await nextTest(c, s.id) };
   },
   'grades/exams/save': async (c, b) => { const me = await requireStaff(c, b, 'manager', 'teacher'); return saveExam(c, me, b); },
   'grades/exams/delete': async (c, b) => {
