@@ -54,7 +54,7 @@ export default {
       // 入塾の手続きを試す体験生（架空 体験）。入塾したあとは出さない
       const trial = await env.DB2.prepare("select id, linkCode from students where familyName = '架空' and givenName = '体験' and trial = 1").first().catch(() => null);
       if (trial && trial.linkCode && !trial.linkCode.startsWith('off.')) links.trial = origin + '/student/?k=' + encodeURIComponent(trial.linkCode);
-      // 契約更新の手続きを試す家族（scripts/demo-seed.mjs の山本さん）
+      // 契約更新の手続きを試す家族（scripts/demo-seed.mjs の山田さん）
       const renewal = await env.DB2.prepare("select id from families where email = 'renewal-parent@example.invalid'").first().catch(() => null);
       return json({ ok: true, seeded: Number(n && n.n) > 0, builtAt: snapshot.builtAt, links, trial: trial ? trial.id : '', renewal: renewal ? renewal.id : '' });
     }
