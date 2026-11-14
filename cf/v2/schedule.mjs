@@ -21,6 +21,7 @@ import { createCancelFee, dropCancelFee, usesRate, setRateFee, lessonFee, parseP
 import { ratePct } from '../../assets/v2/cancel-rate.js';
 import { isPreviewToken, previewSubject } from './preview.mjs';
 import { extrasFor } from './plan-extra.mjs';
+import { dropTentative } from './tentative-calendar.mjs';
 
 const CAL_PREFIX = '【塾】';
 const ACTIVE = ['held', 'proposed', 'decided', 'done'];
@@ -106,6 +107,7 @@ export const CAL_MARK = 'v2m';
 export const isCalMarker = id => !!id && !String(id).includes('@') && /^(swv2|v2m)/.test(String(id));
 export async function calendarEffect(c, kind, lesson, studentName) {
   const live = await isLive(c);
+  if (kind !== 'delete') await dropTentative(c, lesson.id, live); // 確定の予定を作る・直すときは、調整中の予定（tentative-calendar.mjs）をその場で消す
   if (kind === 'delete') {
     if (lesson.calendarEventId && !isCalMarker(lesson.calendarEventId)) c.effects.push({ kind: 'calendarDelete', eventId: lesson.calendarEventId, audience: 'calendar', held: !live });
     return '';
