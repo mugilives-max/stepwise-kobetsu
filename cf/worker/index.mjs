@@ -8,7 +8,7 @@ import { health } from "./health.mjs";
 import { handleRead, isReadAction } from "./read.mjs";
 import { handleSync, syncStatus } from "./sync.mjs";
 import { runWrite, runNaturalSchedule, recordEffects, deliverEffects, backfillMeet } from "./write.mjs";
-import { handleV2, runV2Scheduled } from "../v2/index.mjs";
+import { handleV2, runV2Scheduled, runV2Nightly } from "../v2/index.mjs";
 import { handlePush, deliverNotice, pushEnabled, PUSH_ACTIONS } from "./push.mjs";
 import { EFFECT_ADMIN_OPS, handleEffectsAdmin } from "./effects-admin.mjs";
 import { frozenAt, MOVED } from "./cutover.mjs";
@@ -31,11 +31,15 @@ function cors(env, request) {
 
 const reply = (data, status, extra) => new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, ...extra } });
 
+const NIGHTLY_CRON = "0 13 * * *";
+
 export default {
   // 毎日 8:10 JST（夜中に保護者へメールを送らない。2026-11-06 本人）。月の請求の確定（翌月3日から）と、締め切りを過ぎた仮予定の決定（2026-10-01）。
   // 片方が失敗してももう片方は行い、最後にまとめて失敗を知らせる。
   async scheduled(event, env) {
     if (env.WRITE_MODE !== "worker") return;
+    // 毎晩 22:00 JST: 調整中・確認待ちの授業を代表のカレンダーへ写すだけ（2026-11-14 本人。朝の処理とは別）
+    if (event && event.cron === NIGHTLY_CRON) { await runV2Nightly(env); return; }
     const failed = [];
     // 新しい仕組みに切り替えたあと（今の仕組みは読むだけ）は、今の仕組みの自動処理を止めて、新しい仕組みのものだけを動かす
     if (await frozenAt(env)) {

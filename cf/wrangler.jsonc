@@ -11,7 +11,8 @@
   "build": { "command": "node scripts/build-gas-bundle.mjs" },
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
-  "triggers": { "crons": ["10 23 * * *"] },
+  // 8:10 JST の朝の処理と、22:00 JST の調整中の授業のカレンダーへの写し（cf/worker/index.mjs の NIGHTLY_CRON と同じ文字列）
+  "triggers": { "crons": ["10 23 * * *", "0 13 * * *"] },
   "observability": { "enabled": true },
   // 処理する場所をデータベース（D1・東京）の近くに自動で寄せる。入口が海外の拠点になる回線でも、問い合わせのたびに海を往復しないように
   "placement": { "mode": "smart" },

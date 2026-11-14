@@ -44,12 +44,19 @@ import { docsSampleRoutes } from './docs-sample.mjs';
 
 import { agreementDocumentRoutes } from './agreement-documents.mjs';
 import { contractRoutes } from './contracts.mjs';
+import { tentativeCalendarRoutes, syncTentativeCalendar } from './tentative-calendar.mjs';
 
-const ROUTES = { ...withdrawalRoutes, ...staffRegistrationRoutes, ...staffBankRoutes, ...staffRulesRoutes, ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...lessonPlanRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...enrollmentRoutes, ...mcpWriteRoutes };
+const ROUTES = { ...withdrawalRoutes, ...staffRegistrationRoutes, ...staffBankRoutes, ...staffRulesRoutes, ...employmentRoutes, ...workRoutes, ...agreementDocumentRoutes, ...contractRoutes, ...staffRoutes, ...familyRoutes, ...peopleRoutes, ...migrateRoutes, ...scheduleRoutes, ...migrateScheduleRoutes, ...recordRoutes, ...migrateRecordsRoutes, ...billingRoutes, ...migrateBillingRoutes, ...gradesRoutes, ...fileRoutes, ...payrollRoutes, ...migrateCheckRoutes, ...cutoverRoutes, ...previewRoutes, ...homeRoutes, ...studentHubRoutes, ...lessonPlanRoutes, ...monthlyRoutes, ...effectsAdminRoutes, ...termsRoutes, ...backupRoutes, ...conditionRoutes, ...billingDocRoutes, ...specialRoutes, ...docsSampleRoutes, ...trialRoutes, ...enrollmentRoutes, ...mcpWriteRoutes, ...tentativeCalendarRoutes };
 const MAX_BODY = 200000;
 
 // 毎日8時10分（Worker の定期実行）: まず台帳の控えを R2 に置き（その日の処理の前の姿）、終わった授業を実施済みにする。切り替えたあとは、3日以降に前月分の請求を確定する。
 // 締め切りを過ぎた仮予定を自動で確定することはしない（2026-10-27 本人「システム側で自動締切で授業を登録するなどは行わない」）
+// 毎晩 22 時: 調整中・確認待ちの授業を代表のカレンダーへ写す（cf/v2/tentative-calendar.mjs。2026-11-14）
+export async function runV2Nightly(env, now = Date.now()) {
+  if (!env.DB2) return null;
+  return await syncTentativeCalendar(env, env.DB2, now);
+}
+
 export async function runV2Scheduled(env, now = Date.now()) {
   if (!env.DB2) return null;
   const c = { env, db: env.DB2, now, effects: [], actor: null, userAgent: 'scheduled' };
