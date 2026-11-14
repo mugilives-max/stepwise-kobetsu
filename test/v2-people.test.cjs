@@ -8,7 +8,7 @@ test('a classroom manager registers a family first, then its children; a teacher
   const h = await createV2(); const auth = await h.owner();
   const teacher = await h.staffWith(auth, ['teacher'], 'teacher@example.invalid');
   assert.equal((await h.call('admin/families/list', { auth: teacher })).error.code, 'forbidden');
-  const fam = (await h.ok('admin/families/create', { auth, name: '架空家', guardianName: '架空 花子', email: 'Parent@Example.invalid', phone: '090-0000-0000' })).family;
+  const fam = (await h.ok('admin/families/create', { auth, name: '架空家', guardianFamilyName: '架空', guardianGivenName: '花子', email: 'Parent@Example.invalid', phone: '090-0000-0000' })).family;
   assert.deepEqual([fam.status, fam.email, fam.hasPassword], ['invited', 'parent@example.invalid', false]);
   assert.equal((await h.call('admin/families/create', { auth, name: '別の家', email: 'parent@example.invalid' })).error.code, 'duplicate');
   assert.equal((await h.call('admin/students/create', { auth, familyId: fam.id })).error.code, 'needName');

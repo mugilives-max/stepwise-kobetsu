@@ -17,7 +17,7 @@ import { currentTerms, termsConsentStatements, termsForVersion } from './terms.m
 import { conditionDocHtml } from './condition-doc.mjs';
 import { conditionFields, proposeCondition, studentConditions, storeDoc, MODE_LABEL } from './conditions.mjs';
 import { consentEvidence } from './consent-evidence.mjs';
-import { GRADES, normGrade } from '../../assets/v2/grade-options.js';
+import { GRADES } from '../../assets/v2/grade-options.js';
 
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
 const monthText = m => m ? Number(m.slice(0, 4)) + '年' + Number(m.slice(5, 7)) + '月' : '';
@@ -94,7 +94,7 @@ function applicationFields(b) {
   const st = b.student || {};
   const student = { familyName: text(st.familyName, 40, '生徒の名字', true), givenName: text(st.givenName, 40, '生徒の名前', true),
     familyKana: text(st.familyKana, 40, '生徒の名字のふりがな', true), givenKana: text(st.givenKana, 40, '生徒の名前のふりがな', true),
-    grade: normGrade(text(st.grade, 20, '学年', true)), school: text(st.school, 60, '学校', true) };
+    grade: text(st.grade, 20, '学年', true), school: text(st.school, 60, '学校', true) };
   if (!GRADES.includes(student.grade)) fail('badGrade', '学年を選んでください');
   if (!KANA.test(student.familyKana + student.givenKana)) fail('badKana', 'ふりがなは、ひらがなかカタカナで入れてください');
   return { guardian: { familyName: gFamily, givenName: gGiven, familyKana: gFamilyKana, givenKana: gGivenKana, name: guardianName, kana: guardianKana, phone, address: '〒' + zip + ' ' + addr }, student };
@@ -249,17 +249,12 @@ export const enrollmentRoutes = {
       if (r.status === 'applied' && r.appliedAt < iso(c.now - 14 * 86400e3)) continue; // 申し込んだものは 2 週間だけ「済み」として見せる
       const s = await getStudent(c, r.studentId), conds = await studentConditions(c.db, s.id);
       const cond = (conds.history || []).find(x => x.id === r.conditionId) || null;
-      offers.push({ ...offerView(r), student: { id: s.id, familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana, grade: normGrade(s.grade), school: s.school, name: fullName(s) }, condition: cond });
+      offers.push({ ...offerView(r), student: { id: s.id, familyName: s.familyName, givenName: s.givenName, familyKana: s.familyKana, givenKana: s.givenKana, grade: s.grade, school: s.school, name: fullName(s) }, condition: cond });
     }
     const zip = /^〒(\d{3}-\d{4}) ?(.*)$/.exec(me.address || '');
-    // 姓・名を分けて持つ前の家族は、「姓 名」の空白で分けて最初の値にする
-    // 空白がなければ、生徒の名字で始まるところで分ける（例: 「山本あさこ」→ 山本・あさこ。2026-10-30 山本さんの契約更新の手続きの前に）
-    const surnames = offers.map(o => o.student.familyName).filter(Boolean);
-    const split = v => { const t = String(v || '').trim(), m = /^(\S+)[\s　]+(.+)$/.exec(t); if (m) return [m[1], m[2]]; const sn = surnames.find(x => t.startsWith(x) && t.length > x.length); return sn ? [sn, t.slice(sn.length)] : [t, '']; };
-    const [nf, ng] = me.guardianFamilyName || me.guardianGivenName ? [me.guardianFamilyName, me.guardianGivenName] : split(me.guardianName);
-    const [kf, kg] = me.guardianFamilyKana || me.guardianGivenKana ? [me.guardianFamilyKana, me.guardianGivenKana] : split(me.guardianKana);
+    // 保護者の氏名は姓・名・ふりがなを分けて持つ（1 つの文を空白や生徒の名字で分ける読み替えは 2026-11-14 に廃止）
     return { offers, terms: await currentTerms(c.db),
-      guardian: { familyName: nf || '', givenName: ng || '', familyKana: kf || '', givenKana: kg || '', phone: me.phone || '', zip: zip ? zip[1] : '', address: zip ? zip[2] : (me.address || ''), email: me.email } };
+      guardian: { familyName: me.guardianFamilyName || '', givenName: me.guardianGivenName || '', familyKana: me.guardianFamilyKana || '', givenKana: me.guardianGivenKana || '', phone: me.phone || '', zip: zip ? zip[1] : '', address: zip ? zip[2] : (me.address || ''), email: me.email } };
   },
   // 申込みの画面で開く個別受講条件書の全文。宛名・生徒は画面に入れた内容で作る（保存はしない。2026-10-26 本人「契約者は保護者…氏名もわかっているし、それをそのまま表示するべき」）
   'family/enrollment/document': async (c, b) => {

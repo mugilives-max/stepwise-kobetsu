@@ -8,7 +8,7 @@ const {chromium}=require('playwright');
 const {createV2}=require('../test/helpers/v2-harness.cjs');
 (async()=>{
  const h=await createV2(), auth=await h.owner();
- const fam=(await h.ok('admin/families/create',{auth,name:'架空家',guardianName:'架空 保護者',email:'parent@example.invalid'})).family;
+ const fam=(await h.ok('admin/families/create',{auth,name:'架空家',guardianFamilyName:'架空',guardianGivenName:'保護者',email:'parent@example.invalid'})).family;
  const kid=(await h.ok('admin/students/create',{auth,familyId:fam.id,familyName:'架空',givenName:'一郎',baseRate30:1500})).student;
  const parent=(await h.ok('family/invite/accept',{token:h.linkFrom((await h.ok('admin/families/invite',{auth,id:fam.id}),h.mails().at(-1))),password:'family password 1'})).auth;
  await h.ok('admin/terms/set',{auth,version:'old',title:'旧規約',url:'https://example.invalid/old'});

@@ -5,9 +5,9 @@ import { mdw, endOf, statusTag } from '/assets/v2/schedule-view.js?v=20261028-r1
 import { trendBox, seriesPick, uploadFile, jst } from '/assets/v2/grades-view.js?v=20261105-glatest';
 import { weekBox, weekDates } from '/staff/student-week.js?v=20261107-plantbl';
 import { ICON, sheet, rowButton } from '/staff/ui.js?v=20261025-layout';
-import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
+import { gradeOptions } from '/assets/v2/grade-options.js?v=20261114-newformat';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
-import { renewalBox } from '/staff/families.js?v=20261109-contractor';
+import { renewalBox } from '/staff/families.js?v=20261114-newformat';
 import { schedulePage } from '/staff/schedule.js?v=20261114-alerts'; // app.js と同じ URL（同じ部品の状態を使う）
 
 let list = null, query = '', hub = null, hubFor = '', noteEdit = false;

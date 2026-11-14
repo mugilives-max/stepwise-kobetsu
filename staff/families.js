@@ -2,7 +2,7 @@
 // ctx は app.js から渡す共通の道具（call / say / render / run / esc / busy / notice）。
 // 一覧はすっきり、直す・足す・生徒ごとの操作は押すと下から出る画面で（famSheet = { mode, id }）。
 import { sheet, rowButton, rowLink } from '/staff/ui.js?v=20261025-layout';
-import { gradeOptions } from '/assets/v2/grade-options.js?v=20261029-efftabs';
+import { gradeOptions } from '/assets/v2/grade-options.js?v=20261114-newformat';
 import { subjectFields, readSubjects } from '/assets/v2/subject-options.js?v=20261026-subjects';
 const STATUS = { invited: ['warn', '招待前・登録待ち'], active: ['', '利用中'], stopped: ['gray', '停止'] };
 const STUDENT_STATUS = { enrolled: ['', '在籍'], paused: ['warn', '休会'], left: ['gray', '退会'] };
@@ -45,11 +45,9 @@ export function familiesPage(ctx) {
   return h;
 }
 
-// 保護者の氏名は姓・名・ふりがなに分ける（2026-10-19 本人）。分ける前の家族は「姓 名」の空白で分けて最初の値にする
+// 保護者の氏名は姓・名・ふりがなに分ける（2026-10-19 本人）。1 つの文を空白で分ける読み替えは 2026-11-14 に廃止
 function guardianInputs(esc, f) {
-  const split = v => { const m = /^(\S+)[\s　]+(.+)$/.exec(String(v || '').trim()); return m ? [m[1], m[2]] : [String(v || '').trim(), '']; };
-  const [nf, ng] = f.guardianFamilyName || f.guardianGivenName ? [f.guardianFamilyName, f.guardianGivenName] : split(f.guardianName);
-  const [kf, kg] = f.guardianFamilyKana || f.guardianGivenKana ? [f.guardianFamilyKana, f.guardianGivenKana] : split(f.guardianKana);
+  const [nf, ng, kf, kg] = [f.guardianFamilyName, f.guardianGivenName, f.guardianFamilyKana, f.guardianGivenKana];
   return `<div class="row"><label style="flex:1 1 140px">保護者の姓<input name="guardianFamilyName" maxlength="30" value="${esc(nf || '')}"></label><label style="flex:1 1 140px">保護者の名<input name="guardianGivenName" maxlength="30" value="${esc(ng || '')}"></label></div>
     <div class="row"><label style="flex:1 1 140px">ふりがな（姓）<input name="guardianFamilyKana" maxlength="30" value="${esc(kf || '')}"></label><label style="flex:1 1 140px">ふりがな（名）<input name="guardianGivenKana" maxlength="30" value="${esc(kg || '')}"></label></div>`;
 }

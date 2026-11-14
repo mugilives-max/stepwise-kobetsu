@@ -1,18 +1,27 @@
 'use strict';
-// 学年の書き方をそろえる（assets/v2/grade-options.js の normGrade。2026-10-29 本人「学年の表示スタイルが統一されていない」）
+// 学年・保護者の氏名は新しい形式だけ（2026-11-14 本人「以前のデータ形式を廃止して、新方式に統一」）。
+// 学年は選択肢の値（中3・高1 …）、保護者の氏名は姓・名・ふりがなを分けて持つ。前の書き方（「中学３年生」・1 つの文の氏名）は受け付けない
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
-const { pathToFileURL } = require('node:url');
 const { createV2 } = require('./helpers/v2-harness.cjs');
 
-test('long grade forms from the old ledger are shown in the short form used by the choices', async () => {
-  const { normGrade } = await import(pathToFileURL(path.join(__dirname, '..', 'assets', 'v2', 'grade-options.js')).href);
-  assert.deepEqual(['中学３年生', '高校１年生', '小学６年生', '中３', '高等学校2年', '中3', '既卒', ''].map(normGrade), ['中3', '高1', '小6', '中3', '高2', '中3', '既卒', '']);
+test('grades: only the choices are stored; the old long forms are refused everywhere they are written', async () => {
   const h = await createV2(); const auth = await h.owner();
-  const fam = (await h.ok('admin/families/create', { auth, name: '架空家' })).family;
-  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '架空', givenName: '一郎', baseRate30: 1500 })).student;
-  h.db2._sqlite.prepare("update students set grade = '中学３年生' where id = ?").run(kid.id); // 前の台帳から移した書き方
-  assert.equal((await h.ok('students/list', { auth })).families[0].students[0].grade, '中3');
-  assert.equal((await h.ok('students/hub', { auth, studentId: kid.id })).student.grade, '中3');
+  const fam = (await h.ok('admin/families/create', { auth, guardianFamilyName: '【テスト】架空', guardianGivenName: '花子' })).family;
+  for (const grade of ['中学３年生', '中３', '高校1年']) assert.equal((await h.call('admin/students/create', { auth, familyId: fam.id, familyName: '【テスト】架空', givenName: '一郎', grade })).error.code, 'badGrade', grade);
+  const kid = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '【テスト】架空', givenName: '一郎', grade: '中3', baseRate30: 1500 })).student;
+  assert.equal(kid.grade, '中3');
+  assert.equal((await h.call('admin/students/update', { auth, id: kid.id, version: kid.version, grade: '中学３年生' })).error.code, 'badGrade');
+  assert.equal((await h.call('admin/trials/create', { auth, familyName: '【テスト】体験', grade: '中学2年' })).error.code, 'badGrade');
+  assert.ok((await h.ok('admin/trials/create', { auth, familyName: '【テスト】体験', grade: '' })).studentId, '学年は空でもよい');
+});
+
+test('guardian name: only family/given parts are accepted; the single-string name is derived from them', async () => {
+  const h = await createV2(); const auth = await h.owner();
+  assert.equal((await h.call('admin/families/create', { auth, guardianName: '【テスト】架空花子' })).error.code, 'splitName');
+  const fam = (await h.ok('admin/families/create', { auth, guardianFamilyName: '【テスト】架空', guardianGivenName: '花子', guardianFamilyKana: 'かくう', guardianGivenKana: 'はなこ' })).family;
+  assert.deepEqual([fam.guardianName, fam.guardianKana], ['【テスト】架空 花子', 'かくう はなこ']);
+  assert.equal((await h.call('admin/families/update', { auth, id: fam.id, version: fam.version, guardianName: '別の名前' })).error.code, 'splitName');
+  const up = (await h.ok('admin/families/update', { auth, id: fam.id, version: fam.version, guardianGivenName: '春子' })).family;
+  assert.deepEqual([up.guardianFamilyName, up.guardianGivenName, up.guardianName], ['【テスト】架空', '春子', '【テスト】架空 春子']);
 });

@@ -15,7 +15,6 @@ import { todayJst, nowHmJst, addDays } from './schedule.mjs';
 import { gradesRoutes } from './grades.mjs';
 import { startUpload } from './files.mjs';
 import { studentBilling, lineCap } from './plan-calc.mjs';
-import { normGrade } from '../../assets/v2/grade-options.js';
 
 const fullName = s => [s.familyName, s.givenName].filter(Boolean).join(' ');
 const parse = (v, d) => { try { return JSON.parse(v); } catch { return d; } };
@@ -55,7 +54,7 @@ export const studentHubRoutes = {
     for (const s of students) {
       let f = families.find(x => x.id === s.familyId);
       if (!f) families.push(f = { id: manager ? s.familyId : '', name: manager ? s.familyLabel : '', students: [] });
-      f.students.push({ id: s.id, name: fullName(s), kana: [s.familyKana, s.givenKana].filter(Boolean).join(' '), grade: normGrade(s.grade), status: s.status, leaveOn: s.status === 'left' ? '' : s.leaveOn || '', testOnly: !!s.testOnly, trial: !!s.trial, offered: !!offered[s.id], next: next[s.id] || '', requests: manager ? requests[s.id] || 0 : 0, pendingRecords: pending[s.id] || 0 });
+      f.students.push({ id: s.id, name: fullName(s), kana: [s.familyKana, s.givenKana].filter(Boolean).join(' '), grade: s.grade, status: s.status, leaveOn: s.status === 'left' ? '' : s.leaveOn || '', testOnly: !!s.testOnly, trial: !!s.trial, offered: !!offered[s.id], next: next[s.id] || '', requests: manager ? requests[s.id] || 0 : 0, pendingRecords: pending[s.id] || 0 });
     }
     // 講師には家族をまとめず、生徒だけを並べる
     return { manager, families: manager ? families : [{ id: '', name: '', students: families.flatMap(f => f.students) }] };
@@ -97,7 +96,7 @@ export const studentHubRoutes = {
     const events = (await c.db.prepare("select * from sharedEvents where studentId = ? and dateTo >= ? order by date limit 10").bind(s.id, today).all()).results.map(e => ({ kind: e.kind, date: e.date, dateTo: e.dateTo, title: e.title }));
     const out = {
       today, manager,
-      student: { id: s.id, trial: !!s.trial, name: fullName(s), kana: [s.familyKana, s.givenKana].filter(Boolean).join(' '), grade: normGrade(s.grade), school: s.school, status: s.status, leaveOn: s.status === 'left' ? '' : s.leaveOn || '', deliveryMode: s.deliveryMode, testOnly: !!s.testOnly },
+      student: { id: s.id, trial: !!s.trial, name: fullName(s), kana: [s.familyKana, s.givenKana].filter(Boolean).join(' '), grade: s.grade, school: s.school, status: s.status, leaveOn: s.status === 'left' ? '' : s.leaveOn || '', deliveryMode: s.deliveryMode, testOnly: !!s.testOnly },
       upcoming, past, records: recs, pendingRecords, homework, handover, requests, events,
       grades: { exams: grades.exams, nextTest: grades.nextTest, pendingTests: grades.pendingTests, subjects: grades.subjects, files: grades.files },
     };

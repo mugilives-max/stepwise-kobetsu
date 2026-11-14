@@ -6,7 +6,7 @@
 //   admin/trials/enroll（印を外すだけ）は、書面などで手続きしたときのために残す。
 import { fail, audit, newId, iso } from './util.mjs';
 import { requireStaff } from './staff.mjs';
-import { normGrade } from '../../assets/v2/grade-options.js';
+import { validGrade, GRADE_HINT } from '../../assets/v2/grade-options.js';
 
 export const TRIAL_KIND = '体験';
 export const isTrialLesson = l => !!l && String(l.kind || '') === TRIAL_KIND;
@@ -22,7 +22,8 @@ export const trialRoutes = {
     await requireStaff(c, b, 'manager');
     const familyName = text(b.familyName, 40, '名字'), givenName = text(b.givenName, 40, '名前');
     if (!familyName) fail('needName', '名字を入れてください');
-    const grade = normGrade(text(b.grade, 20, '学年')), school = text(b.school, 60, '学校'), note = text(b.note, 1000, 'メモ');
+    const grade = text(b.grade, 20, '学年'), school = text(b.school, 60, '学校'), note = text(b.note, 1000, 'メモ');
+    if (!validGrade(grade)) fail('badGrade', GRADE_HINT);
     const now = iso(c.now), fid = newId('fa'), sid = newId('su');
     const link = newLinkCode();
     await c.db.batch([

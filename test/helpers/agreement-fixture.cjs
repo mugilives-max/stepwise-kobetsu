@@ -3,7 +3,7 @@ const {createV2}=require('./v2-harness.cjs');
 // at: 準備のあとで時計を進める（2026-10-26 より後に作った受講合意書の行は新しい書式）
 async function agreementFixture({at}={}) {
  const h=await createV2(),auth=await h.owner();
- const fam=(await h.ok('admin/families/create',{auth,name:'【テスト】架空家',guardianName:'【テスト】架空 保護者',email:'agreement@example.invalid'})).family;
+ const fam=(await h.ok('admin/families/create',{auth,name:'【テスト】架空家',guardianFamilyName:'【テスト】架空',guardianGivenName:'保護者',email:'agreement@example.invalid'})).family;
  const kid=(await h.ok('admin/students/create',{auth,familyId:fam.id,familyName:'【テスト】架空',givenName:'一郎',baseRate30:1500})).student;
  await h.ok('admin/families/invite',{auth,id:fam.id});
  const parent=(await h.ok('family/invite/accept',{token:h.linkFrom(h.mails().at(-1)),password:'synthetic password 1'})).auth;

@@ -11,8 +11,8 @@ const stu = s => ({ familyName: s.familyName, givenName: s.givenName, familyKana
 
 async function world() {
   const h = await createV2(); const auth = await h.owner();
-  const fam = (await h.ok('admin/families/create', { auth, name: '【テスト】岡野家', email: 'renew@example.invalid', guardianName: '【テスト】岡野 花子' })).family;
-  const a = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '【テスト】岡野', givenName: '一郎', grade: '中学３年生', baseRate30: 1500, deliveryMode: 'in_person', enrolledOn: '2025-04-01' })).student;
+  const fam = (await h.ok('admin/families/create', { auth, name: '【テスト】岡野家', email: 'renew@example.invalid', guardianFamilyName: '【テスト】岡野', guardianGivenName: '花子' })).family;
+  const a = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '【テスト】岡野', givenName: '一郎', grade: '中3', baseRate30: 1500, deliveryMode: 'in_person', enrolledOn: '2025-04-01' })).student;
   const b = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '【テスト】岡野', givenName: '二郎', grade: '小6', baseRate30: 1500, deliveryMode: 'online' })).student;
   const parent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' })).auth;
   return { h, auth, fam, a, b, parent };
@@ -105,14 +105,14 @@ test('renewal: the parent agrees for all siblings at once; one write, one mail e
   assert.equal((await h.call('family/enrollment/apply-all', { auth: parent, termsVersion: TERMS.version, agree: true, ...APP, items })).error.code, 'closed', '2 回目は受け付けない');
 });
 
-// 保護者の氏名に空白がない家族（例: 「山本あさこ」）は、生徒の名字で姓と名に分けて入れておく（2026-10-30 山本さんの手続きの前に）
-test('renewal: a guardian name without a space is split at the students\' surname', async () => {
+// 保護者の申込みの画面の最初の値は、分けて持っている姓・名・ふりがなそのもの（1 つの文を分けて読み替えるのは 2026-11-14 に廃止）
+test('renewal: the form starts from the stored family/given name parts', async () => {
   const h = await createV2(); const auth = await h.owner();
   await h.ok('admin/terms/set', { auth, ...TERMS });
-  const fam = (await h.ok('admin/families/create', { auth, name: '【テスト】山本さん', email: 'yama@example.invalid', guardianName: '【テスト】山本あさこ' })).family;
+  const fam = (await h.ok('admin/families/create', { auth, email: 'yama@example.invalid', guardianFamilyName: '【テスト】山本', guardianGivenName: 'あさこ' })).family;
   const s = (await h.ok('admin/students/create', { auth, familyId: fam.id, familyName: '【テスト】山本', givenName: '一郎', grade: '中3', baseRate30: 1500 })).student;
   const parent = (await h.ok('family/invite/accept', { token: h.linkFrom((await h.ok('admin/families/invite', { auth, id: fam.id }), h.mails().at(-1))), password: 'family password 1' })).auth;
   await h.ok('admin/renewal/offer', { auth, familyId: fam.id, fromMonth: '2026-11', students: [{ studentId: s.id, minutes: 90, fee: 4500, deliveryMode: 'in_person', subjects: '数学' }] });
   const g = (await h.ok('family/enrollment', { auth: parent })).guardian;
-  assert.deepEqual([g.familyName, g.givenName], ['【テスト】山本', 'あさこ']);
+  assert.deepEqual([g.familyName, g.givenName, g.familyKana, g.givenKana], ['【テスト】山本', 'あさこ', '', '']);
 });

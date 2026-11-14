@@ -285,7 +285,7 @@ export function invoiceSheet(v, { multi, busy = false }) {
 // ---- キャンセル料 ----
 export function feeRows(fees, { multi }) {
   if (!fees.length) return '';
-  return '<div class="group">' + fees.map(f => `<button type="button" class="irow" data-action="fee" data-id="${esc(f.id)}"><span class="b"><b>${md(f.date)} ${esc(f.start)} ${multi ? esc(given(f.studentName)) + ' ' : ''}${esc(f.subject)}</b><small>${f.invoiceId ? '請求済み' : f.reliefStatus === 'pending' ? '減額・免除を申請中' : f.reliefStatus ? '申請に回答あり' : '次の請求に入ります'}</small></span><span class="amt">${yen(f.amount)}</span><span class="go">›</span></button>`).join('') + '</div>';
+  return '<div class="group">' + fees.map(f => `<button type="button" class="irow" data-action="fee" data-id="${esc(f.id)}"><span class="b"><b>${md(f.date)} ${esc(f.start)} ${multi ? esc(given(f.studentName)) + ' ' : ''}${esc(f.subject)}</b><small>${f.invoiceId ? '請求済み' : f.reliefStatus === 'pending' ? '減額・免除を申請中' : f.reliefStatus ? '申請に回答あり' : f.amount === 0 && f.decision !== 'pending' ? '免除' : '次の請求に入ります'}</small></span><span class="amt">${yen(f.amount)}</span><span class="go">›</span></button>`).join('') + '</div>';
 }
 export function feeSheet(f, { busy = false, note = '' }) {
   let body = `<div class="inv-total"><span class="small muted">${(f.parts || []).length ? f.parts.map(p => esc(partText(p, f.date))).join('<br>') : 'キャンセル料'}</span><strong>${yen(f.amount)}</strong></div>`;
