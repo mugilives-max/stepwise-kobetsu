@@ -512,7 +512,7 @@ export async function scheduleClick(ctx, a, b) {
     else sel = d;
     return true;
   }
-  if (a === 'sch-reload') { if (loading) return true; loading = true; cache = {}; ctx.say(''); ctx.render(); await load(ctx); loading = false; if (!data.error) ctx.say('最新の予定を読み直しました', 'ok'); return true; } // MCP などで変えたあと、開いたままの画面で確かめる（2026-11-20 本人）
+  if (a === 'sch-reload') { if (loading) return true; loading = true; cache = {}; ctx.say(''); ctx.render(); await load(ctx); loading = false; return true; } // MCP などで変えたあと、開いたままの画面で確かめる（2026-11-20 本人）
   if (a === 'sch-ev-open') { sheet = { kind: 'event', ids: String(b.dataset.ids || '').split(',').filter(Boolean) }; return true; }
   if (a === 'sch-goto') { sel = b.dataset.date; sheet = b.dataset.id ? { kind: 'lesson', id: b.dataset.id } : null; if (ymOf(sel) !== month) { month = ymOf(sel); data = null; } return true; }
   if (a === 'sch-sheet') { if (b.dataset.date) sel = b.dataset.date; sheet = { kind: b.dataset.k }; return true; } // 一覧の日ごとの「＋」は、その日で作る

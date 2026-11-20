@@ -382,6 +382,8 @@ body.focus main { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
   .cal-handle span { display: block; width: 44px; height: 5px; margin: 0 auto; border-radius: 5px; background: #c9d1da; transition: background .15s, width .15s; }
   .cal-handle.grab span { background: #9aa6b2; width: 52px; }
   .sch-bar + p.small.muted { display: none; }
+  /* 「更新」を足しても上の段を 1 行に（2026-11-20） */
+  .sch-month { min-width: 6.2em; } .sch-bar .small-btn { padding-left: 9px; padding-right: 9px; }
   /* 週の表示の一覧: その中でスクロールして前後の日も見る。日の見出しは上に留まる（2026-10-30 本人） */
   .sch-day.agenda { position: relative; height: 55vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .sch-day.agenda .day-title { position: sticky; top: 0; z-index: 1; background: var(--paper); }
