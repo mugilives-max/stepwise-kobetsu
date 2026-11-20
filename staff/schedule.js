@@ -284,7 +284,7 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
       if (manager && ['held', 'proposed'].includes(l.status)) main.push(`<button class="primary" data-action="sch-decide" data-id="${esc(l.id)}"${ctx.dis()}>確定する</button>`);
       if (l.status === 'decided' && past && mine) main.push(`<button class="primary" data-action="sch-done" data-id="${esc(l.id)}"${ctx.dis()}>実施済みにする</button>`);
       if (['decided', 'done'].includes(l.status) && past && mine) main.push(`<a class="btn" href="#record=${encodeURIComponent(l.id)}">記録を書く</a>`);
-      if (manager && ['held', 'proposed', 'decided'].includes(l.status)) sub.push(`<button data-action="sch-edit" data-id="${esc(l.id)}"${ctx.dis()}>日時・内容を直す</button>`);
+      if (manager && (['held', 'proposed', 'decided'].includes(l.status) || (l.status === 'done' && !l.locked))) sub.push(`<button data-action="sch-edit" data-id="${esc(l.id)}"${ctx.dis()}>日時・内容を直す</button>`);
       if (manager && l.status === 'proposed') sub.push(`<button data-action="sch-unsend" data-id="${esc(l.id)}"${ctx.dis()}>下書きに戻す</button>`);
       // その場で、この授業の代わりに授業をした（規約下書き 第11条3項）
       if (manager && l.status === 'decided' && Date.now() < Date.parse(l.date + 'T' + l.start + ':00+09:00')) sub.push(`<button data-action="sch-swap" data-id="${esc(l.id)}"${ctx.dis()}>代わりに実施した</button>`);

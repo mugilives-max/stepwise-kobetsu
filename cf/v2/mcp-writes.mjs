@@ -310,14 +310,16 @@ export const mcpWriteRoutes = {
     const l = await c.db.prepare('select * from lessons where id = ?').bind(String(b.lessonId || '')).first();
     if (!l) fail('notFound', '授業が見つかりません', 404);
     if (Number(b.version) !== Number(l.version)) fail('conflict', 'ほかの操作で変わりました。lessons/get で読み直してください', 409);
-    if (!['held', 'proposed', 'decided'].includes(l.status)) fail('badStatus', 'この授業は日程を変えられません');
+    // 実施済みも、請求・給与の前なら直せる（入力ミスの直し。2026-11-20 本人）。メール・カレンダーは動かない
+    const done = l.status === 'done' && !l.invoiceId && !l.payrollId;
+    if (!['held', 'proposed', 'decided'].includes(l.status) && !done) fail('badStatus', l.status === 'done' ? '請求・給与に入った実施済みの授業は直せません（管理画面で）' : 'この授業は日程を変えられません');
     const s = await studentWithFamily(c, l.studentId); checkScope(c, s);
     if (s.trial && b.kind !== undefined && b.kind !== l.kind) fail('trial', '体験生の授業の種類は変えられません');
     if (b.staffId) await activeStaff(c, b.staffId);
     const n = lessonFields({ date: b.date, start: b.start, minutes: b.minutes, subject: b.subject, kind: b.kind, deliveryMode: b.deliveryMode, staffId: b.staffId }, l);
     const moved = n.date !== l.date || n.start !== l.start || n.minutes !== l.minutes;
     if (moved && l.status === 'decided' && c.now > freeDeadline(l.date)) fail('late', '前日23時を過ぎた決定の授業の変更は、取消料の判断が要るので管理画面でしてください', 409);
-    if (n.date < todayJst(c.now)) fail('past', '過去の日付にはできません');
+    if (done ? n.date > todayJst(c.now) : n.date < todayJst(c.now)) fail(done ? 'future' : 'past', done ? '実施済みの授業は今日までの日付にしてください' : '過去の日付にはできません');
     if (moved || n.staffId !== l.staffId || n.deliveryMode !== l.deliveryMode) await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: b.force === true, exceptId: l.id }); // 休みなどへの変更は force で（2026-11-04 本人。MCP から 1:2 に動かせなかった）
     // メールは確定した授業の日時が変わるときだけ。調整中・確認待ちはページの表示が変わるだけ（確認待ちは日時を変えると調整中に戻る）
     const mail = moved && l.status === 'decided' && !!s.familyEmail && s.familyStatus === 'active' && !s.familyTestOnly && !s.testOnly;
@@ -328,6 +330,7 @@ export const mcpWriteRoutes = {
       effects: { mails: mail ? 1 : 0, to: mail ? maskEmail(s.familyEmail) : '', calendar, cancelFee: 'none' } };
     const confirm = hash({ ...preview, version: l.version }).slice(0, 32);
     if (b.dryRun === true) return { dryRun: true, ...preview, confirm, note: l.status === 'held' ? '下書き（未送信）の授業なので、メールもカレンダーも動きません'
+      : done ? '実施済みの授業の直しです。メールもカレンダーも動きません（請求・給与はこの内容で数えます）。確かめてから confirm を付けて実行してください'
       : l.status === 'decided' ? (moved ? '確定した授業なので、保護者に日時の変更のお知らせが届き、カレンダーも動きます。確かめてから confirm を付けて実行してください' : '確定した授業です。メールは送りません（日時が変わるときだけ）。確かめてから confirm を付けて実行してください')
       : stageOf(l) === 'asking' ? '確認待ちの授業です。日時を変えると調整中に戻り（締め切りを外す）、保護者ページの表示が変わります（メールなし）。もう一度確認をお願いするときは notices/send。confirm を付けて実行してください'
       : '調整中の授業です。保護者ページの表示が変わります（メールなし）。confirm を付けて実行してください' };
