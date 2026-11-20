@@ -501,7 +501,8 @@ export const scheduleRoutes = {
     const offs = (await c.db.prepare('select * from staffUnavailability where date between ? and ? order by date, start').bind(from, to).all()).results.filter(o => manager || !o.staffId || o.staffId === me.id);
     const meetings = manager ? (await c.db.prepare(`select m.*, ${CONTRACTOR('f')} familyName, f.guardianName from meetings m left join families f on f.id = m.familyId where m.date between ? and ? and m.status <> 'cancelled' order by m.date, m.start`).bind(from, to).all()).results : [];
     // 種類: 「通常」と、特別単価合意書の名称（2026-10-26 本人「このページってもはや不要」→ 種類は「通常」と特別単価合意書の名称だけ。授業料の上限は個別受講条件書・特別単価合意書で決まる）
-    const kinds = ['通常', ...new Set((await c.db.prepare("select title from specials where status in ('proposed', 'agreed') order by title").all()).results.map(r => r.title).filter(t => t && t !== '通常'))];
+    // この期間の授業で使っている種類も出す（前からの「演習」の授業を、同じ種類で入れる・直す。2026-11-20 本人「理科・社会の演習と同じ扱い」。請求の画面と同じ考え）
+    const kinds = ['通常', ...new Set([...(await c.db.prepare("select title from specials where status in ('proposed', 'agreed') order by title").all()).results.map(r => r.title), ...lessons.map(l => l.kind).sort()].filter(t => t && t !== '通常' && t !== '体験'))];
     // 下書きと調整中（今日以降）は、表示している月に限らず全部（「対応すること」で選んで、見せる・確認をお願いする）
     const heldAll = manager ? (await c.db.prepare("select * from lessons where status = 'held' and date >= ? order by date, start").bind(todayJst(c.now)).all()).results : [];
     const adjustingAll = manager ? (await c.db.prepare("select * from lessons where status = 'proposed' and askedAt = '' and date >= ? order by date, start").bind(todayJst(c.now)).all()).results : [];
@@ -618,9 +619,21 @@ export const scheduleRoutes = {
   'schedule/lessons/update': async (c, b) => {
     await requireStaff(c, b, 'manager');
     const l = await getLesson(c, b.id); sameVersion(l, b);
-    if (!['held', 'proposed', 'decided'].includes(l.status)) fail('badStatus', 'この授業は直せません');
+    // 実施済みも、請求・給与の前なら直せる（入力ミスの直し。2026-11-20 本人「Stepwise を直す」。時刻・担当・種類を間違えて登録した）。メール・カレンダーは動かさない
+    const done = settledOpen(l);
+    if (!['held', 'proposed', 'decided'].includes(l.status) && !done) fail('badStatus', l.status === 'done' ? '請求・給与に入った実施済みの授業は直せません' : 'この授業は直せません');
     const n = lessonFields(b, l);
     const moved = n.date !== l.date || n.start !== l.start || n.minutes !== l.minutes;
+    if (done) {
+      if (n.date > todayJst(c.now)) fail('future', '実施済みの授業は今日までの日付にしてください');
+      if (moved && Number(l.lostMinutes || 0)) fail('tardy', '遅刻を記録した授業の時刻・長さは、遅刻を取り消してから直してください');
+      if (moved || n.staffId !== l.staffId || n.deliveryMode !== l.deliveryMode) await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: !!b.force, exceptId: l.id });
+      const patch = { date: n.date, start: n.start, minutes: n.minutes, subject: n.subject, kind: n.kind, deliveryMode: n.deliveryMode, staffId: n.staffId };
+      if (b.note !== undefined) patch.note = String(b.note).slice(0, 1000);
+      const next = await setLesson(c, l, patch);
+      await audit(c, 'lessonUpdateDone', l.id, { before: { date: l.date, start: l.start, minutes: l.minutes, subject: l.subject, kind: l.kind, deliveryMode: l.deliveryMode, staffId: l.staffId } });
+      return { lesson: lessonView(next), backToAdjusting: false };
+    }
     if (moved || n.staffId !== l.staffId || n.deliveryMode !== l.deliveryMode) await checkConflicts(c, [{ ...n, studentId: l.studentId }], { force: !!b.force, exceptId: l.id });
     const patch = { date: n.date, start: n.start, minutes: n.minutes, subject: n.subject, kind: n.kind, deliveryMode: n.deliveryMode, staffId: n.staffId };
     // 確認待ちの日時を変えたら調整中に戻す（締め切りを外す。新しい日時は、もう一度確認をお願いしたときに新しい締め切りで知らせる）
