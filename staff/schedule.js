@@ -6,6 +6,7 @@ import { automaticDeadline } from '/assets/v2/notice-view.js?v=20261027-principl
 // 教室管理者はすべて、講師は自分の担当の授業と自分の休みだけ。
 import { STATUS, REQUEST, EVENT_KIND, mdw, endOf, statusTag, requestTags, stageLabel } from '/assets/v2/schedule-view.js?v=20261028-r16b';
 import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261028-r16b';
+import { RANK, startChips } from '/assets/v2/month-chips.js?v=20261120-mixpair';
 
 let month = null, data = null, sel = null, sheet = null, families = null, loadedFor = '';
 let wantTodo = false; // 「今日」から来たとき、読み込みのあとで対応することの一覧を開く
@@ -29,8 +30,6 @@ const adjustingLessons = () => data.adjustingAll || data.lessons.filter(l => l.s
 const soon = l => l.date <= addDays(data.today, 5); // 5 日以内（調整中のままなら確認をお願いするか、合意を記録して確定）
 // 月ごとに読んだ予定をとっておく（スワイプで月を変えたとき、すぐ出せるように。前後の月は先に読んでおく）。予定を変えたら捨てる
 let cache = {}, swipeAt = 0, slideIn = '';
-// 月の表では、授業ごとに時刻と名前を、段階の色で出す
-const RANK = { held: 0, proposed: 1, decided: 2, done: 3 };
 
 function prefetchNear(ctx) {
   for (const m of [addMonths(month, -1), addMonths(month, 1)]) {
@@ -102,11 +101,8 @@ function monthPage(ctx, me, r) {
     const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable').map(shortTitle)).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${whose(g)}</span>`)
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
       .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));
-    // 開始時刻と名前だけ（2026-10-27 本人「まだあまり整理できていない」→「開始＋名前だけ」）。同じ開始時刻は1行に「13:00 実祈・岡野」。
-    // 終わりの時刻・科目は右（スマホは下）の一覧で。色はその時刻のうち一番決まっていない段階
-    const byStart = new Map();
-    ls.slice().sort((a, b) => a.start.localeCompare(b.start)).forEach(l => { const g = byStart.get(l.start) || { rank: 9, names: [] }; g.rank = Math.min(g.rank, RANK[l.status]); g.names.push(only ? l.subject : short[l.studentId] || ''); byStart.set(l.start, g); });
-    const chips = [...byStart].map(([start, g]) => `<span class="nm t2 r${g.rank}"><small class="tm">${start}</small><b>${esc(g.names.join('・'))}</b></span>`);
+    // 開始時刻と名前だけ。同じ開始時刻は1行に「13:00 実祈・岡野」。色は授業ごとの段階（assets/v2/month-chips.js）
+    const chips = startChips(ls, l => only ? l.subject : short[l.studentId] || '', esc);
     // マスに出す行の数（2026-10-27 本人「授業が多すぎて表示がうまくできない」）: パソコンは5つ、スマホは2つまで出し、それより多いときは「+n」（途中で切らない）
     const lines = bars.concat(chips), cap = phone() ? 3 : 6, shown = lines.length > cap ? lines.slice(0, cap - 1) : lines, more = lines.length - shown.length;
     const wd = new Date(d + 'T00:00:00Z').getUTCDay();
