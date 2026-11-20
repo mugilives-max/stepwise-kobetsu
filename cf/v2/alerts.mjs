@@ -6,9 +6,9 @@
 //   重複:   これから（今日〜OVERLAP_DAYS 日後）の授業が同じ時間に重なり、同時には持てない
 //     - 同一生徒: 同じ生徒の授業が重なる
 //     - 3名以上: 同じ講師の授業が同時に 3 つ以上（同時の授業は 2 人まで。共通規約 r15 第4条）
-//     - 対面・オンライン混在: 同じ講師の、対面の授業とオンラインの授業が重なる（1 対 2 は同じ形式どうしだけ）
-//   同じ形式の 2 人の重なり（1 対 2）は正常として数えない（2026-11-07 本人「予定はできる限り 1:2」）。
-// 保存のとき（schedule.mjs の checkConflicts）は同一生徒と 3 名以上を断るが、形式の違う重なりは通す。お休みの取り消し・移行などで後から重なることもあるので、ここで毎回見直す。
+//   同じ講師の 2 人の重なり（1 対 2）は正常として数えない（2026-11-07 本人「予定はできる限り 1:2」）。
+//   対面とオンラインが混ざる 1 対 2 も正常（2026-11-20 本人。12 月から土曜に教室の生徒とオンラインの生徒の 1:2 を始める。前は「対面・オンライン混在」で出していた）。
+// 保存のとき（schedule.mjs の checkConflicts）も同一生徒と 3 名以上を断る。お休みの取り消し・移行などで後から重なることもあるので、ここで毎回見直す。
 import { todayJst, addDays } from './schedule.mjs';
 
 export const UNPUBLISHED_DAYS = 14;
@@ -34,7 +34,6 @@ export function findOverlaps(lessons) {
       if (!sameStudent && !sameStaff) continue;
       parent[find(i)] = find(j);
       if (sameStudent) reasons[i].add('同一生徒');
-      if (sameStaff && !sameStudent && a.deliveryMode !== b.deliveryMode) reasons[i].add('対面・オンライン混在');
     }
     // 同じ講師が同時に 3 つ以上: ある授業の始まりの時刻に、同じ講師の授業がいくつ動いているか
     ls.forEach((x, i) => {
@@ -44,7 +43,7 @@ export function findOverlaps(lessons) {
     });
     const groups = new Map();
     ls.forEach((l, i) => { const g = groups.get(find(i)) || { lessons: [], reasons: new Set() }; g.lessons.push(l); reasons[i].forEach(r => g.reasons.add(r)); groups.set(find(i), g); });
-    for (const g of groups.values()) if (g.lessons.length > 1 && g.reasons.size) out.push({ date, lessons: g.lessons, reasons: ['同一生徒', '3名以上', '対面・オンライン混在'].filter(r => g.reasons.has(r)) });
+    for (const g of groups.values()) if (g.lessons.length > 1 && g.reasons.size) out.push({ date, lessons: g.lessons, reasons: ['同一生徒', '3名以上'].filter(r => g.reasons.has(r)) });
   }
   return out.sort((a, b) => (a.date + a.lessons[0].start).localeCompare(b.date + b.lessons[0].start));
 }

@@ -1064,6 +1064,14 @@ form[data-form="em-registration"]:not(:has(input[name="otherEmployment"][value="
 .month2 .nm.t2 { white-space: normal; line-height: 1.15; padding: 1px 2px; }
 .month2 .nm.t2 .tm { display: block; font-size: 9.5px; margin: 0; opacity: .85; }
 .month2 .nm.t2 b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; }
+/* 同じ時刻で段階の違う授業（1:2 の片方だけ下書きなど）: 名前ごとに段階の色（2026-11-20） */
+.month2 .nm.mix { color: var(--ink); }
+.month2 .nm.mix .tm { color: var(--muted); }
+.month2 .nm.mix b span { border-radius: 3px; padding: 0 2px; }
+.month2 .nm.mix .r0 { color: var(--muted); outline: 1px dashed #c9d2dc; outline-offset: -1px; }
+.month2 .nm.mix .r1 { background: var(--warn-soft); color: #7a4f08; }
+.month2 .nm.mix .r2 { background: #e3ecfb; color: #173f8a; }
+.month2 .nm.mix .r3 { background: var(--ok-soft); color: #23704a; }
 /* ホームの下: 授業記録と宿題を並べる */
 .home-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 0; }
 .home-links .todo-row { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
