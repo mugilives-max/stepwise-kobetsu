@@ -141,6 +141,8 @@ button.small-btn.warn { background: var(--warn-soft); border-color: #f1d9ad; col
 .rows .ev .t { font-weight: 400; font-size: 12px; }
 .rows .ev.test .b, .rows .ev.event .b { color: var(--ink); }
 .rows .ev.test { box-shadow: inset 3px 0 0 #d9480f; } .rows .ev.test .b { font-weight: 700; }
+.rows button.ev { all: unset; box-sizing: border-box; display: grid; grid-template-columns: minmax(4.2em, max-content) minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); cursor: pointer; width: 100%; } /* テストの行は押すと詳細（2026-11-20） */
+.rows button.ev.test { box-shadow: inset 3px 0 0 #d9480f; } .rows button.ev:hover { background: #f4f7fb; } .rows button.ev:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .rows .x { border: 0; background: none; color: var(--muted); font-size: 18px; padding: 2px 8px; }
 
 /* ---- 下から出る画面（パソコンでは真ん中） ---- */

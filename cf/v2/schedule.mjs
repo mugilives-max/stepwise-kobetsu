@@ -516,7 +516,7 @@ export const scheduleRoutes = {
       unavailability: offs.map(o => ({ id: o.id, staffId: o.staffId, date: o.date, start: o.start, end: o.end, note: o.note })),
       // 誰との面談か（2026-10-27 本人「カレンダーで、誰の面談か書かれていない」）: 書いた相手 → 生徒 → 保護者の氏名 → 家族の表示名
       meetings: meetings.map(m => ({ id: m.id, familyId: m.familyId, withName: m.withName || '', withLabel: m.withName || (m.studentId && nameOf[m.studentId]) || m.guardianName || m.familyName || '', studentId: m.studentId, staffId: m.staffId, date: m.date, start: m.start, minutes: m.minutes, deliveryMode: m.deliveryMode, title: m.title, meetUrl: m.meetUrl, status: m.status, version: m.version })),
-      students: students.filter(s => s.status !== 'left').map(s => ({ id: s.id, name: fullName(s), familyId: s.familyId, deliveryMode: s.deliveryMode, trial: !!s.trial })),
+      students: students.filter(s => s.status !== 'left').map(s => ({ id: s.id, name: fullName(s), familyId: s.familyId, grade: s.grade || '', deliveryMode: s.deliveryMode, trial: !!s.trial })),
       staff: staff.map(s => ({ id: s.id, name: s.name, teacher: rolesOf(s).includes('teacher') })),
       kinds: kinds.length ? kinds : ['通常'], live: await isLive(c), cancelRuleFrom: await cancelRuleFrom(c.db), rateMonths: await rateMonths(c.db),
     };

@@ -9,7 +9,7 @@ import { nowLocal } from '/assets/v2/cancel-rate.js?v=20261028-r16b';
 import { RANK, startChips } from '/assets/v2/month-chips.js?v=20261120-mixpair';
 
 let month = null, data = null, sel = null, sheet = null, families = null, loadedFor = '';
-let wantTodo = false; // 「今日」から来たとき、読み込みのあとで対応することの一覧を開く
+let wantTodo = false, loading = false; // loading: 「更新」で読み直している間 // 「今日」から来たとき、読み込みのあとで対応することの一覧を開く
 // スマホ（ライフベアの形）: はじめは月全体。日付を押すと、その週が一番上まで滑り上がり、下から一覧が出る（2週分）。同じ日をもう一度押すか取っ手で月全体に戻る
 let calOpen = true, wasOpen = true, calH = null, calTop = null, shownSel = '';
 const phone = () => matchMedia('(max-width: 719px)').matches;
@@ -29,7 +29,7 @@ const heldLessons = () => data.heldAll || data.lessons.filter(l => l.status === 
 const adjustingLessons = () => data.adjustingAll || data.lessons.filter(l => l.status === 'proposed' && !l.asked && l.date >= data.today);
 const soon = l => l.date <= addDays(data.today, 5); // 5 日以内（調整中のままなら確認をお願いするか、合意を記録して確定）
 // 月ごとに読んだ予定をとっておく（スワイプで月を変えたとき、すぐ出せるように。前後の月は先に読んでおく）。予定を変えたら捨てる
-let cache = {}, swipeAt = 0, slideIn = '';
+let cache = {}, swipeAt = 0, slideIn = '', gradeOf = {};
 
 function prefetchNear(ctx) {
   for (const m of [addMonths(month, -1), addMonths(month, 1)]) {
@@ -73,13 +73,14 @@ function monthPage(ctx, me, r) {
   if (!data || loadedFor !== month) { if (loadedFor !== month) load(ctx); return '<p class="muted" style="margin-top:20px">読み込んでいます…</p>'; }
   if (only) { fullData = data; data = onlyView(data, only); }
   if (wantTodo) { wantTodo = false; sheet = { kind: 'todo' }; } // 読み込みが済んでから開く（読み込み前の初期化で閉じられないように）
+  gradeOf = only ? {} : Object.fromEntries(data.students.map(s => [s.id, s.grade || '']));
   const nameOf = Object.fromEntries(data.students.map(s => [s.id, s.name])), staffOf = Object.fromEntries(data.staff.map(s => [s.id, s.name])), short = shortNames();
   const held = {}; heldLessons().forEach(l => { held[l.studentId] = (held[l.studentId] || 0) + 1; });
   const adjusting = {}; adjustingLessons().forEach(l => { adjusting[l.studentId] = (adjusting[l.studentId] || 0) + 1; });
   const todo = manager ? data.openRequests.length + new Set(Object.keys(held).concat(Object.keys(adjusting))).size : 0;
   // 上の帯: 月の切り替え・今日・対応すること・作る
   let h = `<div class="sch-bar"><button class="icon" data-action="sch-month" data-n="-1" aria-label="前の月">‹</button><strong class="sch-month">${Number(month.slice(0, 4))}年${Number(month.slice(5))}月</strong><button class="icon" data-action="sch-month" data-n="1" aria-label="次の月">›</button>
-    <button class="small-btn" data-action="sch-today">今日</button><span style="flex:1"></span>
+    <button class="small-btn" data-action="sch-today">今日</button><button class="small-btn" data-action="sch-reload"${loading ? ' disabled' : ''}>${loading ? '読み込み中' : '更新'}</button><span style="flex:1"></span>
     ${todo ? `<button class="small-btn warn" data-action="sch-sheet" data-k="todo">対応すること ${todo}</button>` : ''}
     <button class="small-btn primary" data-action="sch-sheet" data-k="${manager ? 'create' : 'off'}">＋ ${manager ? '授業' : '休み'}</button></div>`;
   if (!data.live) h += '<p class="small muted" style="margin:2px 0 6px">切り替え前：Google カレンダーへの登録と保護者へのメールはしません。</p>';
@@ -95,10 +96,11 @@ function monthPage(ctx, me, r) {
     const ls = data.lessons.filter(l => l.date === d && l.status in RANK);
     // テスト・行事の帯に誰のかを添える（2人まで。3人以上は人数。2026-10-31 本人「期末テスト（岡野）が欲しい」）。
     // 括弧は幅を食うので、面談と同じく空けて並べる（2026-11-01 本人「面談と同じような表示に」）
-    const whose = g => { if (only) return ''; const n = g.items.map(e => short[e.studentId] || '').filter(Boolean); return n.length && n.length <= 2 ? ' ' + esc(n.join('・')) : g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''; };
-    // 月の表ではテストの名前を縮める（「2学期期末テスト」→「期末」、「北辰テスト（3年6回）」→「北辰」）。日の一覧は元の名前のまま（2026-11-01 本人「期末だけで伝わる。北辰も同じ。見切れちゃってるから縮めよう」）
-    const shortTitle = e => e.kind !== 'test' ? e : { ...e, title: String(e.title || '').replace(/[（(][^）)]*[）)]/g, '').replace(/^[0-9０-９一二三]学期/, '').replace(/テスト$/, '').trim() || e.title };
-    const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable').map(shortTitle)).map(g => `<span class="bar ${g.kind}">${esc(g.title || 'テスト')}${whose(g)}</span>`)
+    // テストは学年ごとに 1 本の帯で「中3北辰」（2026-11-20 本人「北辰×3 ではなく学年とテスト名」）。1 人だけのテストは名前も添える（「中3期末 岡野」）
+    const whose = g => { if (only) return ''; const n = g.items.map(e => short[e.studentId] || '').filter(Boolean);
+      if (g.kind === 'test') return g.items.length === 1 && n.length ? ' ' + esc(n[0]) : '';
+      return n.length && n.length <= 2 ? ' ' + esc(n.join('・')) : g.items.length > 1 ? `<small>×${g.items.length}</small>` : ''; };
+    const bars = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo && e.kind !== 'unavailable'), gradeOf).map(g => `<span class="bar ${g.kind}">${esc(bandLabel(g))}${whose(g)}</span>`)
       .concat(data.unavailability.filter(o => o.date === d).map(o => `<span class="bar off">${o.staffId ? '休み' : '休校'}</span>`))
       .concat(data.meetings.filter(m => m.date === d).map(m => `<span class="bar meeting">面談${m.withLabel ? ' ' + esc(String(m.withLabel).split(/[\s　]/)[0]) : ''}</span>`));
     // 開始時刻と名前だけ。同じ開始時刻は1行に「13:00 実祈・岡野」。色は授業ごとの段階（assets/v2/month-chips.js）
@@ -239,12 +241,14 @@ function dayPanel(ctx, me, manager, nameOf, staffOf, agenda = false) {
 }
 function oneDay(ctx, me, manager, nameOf, staffOf, d, first) {
   const { esc } = ctx;
-  const ls = data.lessons.filter(l => l.date === d).sort((a, b) => a.start.localeCompare(b.start)), offs = data.unavailability.filter(o => o.date === d), evs = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo)), mts = data.meetings.filter(m => m.date === d);
+  const ls = data.lessons.filter(l => l.date === d).sort((a, b) => a.start.localeCompare(b.start)), offs = data.unavailability.filter(o => o.date === d), evs = groupEvents(data.events.filter(e => e.date <= d && d <= e.dateTo), gradeOf), mts = data.meetings.filter(m => m.date === d);
   let h = first ? `<div class="day-title"><strong>${mdw(d)}</strong><span style="flex:1"></span>${manager ? `<button class="small-btn" data-action="sch-sheet" data-k="create" data-date="${d}">${d < data.today ? '＋ 実施した授業を登録' : '＋ この日に授業'}</button>` : ''}</div>`
     : `<button class="day-band" data-action="sch-day" data-date="${d}">${mdw(d)}</button>`;
   if (!ls.length && !offs.length && !evs.length && !mts.length) return h + `<p class="muted small"${first ? '' : ' style="margin:4px 2px 8px"'}>予定はありません。</p>`;
   h += '<div class="rows">';
-  evs.forEach(g => { h += `<div class="ev ${g.kind}"><span class="t">${g.start ? g.start + '〜' : '終日'}</span><span class="b">${EVENT_KIND[g.kind]}：${esc(g.items.map(e => e.studentName).filter(Boolean).join('・'))} ${esc(g.title)}</span>${manager ? `<button class="x" data-action="sch-ev-del" data-ids="${esc(g.items.map(e => e.id).join(','))}" data-n="${g.items.length}" aria-label="消す"${ctx.dis()}>×</button>` : ''}</div>`; });
+  // テストは「中3北辰　北辰テスト（3年6回）」だけ。押すと受ける生徒・期間の詳細（2026-11-20 本人「一覧の行に生徒名を全部並べない」）
+  evs.filter(g => g.kind === 'test').forEach(g => { h += `<button class="ev test" data-action="sch-ev-open" data-ids="${esc(g.items.map(e => e.id).join(','))}"><span class="t">${g.start ? g.start + '〜' : '終日'}</span><span class="b">${esc(bandLabel(g))}　${esc(g.title)}</span><span class="go">›</span></button>`; });
+  evs.filter(g => g.kind !== 'test').forEach(g => { h += `<div class="ev ${g.kind}"><span class="t">${g.start ? g.start + '〜' : '終日'}</span><span class="b">${EVENT_KIND[g.kind]}：${esc(g.items.map(e => e.studentName).filter(Boolean).join('・'))} ${esc(g.title)}</span>${manager ? `<button class="x" data-action="sch-ev-del" data-ids="${esc(g.items.map(e => e.id).join(','))}" data-n="${g.items.length}" aria-label="消す"${ctx.dis()}>×</button>` : ''}</div>`; });
   offs.forEach(o => { h += `<div class="ev off"><span class="t">${o.start ? o.start + '〜' + o.end : '終日'}</span><span class="b">休み：${esc(o.staffId ? staffOf[o.staffId] || '' : '教室全体')} ${esc(o.note)}</span>${manager || o.staffId === me.id ? `<button class="x" data-action="sch-off-del" data-id="${esc(o.id)}" aria-label="消す"${ctx.dis()}>×</button>` : ''}</div>`; });
   mts.forEach(m => { h += `<div class="ev meeting"><span class="t">${m.start}〜${endOf(m.start, m.minutes)}</span><span class="b">面談：${esc(m.withLabel || m.withName || '')}${m.title && m.title !== '面談' ? ' ' + esc(m.title) : ''}${m.deliveryMode === 'online' ? '（オンライン）' : ''}</span><button class="x" data-action="sch-mt-cancel" data-id="${esc(m.id)}" aria-label="取りやめる"${ctx.dis()}>×</button></div>`; });
   ls.forEach(l => {
@@ -294,6 +298,15 @@ function sheetHtml(ctx, me, manager, nameOf, staffOf, held, adjusting) {
         + (danger.length ? `<details class="small"><summary class="muted">そのほかの操作</summary><div class="row" style="margin-top:8px">${danger.join('')}</div></details>` : '');
     }
     body += '</div>';
+  } else if (sheet.kind === 'event') {
+    const items = sheet.ids.map(id => data.events.find(e => e.id === id)).filter(Boolean); if (!items.length) { sheet = null; return ''; }
+    const e0 = items[0], g = { kind: e0.kind, title: e0.title, grade: gradeOf[e0.studentId] || '' };
+    title = bandLabel(g);
+    const period = (e0.date === e0.dateTo ? mdw(e0.date) : `${mdw(e0.date)}〜${mdw(e0.dateTo)}`) + (e0.start ? ` ${e0.start}${e0.end ? '〜' + e0.end : '〜'}` : '（終日）');
+    body = `<div class="stack" style="margin:0"><div><strong style="font-size:17px">${esc(e0.title || EVENT_KIND[e0.kind])}</strong> <span class="tag gray">${esc(EVENT_KIND[e0.kind])}</span></div>
+      <div class="small muted">${esc(period)}</div>
+      <div><div class="small muted">受ける生徒（${items.length}人）</div><div>${items.map(e => esc(nameOf[e.studentId] || e.studentName || '')).join('<br>')}</div></div>
+      ${manager ? `<details class="small"><summary class="muted">そのほかの操作</summary><div class="row" style="margin-top:8px"><button class="danger" data-action="sch-ev-del" data-ids="${esc(items.map(e => e.id).join(','))}" data-n="${items.length}"${ctx.dis()}>${items.length > 1 ? `${items.length}人分を消す` : '消す'}</button></div></details>` : ''}</div>`;
   } else if (sheet.kind === 'create') { title = '授業を作る'; body = createForm(ctx, me); }
   else if (sheet.kind === 'off') { title = '休みを登録'; body = offForm(ctx, me, manager); }
   else if (sheet.kind === 'meeting') { title = '面談を登録'; body = meetingForm(ctx); }
@@ -499,6 +512,8 @@ export async function scheduleClick(ctx, a, b) {
     else sel = d;
     return true;
   }
+  if (a === 'sch-reload') { if (loading) return true; loading = true; cache = {}; ctx.say(''); ctx.render(); await load(ctx); loading = false; if (!data.error) ctx.say('最新の予定を読み直しました', 'ok'); return true; } // MCP などで変えたあと、開いたままの画面で確かめる（2026-11-20 本人）
+  if (a === 'sch-ev-open') { sheet = { kind: 'event', ids: String(b.dataset.ids || '').split(',').filter(Boolean) }; return true; }
   if (a === 'sch-goto') { sel = b.dataset.date; sheet = b.dataset.id ? { kind: 'lesson', id: b.dataset.id } : null; if (ymOf(sel) !== month) { month = ymOf(sel); data = null; } return true; }
   if (a === 'sch-sheet') { if (b.dataset.date) sel = b.dataset.date; sheet = { kind: b.dataset.k }; return true; } // 一覧の日ごとの「＋」は、その日で作る
   if (a === 'sch-open') { sheet = { kind: 'lesson', id }; return true; }
@@ -559,6 +574,7 @@ export async function scheduleClick(ctx, a, b) {
     const ids = String(b.dataset.ids || id || '').split(',').filter(Boolean), n = Number(b.dataset.n || ids.length);
     if (!confirm(n > 1 ? `${n} 人分の共有予定をまとめて消しますか？` : 'この共有予定を消しますか？')) return true;
     let last = { ok: true }; for (const x of ids) { last = await ctx.call('schedule/events/delete', { id: x }); if (!last.ok) break; }
+    if (last.ok && sheet && sheet.kind === 'event') sheet = null;
     await after(ctx, last, n > 1 ? `${n} 人分を消しました` : '消しました'); return true;
   }
   if (a === 'sch-mt-cancel') { if (!confirm('この面談を取りやめますか？')) return true; await after(ctx, await ctx.call('schedule/meetings/cancel', { id }), '面談を取りやめました'); return true; }
@@ -566,12 +582,17 @@ export async function scheduleClick(ctx, a, b) {
 }
 
 // 同じ種類・題名・期間・時刻の共有予定（たとえば中 3 全員の北辰テスト）を 1 つにまとめる。items に各生徒の分
-function groupEvents(events) {
+// テストは学年ごとに分ける（中3 と中2 が同じ日に北辰を受けるなら 2 本）。grades: 生徒 ID → 学年
+function groupEvents(events, grades = {}) {
   const by = new Map();
   for (const e of events) {
-    const k = [e.kind, e.title || '', e.date, e.dateTo, e.start || '', e.end || ''].join('|');
-    if (!by.has(k)) by.set(k, { kind: e.kind, title: e.title, date: e.date, dateTo: e.dateTo, start: e.start, end: e.end, items: [] });
+    const grade = e.kind === 'test' ? grades[e.studentId] || '' : '';
+    const k = [e.kind, e.title || '', e.date, e.dateTo, e.start || '', e.end || '', grade].join('|');
+    if (!by.has(k)) by.set(k, { kind: e.kind, title: e.title, date: e.date, dateTo: e.dateTo, start: e.start, end: e.end, grade, items: [] });
     by.get(k).items.push(e);
   }
   return [...by.values()];
 }
+// テストの帯の名前: 学年＋縮めたテスト名（「2学期期末テスト」→「中3期末」、「北辰テスト（3年6回）」→「中3北辰」。2026-11-01・11-20 本人）
+const testShort = t => String(t || '').replace(/[（(][^）)]*[）)]/g, '').replace(/^[0-9０-９一二三]学期/, '').replace(/テスト$/, '').trim() || t;
+function bandLabel(g) { return g.kind === 'test' ? (g.grade || '') + (testShort(g.title) || 'テスト') : g.title || ''; }
